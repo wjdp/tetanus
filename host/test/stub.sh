@@ -24,6 +24,8 @@ done <"$STUB_FIXTURES/manifest.txt"
 
 case $argv in
   "zpool version") replay zfs-version ;;
+  # Until mars is re-captured with the guid column (Phase 9).
+  "zfs list -j --json-int -p -t snapshot -o name,guid,used,referenced,written,creation -s creation") replay zfs-snapshots ;;
   cat*)
     command -p cat "$@"
     exit

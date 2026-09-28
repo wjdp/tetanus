@@ -21,11 +21,55 @@ describe("zfs-snapshots parser", () => {
       name: "tank/yoh6kfw@syncoid_oth10_2024-01-09:23:37:26-GMT00:00",
       dataset: "tank/yoh6kfw",
       snapshot: "syncoid_oth10_2024-01-09:23:37:26-GMT00:00",
+      guid: null,
       used: 1795024,
       referenced: 385706464,
       written: 385706464,
       creation: 1704843446,
     });
+  });
+
+  it("keeps a guid beyond 2^53 exact as a decimal string", () => {
+    const body = `{
+      "output_version": {"command": "zfs list", "vers_major": 0, "vers_minor": 1},
+      "datasets": {
+        "tank/a@s1": {
+          "name": "tank/a@s1",
+          "properties": {
+            "guid": {"value": 17747342225710399424, "source": {"type": "NONE", "data": "-"}},
+            "used": {"value": 10},
+            "referenced": {"value": 20},
+            "written": {"value": 5},
+            "creation": {"value": 1700000000}
+          }
+        }
+      }
+    }`;
+    expect(parse(body, {}).data.snapshots[0].guid).toBe("17747342225710399424");
+  });
+
+  it("treats a missing guid as null", () => {
+    const { data } = parse(fixture("zfs-snapshots.json"), {});
+    expect(data.snapshots.every((s) => s.guid === null)).toBe(true);
+  });
+
+  it("rejects a non-numeric guid", () => {
+    const body = JSON.stringify({
+      output_version: { command: "zfs list", vers_major: 0, vers_minor: 1 },
+      datasets: {
+        "tank/a@s1": {
+          name: "tank/a@s1",
+          properties: {
+            guid: { value: "abc" },
+            used: { value: 0 },
+            referenced: { value: 0 },
+            written: { value: 0 },
+            creation: { value: 0 },
+          },
+        },
+      },
+    });
+    expect(() => parse(body, {})).toThrow(ParseError);
   });
 
   it("rejects an empty body", () => {

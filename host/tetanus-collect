@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-readonly version=0.1.0
+readonly version=0.1.1
 readonly default_config=/etc/tetanus/collect.env
 readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
 readonly sources=(
@@ -249,7 +249,7 @@ collect_zfs_list() {
 
 collect_zfs_snapshots() {
   collect zfs-snapshots "" zfs list -j --json-int -p -t snapshot \
-    -o name,used,referenced,written,creation -s creation
+    -o name,guid,used,referenced,written,creation -s creation
 }
 
 collect_zpool_history() {

@@ -5,6 +5,7 @@ export interface ZfsSnapshot {
   name: string;
   dataset: string;
   snapshot: string;
+  guid: string | null;
   used: number;
   referenced: number;
   written: number;
@@ -17,9 +18,13 @@ export interface ZfsSnapshotsResult {
 
 function parseJson(body: string): Record<string, unknown> {
   if (body.trim() === "") throw new ParseError("Empty zfs-snapshots body");
+  const withStringGuids = body.replace(
+    /("guid":\s*\{\s*"value":\s*)(\d+)(?=[,}\s])/g,
+    '$1"$2"',
+  );
   let json: unknown;
   try {
-    json = JSON.parse(body);
+    json = JSON.parse(withStringGuids);
   } catch {
     throw new ParseError("zfs-snapshots body is not valid JSON");
   }
@@ -47,6 +52,20 @@ function propertyValue(
   return toNumber(property.value, label);
 }
 
+function guidValue(
+  properties: Record<string, unknown>,
+  label: string,
+): string | null {
+  const property = properties.guid as Record<string, unknown> | undefined;
+  if (!property) return null;
+  const { value } = property;
+  if (typeof value === "string" && /^\d+$/.test(value)) return value;
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+    return String(value);
+  }
+  throw new ParseError(`Expected a decimal guid for ${label}`);
+}
+
 function parseSnapshot(
   name: string,
   raw: Record<string, unknown>,
@@ -65,6 +84,7 @@ function parseSnapshot(
     name,
     dataset: name.slice(0, at),
     snapshot: name.slice(at + 1),
+    guid: guidValue(properties, `${name}.guid`),
     used: propertyValue(properties, "used", `${name}.used`),
     referenced: propertyValue(properties, "referenced", `${name}.referenced`),
     written: propertyValue(properties, "written", `${name}.written`),

@@ -91,7 +91,7 @@ capture zpool-iostat txt zpool iostat -vpl 1 2
 capture zfs-list json zfs list -j --json-int -p -t filesystem,volume \
   -o name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
 capture zfs-snapshots json zfs list -j --json-int -p -t snapshot \
-  -o name,used,referenced,written,creation -s creation
+  -o name,guid,used,referenced,written,creation -s creation
 capture_tail zpool-history 500 zpool history -il
 capture zpool-events txt zpool events -vH
 

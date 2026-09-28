@@ -60,7 +60,7 @@ Sources (v1):
 | `zpool-status` | `zpool status -j --json-flat-vdevs --json-int -Ppvs` (no `-L`: it resolves `by-vdev` paths to `/dev/sdX` and drops `guid`, `path`, `devid`, `state` from leaf vdevs; verified on OpenZFS 2.4.1) |
 | `zpool-list` | `zpool list -j --json-int -pv` |
 | `zfs-list` | `zfs list -j --json-int -p -t filesystem,volume -o <cols>` |
-| `zfs-snapshots` | `zfs list -j --json-int -p -t snapshot -o name,used,referenced,written,creation -s creation` |
+| `zfs-snapshots` | `zfs list -j --json-int -p -t snapshot -o name,guid,used,referenced,written,creation -s creation` |
 | `zpool-history` | `zpool history -il \| tail -n 500` |
 | `zpool-events` | `zpool events -vH` (poll) |
 | `zed-event` | ZED hook posts `KEY=value` lines for every `ZEVENT_*` env var (push) |
@@ -277,7 +277,7 @@ Plain functions over `db`, as grate. Pure derivation separated from IO.
 - `alerts` rule evaluation after each ingest, dedupe, dispatch (pushover, webhook).
   Subjects carry the host name ("mars: pool tank DEGRADED"). Healthchecks ping per host
   on a timer, succeeding only if that host's sources are fresh.
-- `importers/scrutiny` (into a chosen target host), `importers/obsidian`.
+- `importers/scrutiny` (into a chosen target host).
 - `vdevIdConf` parse + render proposal.
 
 Tasks (Nitro, grate queue): `evaluate:disk` after any SMART ingest; `evaluate:zfs` after ZFS ingest; `alerts:tick`;
@@ -290,8 +290,7 @@ Tasks (Nitro, grate queue): `evaluate:disk` after any SMART ingest; `evaluate:zf
 `/api/disks/:id/smart?range=`, `/api/disks/:id/accept` (POST/DELETE),
 `/api/pools`, `/api/pools/:id`, `/api/datasets`, `/api/datasets/:id/snapshots`,
 `/api/diary` (+ POST), `/api/alerts`, `/api/settings`, `/health`, `/api/sse`,
-`/api/vdev-id-conf` (GET rendered proposal), `/api/import/scrutiny`,
-`/api/import/obsidian`.
+`/api/vdev-id-conf` (GET rendered proposal), `/api/import/scrutiny`.
 
 Zod schemas in `shared/schemas/`. SMART metadata served once at `/api/smart/metadata`
 and cached, or bundled.
