@@ -78,3 +78,37 @@ attribute list.
 ## Findings
 
 (agents append here)
+
+### Metadata and evaluation (pure half)
+
+- `_source`: `github.com/AnalogJ/scrutiny@4e9227146190ed81886e65d34e9584cccbc4ce96`.
+  81 ATA, 16 NVMe, 13 SCSI entries; 130 ATA observed-threshold buckets on 16 attributes.
+- ATA 174 has no `DisplayType` in scrutiny; Go's zero value falls through to raw, so the
+  generator writes `"raw"`.
+- smartctl JSON writes `when_failed` as `now`/`past`, but scrutiny compares against
+  `FAILING_NOW`/`IN_THE_PAST`, so its when-failed branch never fires on JSON input. We
+  accept both spellings; `smart-fail2.json` attr 5 is now `failed` via `now`.
+- Device status diverges from scrutiny in three places, all asserted in tests:
+  scrutiny's device bitmask has no warning bit, so its `0` is our `passed` or `warning`
+  (`smart-ata.json` is `warning` from attr 3); `smart-fail.json` (open failed, no data)
+  is `unknown` via standby, not `failed`; a missing `smart_status` is `unknown` rather than
+  `failed` (scrutiny's Go zero value), lifted by any evaluated attribute, and
+  `exitStatus.diskFailing` also forces `failed`. `smart-raid.json` (SCSI, no SMART data)
+  is therefore `unknown` with 0 attributes.
+- NVMe/SCSI fields absent from the log are skipped, not zero-filled (scrutiny always
+  emits 16/13). `transformedValue` for NVMe/SCSI is the value (scrutiny leaves it 0).
+  ATA `name` is smartctl's (drivedb-aware); metadata `displayName` via `attributeMetadata`.
+- SCSI with the metadata fix: `smart-scsi.json` → `failed` on `scsi_grown_defect_list` 56.
+- ATA ids in fixtures with no scrutiny metadata (evaluated `passed`, no failure rate):
+  18 Head_Health, 23/24 Helium_Condition_Lower/Upper, 27 MAMR_Health_Monitor,
+  245 (Timed_Workld_Media_Wear / Percent_Life_Remaining / Unknown_Attribute),
+  246 Timed_Workld_RdWr_Ratio, 247 Timed_Workld_Timer.
+- mars is not all green. `failed`: sdb (197 Current_Pending_Sector raw 16, critical, AFR
+  ≥ 10%; also 198 raw 18 critical with no bucket → warning), sdj (187 Reported_Uncorrect
+  raw 1). `warning`: sdd, sde, sdf, sdg, sdh, sdi, sdk, sdl from 3 Spin-Up Time
+  (normalised 81–93, bucket 78–96 AFR 11%) and/or 4 Start/Stop Count (raw 35–85, AFR
+  11–16%); sdn, sdp from 201 (critical, raw outside every bucket). `passed`: sda, sdc,
+  sdm, sdo, sdq, sdr, sds, nvme0. The 3/4 warnings are Backblaze population statistics,
+  not faults; worth reviewing whether non-critical warnings should reach device status.
+- `shared/smart/evaluate.test.ts` imports the parser from `server/` by relative path;
+  Biome's restricted-imports pattern only matches aliases, so it passes lint.
