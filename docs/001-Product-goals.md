@@ -58,6 +58,15 @@ New:
 - **Import.** One-off importers for scrutiny (device list + attribute history via its
   InfluxDB API) and for the Obsidian inventory table.
 
+After v1, in [004](004-Project-plan.md) §After v1:
+
+- **Backups.** Replication pairs inferred from shared snapshot GUIDs across hosts,
+  with lag and divergence; snapshot staleness; a report endpoint for non-ZFS jobs.
+- **Housekeeping.** Scrub and self-test overdue, capacity forecast, SSD endurance,
+  warranty nudge with an RMA sheet, ZFS property audit, pool version diary.
+- **Kernel log.** Link resets and I/O errors from the kernel, tied to disks, so a
+  bad cable is not mistaken for a bad disk.
+
 ## What it must not do
 
 - Write to the host in v1. No self-tests, scrubs, `zpool clear`. Actions are a later,

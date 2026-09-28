@@ -65,6 +65,11 @@ Sources (v1):
 | `zpool-events` | `zpool events -vH` (poll) |
 | `zed-event` | ZED hook posts `KEY=value` lines for every `ZEVENT_*` env var (push) |
 
+Planned after v1, same seam: `zfs-get` and `zpool-get` ([024](024-ZFS-property-audit.md),
+[015](015-Replication-health.md)), `kernel-log` ([022](022-Kernel-log-ingest.md)),
+`diskstats` ([023](023-Disk-stats-ingest.md)), `job-report` for non-ZFS backup scripts
+([015](015-Replication-health.md)). `zfs-snapshots` gains `guid` in Phase 9.
+
 Every source has one parser in `server/ingest/<source>.ts`, pure text → typed object,
 tested against fixtures. The server never cares who ran the command. Minimum host is
 OpenZFS 2.3+ so ZFS parsers consume `-j` JSON wherever it exists; the ZFS text parsers

@@ -146,7 +146,9 @@ fixtures into a dev server for that.
 
 1. Rules after each ingest: new unaccepted failed attribute, disk missing, disk
    reappeared, pool not ONLINE, scan finished with errors, fault cleared (recovery).
-   Dedupe on `(rule, subject, value)`. Subjects carry the host name.
+   Dedupe on `(rule, subject, value)`. Subjects carry the host name. Later rules
+   ([017](017-Scrub-and-self-test-overdue.md), [020](020-Warranty-nudge.md),
+   [015](015-Replication-health.md)) plug into the same engine.
 2. Channels: Pushover, generic webhook JSON. Test button.
 3. healthchecks.io ping per host (`Host.healthchecksUrl`, optional) on a timer; ping
    succeeds only if that host's sources are fresh. Move `hostFreshness` to `shared/` and
@@ -158,6 +160,8 @@ fixtures into a dev server for that.
 1. `Dataset`, `Snapshot` upsert on slow cadence; never list on request path.
 2. Dataset tree page with used/referenced/compressratio/quota; snapshot list per
    dataset with age and size; counts on pool page.
+3. Collect snapshot `guid` from the start: [015](015-Replication-health.md) pairs
+   datasets across hosts on it.
 
 ## Phase 10: scrutiny import
 
@@ -169,10 +173,32 @@ fixtures into a dev server for that.
    `TemperatureReading`. Coarse older data is coarse; say so in the UI.
 3. Run once against the live scrutiny on mars; cut over and retire scrutiny.
 
+## After v1
+
+Each has its own task doc, status `planned`. Order is by how much it improves the
+author's day; none blocks another except where noted.
+
+1. [015 Replication health](015-Replication-health.md): pair datasets across hosts by
+   snapshot GUID, show lag, divergence, interrupted receives. Needs Phase 9. Includes a
+   `job-report` ingest for non-ZFS backups.
+2. [022 Kernel log ingest](022-Kernel-log-ingest.md): link resets and I/O errors from
+   `journalctl -k`, tied to disks. Cable vs disk diagnosis.
+3. [017 Scrub and self-test overdue](017-Scrub-and-self-test-overdue.md).
+4. [016 Snapshot staleness](016-Snapshot-staleness.md).
+5. [024 ZFS property audit](024-ZFS-property-audit.md): `zpool get` / `zfs get`,
+   change diary, baseline rules.
+6. [021 Pool version diary](021-Pool-version-diary.md): version and feature-flag
+   changes recorded against the pool. Needs 024's source.
+7. [018 Capacity forecast](018-Capacity-forecast.md).
+8. [023 Disk stats ingest](023-Disk-stats-ingest.md): `/proc/diskstats` for idle
+   disks and write volume.
+9. [019 SSD endurance](019-SSD-endurance.md). Better with 023.
+10. [020 Warranty nudge](020-Warranty-nudge.md) and RMA sheet.
+
 ## Later
 
 - `zpool iostat` latency view; the only text parser, needed by no v1 screen.
-
+  [023](023-Disk-stats-ingest.md) covers most of the need.
 - vdev_id.conf proposal renderer.
 - Actions behind a flag: short/long self-test, scrub, `zpool clear`.
 - Retention/downsampling if the DB grows past comfort.
