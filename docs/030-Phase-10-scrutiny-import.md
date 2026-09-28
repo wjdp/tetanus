@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Phase 10 scrutiny import
@@ -209,6 +209,45 @@ Decisions:
   scrutiny JSON); the fakes match `test/fixtures/mars`. Written compact, as scrutiny
   sends them.
 
-Open: inventory-only disks get only a `wwn` key per the contract, so an NVMe disk
-(no WWN) created by import would not merge with a later collector sighting of it; a
-`model-serial` key would fix that.
+Resolved in step 4: inventory-only disks also get a `model-serial` key (normalised
+with `normaliseModelSerial`) when model and serial are present, so an imported NVMe
+disk (no WWN) merges with a later collector sighting.
+
+### Task, route and UI
+
+Step 4 done.
+
+- Task `import:scrutiny` (`server/tasks/queueable/scrutinyImport.ts`), payload
+  `{ url, hostId }` validated with `scrutinyImportTaskPayloadSchema`. Progress through
+  `updateInProgressTask`: `done`, `total`, `progress = done / total`, message
+  `n / total devices`, so the sidebar task indicator shows it.
+- Result slot: the task record had none. Rather than adding `result` to `Task`, the
+  queue stores results beside the task (`setTaskResult`/`getTaskResult`, storage key
+  `taskResult:<id>`, pruned with the task) and `GET /api/import/scrutiny/:taskId`
+  serves it. Adding any field to `Task` (the `/api/tasks` return type) tipped
+  `nuxt typecheck` into TS2321 "Excessive stack depth" on Nitro's route matching at an
+  unrelated `$fetch` call site. The e2e test avoids typed `$fetch` and Drizzle selects
+  on `Disk` for the same reason (raw SQL count).
+- `POST /api/import/scrutiny` (`scrutinyImportSchema` in `shared/schemas/import.ts`,
+  http/https only, strict): `dryRun: true` runs inline; `dryRun: false` checks the host
+  exists (404) then enqueues and returns `{ taskId }`. Unreachable scrutiny → 502.
+  e2e covers 400s, 502, 404, the dry-run preview and the enqueue path end to end
+  against a local HTTP server serving the fixtures.
+- Result types (`ScrutinyImportResult<TDate>` etc.) moved to
+  `shared/schemas/import.ts` so the page can use them; the server re-exports them.
+- Settings › Import (`/settings/import`, back in `SETTINGS_NAVIGATION`): one card,
+  URL (default `SCRUTINY_DEFAULT_URL`), target host select (first host preselected),
+  Preview → device table (model, serial, match, disk link, SMART points, temperatures,
+  "Before" cut-off date or "all", error) with totals; Import is enabled only after a
+  preview, and URL or host edits clear it. The page follows the task over SSE and
+  loads the summary when it finishes; errors toast.
+- Disk page: `DiskSmart` shows "Readings before <date> were imported from scrutiny at
+  daily resolution" above the charts when `history.importedUntil` is set.
+- Client smoke-tested read-only against `https://scrutiny.wjdp.uk` (summary, one
+  details call, temperature history all parse).
+
+Cut-over (user): open Settings › Import, keep the URL, pick mars, Preview and check the
+matches (expect `wwn` for SATA disks, `serial` for the NVMe, `created` for disks
+scrutiny knows that tetanus has not seen), Import, watch the sidebar indicator, check a
+disk page shows the long history and the imported note, then stop scrutiny's
+containers and record the date in 004.

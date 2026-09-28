@@ -171,8 +171,8 @@ In progress 2026-09-28: [029](029-Phase-9-ZFS-datasets-and-snapshots.md).
 
 ## Phase 10: scrutiny import
 
-Spec: [030](030-Phase-10-scrutiny-import.md). Decided 2026-09-28: read scrutiny's REST
-API instead of InfluxDB and its SQLite file.
+Done 2026-09-28: [030](030-Phase-10-scrutiny-import.md); cut-over pending (user). Decided
+2026-09-28: read scrutiny's REST API instead of InfluxDB and its SQLite file.
 
 1. ~~Importer against scrutiny's InfluxDB HTTP API (token from its config) and its SQLite
    device table.~~ Importer against scrutiny's web API. Join on scrutiny UUID; fall back to model+serial. Takes a target host
