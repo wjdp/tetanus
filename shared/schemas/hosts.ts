@@ -23,3 +23,5 @@ export const hostPatchSchema = z.strictObject({
 export type HostPatch = z.infer<typeof hostPatchSchema>;
 
 export const hostIdSchema = z.coerce.number().int().positive();
+
+export const hostParamsSchema = z.object({ id: hostIdSchema });
