@@ -46,16 +46,16 @@ Nuxt UI 4 colour aliases; Tailwind 4 `@theme` for the custom palette.
 | `info` | `sky` | Scrub/resilver in progress, informational banners. |
 | `secondary` | `stone` | Unused; alias to neutral so nothing accidentally introduces a second brand hue. |
 
-Rust palette (oxidised iron, sits between red and orange, main step 500). Decided 2026-09-28
-against a swatch page; alternatives (redder, oranger, muted) rejected:
+Rust palette (desaturated oxide, main step 500). Decided 2026-09-28 against a swatch page;
+the more vivid `#d3512f`, a redder and an oranger candidate were rejected as too loud:
 
 ```
---color-rust-50:  #fdf4f0;  --color-rust-500: #d3512f;
---color-rust-100: #fbe5db;  --color-rust-600: #b53e22;
---color-rust-200: #f6c8b5;  --color-rust-700: #93321d;
---color-rust-300: #eea287;  --color-rust-800: #772b1d;
---color-rust-400: #e37658;  --color-rust-900: #62261b;
-                            --color-rust-950: #35100a;
+--color-rust-50:  #fbf4f1;  --color-rust-500: #b5543a;
+--color-rust-100: #f5e4de;  --color-rust-600: #9a4530;
+--color-rust-200: #eac7bb;  --color-rust-700: #7d3928;
+--color-rust-300: #dba28f;  --color-rust-800: #653022;
+--color-rust-400: #c97a61;  --color-rust-900: #52291f;
+                            --color-rust-950: #2c130e;
 ```
 
 Alarm palette (pure red for failed; 500 is `#ff0000`; text on light backgrounds uses 600
@@ -80,8 +80,9 @@ Rules that keep red from being overused:
    `success` dot, not green cards. Confirmed against the swatch page. The home screen should be mostly stone; anything red
    or amber on it is a problem.
 3. **One primary action per view.** Everything else is `neutral` `ghost`/`soft`.
-4. **Dark mode first.** Default to system, but design in dark and check light. Rust 500
-   on dark, rust 600 on light; check contrast ≥ 4.5:1 for text uses.
+4. **Dark mode first.** Default to system, but design in dark and check light. Fills
+   (buttons, nav bar, mark dot) use rust 500 on dark and 600 on light. Text and links use
+   rust 400 on dark (500 is 4.0:1 on stone 950, below AA) and 600 on light (6.4:1).
 5. **Charts** pick a categorical palette in Phase 6 (dataviz skill); rust is reserved and
    is not a series colour. Status thresholds on charts use the status aliases.
 
