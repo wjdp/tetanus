@@ -161,6 +161,8 @@ Done 2026-09-28: [026](026-Phase-8-alerts.md).
 
 ## Phase 9: ZFS datasets and snapshots
 
+In progress 2026-09-28: [029](029-Phase-9-ZFS-datasets-and-snapshots.md).
+
 1. `Dataset`, `Snapshot` upsert on slow cadence; never list on request path.
 2. Dataset tree page with used/referenced/compressratio/quota; snapshot list per
    dataset with age and size; counts on pool page.
@@ -169,8 +171,11 @@ Done 2026-09-28: [026](026-Phase-8-alerts.md).
 
 ## Phase 10: scrutiny import
 
-1. Importer against scrutiny's InfluxDB HTTP API (token from its config) and its SQLite
-   device table. Join on scrutiny UUID; fall back to model+serial. Takes a target host
+Spec: [030](030-Phase-10-scrutiny-import.md). Decided 2026-09-28: read scrutiny's REST
+API instead of InfluxDB and its SQLite file.
+
+1. ~~Importer against scrutiny's InfluxDB HTTP API (token from its config) and its SQLite
+   device table.~~ Importer against scrutiny's web API. Join on scrutiny UUID; fall back to model+serial. Takes a target host
    for the imported readings.
 2. Devices → `Disk` (removed ones become inventory rows with `lastSeenAt`), `smart`
    measurement → `SmartReading`/`SmartAttribute` across all four buckets, `temp` →
