@@ -112,3 +112,44 @@ attribute list.
   not faults; worth reviewing whether non-critical warnings should reach device status.
 - `shared/smart/evaluate.test.ts` imports the parser from `server/` by relative path;
   Biome's restricted-imports pattern only matches aliases, so it passes lint.
+
+### Persistence
+
+- `SmartAttribute.name` for ATA is the scrutiny metadata `displayName` when there is one
+  (`Reallocated Sectors Count`), else smartctl's drivedb name (unmapped ids such as 18
+  `Head_Health` keep it). `smartctl`'s name is not stored separately; it stays in
+  `Disk.latestRaw`.
+  NVMe/SCSI names were already the metadata `displayName` from evaluation.
+- SCT history: smartctl writes the table oldest first (the last entry matches
+  `temperature.current` on mars), so offset `i` counts back from the **last** entry.
+  Scrutiny uses the array index directly, which reverses its backfilled history. Points
+  are floored to the logging interval; with 1-minute logs a later post re-covers most of
+  the window and inserts only the new tail. Current temperature is stored unfloored at
+  `receivedAt`. Temperatures of 0 are skipped for both.
+- `latest*` fields and the status diary only move forward: a reading older than
+  `latestReadingAt` is stored but does not overwrite them. The first reading of a disk
+  (`latestReadingAt` null) sets `latestStatus` silently, like `state-changed` on first
+  resolve, so enrolment does not flood the diary with `passed (was unknown)`.
+- Standby: the handler still calls `observeDiskFromSmartctl` (touches `lastSeenAt`);
+  `recordSmartReading` returns null for `parsed.standby`. `latestTemp` is null when the
+  reading has no temperature.
+- `SelfTest` upsert keeps the first `seenAt` and refreshes `status`/`passed`/`lba`.
+  Entries without `type` or `lifetimeHours` are skipped. mars has no self-test logs;
+  covered with scrutiny `smart-ata.json`.
+- Trend is relative to the latest reading's `takenAt`, not wall-clock. `new` = no reading
+  ≥ 7 d older; otherwise `worsening` if either the 7 d or 30 d reference is worse per
+  `ideal`, else `improving` if either is better, else `stable`. `ideal: ""` (and ids
+  without metadata) is only ever `stable`/`new`. Computed for every attribute, not only
+  non-passed ones.
+- Disk detail (`GET /api/disks/:id`) is unchanged: `disks.ts` and its route belong to
+  Phase 4. Instead `GET /api/disks/:id/smart?range=7d|30d|1y|all` (default `30d`)
+  returns `{ reading, attributes, history }` in one call. `reading` is the latest
+  `SmartReading` row or null; `attributes` are its `SmartAttribute` rows (without
+  `id`/`readingId`/`diskId`) plus `trend` and `metadata` (`displayName`, `ideal`,
+  `critical`, `description`, `transformValueUnit?`, or null); `history` is
+  `{ temperature: [{ at, celsius }], attributes: { [attrId]: [{ at, value }] } }` with
+  `value` = `transformedValue`. Folding `smart` into the detail response is a one-line
+  follow-up for whoever owns `getDisk`.
+- Downsampling buckets `[first, last]` into 500 equal time slices and keeps the last
+  point per slice, so spikes between kept points are lost; min/max per bucket would be
+  the upgrade if charts look too smooth.
