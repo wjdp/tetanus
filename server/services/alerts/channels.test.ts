@@ -4,6 +4,7 @@ import {
   type Fetch,
   type OutgoingNotification,
   PUSHOVER_URL,
+  SIGNATURE_HEADER,
   sendPushover,
   sendToChannel,
   sendWebhook,
@@ -109,9 +110,9 @@ describe("sendWebhook", () => {
     const expected = createHmac("sha256", "s3cret")
       .update(init.body as string)
       .digest("hex");
-    expect(
-      (init.headers as Record<string, string>)["X-Tetanus-Signature"],
-    ).toBe(`sha256=${expected}`);
+    expect((init.headers as Record<string, string>)[SIGNATURE_HEADER]).toBe(
+      `sha256=${expected}`,
+    );
   });
 });
 

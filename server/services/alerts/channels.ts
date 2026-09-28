@@ -4,7 +4,9 @@ import type {
   NotificationRule,
   NotificationSeverity,
 } from "#shared/alerts";
+import { APP_NAME } from "#shared/app";
 import type { DiarySubjectType } from "#shared/diary";
+import { titleCase } from "#shared/ingest";
 import type {
   NotificationsConfig,
   PushoverConfig,
@@ -12,7 +14,7 @@ import type {
 } from "#shared/schemas/settings";
 
 export const PUSHOVER_URL = "https://api.pushover.net/1/messages.json";
-export const SIGNATURE_HEADER = "X-Tetanus-Signature";
+export const SIGNATURE_HEADER = `${titleCase(APP_NAME)}-Signature`;
 const SEND_TIMEOUT_MS = 10_000;
 const ERROR_BODY_LIMIT = 500;
 

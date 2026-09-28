@@ -23,7 +23,7 @@ export function isIngestSource(value: string): value is IngestSource {
   return (INGEST_SOURCES as readonly string[]).includes(value);
 }
 
-const titleCase = (word: string) =>
+export const titleCase = (word: string) =>
   word.charAt(0).toUpperCase() + word.slice(1);
 
 export const HOST_HEADER = `${titleCase(APP_NAME)}-Host`;

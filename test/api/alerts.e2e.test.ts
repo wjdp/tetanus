@@ -127,7 +127,7 @@ describe("POST /api/alerts/test", () => {
       severity: "test",
       subject: "tetanus",
     });
-    expect(delivery.headers["x-tetanus-signature"]).toBe(
+    expect(delivery.headers["tetanus-signature"]).toBe(
       `sha256=${createHmac("sha256", "s3cret").update(delivery.body).digest("hex")}`,
     );
   });
