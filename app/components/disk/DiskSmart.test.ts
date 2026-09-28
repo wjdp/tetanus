@@ -1,0 +1,50 @@
+// @vitest-environment nuxt
+import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
+import { describe, expect, it } from "vitest";
+import DiskSmart from "./DiskSmart.vue";
+
+const at = "2026-09-20T12:00:00.000Z";
+
+function smartOverview(importedUntil: string | null) {
+  return {
+    reading: {
+      id: 1,
+      takenAt: at,
+      devicePath: "/dev/sdb",
+      deviceStatus: "passed",
+      source: "collector",
+    },
+    attributes: [],
+    history: { temperature: [], attributes: {}, importedUntil },
+    selfTests: [],
+    acceptances: [],
+  };
+}
+
+registerEndpoint("/api/disks/21/smart", () =>
+  smartOverview("2026-09-09T00:00:00.000Z"),
+);
+registerEndpoint("/api/disks/22/smart", () => smartOverview(null));
+
+const note = '[data-testid="imported-note"]';
+
+describe("DiskSmart", () => {
+  it("notes when readings in range were imported from scrutiny", async () => {
+    const component = await mountSuspended(DiskSmart, {
+      props: { diskId: 21, protocol: "ata" },
+    });
+
+    expect(component.get(note).text()).toBe(
+      "Readings before 2026-09-09 were imported from scrutiny at daily resolution",
+    );
+  });
+
+  it("shows no note for collector-only history", async () => {
+    const component = await mountSuspended(DiskSmart, {
+      props: { diskId: 22, protocol: "ata" },
+    });
+
+    expect(component.text()).toContain("read 2026-09-20");
+    expect(component.find(note).exists()).toBe(false);
+  });
+});

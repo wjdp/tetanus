@@ -165,6 +165,15 @@ const attributeSeries = computed(() => {
         />
       </div>
 
+      <p
+        v-if="smart.history.importedUntil"
+        class="text-dimmed text-sm"
+        data-testid="imported-note"
+      >
+        Readings before {{ formatDate(smart.history.importedUntil) }} were
+        imported from scrutiny at daily resolution
+      </p>
+
       <div class="flex flex-col gap-2">
         <h3 class="text-muted text-sm font-medium">Temperature</h3>
         <ChartsTimeSeriesChart :series="temperatureSeries" unit="°C" :height="160" />
