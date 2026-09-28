@@ -1,0 +1,187 @@
+import { describe, expect, it } from "vitest";
+import { parse as parseLsblk } from "~~/server/ingest/lsblk";
+import { parse as parseSmartctl } from "~~/server/ingest/smartctl-xall";
+import { parse as parseUdev } from "~~/server/ingest/udev";
+import {
+  extractKeys,
+  keysFromVdevTarget,
+  matchDisks,
+  normaliseModelSerial,
+  scrutinyUuid,
+} from "~~/server/services/identity";
+import { readFixture } from "~~/test/fixtures";
+
+const lsblk = parseLsblk(readFixture("mars/lsblk.json"), {}).data;
+
+function udev(name: string) {
+  return parseUdev(readFixture(`mars/udev/${name}.txt`), {
+    device: name.slice(1).replace("-", ":"),
+  }).data;
+}
+
+function smartctl(name: string) {
+  return parseSmartctl(readFixture(`mars/smartctl/${name}.json`), {}).data;
+}
+
+describe("normaliseModelSerial", () => {
+  it("uppercases, collapses separators and strips WD-", () => {
+    expect(normaliseModelSerial("WDC  WD80EFAX_x", "WD-abc 123")).toBe(
+      "WDC_WD80EFAX_X|ABC_123",
+    );
+  });
+
+  it("cuts the model to the 16-character INQUIRY width", () => {
+    expect(normaliseModelSerial("WDC WD120EMAZ-11BLFA0", "0UTY8HTE")).toBe(
+      normaliseModelSerial("WDC WD120EMAZ-11", "0UTY8HTE"),
+    );
+    expect(normaliseModelSerial("Samsung SSD 850 EVO 500GB", "X")).toBe(
+      "SAMSUNG_SSD_850|X",
+    );
+  });
+});
+
+describe("extractKeys", () => {
+  it("takes wwn and model-serial from smartctl", () => {
+    expect(
+      extractKeys({
+        source: "smartctl-xall",
+        identity: smartctl("xall-sda-auto").identity,
+      }),
+    ).toEqual([
+      { kind: "wwn", value: "5000cca5f853b4e6" },
+      { kind: "model-serial", value: "WDC_WD120EMAZ-11|0UTY8HTE" },
+    ]);
+  });
+
+  it("takes model-serial only from NVMe smartctl without a wwn", () => {
+    expect(
+      extractKeys({
+        source: "smartctl-xall",
+        identity: smartctl("xall-nvme0").identity,
+      }),
+    ).toEqual([
+      { kind: "model-serial", value: "WDS250G3X0C-00SJ|453939583131" },
+    ]);
+  });
+
+  it("takes wwn and model-serial from lsblk whole disks with a serial", () => {
+    const sda = lsblk.disks.find((entry) => entry.name === "sda")!;
+    expect(extractKeys({ source: "lsblk", disk: sda })).toEqual([
+      { kind: "wwn", value: "5000cca5f853b4e6" },
+      { kind: "model-serial", value: "WDC_WD120EMAZ-11|0UTY8HTE" },
+    ]);
+    const zram = lsblk.disks.find((entry) => entry.name === "zram0")!;
+    expect(extractKeys({ source: "lsblk", disk: zram })).toEqual([]);
+  });
+
+  it("takes ID_WWN, ID_SERIAL and by-id names from udev", () => {
+    expect(extractKeys({ source: "udev", udev: udev("b65-0") })).toEqual([
+      { kind: "wwn", value: "5002538bd9338903" },
+      {
+        kind: "udev-serial",
+        value: "Samsung_SSD_850_EVO_500GB_H8NPAO4SU23238R",
+      },
+      { kind: "by-id", value: "scsi-35002538bd9338903" },
+      { kind: "by-id", value: "wwn-0x5002538bd9338903" },
+      { kind: "by-id", value: "ata-Samsung_SSD_850_EVO_500GB_H8NPAO4SU23238R" },
+    ]);
+  });
+
+  it("keeps NVMe eui wwns and ignores partitions", () => {
+    expect(
+      extractKeys({ source: "udev", udev: udev("b259-0") }),
+    ).toContainEqual({
+      kind: "wwn",
+      value: "eui.66899335a800ec54f6d3ad26f6d1e818",
+    });
+    expect(extractKeys({ source: "udev", udev: udev("b8-17") })).toEqual([]);
+  });
+
+  it("agrees across sources for the same disk", () => {
+    const fromSmartctl = extractKeys({
+      source: "smartctl-xall",
+      identity: smartctl("xall-sdb-auto").identity,
+    });
+    const fromLsblk = extractKeys({
+      source: "lsblk",
+      disk: lsblk.disks.find((entry) => entry.name === "sdb")!,
+    });
+    const fromUdev = extractKeys({ source: "udev", udev: udev("b8-16") });
+    expect(fromLsblk).toEqual(fromSmartctl);
+    expect(fromUdev).toContainEqual(fromSmartctl[0]);
+  });
+});
+
+describe("keysFromVdevTarget", () => {
+  it("adds a wwn key for wwn- targets", () => {
+    expect(keysFromVdevTarget("wwn-0x5000CCA5F853B4E6")).toEqual([
+      { kind: "by-id", value: "wwn-0x5000CCA5F853B4E6" },
+      { kind: "wwn", value: "5000cca5f853b4e6" },
+    ]);
+  });
+
+  it("adds a model-serial key for scsi-SATA_ targets", () => {
+    expect(
+      keysFromVdevTarget(
+        "/dev/disk/by-id/scsi-SATA_Samsung_SSD_850_H8NPAO4SU23238R",
+      ),
+    ).toEqual([
+      { kind: "by-id", value: "scsi-SATA_Samsung_SSD_850_H8NPAO4SU23238R" },
+      { kind: "model-serial", value: "SAMSUNG_SSD_850|H8NPAO4SU23238R" },
+    ]);
+  });
+});
+
+describe("matchDisks", () => {
+  const existing = [
+    { diskId: 1, kind: "wwn" as const, value: "aa" },
+    { diskId: 1, kind: "by-id" as const, value: "wwn-0xaa" },
+    { diskId: 2, kind: "model-serial" as const, value: "M|S" },
+  ];
+
+  it("returns null without a match", () => {
+    expect(matchDisks([{ kind: "wwn", value: "bb" }], existing)).toBeNull();
+  });
+
+  it("matches on any one key", () => {
+    expect(
+      matchDisks(
+        [
+          { kind: "wwn", value: "aa" },
+          { kind: "udev-serial", value: "new" },
+        ],
+        existing,
+      ),
+    ).toEqual({ diskId: 1 });
+  });
+
+  it("does not match the same value under another kind", () => {
+    expect(matchDisks([{ kind: "by-id", value: "aa" }], existing)).toBeNull();
+  });
+
+  it("reports a conflict when keys point at two disks", () => {
+    expect(
+      matchDisks(
+        [
+          { kind: "model-serial", value: "M|S" },
+          { kind: "wwn", value: "aa" },
+        ],
+        existing,
+      ),
+    ).toEqual({ conflict: [1, 2] });
+  });
+});
+
+describe("scrutinyUuid", () => {
+  it("matches scrutiny for a mars disk with a wwn", () => {
+    expect(
+      scrutinyUuid("WDC WD120EMAZ-11BLFA0", "0UTY8HTE", "5000cca5f853b4e6"),
+    ).toBe("42e3857b-e3a9-534c-b5a6-3a1c7ace3160");
+  });
+
+  it("matches scrutiny without a wwn", () => {
+    expect(scrutinyUuid("WDC WD120EMAZ-11BLFA0", "0UTY8HTE", undefined)).toBe(
+      "77c89aa3-f51f-567c-bcef-5bdc0c92eae9",
+    );
+  });
+});
