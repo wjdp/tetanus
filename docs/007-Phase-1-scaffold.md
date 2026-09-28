@@ -17,7 +17,7 @@ shape and conventions, with nothing disk-specific in it yet.
 4. Settings service: single row, enrol token (32 random bytes, hex) generated on first
    boot, `GET`/`PATCH /api/settings`, `GET /health`.
 5. Dockerfile, `run.sh`, `compose.yml`, GitHub workflows (checks, main → `edge`,
-   release) pushing `ghcr.io/wjdp/diskbot`.
+   release) pushing `ghcr.io/wjdp/tetanus`.
 6. `AGENTS.md`, `CLAUDE.md` symlink, README.
 7. Layout: sidebar (Topology, Disks, ZFS, Diary, Settings), Cmd/Ctrl+K command palette
    over the same five pages, fault banner slot fed by `useFaults()` (empty), settings
@@ -64,8 +64,8 @@ Where [003](003-Architecture-and-data-model.md) and
 
 - 003's API list has `/api/health`; the route is `/health`, as grate, because the
   Docker `HEALTHCHECK` hits it.
-- 003's compose sketch uses image `wjdp/diskbot`; the workflows publish
-  `ghcr.io/wjdp/diskbot`, which `compose.yml` uses.
+- 003's compose sketch uses image `wjdp/tetanus`; the workflows publish
+  `ghcr.io/wjdp/tetanus`, which `compose.yml` uses.
 - 004 Phase 1 step 6 lists `000-Docs.md` project specifics; left to the docs owner.
 
 ## Done when

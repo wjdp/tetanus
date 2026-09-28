@@ -7,7 +7,7 @@ import { join } from "node:path";
 // The Nitro server runs in its own process, so route tests hand it a file
 // database rather than the in-memory one the unit tests share.
 export function createTestDatabaseFile() {
-  return join(mkdtempSync(join(tmpdir(), "diskbot-e2e-")), "e2e.sqlite");
+  return join(mkdtempSync(join(tmpdir(), "tetanus-e2e-")), "e2e.sqlite");
 }
 
 function findFreePort(): Promise<number> {

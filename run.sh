@@ -4,8 +4,8 @@
 set -eo pipefail
 
 function motd {
-    echo "———————— diskbot server ————————"
-    echo "https://github.com/wjdp/diskbot"
+    echo "———————— tetanus server ————————"
+    echo "https://github.com/wjdp/tetanus"
     echo "————————————————————————————————"
 }
 
@@ -18,7 +18,7 @@ function check_data_directory {
 }
 
 function start_server {
-  echo "🚀 Starting diskbot server"
+  echo "🚀 Starting tetanus server"
   node .output/server/index.mjs
 }
 

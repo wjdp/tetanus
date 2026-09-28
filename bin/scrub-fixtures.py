@@ -19,7 +19,7 @@ Labels of ZFS pools that are not imported (udev zfs_member ID_FS_LABEL) are fake
 Partition, partition table and non-ZFS filesystem UUIDs, LVM ids and ZFS partition labels
 are faked in the same shape.
 
-Fakes derive from sha256(salt + original); salt comes from DISKBOT_SCRUB_SALT. The
+Fakes derive from sha256(salt + original); salt comes from TETANUS_SCRUB_SALT. The
 original -> fake table goes to stderr only. The run fails if any original survives.
 """
 
@@ -33,7 +33,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-DEFAULT_SALT = "diskbot-fixture-scrub-v1"
+DEFAULT_SALT = "diskbot-fixture-scrub-v1"  # historical; changing it changes every committed fake
 SNAPSHOT_LIMIT = 200
 UINT64_MAX = 2**64 - 1
 MIN_SAFE_SERIAL_LENGTH = 4
@@ -941,7 +941,7 @@ def main(argv):
         if path.is_file()
     }
     identifiers = discover(raw_files)
-    scrubber = Scrubber(identifiers, os.environ.get("DISKBOT_SCRUB_SALT", DEFAULT_SALT))
+    scrubber = Scrubber(identifiers, os.environ.get("TETANUS_SCRUB_SALT", DEFAULT_SALT))
     scrubber.print_mapping()
 
     snapshot_count_recorded = Path(SNAPSHOT_COUNT_FILE) in raw_files

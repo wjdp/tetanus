@@ -80,7 +80,7 @@ FailedScrutiny. Written unconditionally each upload.
 
 `metrics.status_threshold` and `status_filter_attributes` gate **notifications only**;
 the dashboard decodes the raw bitmask client-side against the user's threshold. That
-split is a documented source of confusion; diskbot should apply one threshold everywhere.
+split is a documented source of confusion; tetanus should apply one threshold everywhere.
 
 Test corpus: `webapp/backend/pkg/models/testdata/*.json`, ~20 real smartctl outputs
 (ATA, NVMe, SCSI, SAT, megaraid, failing drives) with expected statuses in
@@ -143,7 +143,7 @@ Full report in the session scratchpad; the relevant conclusions:
   typed `SseMessageMap`, cron only enqueues. Provider registry + generic runner that
   isolates per-source failures. Follow-up queueing from structured job results.
 - Fault banners (docs/29): derived-on-request health, dismissed per fault key. Exactly
-  what diskbot needs for "collector silently dead".
+  what tetanus needs for "collector silently dead".
 - Tests: per-file `:memory:` DB via `DATABASE_URL`, `runMigrations` in `test/setup.ts`,
   faker factories, co-located tests, e2e via spawned `nuxt dev`.
 - Docker: 4-stage `node:24-slim` build, `run.sh` refuses to start without `/app/data`,
@@ -160,7 +160,7 @@ Full report in the session scratchpad; the relevant conclusions:
 ## ZFS and host facts that shape the design
 
 - **`zpool -j` JSON is OpenZFS 2.3+.** mars runs 2.4.1 on Ubuntu 26.04, so JSON is
-  the only format diskbot parses for `zpool status`, `zpool list`, `zfs list`, `zfs get`.
+  the only format tetanus parses for `zpool status`, `zpool list`, `zfs list`, `zfs get`.
   Minimum supported host is "Ubuntu 26.04-like". `zpool iostat` has no `-j` at any
   version and stays text. `-j` without `-p`/`--json-int` returns human strings
   (`"159T"`, `"9%"`); always pass both. Environment variables `ZPOOL_VDEV_NAME_GUID`,
@@ -180,7 +180,7 @@ Full report in the session scratchpad; the relevant conclusions:
   `vdev_id.conf` for aliases with no device present.
 - **Events.** `zpool events` ring buffer is 512 entries, drops oldest, duplicate
   suppression for 15 min. Never a rate metric; `zpool status` counters are the truth.
-  Lossless path is a ZED hook `all-diskbot.sh` posting `ZEVENT_*` env vars. `zpool
+  Lossless path is a ZED hook `all-tetanus.sh` posting `ZEVENT_*` env vars. `zpool
   history -i` is persisted in the pool and answers "when was K4 replaced".
 - **Snapshots** listing is O(n) and can hammer ARC. Slow cadence, never on the request
   path.

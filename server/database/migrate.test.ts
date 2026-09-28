@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 function temporaryPath(name: string) {
-  return join(mkdtempSync(join(tmpdir(), "diskbot-migrate-")), name);
+  return join(mkdtempSync(join(tmpdir(), "tetanus-migrate-")), name);
 }
 
 function withSqlite<T>(path: string, read: (sqlite: Database.Database) => T) {
@@ -125,10 +125,10 @@ describe("describeMigrations", () => {
     expect(
       describeMigrations(
         { applied: [], total: 14, durationMs: 1 },
-        "/data/diskbot.db",
+        "/data/tetanus.db",
       ),
     ).toBe(
-      "Database up to date, 14 migrations already applied (/data/diskbot.db)",
+      "Database up to date, 14 migrations already applied (/data/tetanus.db)",
     );
   });
 
@@ -140,11 +140,11 @@ describe("describeMigrations", () => {
           total: 14,
           durationMs: 42,
         },
-        "/data/diskbot.db",
+        "/data/tetanus.db",
       ),
     ).toBe(
       [
-        "Database migrated, applied 2 new migrations in 42ms, 14 total (/data/diskbot.db)",
+        "Database migrated, applied 2 new migrations in 42ms, 14 total (/data/tetanus.db)",
         "  ✔ 0009_disk_alias",
         "  ✔ 0010_next",
       ].join("\n"),

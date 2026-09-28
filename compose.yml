@@ -1,10 +1,10 @@
 services:
-  diskbot:
+  tetanus:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/wjdp/diskbot
-    container_name: diskbot
+    image: ghcr.io/wjdp/tetanus
+    container_name: tetanus
     user: "1000:1000"
     volumes:
       - ./data:/app/data

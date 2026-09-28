@@ -4,7 +4,7 @@ type: reference
 
 # Product goals
 
-diskbot is a self-hosted disk and ZFS monitor for home NAS hosts: one server, a
+tetanus is a self-hosted disk and ZFS monitor for home NAS hosts: one server, a
 collector per host. It replaces scrutiny's SMART dashboard and the hand-maintained
 Obsidian disk inventory with one system that knows every disk it has ever seen: which
 host it is in, what it's doing, how healthy it is, and what happened to it.
@@ -88,11 +88,11 @@ New:
 | Minimum host | Ubuntu 26.04-like: OpenZFS 2.3+ (JSON output), smartmontools 7.4+ (mars has 7.5) |
 | Scrutiny transition | Separate systems; cut over when ready |
 | Fixtures | Serials and WWNs scrubbed; project will be published |
-| Name | "diskbot" is provisional; keep it in one place |
+| Name | tetanus (was tetanus, decided 2026-09-28); keep it in one place. See [008](008-Branding-and-colour.md) |
 | Inventory fields | Purchase price and supplier added; fields are registry-driven so new ones are one line |
 | Multi-host | From day one: a collector per host, one server. Container only ingests and processes, never runs host commands |
 | Host enrolment | One server-wide enrol token, generated on first boot, shown on first-run and settings pages. Unknown host name auto-created on first POST; display name editable afterwards |
-| Ingest auth | Every POST sends `Authorization: Bearer <token>` and `X-Diskbot-Host: <hostname -s>`. Wrong or missing token → 401. Required from day one |
+| Ingest auth | Every POST sends `Authorization: Bearer <token>` and `Tetanus-Host: <hostname -s>`. Wrong or missing token → 401. Required from day one |
 | Alias scope | Unique across all hosts; the cohort scheme is global and disks move between hosts |
 | Local producer | Dropped from v1. Host collector is the only producer; image has no smartmontools, container no `/dev` or capabilities |
 | Disk↔host | `Disk.lastSeenHostId` only; seen on a different host → diary "moved" event |

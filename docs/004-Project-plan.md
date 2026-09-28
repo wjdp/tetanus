@@ -5,7 +5,7 @@ status: in-progress
 
 # Project plan
 
-Phased build of diskbot per [001](001-Product-goals.md) and
+Phased build of tetanus per [001](001-Product-goals.md) and
 [003](003-Architecture-and-data-model.md). Each phase is a shippable increment; each
 step is roughly one commit. Order is by dependency, then by how much it improves the
 author's day.
@@ -56,7 +56,7 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
 ## Phase 2: ingest seam and parsers
 
 1. `POST /api/ingest/:source` accepting text, storing `CollectorRun`, dispatching to a
-   parser registry. Bearer enrol token check (401 otherwise); `X-Diskbot-Host` header
+   parser registry. Bearer enrol token check (401 otherwise); `Tetanus-Host` header
    upserts `Host` and sets `CollectorRun.hostId`. Unknown source → 400. Body size limit.
 2. Parsers with fixture tests: `smartctl-scan`, `smartctl-xall` (ATA, NVMe, SCSI;
    `smart_support` dual shape; capacity fallback; WWN reassembly; exit bitmask
@@ -71,7 +71,7 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
 6. Host collector: `host/<name>-collect` bash script (curl only), systemd service +
    timer, `host/zed/all-<name>.sh`, `host/install.sh`, docs. Clears `ZPOOL_VDEV_NAME_*`,
    passes `-n standby`, sends smartctl exit status, `Authorization: Bearer <token>` and
-   `X-Diskbot-Host: $(hostname -s)`. The only producer in v1.
+   `Tetanus-Host: $(hostname -s)`. The only producer in v1.
 7. First-run page (enrol token, install one-liner, which hosts and sources have
    reported) and Settings > Hosts (rename, last seen per source).
 
@@ -175,7 +175,7 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
 6. Name provisional; single constant.
 7. Purchase price and supplier added as optional; registry-driven fields.
 8. Licence: MIT.
-9. Ingest auth: bearer enrol token required from day one, plus `X-Diskbot-Host`.
+9. Ingest auth: bearer enrol token required from day one, plus `Tetanus-Host`.
    Multi-host from day one; no local producer in v1.
 
 ## Unanswered questions

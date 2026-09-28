@@ -4,7 +4,7 @@ type: reference
 
 # Architecture and data model
 
-Design baseline for diskbot. Living document; update as decisions land. Background in
+Design baseline for tetanus. Living document; update as decisions land. Background in
 [002](002-Prior-art-and-problem-space.md), goals in [001](001-Product-goals.md).
 
 ## Shape
@@ -33,7 +33,7 @@ that and go further: the collector ships **raw command output**, the server pars
 ```
 POST /api/ingest/:source            body: raw stdout of the command, text/plain
   Authorization: Bearer <enrol token>
-  X-Diskbot-Host: <hostname -s>
+  Tetanus-Host: <hostname -s>
   ?device=/dev/sdc&type=sat         (smartctl sources)
   ?exitStatus=64                    (smartctl bitmask; non-zero is data, not failure)
 ```
@@ -41,8 +41,8 @@ POST /api/ingest/:source            body: raw stdout of the command, text/plain
 The enrol token is server-wide, generated on first boot and shown on the first-run and
 settings pages. Wrong or missing token → 401. An unknown host name creates a `Host` row
 on first POST. Each POST is recorded as a `CollectorRun` with its `hostId`. The header
-name is derived from the app-name constant like the script and unit names; `X-Diskbot-Host`
-is its current spelling.
+name is derived from the app-name constant like the script and unit names, with no `X-`
+prefix (RFC 6648).
 
 Pool GUIDs are global: a pool exported from one host and imported on another is the same
 `Pool` row with `hostId` moved. Event ids (`eid`) are per host.
@@ -97,8 +97,8 @@ and sources have reported.
 
 ```yaml
 services:
-  diskbot:
-    image: ghcr.io/wjdp/diskbot
+  tetanus:
+    image: ghcr.io/wjdp/tetanus
     user: "1000:1000"
     ports: ["3000:3000"]
     volumes:
