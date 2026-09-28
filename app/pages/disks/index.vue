@@ -7,6 +7,7 @@ import {
   NO_HOST,
   NO_POOL,
 } from "~/components/inventory/InventoryFilters.vue";
+import type { SortingState } from "~/components/inventory/types";
 
 useSeoMeta({ title: getPageTitle("Disks") });
 
@@ -28,6 +29,8 @@ const filters = ref<InventoryFilterState>({
   states: [],
   search: "",
 });
+
+const sorting = ref<SortingState>([{ id: "alias", desc: false }]);
 
 const allDisks = computed(() => disks.value ?? []);
 
@@ -82,7 +85,7 @@ const countLabel = computed(() =>
 </script>
 
 <template>
-  <AppPanel title="Disks" class="flex max-w-7xl flex-col gap-6">
+  <AppPanel title="Disks" class="flex flex-col gap-6">
     <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
       Disks
       <span class="text-muted font-normal tabular-nums" data-testid="disk-count">
@@ -106,7 +109,16 @@ const countLabel = computed(() =>
 
     <template v-else>
       <InventoryFilters v-model="filters" :hosts="hosts" :pools="pools" :states="states" />
-      <InventoryTable :disks="visibleDisks" />
+      <InventoryTable
+        v-model:sorting="sorting"
+        :disks="visibleDisks"
+        class="hidden md:block"
+      />
+      <InventoryCards
+        v-model:sorting="sorting"
+        :disks="visibleDisks"
+        class="md:hidden"
+      />
     </template>
   </AppPanel>
 </template>

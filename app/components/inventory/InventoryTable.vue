@@ -1,32 +1,14 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
-import type { EffectiveDiskState, StateOverride } from "#shared/disk";
-import type { Inventory } from "#shared/inventory-fields";
-import type { DeviceStatus } from "#shared/smart/status";
-
-interface InventoryDisk {
-  id: number;
-  alias: string | null;
-  model: string | null;
-  serial: string | null;
-  capacityBytes: number | null;
-  hostName: string | null;
-  state: EffectiveDiskState;
-  stateOverride: StateOverride | null;
-  latestStatus: DeviceStatus;
-  latestTemp: number | null;
-  latestPowerOnHours: number | null;
-  ageDays: number | null;
-  warrantyDaysLeft: number | null;
-  inventory: Partial<Inventory>;
-  membership: { poolId: number; poolName: string } | null;
-}
+import { SORT_FIELDS } from "./inventorySort";
+import {
+  type InventoryDisk,
+  type SortingState,
+  warrantyClass,
+  warrantyLabel,
+} from "./types";
 
 defineProps<{ disks: InventoryDisk[] }>();
-
-type SortingState = { id: string; desc: boolean }[];
-
-const WARRANTY_WARNING_DAYS = 90;
 
 const sorting = defineModel<SortingState>("sorting", {
   default: () => [{ id: "alias", desc: false }],
@@ -55,89 +37,22 @@ const sortableHeader =
     });
   };
 
-const optional = <T,>(value: T | null) => value ?? undefined;
+const hideCell = (cls: string) => ({ class: { th: cls, td: cls } });
 
-const columns: TableColumn<InventoryDisk>[] = [
-  {
-    id: "alias",
-    accessorFn: (row) => optional(row.alias),
-    header: sortableHeader("Alias"),
-    sortingFn: "alphanumeric",
-    sortUndefined: "last",
-  },
-  {
-    id: "model",
-    accessorFn: (row) => optional(row.model),
-    header: sortableHeader("Model"),
-    sortUndefined: "last",
-  },
-  {
-    id: "serial",
-    accessorFn: (row) => optional(row.serial),
-    header: sortableHeader("Serial"),
-    sortUndefined: "last",
-  },
-  {
-    id: "capacity",
-    accessorFn: (row) => optional(row.capacityBytes),
-    header: sortableHeader("Capacity"),
-    sortUndefined: "last",
-  },
-  {
-    id: "host",
-    accessorFn: (row) => optional(row.hostName),
-    header: sortableHeader("Host"),
-    sortUndefined: "last",
-  },
-  {
-    id: "pool",
-    accessorFn: (row) => optional(row.membership?.poolName ?? null),
-    header: sortableHeader("Pool"),
-    sortUndefined: "last",
-  },
-  { id: "state", accessorKey: "state", header: sortableHeader("State") },
-  {
-    id: "status",
-    accessorKey: "latestStatus",
-    header: sortableHeader("Status"),
-  },
-  {
-    id: "temp",
-    accessorFn: (row) => optional(row.latestTemp),
-    header: sortableHeader("Temp"),
-    sortUndefined: "last",
-  },
-  {
-    id: "powerOn",
-    accessorFn: (row) => optional(row.latestPowerOnHours),
-    header: sortableHeader("Power-on"),
-    sortUndefined: "last",
-  },
-  {
-    id: "age",
-    accessorFn: (row) => optional(row.ageDays),
-    header: sortableHeader("Age"),
-    sortUndefined: "last",
-  },
-  {
-    id: "warranty",
-    accessorFn: (row) => optional(row.warrantyDaysLeft),
-    header: sortableHeader("Warranty"),
-    sortUndefined: "last",
-  },
-  {
-    id: "pin33",
-    accessorFn: (row) => (row.inventory.pin33Taped ? 1 : 0),
-    header: sortableHeader("3.3 V"),
-  },
-];
-
-const warrantyClass = (days: number | null) => {
-  if (days === null) return "text-dimmed";
-  if (days < 0) return "text-dimmed";
-  if (days < WARRANTY_WARNING_DAYS) return "text-warning";
-  return "";
+const COLUMN_META: Record<string, TableColumn<InventoryDisk>["meta"]> = {
+  age: hideCell("hidden 2xl:table-cell"),
+  pin33: hideCell("hidden 2xl:table-cell"),
+  warranty: hideCell("hidden xl:table-cell"),
 };
+
+const columns: TableColumn<InventoryDisk>[] = SORT_FIELDS.map((field) => ({
+  id: field.id,
+  accessorFn: (row) => field.value(row) ?? undefined,
+  header: sortableHeader(field.label),
+  sortingFn: field.id === "alias" ? "alphanumeric" : "auto",
+  sortUndefined: "last",
+  meta: COLUMN_META[field.id],
+}));
 
 const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
   navigateTo(`/disks/${row.original.id}`);
@@ -150,7 +65,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
     :columns="columns"
     empty="No disks match the filters."
     :on-select="onSelectRow"
-    :ui="{ td: 'whitespace-nowrap' }"
+    :ui="{ th: 'px-3', td: 'whitespace-nowrap px-3 py-2.5' }"
     data-testid="inventory-table"
   >
     <template #alias-cell="{ row }">
@@ -164,13 +79,12 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
     </template>
 
     <template #model-cell="{ row }">
-      {{ row.original.model ?? "—" }}
-    </template>
-
-    <template #serial-cell="{ row }">
-      <span class="text-dimmed font-mono text-xs">
-        {{ row.original.serial ?? "—" }}
-      </span>
+      <div class="flex flex-col">
+        <span>{{ row.original.model ?? "—" }}</span>
+        <span class="text-dimmed font-mono text-xs">
+          {{ row.original.serial ?? "—" }}
+        </span>
+      </div>
     </template>
 
     <template #capacity-cell="{ row }">
@@ -242,12 +156,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
         :class="warrantyClass(row.original.warrantyDaysLeft)"
         :data-warranty-days="row.original.warrantyDaysLeft"
       >
-        {{
-          row.original.warrantyDaysLeft !== null &&
-          row.original.warrantyDaysLeft < 0
-            ? "expired"
-            : formatDays(row.original.warrantyDaysLeft)
-        }}
+        {{ warrantyLabel(row.original.warrantyDaysLeft) }}
       </span>
     </template>
 

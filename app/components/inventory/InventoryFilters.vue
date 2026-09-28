@@ -47,26 +47,26 @@ export const NO_POOL = "-";
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2">
+  <div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
     <UInput
       :model-value="filters.search"
       icon="i-lucide-search"
       placeholder="Search alias, model, serial"
-      class="w-64"
+      class="col-span-3 sm:w-64"
       aria-label="Search disks"
       @update:model-value="update({ search: String($event) })"
     />
     <USelect
       :model-value="filters.host"
       :items="hostItems"
-      class="w-40"
+      class="min-w-0 sm:w-40"
       aria-label="Filter by host"
       @update:model-value="update({ host: String($event) })"
     />
     <USelect
       :model-value="filters.pool"
       :items="poolItems"
-      class="w-40"
+      class="min-w-0 sm:w-40"
       aria-label="Filter by pool"
       @update:model-value="update({ pool: String($event) })"
     />
@@ -75,7 +75,7 @@ export const NO_POOL = "-";
       :items="states"
       multiple
       placeholder="All states"
-      class="w-48"
+      class="min-w-0 sm:w-48"
       aria-label="Filter by state"
       @update:model-value="update({ states: $event as string[] })"
     />
@@ -85,6 +85,7 @@ export const NO_POOL = "-";
       variant="ghost"
       icon="i-lucide-x"
       label="Clear"
+      class="col-span-3 justify-self-start"
       @click="update({ search: '', host: ALL_HOSTS, pool: ALL_POOLS, states: [] })"
     />
   </div>
