@@ -1,5 +1,6 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
+import type { VueWrapper } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { clearNuxtData } from "#app";
 import DisksPage from "./index.vue";
@@ -30,7 +31,7 @@ beforeEach(() => {
   clearNuxtData();
 });
 
-const aliasColumn = (page: Awaited<ReturnType<typeof mountSuspended>>) =>
+const aliasColumn = (page: VueWrapper) =>
   page.findAll("tbody tr").map((row) => row.find("td").text());
 
 describe("disks inventory page", () => {
