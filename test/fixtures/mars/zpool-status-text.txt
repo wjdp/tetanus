@@ -1,0 +1,50 @@
+  pool: tank
+ state: ONLINE
+status: Some supported and requested features are not enabled on the pool.
+	The pool can still be used, but some features are unavailable.
+action: Enable all features using 'zpool upgrade'. Once this is done,
+	the pool may no longer be accessible by software that does not support
+	the features. See zpool-features(7) for details.
+  scan: scrub repaired 0B in 19:23:36 with 0 errors on Sun Sep 13 19:47:37 2026
+config:
+
+	NAME           STATE     READ WRITE CKSUM  SLOW
+	tank           ONLINE       0     0     0     0
+	  raidz1-0     ONLINE       0     0     0     0
+	    /dev/sda1  ONLINE       0     0     0     0
+	    /dev/sdb1  ONLINE       0     0     0     0
+	    /dev/sdc1  ONLINE       0     0     0     0
+	  raidz1-1     ONLINE       0     0     0     0
+	    /dev/sdd1  ONLINE       0     0     0     0
+	    /dev/sde1  ONLINE       0     0     0     0
+	    /dev/sdf1  ONLINE       0     0     0     0
+	  raidz1-2     ONLINE       0     0     0     0
+	    /dev/sdg1  ONLINE       0     0     0     0
+	    /dev/sdh1  ONLINE       0     0     0     0
+	    /dev/sdi1  ONLINE       0     0     0     0
+	  raidz1-3     ONLINE       0     0     0     0
+	    /dev/sdj1  ONLINE       0     0     0     0
+	    /dev/sdk1  ONLINE       0     0     0     0
+	    /dev/sdl1  ONLINE       0     0     0     0
+	special	
+	  mirror-4     ONLINE       0     0     0     0
+	    /dev/sdm1  ONLINE       0     0     0     0
+	    /dev/sdn1  ONLINE       0     0     0     0
+	    /dev/sdp1  ONLINE       0     0     0     0
+
+errors: No known data errors
+
+  pool: zeta
+ state: ONLINE
+  scan: scrub repaired 0B in 00:14:23 with 0 errors on Sun Sep 13 00:38:30 2026
+remove: Removal of vdev 0 copied 90.4G in 0h3m, completed on Tue Nov 11 15:21:30 2025
+	2.97M memory used for removed device mappings
+config:
+
+	NAME           STATE     READ WRITE CKSUM  SLOW
+	zeta           ONLINE       0     0     0     0
+	  mirror-1     ONLINE       0     0     0     0
+	    /dev/sdr1  ONLINE       0     0     0     0
+	    /dev/sds1  ONLINE       0     0     0     0
+
+errors: No known data errors

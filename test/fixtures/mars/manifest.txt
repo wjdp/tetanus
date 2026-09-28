@@ -1,0 +1,123 @@
+# captured 2026-09-28T16:53:44Z
+# name	exit	argv
+zfs-version	0	zfs version
+smartctl-version	0	smartctl --version
+lsb-release	0	lsb_release -a
+uname	0	uname -a
+zpool-status	0	zpool status -j --json-flat-vdevs --json-int -PLpvs
+zpool-status-nested	0	zpool status -j --json-int -PLpvs
+zpool-status-stored-paths	0	zpool status -j --json-flat-vdevs --json-int -Ppvs
+zpool-status-guids	0	zpool status -j --json-flat-vdevs --json-int -gpvs
+zpool-status-text	0	zpool status -PLpvs
+zpool-list	0	zpool list -j --json-int -pv
+zpool-iostat	0	zpool iostat -vpl 1 2
+zfs-list	0	zfs list -j --json-int -p -t filesystem,volume -o name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
+zfs-snapshots	0	zfs list -j --json-int -p -t snapshot -o name,used,referenced,written,creation -s creation
+zpool-history	0	zpool history -il | tail -n 500
+zpool-events	0	zpool events -vH
+vdev-id-conf	0	cat /etc/zfs/vdev_id.conf
+by-vdev	0	ls -l /dev/disk/by-vdev
+by-id	0	ls -l /dev/disk/by-id
+lsblk	0	lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE
+udev/b8-0	0	cat /run/udev/data/b8:0
+udev/b8-1	0	cat /run/udev/data/b8:1
+udev/b8-9	0	cat /run/udev/data/b8:9
+udev/b8-16	0	cat /run/udev/data/b8:16
+udev/b8-17	0	cat /run/udev/data/b8:17
+udev/b8-25	0	cat /run/udev/data/b8:25
+udev/b8-32	0	cat /run/udev/data/b8:32
+udev/b8-33	0	cat /run/udev/data/b8:33
+udev/b8-41	0	cat /run/udev/data/b8:41
+udev/b8-48	0	cat /run/udev/data/b8:48
+udev/b8-49	0	cat /run/udev/data/b8:49
+udev/b8-57	0	cat /run/udev/data/b8:57
+udev/b8-64	0	cat /run/udev/data/b8:64
+udev/b8-65	0	cat /run/udev/data/b8:65
+udev/b8-73	0	cat /run/udev/data/b8:73
+udev/b8-80	0	cat /run/udev/data/b8:80
+udev/b8-81	0	cat /run/udev/data/b8:81
+udev/b8-89	0	cat /run/udev/data/b8:89
+udev/b8-96	0	cat /run/udev/data/b8:96
+udev/b8-97	0	cat /run/udev/data/b8:97
+udev/b8-105	0	cat /run/udev/data/b8:105
+udev/b8-112	0	cat /run/udev/data/b8:112
+udev/b8-113	0	cat /run/udev/data/b8:113
+udev/b8-121	0	cat /run/udev/data/b8:121
+udev/b8-128	0	cat /run/udev/data/b8:128
+udev/b8-129	0	cat /run/udev/data/b8:129
+udev/b8-137	0	cat /run/udev/data/b8:137
+udev/b8-144	0	cat /run/udev/data/b8:144
+udev/b8-145	0	cat /run/udev/data/b8:145
+udev/b8-153	0	cat /run/udev/data/b8:153
+udev/b8-160	0	cat /run/udev/data/b8:160
+udev/b8-161	0	cat /run/udev/data/b8:161
+udev/b8-169	0	cat /run/udev/data/b8:169
+udev/b8-176	0	cat /run/udev/data/b8:176
+udev/b8-177	0	cat /run/udev/data/b8:177
+udev/b8-185	0	cat /run/udev/data/b8:185
+udev/b8-192	0	cat /run/udev/data/b8:192
+udev/b8-193	0	cat /run/udev/data/b8:193
+udev/b8-201	0	cat /run/udev/data/b8:201
+udev/b8-208	0	cat /run/udev/data/b8:208
+udev/b8-209	0	cat /run/udev/data/b8:209
+udev/b8-217	0	cat /run/udev/data/b8:217
+udev/b8-224	0	cat /run/udev/data/b8:224
+udev/b8-225	0	cat /run/udev/data/b8:225
+udev/b8-233	0	cat /run/udev/data/b8:233
+udev/b8-240	0	cat /run/udev/data/b8:240
+udev/b8-241	0	cat /run/udev/data/b8:241
+udev/b8-249	0	cat /run/udev/data/b8:249
+udev/b65-0	0	cat /run/udev/data/b65:0
+udev/b65-1	0	cat /run/udev/data/b65:1
+udev/b65-9	0	cat /run/udev/data/b65:9
+udev/b65-16	0	cat /run/udev/data/b65:16
+udev/b65-17	0	cat /run/udev/data/b65:17
+udev/b65-25	0	cat /run/udev/data/b65:25
+udev/b65-32	0	cat /run/udev/data/b65:32
+udev/b65-33	0	cat /run/udev/data/b65:33
+udev/b65-41	0	cat /run/udev/data/b65:41
+udev/b251-0	0	cat /run/udev/data/b251:0
+udev/b259-0	0	cat /run/udev/data/b259:0
+udev/b259-1	0	cat /run/udev/data/b259:1
+udev/b259-2	0	cat /run/udev/data/b259:2
+udev/b259-3	0	cat /run/udev/data/b259:3
+smartctl-scan	0	smartctl --scan --json
+smartctl/xall-sda	4	smartctl --xall --json -n standby -d scsi /dev/sda
+smartctl/xall-sda-auto	0	smartctl --xall --json -n standby /dev/sda
+smartctl/xall-sdb	4	smartctl --xall --json -n standby -d scsi /dev/sdb
+smartctl/xall-sdb-auto	0	smartctl --xall --json -n standby /dev/sdb
+smartctl/xall-sdc	4	smartctl --xall --json -n standby -d scsi /dev/sdc
+smartctl/xall-sdc-auto	0	smartctl --xall --json -n standby /dev/sdc
+smartctl/xall-sdd	4	smartctl --xall --json -n standby -d scsi /dev/sdd
+smartctl/xall-sdd-auto	0	smartctl --xall --json -n standby /dev/sdd
+smartctl/xall-sde	4	smartctl --xall --json -n standby -d scsi /dev/sde
+smartctl/xall-sde-auto	0	smartctl --xall --json -n standby /dev/sde
+smartctl/xall-sdf	4	smartctl --xall --json -n standby -d scsi /dev/sdf
+smartctl/xall-sdf-auto	0	smartctl --xall --json -n standby /dev/sdf
+smartctl/xall-sdg	4	smartctl --xall --json -n standby -d scsi /dev/sdg
+smartctl/xall-sdg-auto	0	smartctl --xall --json -n standby /dev/sdg
+smartctl/xall-sdh	4	smartctl --xall --json -n standby -d scsi /dev/sdh
+smartctl/xall-sdh-auto	0	smartctl --xall --json -n standby /dev/sdh
+smartctl/xall-sdi	4	smartctl --xall --json -n standby -d scsi /dev/sdi
+smartctl/xall-sdi-auto	0	smartctl --xall --json -n standby /dev/sdi
+smartctl/xall-sdj	4	smartctl --xall --json -n standby -d scsi /dev/sdj
+smartctl/xall-sdj-auto	64	smartctl --xall --json -n standby /dev/sdj
+smartctl/xall-sdk	4	smartctl --xall --json -n standby -d scsi /dev/sdk
+smartctl/xall-sdk-auto	0	smartctl --xall --json -n standby /dev/sdk
+smartctl/xall-sdl	4	smartctl --xall --json -n standby -d scsi /dev/sdl
+smartctl/xall-sdl-auto	0	smartctl --xall --json -n standby /dev/sdl
+smartctl/xall-sdm	4	smartctl --xall --json -n standby -d scsi /dev/sdm
+smartctl/xall-sdm-auto	0	smartctl --xall --json -n standby /dev/sdm
+smartctl/xall-sdn	4	smartctl --xall --json -n standby -d scsi /dev/sdn
+smartctl/xall-sdn-auto	4	smartctl --xall --json -n standby /dev/sdn
+smartctl/xall-sdo	4	smartctl --xall --json -n standby -d scsi /dev/sdo
+smartctl/xall-sdo-auto	0	smartctl --xall --json -n standby /dev/sdo
+smartctl/xall-sdp	4	smartctl --xall --json -n standby -d scsi /dev/sdp
+smartctl/xall-sdp-auto	0	smartctl --xall --json -n standby /dev/sdp
+smartctl/xall-sdq	4	smartctl --xall --json -n standby -d scsi /dev/sdq
+smartctl/xall-sdq-auto	0	smartctl --xall --json -n standby /dev/sdq
+smartctl/xall-sdr	4	smartctl --xall --json -n standby -d scsi /dev/sdr
+smartctl/xall-sdr-auto	0	smartctl --xall --json -n standby /dev/sdr
+smartctl/xall-sds	4	smartctl --xall --json -n standby -d scsi /dev/sds
+smartctl/xall-sds-auto	0	smartctl --xall --json -n standby /dev/sds
+smartctl/xall-nvme0	0	smartctl --xall --json -n standby -d nvme /dev/nvme0

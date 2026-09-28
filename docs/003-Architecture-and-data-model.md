@@ -34,7 +34,7 @@ Sources (v1):
 | --- | --- |
 | `smartctl-scan` | `smartctl --scan --json` |
 | `smartctl-xall` | `smartctl --xall --json -n standby [-d type] <dev>` |
-| `zpool-status` | `zpool status -j --json-flat-vdevs --json-int -PLpvs` |
+| `zpool-status` | `zpool status -j --json-flat-vdevs --json-int -Ppvs` (no `-L`: it resolves `by-vdev` paths to `/dev/sdX` and drops `guid`, `path`, `devid`, `state` from leaf vdevs; verified on OpenZFS 2.4.1) |
 | `zpool-list` | `zpool list -j --json-int -pv` |
 | `zpool-iostat` | `zpool iostat -vpl 1 2` |
 | `zfs-list` | `zfs list -j --json-int -p -t filesystem,volume -o <cols>` |

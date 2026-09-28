@@ -1,0 +1,76 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      5
+    ],
+    "pre_release": false,
+    "svn_revision": "5714",
+    "platform_info": "x86_64-linux-7.0.0-34-generic",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--xall",
+      "--json",
+      "-n",
+      "standby",
+      "-d",
+      "scsi",
+      "/dev/sdr"
+    ],
+    "exit_status": 4
+  },
+  "local_time": {
+    "time_t": 1790614466,
+    "asctime": "Mon Sep 28 17:54:26 2026 BST"
+  },
+  "device": {
+    "name": "/dev/sdr",
+    "info_name": "/dev/sdr",
+    "type": "scsi",
+    "protocol": "SCSI"
+  },
+  "user_capacity": {
+    "blocks": 3907029168,
+    "bytes": 2000398934016
+  },
+  "logical_block_size": 512,
+  "scsi_lb_provisioning": {
+    "name": "fully provisioned",
+    "value": 0,
+    "management_enabled": {
+      "name": "LBPME",
+      "value": -1
+    },
+    "read_zeros": {
+      "name": "LBPRZ",
+      "value": 0
+    }
+  },
+  "rotation_rate": 0,
+  "form_factor": {
+    "scsi_value": 3,
+    "name": "2.5 inches"
+  },
+  "logical_unit_id": "0x50025387d57d6e86",
+  "serial_number": "J294ML0T789652K",
+  "device_type": {
+    "scsi_terminology": "Peripheral Device Type [PDT]",
+    "scsi_value": 0,
+    "name": "disk"
+  },
+  "smart_support": {
+    "available": false
+  },
+  "temperature": {
+    "current": 0,
+    "drive_trip": 0
+  },
+  "seagate_farm_log": {
+    "supported": false
+  }
+}

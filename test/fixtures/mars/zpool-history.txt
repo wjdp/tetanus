@@ -1,0 +1,500 @@
+        snaps:
+            zeta/z62a@autosnap_2026-09-27_15:00:04_hourly
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:09 zfs destroy zeta/z62a@autosnap_2026-09-27_15:00:04_hourly [user 0 (root) on mars:linux]
+2026-09-28.16:00:09 [txg:85190583] destroy zeta/z62a@autosnap_2026-09-28_14:00:03_frequently (1093)   [on mars]
+2026-09-28.16:00:09 (14ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_14:00:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:09 zfs destroy zeta/z62a@autosnap_2026-09-28_14:00:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:00:12 [txg:85190584] destroy zeta/utn@autosnap_2026-09-27_15:00:04_hourly (104206)   [on mars]
+2026-09-28.16:00:12 (32ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-27_15:00:04_hourly
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:12 zfs destroy zeta/utn@autosnap_2026-09-27_15:00:04_hourly [user 0 (root) on mars:linux]
+2026-09-28.16:00:12 [txg:85190585] destroy zeta/utn@autosnap_2026-09-28_14:00:07_frequently (1107)   [on mars]
+2026-09-28.16:00:12 (13ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_14:00:07_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:12 zfs destroy zeta/utn@autosnap_2026-09-28_14:00:07_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:00:13 [txg:85190586] snapshot zeta/z62a@syncoid_oth10_2026-09-28:16:00:13-GMT01:00 (2150)   [on mars]
+2026-09-28.16:00:13 (23ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@syncoid_oth10_2026-09-28:16:00:13-GMT01:00
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:13 zfs snapshot zeta/z62a@syncoid_oth10_2026-09-28:16:00:13-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.16:00:14 [txg:85190587] destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:00:03_frequently (1101)   [on mars]
+2026-09-28.16:00:14 (21ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_14:00:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:14 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:00:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:00:14 [txg:85190588] destroy zeta/z62a@syncoid_oth10_2026-09-28:15:00:13-GMT01:00 (281)   [on mars]
+2026-09-28.16:00:14 (15ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@syncoid_oth10_2026-09-28:15:00:13-GMT01:00
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:14 zfs destroy zeta/z62a@syncoid_oth10_2026-09-28:15:00:13-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.16:00:14 [txg:85190589] destroy zeta/utn/y4jvw@autosnap_2026-09-27_15:00:03_hourly (103877)   [on mars]
+2026-09-28.16:00:14 (18ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-27_15:00:03_hourly
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:14 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-27_15:00:03_hourly [user 0 (root) on mars:linux]
+2026-09-28.16:00:15 [txg:85190590] snapshot zeta/utn@syncoid_oth10_2026-09-28:16:00:15-GMT01:00 (1980)   [on mars]
+2026-09-28.16:00:15 (20ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@syncoid_oth10_2026-09-28:16:00:15-GMT01:00
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:15 zfs snapshot zeta/utn@syncoid_oth10_2026-09-28:16:00:15-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.16:00:20 [txg:85190591] destroy zeta/utn@syncoid_oth10_2026-09-28:15:00:15-GMT01:00 (30)   [on mars]
+2026-09-28.16:00:20 (22ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@syncoid_oth10_2026-09-28:15:00:15-GMT01:00
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:20 zfs destroy zeta/utn@syncoid_oth10_2026-09-28:15:00:15-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.16:00:21 [txg:85190592] snapshot zeta/utn/y4jvw@syncoid_oth10_2026-09-28:16:00:21-GMT01:00 (1985)   [on mars]
+2026-09-28.16:00:21 (17ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@syncoid_oth10_2026-09-28:16:00:21-GMT01:00
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:21 zfs snapshot zeta/utn/y4jvw@syncoid_oth10_2026-09-28:16:00:21-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.16:00:21 [txg:85190593] destroy zeta/utn/y4jvw@syncoid_oth10_2026-09-28:15:00:20-GMT01:00 (71)   [on mars]
+2026-09-28.16:00:21 (25ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@syncoid_oth10_2026-09-28:15:00:20-GMT01:00
+ [user 0 (root) on mars:linux]
+2026-09-28.16:00:21 zfs destroy zeta/utn/y4jvw@syncoid_oth10_2026-09-28:15:00:20-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.16:15:03 [txg:85190766] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_15:15:03_frequently (1214)   [on mars]
+2026-09-28.16:15:03 (15ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_15:15:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:15:03 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_15:15:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:15:03 [txg:85190767] snapshot zeta/utn@autosnap_2026-09-28_15:15:03_frequently (1217)   [on mars]
+2026-09-28.16:15:03 (16ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_15:15:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:15:03 zfs snapshot zeta/utn@autosnap_2026-09-28_15:15:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:15:05 [txg:85190768] snapshot zeta/z62a@autosnap_2026-09-28_15:15:05_frequently (1221)   [on mars]
+2026-09-28.16:15:05 (19ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_15:15:05_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:15:05 zfs snapshot zeta/z62a@autosnap_2026-09-28_15:15:05_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:15:08 [txg:85190769] destroy zeta/z62a@autosnap_2026-09-28_14:15:04_frequently (1138)   [on mars]
+2026-09-28.16:15:08 (20ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_14:15:04_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:15:08 zfs destroy zeta/z62a@autosnap_2026-09-28_14:15:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:15:08 [txg:85190770] destroy zeta/utn@autosnap_2026-09-28_14:15:03_frequently (1135)   [on mars]
+2026-09-28.16:15:08 (18ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_14:15:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:15:08 zfs destroy zeta/utn@autosnap_2026-09-28_14:15:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:15:09 [txg:85190771] destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:15:05_frequently (1142)   [on mars]
+2026-09-28.16:15:09 (17ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_14:15:05_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:15:09 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:15:05_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:30:02 [txg:85190946] snapshot zeta/utn@autosnap_2026-09-28_15:30:02_frequently (2862)   [on mars]
+2026-09-28.16:30:02 (17ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_15:30:02_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:30:02 zfs snapshot zeta/utn@autosnap_2026-09-28_15:30:02_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:30:04 [txg:85190947] snapshot zeta/z62a@autosnap_2026-09-28_15:30:04_frequently (2719)   [on mars]
+2026-09-28.16:30:04 (18ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_15:30:04_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:30:04 zfs snapshot zeta/z62a@autosnap_2026-09-28_15:30:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:30:04 [txg:85190948] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_15:30:04_frequently (2723)   [on mars]
+2026-09-28.16:30:04 (18ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_15:30:04_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:30:04 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_15:30:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:30:07 [txg:85190949] destroy zeta/z62a@autosnap_2026-09-28_14:30:02_frequently (607)   [on mars]
+2026-09-28.16:30:07 (21ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_14:30:02_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:30:07 zfs destroy zeta/z62a@autosnap_2026-09-28_14:30:02_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:30:08 [txg:85190950] destroy zeta/utn@autosnap_2026-09-28_14:30:01_frequently (888)   [on mars]
+2026-09-28.16:30:08 (19ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_14:30:01_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:30:08 zfs destroy zeta/utn@autosnap_2026-09-28_14:30:01_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:30:09 [txg:85190951] destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:30:02_frequently (603)   [on mars]
+2026-09-28.16:30:09 (18ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_14:30:02_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:30:09 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:30:02_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:45:02 [txg:85191128] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_15:45:02_frequently (2646)   [on mars]
+2026-09-28.16:45:02 (27ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_15:45:02_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:45:02 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_15:45:02_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:45:03 [txg:85191129] snapshot zeta/utn@autosnap_2026-09-28_15:45:03_frequently (2649)   [on mars]
+2026-09-28.16:45:03 (19ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_15:45:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:45:03 zfs snapshot zeta/utn@autosnap_2026-09-28_15:45:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:45:05 [txg:85191130] snapshot zeta/z62a@autosnap_2026-09-28_15:45:05_frequently (2653)   [on mars]
+2026-09-28.16:45:05 (17ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_15:45:05_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.16:45:05 zfs snapshot zeta/z62a@autosnap_2026-09-28_15:45:05_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:45:07 [txg:85191131] destroy zeta/utn@autosnap_2026-09-28_14:45:03_frequently (1706)   [on mars]
+2026-09-28.16:45:07 (21ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_14:45:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:45:07 zfs destroy zeta/utn@autosnap_2026-09-28_14:45:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:45:07 [txg:85191132] destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:45:03_frequently (1703)   [on mars]
+2026-09-28.16:45:07 (17ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_14:45:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:45:07 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_14:45:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.16:45:09 [txg:85191133] destroy zeta/z62a@autosnap_2026-09-28_14:45:03_frequently (317)   [on mars]
+2026-09-28.16:45:09 (18ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_14:45:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.16:45:09 zfs destroy zeta/z62a@autosnap_2026-09-28_14:45:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:00:03 [txg:85191308] snapshot zeta/utn@autosnap_2026-09-28_16:00:03_hourly (1758)   [on mars]
+2026-09-28.17:00:04 (49ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_16:00:03_hourly
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:04 zfs snapshot zeta/utn@autosnap_2026-09-28_16:00:03_hourly [user 0 (root) on mars:linux]
+2026-09-28.17:00:04 [txg:85191309] snapshot zeta/utn@autosnap_2026-09-28_16:00:03_frequently (1764)   [on mars]
+2026-09-28.17:00:04 (42ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_16:00:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:04 zfs snapshot zeta/utn@autosnap_2026-09-28_16:00:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 [txg:85191310] snapshot zeta/z62a@autosnap_2026-09-28_16:00:07_hourly (2035)   [on mars]
+2026-09-28.17:00:07 (44ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_16:00:07_hourly
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 zfs snapshot zeta/z62a@autosnap_2026-09-28_16:00:07_hourly [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 [txg:85191311] snapshot zeta/z62a@autosnap_2026-09-28_16:00:07_frequently (2038)   [on mars]
+2026-09-28.17:00:07 (24ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_16:00:07_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 zfs snapshot zeta/z62a@autosnap_2026-09-28_16:00:07_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 [txg:85191312] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:00:07_hourly (2041)   [on mars]
+2026-09-28.17:00:07 (32ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_16:00:07_hourly
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:00:07_hourly [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 [txg:85191313] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:00:07_frequently (2044)   [on mars]
+2026-09-28.17:00:07 (31ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_16:00:07_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:07 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:00:07_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:00:11 [txg:85191314] destroy zeta/utn/y4jvw@autosnap_2026-09-27_16:00:03_hourly (104846)   [on mars]
+2026-09-28.17:00:11 (25ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-27_16:00:03_hourly
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:11 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-27_16:00:03_hourly [user 0 (root) on mars:linux]
+2026-09-28.17:00:11 [txg:85191315] destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:00:06_frequently (1841)   [on mars]
+2026-09-28.17:00:11 (30ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_15:00:06_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:11 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:00:06_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:00:12 [txg:85191316] destroy zeta/utn@autosnap_2026-09-27_16:00:09_hourly (105226)   [on mars]
+2026-09-28.17:00:12 (32ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-27_16:00:09_hourly
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:12 zfs destroy zeta/utn@autosnap_2026-09-27_16:00:09_hourly [user 0 (root) on mars:linux]
+2026-09-28.17:00:12 [txg:85191317] destroy zeta/utn@autosnap_2026-09-28_15:00:07_frequently (1976)   [on mars]
+2026-09-28.17:00:12 (12ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_15:00:07_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:12 zfs destroy zeta/utn@autosnap_2026-09-28_15:00:07_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:00:13 [txg:85191318] snapshot zeta/z62a@syncoid_oth10_2026-09-28:17:00:13-GMT01:00 (3100)   [on mars]
+2026-09-28.17:00:13 (17ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@syncoid_oth10_2026-09-28:17:00:13-GMT01:00
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:13 zfs snapshot zeta/z62a@syncoid_oth10_2026-09-28:17:00:13-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.17:00:13 [txg:85191319] destroy zeta/z62a@syncoid_oth10_2026-09-28:16:00:13-GMT01:00 (2150)   [on mars]
+2026-09-28.17:00:13 (18ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@syncoid_oth10_2026-09-28:16:00:13-GMT01:00
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:13 zfs destroy zeta/z62a@syncoid_oth10_2026-09-28:16:00:13-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.17:00:14 [txg:85191320] snapshot zeta/utn@syncoid_oth10_2026-09-28:17:00:14-GMT01:00 (3243)   [on mars]
+2026-09-28.17:00:14 (15ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@syncoid_oth10_2026-09-28:17:00:14-GMT01:00
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:14 zfs snapshot zeta/utn@syncoid_oth10_2026-09-28:17:00:14-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.17:00:14 [txg:85191321] destroy zeta/z62a@autosnap_2026-09-28_15:00:04_frequently (1834)   [on mars]
+2026-09-28.17:00:14 (13ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_15:00:04_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:14 zfs destroy zeta/z62a@autosnap_2026-09-28_15:00:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:00:14 [txg:85191322] destroy zeta/z62a@autosnap_2026-09-27_16:00:05_hourly (103397)   [on mars]
+2026-09-28.17:00:14 (14ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-27_16:00:05_hourly
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:14 zfs destroy zeta/z62a@autosnap_2026-09-27_16:00:05_hourly [user 0 (root) on mars:linux]
+2026-09-28.17:00:17 [txg:85191323] destroy zeta/utn@syncoid_oth10_2026-09-28:16:00:15-GMT01:00 (1980)   [on mars]
+2026-09-28.17:00:17 (26ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@syncoid_oth10_2026-09-28:16:00:15-GMT01:00
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:17 zfs destroy zeta/utn@syncoid_oth10_2026-09-28:16:00:15-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.17:00:17 [txg:85191324] snapshot zeta/utn/y4jvw@syncoid_oth10_2026-09-28:17:00:17-GMT01:00 (2470)   [on mars]
+2026-09-28.17:00:17 (38ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@syncoid_oth10_2026-09-28:17:00:17-GMT01:00
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:17 zfs snapshot zeta/utn/y4jvw@syncoid_oth10_2026-09-28:17:00:17-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.17:00:18 [txg:85191325] destroy zeta/utn/y4jvw@syncoid_oth10_2026-09-28:16:00:21-GMT01:00 (1985)   [on mars]
+2026-09-28.17:00:18 (24ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@syncoid_oth10_2026-09-28:16:00:21-GMT01:00
+ [user 0 (root) on mars:linux]
+2026-09-28.17:00:18 zfs destroy zeta/utn/y4jvw@syncoid_oth10_2026-09-28:16:00:21-GMT01:00 [user 0 (root) on mars:linux]
+2026-09-28.17:15:03 [txg:85191498] snapshot zeta/utn@autosnap_2026-09-28_16:15:03_frequently (3251)   [on mars]
+2026-09-28.17:15:03 (22ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_16:15:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:15:03 zfs snapshot zeta/utn@autosnap_2026-09-28_16:15:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:15:03 [txg:85191499] snapshot zeta/z62a@autosnap_2026-09-28_16:15:03_frequently (3254)   [on mars]
+2026-09-28.17:15:03 (10ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_16:15:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:15:03 zfs snapshot zeta/z62a@autosnap_2026-09-28_16:15:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:15:04 [txg:85191500] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:15:04_frequently (3262)   [on mars]
+2026-09-28.17:15:04 (16ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_16:15:04_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:15:04 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:15:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:15:07 [txg:85191501] destroy zeta/utn@autosnap_2026-09-28_15:15:03_frequently (1217)   [on mars]
+2026-09-28.17:15:07 (90ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_15:15:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:15:07 zfs destroy zeta/utn@autosnap_2026-09-28_15:15:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:15:07 [txg:85191502] destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:15:03_frequently (1214)   [on mars]
+2026-09-28.17:15:07 (85ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_15:15:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:15:07 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:15:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:30:03 [txg:85191680] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:30:03_frequently (3466)   [on mars]
+2026-09-28.17:30:03 (20ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_16:30:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:30:03 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:30:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:30:03 [txg:85191681] snapshot zeta/z62a@autosnap_2026-09-28_16:30:03_frequently (3469)   [on mars]
+2026-09-28.17:30:03 (16ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_16:30:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:30:03 zfs snapshot zeta/z62a@autosnap_2026-09-28_16:30:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:30:04 [txg:85191682] snapshot zeta/utn@autosnap_2026-09-28_16:30:04_frequently (1250)   [on mars]
+2026-09-28.17:30:04 (18ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_16:30:04_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:30:04 zfs snapshot zeta/utn@autosnap_2026-09-28_16:30:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:30:07 [txg:85191683] destroy zeta/utn@autosnap_2026-09-28_15:30:02_frequently (2862)   [on mars]
+2026-09-28.17:30:07 (26ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_15:30:02_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:30:07 zfs destroy zeta/utn@autosnap_2026-09-28_15:30:02_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:30:07 [txg:85191684] destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:30:04_frequently (2723)   [on mars]
+2026-09-28.17:30:07 (13ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_15:30:04_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:30:07 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:30:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:30:08 [txg:85191685] destroy zeta/z62a@autosnap_2026-09-28_15:15:05_frequently (1221)   [on mars]
+2026-09-28.17:30:08 (13ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_15:15:05_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:30:08 zfs destroy zeta/z62a@autosnap_2026-09-28_15:15:05_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:30:08 [txg:85191686] destroy zeta/z62a@autosnap_2026-09-28_15:30:04_frequently (2719)   [on mars]
+2026-09-28.17:30:08 (29ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_15:30:04_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:30:08 zfs destroy zeta/z62a@autosnap_2026-09-28_15:30:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:44:09 [txg:85191851] set feature@redaction_list_spill=enabled [on mars]
+2026-09-28.17:44:09 [txg:85191852] set feature@raidz_expansion=enabled [on mars]
+2026-09-28.17:44:09 [txg:85191853] set feature@fast_dedup=enabled [on mars]
+2026-09-28.17:44:09 [txg:85191854] set feature@longname=enabled [on mars]
+2026-09-28.17:44:09 [txg:85191855] set feature@large_microzap=enabled [on mars]
+2026-09-28.17:44:09 [txg:85191856] set feature@block_cloning_endian=enabled [on mars]
+2026-09-28.17:44:09 [txg:85191857] set feature@physical_rewrite=enabled [on mars]
+2026-09-28.17:44:09 zpool upgrade zeta [user 0 (root) on mars:linux]
+2026-09-28.17:45:03 [txg:85191868] snapshot zeta/utn@autosnap_2026-09-28_16:45:03_frequently (3917)   [on mars]
+2026-09-28.17:45:03 (21ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_16:45:03_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:45:03 zfs snapshot zeta/utn@autosnap_2026-09-28_16:45:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:45:04 [txg:85191869] snapshot zeta/z62a@autosnap_2026-09-28_16:45:04_frequently (3920)   [on mars]
+2026-09-28.17:45:04 (11ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_16:45:04_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:45:04 zfs snapshot zeta/z62a@autosnap_2026-09-28_16:45:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:45:04 [txg:85191870] snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:45:04_frequently (3924)   [on mars]
+2026-09-28.17:45:04 (15ms) ioctl snapshot
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_16:45:04_frequently
+        props:
+ [user 0 (root) on mars:linux]
+2026-09-28.17:45:04 zfs snapshot zeta/utn/y4jvw@autosnap_2026-09-28_16:45:04_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:45:09 [txg:85191871] destroy zeta/z62a@autosnap_2026-09-28_15:45:05_frequently (2653)   [on mars]
+2026-09-28.17:45:09 (20ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/z62a@autosnap_2026-09-28_15:45:05_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:45:09 zfs destroy zeta/z62a@autosnap_2026-09-28_15:45:05_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:45:11 [txg:85191872] destroy zeta/utn@autosnap_2026-09-28_15:45:03_frequently (2649)   [on mars]
+2026-09-28.17:45:11 (19ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn@autosnap_2026-09-28_15:45:03_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:45:11 zfs destroy zeta/utn@autosnap_2026-09-28_15:45:03_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:45:11 [txg:85191873] destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:45:02_frequently (2646)   [on mars]
+2026-09-28.17:45:11 (16ms) ioctl destroy_snaps
+    input:
+        snaps:
+            zeta/utn/y4jvw@autosnap_2026-09-28_15:45:02_frequently
+ [user 0 (root) on mars:linux]
+2026-09-28.17:45:11 zfs destroy zeta/utn/y4jvw@autosnap_2026-09-28_15:45:02_frequently [user 0 (root) on mars:linux]
+2026-09-28.17:45:34 [txg:85191879] set zeta/zv7e (91691) compression=16 [on mars]
+2026-09-28.17:45:34 zfs set compression=zstd zeta/zv7e [user 0 (root) on mars:linux]
+

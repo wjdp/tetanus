@@ -1,0 +1,102 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      5
+    ],
+    "pre_release": false,
+    "svn_revision": "5714",
+    "platform_info": "x86_64-linux-7.0.0-34-generic",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--xall",
+      "--json",
+      "-n",
+      "standby",
+      "-d",
+      "scsi",
+      "/dev/sdi"
+    ],
+    "exit_status": 4
+  },
+  "local_time": {
+    "time_t": 1790614464,
+    "asctime": "Mon Sep 28 17:54:24 2026 BST"
+  },
+  "device": {
+    "name": "/dev/sdi",
+    "info_name": "/dev/sdi",
+    "type": "scsi",
+    "protocol": "SCSI"
+  },
+  "user_capacity": {
+    "blocks": 35156656128,
+    "bytes": 18000207937536
+  },
+  "logical_block_size": 512,
+  "physical_block_size": 4096,
+  "scsi_lb_provisioning": {
+    "name": "fully provisioned",
+    "value": 0,
+    "management_enabled": {
+      "name": "LBPME",
+      "value": 0
+    },
+    "read_zeros": {
+      "name": "LBPRZ",
+      "value": 0
+    }
+  },
+  "rotation_rate": 7200,
+  "form_factor": {
+    "scsi_value": 2,
+    "name": "3.5 inches"
+  },
+  "logical_unit_id": "0x5000c50455cf9165",
+  "serial_number": "FD651C77",
+  "device_type": {
+    "scsi_terminology": "Peripheral Device Type [PDT]",
+    "scsi_value": 0,
+    "name": "disk"
+  },
+  "scsi_transport_protocol": {
+    "name": "SAS (SPL-4)",
+    "value": 6
+  },
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "temperature_warning": {
+    "enabled": false
+  },
+  "smart_status": {
+    "passed": true
+  },
+  "temperature": {
+    "current": 42,
+    "drive_trip": 0
+  },
+  "seagate_farm_log": {
+    "supported": false
+  },
+  "scsi_self_test_0": {
+    "code": {
+      "value": 1,
+      "string": "Background short"
+    },
+    "result": {
+      "value": 0,
+      "string": "Completed"
+    },
+    "power_on_time": {
+      "hours": 19646,
+      "aka": "accumulated_power_on_hours"
+    }
+  }
+}

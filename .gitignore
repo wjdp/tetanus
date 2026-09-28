@@ -4,3 +4,6 @@ node_modules/
 data/
 .env*
 !.env.example
+test/fixtures/*.raw.*/
+test/fixtures/*.partial.*/
+__pycache__/
