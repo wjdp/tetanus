@@ -140,3 +140,40 @@ Decisions:
 - `server/services/importers/obsidian.test.ts` (outside the owned list) now expects
   `disk-appeared` on a disk created by a sighting before import, and asserts the
   importer's own inserts emit none.
+
+### UI (Phase 7 UI agent)
+
+Built: accept/clear on attribute rows (neutral outline "accepted" badge, tooltip with
+value and date, note shown in the expanded row), `AcceptFaultModal`, status line with
+"· N accepted", self-tests table, membership from `DiskDetail.membership`, pool column
+and filter on `/disks`, `DiaryMarkdown`, edit (slideover) and delete (confirm) on manual
+entries in `DiaryTimeline`, used on `/diary`, the disk page and the pool Diary tab;
+ISO/24-hour chart axes and legend.
+
+Decisions and deviations:
+
+- The accept modal fetches `/api/disks/:id/smart?range=all` itself, so the 7 d and 30 d
+  references and the "for N days" duration are not cut off by the page's range tab
+  (the 30 d reference would otherwise miss at the 7d range). Ages are measured from the
+  attribute's `takenAt`, not the wall clock.
+- The duration runs from the start of the trailing run of points equal to the current
+  value, not the earliest equal point anywhere, so 16 → 12 → 16 reports the latest run.
+  History is downsampled to 500 points server-side, so the start is approximate.
+- `accepted` is neutral everywhere; toasts for accept/clear/edit/delete are neutral
+  (success is reserved for recovery per 008).
+- The membership card lost the read/write/checksum counters and the host name: neither
+  is in `membership`. The pool page still shows them.
+- Timeline sorts entries newest first itself and has `showSubject` (off on the disk and
+  pool pages). Diary times in the timeline and the edit field are UTC; chart axes use the
+  browser's local time (uPlot places ticks in local time).
+- A generic `app/components/ConfirmModal.vue` serves both clear and delete.
+- Diary bodies render with `breaks: true` so single newlines in older plain-text entries
+  still break.
+
+Left out:
+
+- No component test for `AcceptFaultModal` itself (UModal needs the UApp overlay
+  provider); its maths is covered in `app/utils/acceptanceSummary.test.ts`.
+- No UI for the acceptance history (`acceptances`, superseded/cleared rows); the diary
+  carries those events.
+- Markdown links open in the same tab and get no `rel`; bodies are single-user content.
