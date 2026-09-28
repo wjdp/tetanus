@@ -11,17 +11,17 @@
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --color-rust-50: #fdf4f0;
-  --color-rust-100: #fbe5db;
-  --color-rust-200: #f6c8b5;
-  --color-rust-300: #eea287;
-  --color-rust-400: #e37658;
-  --color-rust-500: #d3512f;
-  --color-rust-600: #b53e22;
-  --color-rust-700: #93321d;
-  --color-rust-800: #772b1d;
-  --color-rust-900: #62261b;
-  --color-rust-950: #35100a;
+  --color-rust-50: #fbf4f1;
+  --color-rust-100: #f5e4de;
+  --color-rust-200: #eac7bb;
+  --color-rust-300: #dba28f;
+  --color-rust-400: #c97a61;
+  --color-rust-500: #b5543a;
+  --color-rust-600: #9a4530;
+  --color-rust-700: #7d3928;
+  --color-rust-800: #653022;
+  --color-rust-900: #52291f;
+  --color-rust-950: #2c130e;
 
   --color-alarm-50: #fff0f0;
   --color-alarm-100: #ffdcdc;
