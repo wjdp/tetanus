@@ -15,19 +15,24 @@ older than tetanus's first reading; scrutiny is reachable on the LAN.
 
 ### Source: scrutiny's web API
 
-Unauthenticated JSON, all under `<url>/api`:
+Unauthenticated JSON, all under `<url>/api`. Verified 2026-09-28 against the live
+instance at `https://scrutiny.wjdp.uk` (26 devices, 25 ATA + 1 NVMe): this scrutiny
+version keys devices by **WWN**, not `scrutiny_uuid`; the summary map key, the details
+path parameter and `smart_results[].device_wwn` are all the `0x…` WWN string, and
+`scrutiny_uuid` is absent. Code must accept either key (`scrutiny_uuid ?? wwn`).
 
 | endpoint | gives |
 | --- | --- |
-| `GET /summary` | `data.summary: { <scrutiny_uuid>: { device, smart?: { collector_date, temp, power_on_hours }, temp_history? } }`; `device` has `scrutiny_uuid, wwn, device_name, model_name, serial_number, firmware, capacity, rotational_speed, form_factor, device_protocol (ATA\|NVMe\|SCSI), device_type, interface_type, host_id, label, archived, device_status (bitmask), UpdatedAt, CreatedAt` |
-| `GET /device/:uuid/details?duration_key=forever` | `data.device`, `data.smart_results[]`: `{ date, device_protocol, temp, power_on_hours, power_cycle_count, attrs: { <id>: { attribute_id, value, thresh, worst, raw_value, raw_string, when_failed, transformed_value, status, failure_rate? } } }`, one point per day (scrutiny aggregates to 24 h server-side), newest first, unioned across its four retention buckets |
-| `GET /summary/temp?duration_key=forever` | `data.temp_history: { <uuid>: [{ date, temp }] }` |
+| `GET /summary` | `data.summary: { <wwn>: { device, smart?: { collector_date, temp, power_on_hours }, temp_history? (last week) } }`; `device` has `wwn, device_name, model_name, serial_number, firmware, capacity, rotational_speed, form_factor, device_protocol (ATA\|NVMe\|SCSI), device_type, interface_type (empty on the live host), host_id, label, archived, device_status (bitmask), UpdatedAt, CreatedAt`, plus `scrutiny_uuid` on newer versions |
+| `GET /device/:wwn/details?duration_key=forever` | `data.device`, `data.smart_results[]`: `{ date, device_wwn, device_protocol, temp, power_on_hours, power_cycle_count, Status, attrs: { <id>: { attribute_id, value, thresh, worst, raw_value, raw_string, when_failed, transformed_value, status, failure_rate? } } }`, newest first, aggregated to one point per day server-side and unioned across the four retention buckets. Live: 26 points per disk spanning 2025-01-01 to now, so the older buckets are monthly at best |
+| `GET /summary/temp?duration_key=forever` | `data.temp_history: { <wwn>: [{ date, temp }] }`; live: 86 points per disk from 2025-10-01 |
 
 NVMe/SCSI `attrs` are keyed by name (`media_errors`) and lack `worst`, `raw_*`,
 `when_failed`. `date` is RFC 3339. Capture one response of each shape from mars's
 scrutiny into `test/fixtures/scrutiny-api/` (scrub serials and WWNs with
 `bin/scrub-fixtures.py`, same fakes as the mars fixtures so a device joins a fixture
-disk). The user captures; until then the service tests use hand-built minimal JSON.
+disk). The agent captures them with curl from the live instance above; keep
+`smart_results` to a handful of points per fixture.
 
 ### Service (`server/services/importers/scrutiny.ts`)
 
@@ -36,12 +41,13 @@ queue in `server/tasks/queueable/`), progress reported through the existing task
 `progress`/SSE mechanism as `n / total devices`. Steps per device, in one transaction
 per device:
 
-1. **Match a Disk**: `Disk.scrutinyUuid`, else `(model, serial)` (scrutiny's
+1. **Match a Disk**: `DiskKey` `wwn` from `device.wwn` (strip `0x`, lower-case), else
+   `Disk.scrutinyUuid` when the payload carries one, else `(model, serial)` (scrutiny's
    `model_name` vs `Disk.model`, `serial_number` vs `Disk.serial`, trimmed,
-   case-insensitive), else `DiskKey` `wwn` from `device.wwn` (strip `0x`). Set
-   `scrutinyUuid` on a match if empty. No match → create an inventory-only Disk with
+   case-insensitive, collapse repeated spaces: scrutiny has `WDC  WDS500G2B0A`). Set
+   `scrutinyUuid` on a match if empty and the payload has one. No match → create an inventory-only Disk with
    `model, serial, firmware, capacityBytes, rotationRate, protocol (lower-case),
-   transport = interface_type, formFactor, scrutinyUuid`, `lastSeenAt = device.UpdatedAt`,
+   transport = interface_type or null, formFactor, scrutinyUuid?`, `lastSeenAt = device.UpdatedAt`,
    `lastSeenHostId = hostId`, `firstSeenAt = CreatedAt`, no `DiskKey` rows except `wwn`
    when present. `lastState` left null; state inference will call it `removed`/`unseen`
    as the missing rules decide. Diary `imported-from-scrutiny` on the disk with the
@@ -63,7 +69,7 @@ per device:
 5. **Disk.latest\***: untouched (imported data is older by construction). `recomputeLatestStatus` not needed.
 6. **Self-tests, acceptances**: not imported (scrutiny has neither).
 
-Result `{ devices: [{ uuid, model, serial, matched: "uuid" | "serial" | "wwn" | "created",
+Result `{ devices: [{ key (wwn or uuid), model, serial, matched: "wwn" | "uuid" | "serial" | "created",
 diskId, readings, temperatures, skipped }], cutoffs }`. `dryRun` does the fetch and
 matching, writes nothing, returns the same shape with what would be written.
 
@@ -84,11 +90,13 @@ daily resolution". `getSmartHistory` passes `source` through.
   `shared/schemas/import.ts`): `dryRun=true` runs inline and returns the preview;
   `dryRun=false` enqueues `import:scrutiny` and returns `{ taskId }`. The task result
   carries the summary.
-- Settings › Import page: second card "Scrutiny" with URL (default
-  `http://mars:8080`), target host select (from `/api/hosts`), Preview → table of
+- Settings › Import page (`/settings/import`, re-added to `SETTINGS_NAVIGATION`; the
+  Obsidian importer that used to live there was removed 2026-09-28): one card
+  "Scrutiny" with URL (default `https://scrutiny.wjdp.uk`), target host select (from `/api/hosts`), Preview → table of
   devices (model, serial, match, points to import, cut-off), Import → task progress via
   the existing task indicator, then the summary table.
-- Settings page for the import stays at `/settings/import`.
+- Development can run against the live instance at `https://scrutiny.wjdp.uk`
+  (read-only GETs; nothing there is modified).
 
 ### Cut-over (user, not code)
 
