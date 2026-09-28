@@ -1,8 +1,13 @@
 import { and, desc, eq, type SQL } from "drizzle-orm";
 import type { DiarySubjectType } from "#shared/diary";
-import type { DiaryEntryInput, DiaryQuery } from "#shared/schemas/diary";
+import type {
+  DiaryEntryInput,
+  DiaryEntryPatch,
+  DiaryQuery,
+} from "#shared/schemas/diary";
 import { db } from "~~/server/database/client";
 import { diaryEntry } from "~~/server/database/schema";
+import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiaryEntryRow = typeof diaryEntry.$inferSelect;
 
@@ -93,4 +98,35 @@ export function latestAutoEvent(
     .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
     .limit(1)
     .get();
+}
+
+function manualEntry(id: number): DiaryEntryRow {
+  const row = db.select().from(diaryEntry).where(eq(diaryEntry.id, id)).get();
+  if (!row) throw notFound(`Diary entry ${id} not found`);
+  if (row.kind !== "manual") {
+    throw new ServiceError(403, `Diary entry ${id} is automatic`);
+  }
+  return row;
+}
+
+export function updateManualEntry(
+  id: number,
+  patch: DiaryEntryPatch,
+): DiaryEntryRow {
+  const row = manualEntry(id);
+  const changes = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  );
+  if (Object.keys(changes).length === 0) return row;
+  return db
+    .update(diaryEntry)
+    .set(changes)
+    .where(eq(diaryEntry.id, id))
+    .returning()
+    .get();
+}
+
+export function deleteManualEntry(id: number) {
+  manualEntry(id);
+  db.delete(diaryEntry).where(eq(diaryEntry.id, id)).run();
 }

@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   addAutoEvent,
   addManualEntry,
+  deleteManualEntry,
   latestAutoEvent,
   listDiary,
+  updateManualEntry,
 } from "~~/server/services/diary";
 import { flushDb } from "~~/test/db";
 
@@ -103,5 +105,52 @@ describe("diary", () => {
       alias: "K2",
     });
     expect(latestAutoEvent("disk", 2, "alias-drift")).toBeUndefined();
+  });
+
+  it("edits only the given fields of a manual entry", () => {
+    const entry = addManualEntry({
+      subjectType: "disk",
+      subjectId: 3,
+      title: "Taped pin 3",
+      body: "Kapton",
+      at: earlier,
+    });
+    const edited = updateManualEntry(entry.id, {
+      body: "**Kapton** tape",
+      at: later,
+    });
+    expect(edited).toMatchObject({
+      id: entry.id,
+      title: "Taped pin 3",
+      body: "**Kapton** tape",
+      at: later,
+      kind: "manual",
+    });
+    expect(updateManualEntry(entry.id, {})).toEqual(edited);
+  });
+
+  it("deletes a manual entry", () => {
+    const entry = addManualEntry({ subjectType: "system", title: "Oops" });
+    deleteManualEntry(entry.id);
+    expect(listDiary()).toEqual([]);
+  });
+
+  it("refuses to edit or delete auto entries and 404s for missing ones", () => {
+    const auto = addAutoEvent({
+      subjectType: "disk",
+      subjectId: 3,
+      eventType: "moved-host",
+      title: "moved",
+    });
+    expect(() => updateManualEntry(auto.id, { title: "x" })).toThrow(
+      expect.objectContaining({ statusCode: 403 }),
+    );
+    expect(() => deleteManualEntry(auto.id)).toThrow(
+      expect.objectContaining({ statusCode: 403 }),
+    );
+    expect(() => deleteManualEntry(99999)).toThrow(
+      expect.objectContaining({ statusCode: 404 }),
+    );
+    expect(listDiary()).toHaveLength(1);
   });
 });
