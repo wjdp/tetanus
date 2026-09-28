@@ -77,4 +77,5 @@ recent notifications table (at, channel, rule, subject, ok/error).
 
 ## Findings
 
-(agents append here)
+- `app/utils/hostFreshness.ts` re-exports via a relative path (`../../shared/hostFreshness`), not `#shared/hostFreshness`: unimport can't resolve the `#shared` alias when scanning `app/utils` for auto-imports, so the alias silently failed to register `allGroupFreshness` etc. as globals.
+- `pingHealthchecks` iterates `listHosts()` sequentially (not `Promise.all`) so one slow/erroring host can't race another's timeout handling; fine at expected host counts.
