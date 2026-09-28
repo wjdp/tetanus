@@ -172,11 +172,23 @@ entry. Transitions of `effective` produce diary entries.
 
 Port scrutiny's algorithm ([002](002-Prior-art-and-problem-space.md) §Evaluation logic)
 with the SCSI lookup bug fixed. Vendored `shared/smart/metadata.json` with a `bin/`
-generator that rebuilds it from a scrutiny checkout. Transforms for 188 and 194 in TS.
+generator that rebuilds it from a scrutiny checkout. A tetanus classification layer sits
+on top ([027](027-SMART-status-classification.md)): `shared/smart/classification.ts`
+splits ATA attributes into `defect` (5, 10, 184, 187, 188, 196, 197, 198, 201) and
+`context` (everything else). Backblaze failure rates change status only for defect
+attributes; context rates are shown as information. Values above the top bucket use it;
+a value with no bucket leaves status alone. Manufacturer `when_failed` applies to all.
+
+`transformedValue` is the leading integer of smartctl's `raw.string`, which already
+carries the drivedb-decoded rendering (Seagate `0/137774677`, WD `398 (Average 396)`),
+falling back to `raw.value`; 188 keeps its three-word parser.
 
 Per attribute per reading: `status ∈ passed | warning | failed`, `failureRate`,
 `transformedValue`. Single threshold policy used for dashboard **and** alerts (fixing
-scrutiny's split).
+scrutiny's split). `SMART_POLICY_VERSION` is compared with
+`Settings.config.smartPolicyVersion` at boot; on mismatch every disk's latest reading is
+re-evaluated from its stored rows and disk statuses recomputed, with `smart-status-changed`
+diary entries but no attribute alerts.
 
 Overlay, computed on read:
 
