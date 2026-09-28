@@ -1,0 +1,348 @@
+import { eq } from "drizzle-orm";
+import { beforeEach, describe, expect, it } from "vitest";
+import { db } from "~~/server/database/client";
+import {
+  disk,
+  selfTest,
+  smartAttribute,
+  smartReading,
+  temperatureReading,
+} from "~~/server/database/schema";
+import { parse as parseSmartctl } from "~~/server/ingest/smartctl-xall";
+import { listDiary } from "~~/server/services/diary";
+import { type DiskRow, observeDisk } from "~~/server/services/disks";
+import { upsertHostByName } from "~~/server/services/hosts";
+import { recordIngest } from "~~/server/services/ingest";
+import {
+  downsample,
+  getSmartHistory,
+  getSmartOverview,
+  latestAttributes,
+  MAX_HISTORY_POINTS,
+  sctTemperaturePoints,
+  trendDirection,
+} from "~~/server/services/smart";
+import { flushDb } from "~~/test/db";
+import { readFixture } from "~~/test/fixtures";
+
+const t0 = new Date("2026-09-01T10:00:00Z");
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+const SDA = readFixture("mars/smartctl/xall-sda-auto.json");
+const SDA_SERIAL = JSON.parse(SDA).serial_number as string;
+
+function at(offsetMs: number) {
+  return new Date(t0.getTime() + offsetMs);
+}
+
+function ingestSmart(body: string, receivedAt = t0, exitStatus = 0) {
+  const outcome = recordIngest({
+    hostName: "mars",
+    source: "smartctl-xall",
+    meta: { device: "/dev/sda", type: "sat", exitStatus },
+    body,
+    receivedAt,
+  });
+  expect(outcome.ok).toBe(true);
+}
+
+function withAttributeRaw(body: string, attrId: number, raw: number) {
+  const json = JSON.parse(body);
+  const attribute = json.ata_smart_attributes.table.find(
+    (row: { id: number }) => row.id === attrId,
+  );
+  attribute.raw = { value: raw, string: String(raw) };
+  return JSON.stringify(json);
+}
+
+function diskBySerial(serial: string): DiskRow {
+  return db.select().from(disk).where(eq(disk.serial, serial)).get() as DiskRow;
+}
+
+function readingsOf(diskId: number) {
+  return db
+    .select()
+    .from(smartReading)
+    .where(eq(smartReading.diskId, diskId))
+    .all();
+}
+
+function temperaturesOf(diskId: number) {
+  return db
+    .select()
+    .from(temperatureReading)
+    .where(eq(temperatureReading.diskId, diskId))
+    .all();
+}
+
+function statusEvents(diskId: number) {
+  return listDiary({ subjectType: "disk", subjectId: diskId }).filter(
+    (entry) => entry.eventType === "smart-status-changed",
+  );
+}
+
+beforeEach(() => {
+  flushDb();
+});
+
+describe("recordSmartReading", () => {
+  it("stores a reading, its attributes and the latest fields", () => {
+    const body = readFixture("mars/smartctl/xall-sdb-auto.json");
+    ingestSmart(body);
+    const row = diskBySerial(JSON.parse(body).serial_number);
+
+    expect(row).toMatchObject({
+      latestRaw: body,
+      latestStatus: "failed",
+      latestTemp: 42,
+      latestPowerOnHours: 50280,
+      latestReadingAt: t0,
+    });
+    expect(row.latestPowerCycles).toBe(JSON.parse(body).power_cycle_count);
+
+    const [reading] = readingsOf(row.id);
+    expect(reading).toMatchObject({
+      devicePath: "/dev/sdb",
+      deviceType: "sat",
+      smartPassed: true,
+      exitStatus: 0,
+      deviceStatus: "failed",
+      takenAt: t0,
+    });
+    const attributes = db
+      .select()
+      .from(smartAttribute)
+      .where(eq(smartAttribute.readingId, reading.id))
+      .all();
+    expect(attributes).toHaveLength(18);
+    expect(attributes.find((a) => a.attrId === "5")?.name).toBe(
+      "Reallocated Sectors Count",
+    );
+    expect(attributes.find((a) => a.attrId === "197")).toMatchObject({
+      status: "failed",
+      transformedValue: 16,
+    });
+    expect(attributes.find((a) => a.attrId === "194")?.transformedValue).toBe(
+      42,
+    );
+  });
+
+  it("adds a reading per post without duplicating backfilled temperatures", () => {
+    const later = at(30 * 60 * 1000);
+    ingestSmart(SDA, t0);
+    const diskId = diskBySerial(SDA_SERIAL).id;
+    const afterFirst = temperaturesOf(diskId).length;
+    ingestSmart(SDA, later);
+
+    const history = parseSmartctl(SDA, {}).data.sctTemperatureHistory;
+    const expectedAts = new Set(
+      [
+        t0,
+        later,
+        ...sctTemperaturePoints(history, t0).map((point) => point.at),
+        ...sctTemperaturePoints(history, later).map((point) => point.at),
+      ].map((date) => date.getTime()),
+    );
+
+    expect(readingsOf(diskId)).toHaveLength(2);
+    expect(afterFirst).toBeGreaterThan(100);
+    expect(temperaturesOf(diskId)).toHaveLength(expectedAts.size);
+    expect(expectedAts.size).toBeLessThan(2 * afterFirst);
+  });
+
+  it("aligns SCT history to the interval with the newest entry last", () => {
+    const points = sctTemperaturePoints(
+      { intervalMinutes: 10, values: [30, null, 0, 33] },
+      new Date("2026-09-01T10:07:30Z"),
+    );
+    expect(points).toEqual([
+      { at: new Date("2026-09-01T09:30:00Z"), celsius: 30 },
+      { at: new Date("2026-09-01T10:00:00Z"), celsius: 33 },
+    ]);
+  });
+
+  it("upserts self-tests on type and lifetime hours", () => {
+    const body = readFixture("scrutiny/smart-ata.json");
+    const entries = JSON.parse(body).ata_smart_self_test_log.standard.table;
+    const distinct = new Set(
+      entries.map(
+        (entry: { type: { string: string }; lifetime_hours: number }) =>
+          `${entry.type.string}@${entry.lifetime_hours}`,
+      ),
+    );
+    ingestSmart(body, t0);
+    ingestSmart(body, at(HOUR_MS));
+
+    const rows = db.select().from(selfTest).all();
+    expect(rows).toHaveLength(distinct.size);
+    expect(rows.every((row) => row.seenAt.getTime() === t0.getTime())).toBe(
+      true,
+    );
+    expect(rows[0]).toMatchObject({
+      type: "Short offline",
+      status: "Completed without error",
+      passed: true,
+    });
+  });
+
+  it("records a diary event when the status changes, not on the first reading", () => {
+    ingestSmart(SDA, t0);
+    const diskId = diskBySerial(SDA_SERIAL).id;
+    expect(diskBySerial(SDA_SERIAL).latestStatus).toBe("passed");
+    expect(statusEvents(diskId)).toHaveLength(0);
+
+    ingestSmart(SDA, at(HOUR_MS));
+    expect(statusEvents(diskId)).toHaveLength(0);
+
+    ingestSmart(withAttributeRaw(SDA, 197, 16), at(2 * HOUR_MS));
+    const [event] = statusEvents(diskId);
+    expect(event).toMatchObject({
+      title: "failed (was passed)",
+      at: at(2 * HOUR_MS),
+      data: { from: "passed", to: "failed", failing: ["197"], warning: [] },
+    });
+  });
+
+  it("keeps the latest fields when an older reading arrives late", () => {
+    ingestSmart(SDA, t0);
+    ingestSmart(withAttributeRaw(SDA, 197, 16), at(-HOUR_MS));
+    const row = diskBySerial(SDA_SERIAL);
+    expect(row).toMatchObject({ latestStatus: "passed", latestReadingAt: t0 });
+    expect(readingsOf(row.id)).toHaveLength(2);
+    expect(statusEvents(row.id)).toHaveLength(0);
+  });
+
+  it("observes a standby disk without recording a reading", () => {
+    const standby = JSON.stringify({
+      json_format_version: [1, 0],
+      smartctl: { version: [7, 4], exit_status: 2 },
+      device: { name: "/dev/sda", type: "sat", protocol: "ATA" },
+      model_name: JSON.parse(SDA).model_name,
+      serial_number: SDA_SERIAL,
+    });
+    ingestSmart(standby, t0, 2);
+    const row = diskBySerial(SDA_SERIAL);
+    expect(row.lastSeenAt).toEqual(t0);
+    expect(row.latestReadingAt).toBeNull();
+    expect(readingsOf(row.id)).toHaveLength(0);
+  });
+});
+
+describe("history", () => {
+  function seedDisk() {
+    const hostRow = upsertHostByName("mars", t0);
+    return observeDisk({
+      hostId: hostRow.id,
+      receivedAt: t0,
+      keys: [{ kind: "model-serial", value: "M_S" }],
+    }) as DiskRow;
+  }
+
+  it("downsamples to the last point per time bucket", () => {
+    const points = Array.from({ length: 2000 }, (_, index) => ({
+      at: at(index * 60 * 1000),
+      value: index,
+    }));
+    const sampled = downsample(points);
+    expect(sampled.length).toBeLessThanOrEqual(MAX_HISTORY_POINTS);
+    expect(sampled.length).toBeGreaterThan(MAX_HISTORY_POINTS * 0.9);
+    expect(sampled.at(-1)).toEqual(points.at(-1));
+    expect(sampled[0].value).toBe(3);
+    expect(sampled.map((point) => point.value)).toEqual(
+      [...sampled.map((point) => point.value)].sort((a, b) => a - b),
+    );
+  });
+
+  it("leaves short series alone", () => {
+    const points = [{ at: t0 }, { at: at(1) }];
+    expect(downsample(points)).toBe(points);
+  });
+
+  it("filters by range and caps every series", () => {
+    const row = seedDisk();
+    const now = at(8 * DAY_MS);
+    const rows = Array.from({ length: 3000 }, (_, index) => ({
+      diskId: row.id,
+      at: at(index * 5 * 60 * 1000),
+      celsius: 30 + (index % 10),
+    }));
+    db.insert(temperatureReading).values(rows).run();
+
+    const week = getSmartHistory(row.id, "7d", now);
+    expect(week.temperature.length).toBeLessThanOrEqual(MAX_HISTORY_POINTS);
+    expect(week.temperature[0].at.getTime()).toBeGreaterThanOrEqual(
+      now.getTime() - 7 * DAY_MS,
+    );
+    expect(week.temperature.at(-1)?.at).toEqual(rows.at(-1)?.at);
+    const all = getSmartHistory(row.id, "all", now).temperature;
+    expect(all[0].at.getTime()).toBeLessThan(at(HOUR_MS).getTime());
+  });
+
+  it("returns transformed attribute series", () => {
+    ingestSmart(SDA, t0);
+    ingestSmart(withAttributeRaw(SDA, 197, 4), at(HOUR_MS));
+    const diskId = diskBySerial(SDA_SERIAL).id;
+    const history = getSmartHistory(diskId, "30d", at(2 * HOUR_MS));
+    expect(history.attributes["197"]).toEqual([
+      { at: t0, value: 0 },
+      { at: at(HOUR_MS), value: 4 },
+    ]);
+    expect(history.attributes["194"][0].value).toBe(42);
+    expect(history.temperature.length).toBeGreaterThan(100);
+  });
+
+  it("404s for an unknown disk", () => {
+    expect(() => getSmartHistory(99999, "7d")).toThrow(/not found/);
+    expect(() => getSmartOverview(99999, "7d")).toThrow(/not found/);
+  });
+});
+
+describe("trend", () => {
+  it("reads direction from the metadata ideal", () => {
+    expect(trendDirection("low", 5, [])).toBe("new");
+    expect(trendDirection("low", 5, [5, 5])).toBe("stable");
+    expect(trendDirection("low", 6, [5])).toBe("worsening");
+    expect(trendDirection("low", 4, [5, 6])).toBe("improving");
+    expect(trendDirection("low", 5, [4, 6])).toBe("worsening");
+    expect(trendDirection("high", 90, [100])).toBe("worsening");
+    expect(trendDirection("high", 100, [90])).toBe("improving");
+    expect(trendDirection("", 100, [1])).toBe("stable");
+    expect(trendDirection("", 100, [])).toBe("new");
+  });
+
+  it("compares the latest reading with readings 7 and 30 days older", () => {
+    ingestSmart(SDA, at(-40 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 2), at(-10 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 4), at(-DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 4), t0);
+    const diskId = diskBySerial(SDA_SERIAL).id;
+
+    const attributes = latestAttributes(diskId);
+    expect(attributes).toHaveLength(18);
+    const pending = attributes.find((a) => a.attrId === "197");
+    expect(pending).toMatchObject({
+      name: "Current Pending Sector Count",
+      transformedValue: 4,
+      trend: "worsening",
+      metadata: {
+        displayName: "Current Pending Sector Count",
+        ideal: "low",
+        critical: true,
+      },
+    });
+    expect(attributes.find((a) => a.attrId === "9")?.trend).toBe("stable");
+    expect(attributes.find((a) => a.attrId === "5")?.trend).toBe("stable");
+    expect(
+      attributes.find((a) => a.attrId === "194")?.metadata?.transformValueUnit,
+    ).toBe("°C");
+  });
+
+  it("is new without an old enough reading", () => {
+    ingestSmart(SDA, at(-DAY_MS));
+    ingestSmart(SDA, t0);
+    const diskId = diskBySerial(SDA_SERIAL).id;
+    expect(
+      new Set(latestAttributes(diskId).map((attribute) => attribute.trend)),
+    ).toEqual(new Set(["new"]));
+  });
+});

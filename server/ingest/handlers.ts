@@ -1,11 +1,14 @@
 import type { IngestMeta, IngestSource } from "#shared/ingest";
 import {
   applyVdevIdConf,
+  observeDiskFromSmartctl,
   observeLsblk,
   observeUdev,
 } from "~~/server/services/disks";
 import { setToolVersions } from "~~/server/services/hosts";
+import { recordSmartReading } from "~~/server/services/smart";
 import type { LsblkResult } from "./lsblk";
+import type { SmartctlXallResult } from "./smartctl-xall";
 import type { UdevResult } from "./udev";
 import type { VdevIdConfResult } from "./vdev-id-conf";
 import type { ToolVersions } from "./versions";
@@ -37,10 +40,30 @@ const vdevIdConf: IngestHandler<VdevIdConfResult> = ({ data, receivedAt }) => {
   applyVdevIdConf(data, receivedAt);
 };
 
+const smartctlXall: IngestHandler<SmartctlXallResult> = ({
+  hostId,
+  meta,
+  data,
+  body,
+  receivedAt,
+}) => {
+  const observed = observeDiskFromSmartctl(hostId, meta, data, receivedAt);
+  if (!observed) return;
+  recordSmartReading({
+    disk: observed,
+    hostId,
+    meta,
+    parsed: data,
+    body,
+    receivedAt,
+  });
+};
+
 // biome-ignore lint/suspicious/noExplicitAny: each handler narrows data to its own parser's output
 export const HANDLERS: Partial<Record<IngestSource, IngestHandler<any>>> = {
   versions,
   lsblk,
   udev,
   "vdev-id-conf": vdevIdConf,
+  "smartctl-xall": smartctlXall,
 };
