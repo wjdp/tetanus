@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Phase 2 ingest seam and parsers
@@ -148,3 +148,50 @@ Host collector:
   `curl`; the stubs replay `test/fixtures/mars` only when argv matches `manifest.txt`
   exactly, so the tests pin every command line to what was captured on the real host.
   CI has a separate `host` job with shellcheck and bats.
+
+Parsers:
+
+- **No mars fixture has smartctl exit status 2.** Every disk was awake at capture, so the
+  `-n standby` path is only exercised synthetically (and by scrutiny's `smart-fail.json`,
+  which is an open failure with the same bit). Re-capture on mars when drives are asleep
+  and add the fixture; until then `standby` = exit bit 1 with no SMART data.
+- `smartctl.exitStatus` in the parsed output is `{ raw, ...flags }`; the summary carries
+  the raw number. Missing exit status in both query and JSON defaults to 0 (scrutiny's
+  `smart-scsi.json` has no `smartctl` block).
+- No fixture has the boolean `smart_support` shape or a populated NVMe self-test log;
+  both are implemented against the documented shape only.
+- Pool and vdev GUIDs arrive as bare JSON integers above 2^53. The ZFS JSON parsers
+  requote any `*guid*` integer as a string before `JSON.parse`, so GUIDs are exact decimal
+  strings; byte counts stay numbers.
+- `zpool status -j` has no parity field; raidz parity comes from the `raidzN-x` vdev
+  name, so `-g` output loses it (the collector never passes `-g`). Even with
+  `--json-flat-vdevs`, group vdevs carry a redundant nested `vdevs` object, which the
+  parser ignores in favour of the flat `parent` links. Top-level non-normal-class groups
+  (`special`, `log`, ...) have no `parent` field and are attached to the root vdev; their
+  class name is reported as the vdev type.
+- `zpool history -il | tail -n 500` cut every `History for 'pool':` header off the mars
+  fixture, so `pool` is null on all entries. Real output has three line shapes per
+  action (command, `[txg:N]` internal, and `(Nms) ioctl` with continuation lines); each
+  is its own entry.
+- OpenZFS 2.2 emits `resource.fs.zfs.removed` with no `eid`, so `ZfsEvent.eid` is
+  nullable. Quoted values may carry a trailing `(0xN)` annotation, dropped. Event header
+  timestamps are host-local; `time = secs nsecs` is used for `at` when present.
+- Every parser rejects an empty body with `ParseError`.
+
+UI:
+
+- Freshness (`ok`/`warning`/`error` per cadence group, 2× cadence) is derived
+  client-side in `app/utils/hostFreshness.ts` and drives both the Hosts table chips and
+  the collector-silent fault banner. Phase 8 alerting must reuse it from `shared/`, not
+  re-derive.
+- Chips are per cadence group (zfs, smart, snapshots), not per source.
+- Hosts API routes have no e2e tests yet (`test/api/hosts*`).
+
+Verified end-to-end on 2026-09-28: every mars fixture and the Q2 event capture POSTed to
+the built server return 200, a missing token returns 401, and `/api/hosts` reports the
+runs.
+
+## Done when
+
+- Route, services, 13 parsers with fixture tests, host collector with shell tests, Hosts
+  settings page and first-run guidance. 233 vitest + 21 shell tests green; build green.

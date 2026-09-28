@@ -55,6 +55,9 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
 
 ## Phase 2: ingest seam and parsers
 
+Done 2026-09-28: [010](010-Phase-2-ingest-seam-and-parsers.md). Outstanding: a standby
+(exit 2) smartctl fixture from mars; e2e tests for `/api/hosts`.
+
 1. `POST /api/ingest/:source` accepting text, storing `CollectorRun`, dispatching to a
    parser registry. Bearer enrol token check (401 otherwise); `Tetanus-Host` header
    upserts `Host` and sets `CollectorRun.hostId`. Unknown source → 400. Body size limit.
@@ -134,7 +137,8 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
    Dedupe on `(rule, subject, value)`. Subjects carry the host name.
 2. Channels: Pushover, generic webhook JSON. Test button.
 3. healthchecks.io ping per host (`Host.healthchecksUrl`, optional) on a timer; ping
-   succeeds only if that host's sources are fresh.
+   succeeds only if that host's sources are fresh. Move `hostFreshness` to `shared/` and
+   reuse it; do not re-derive.
 4. Collector-silence fault banners.
 
 ## Phase 9: ZFS datasets and snapshots
