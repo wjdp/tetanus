@@ -15,7 +15,6 @@ export const INGEST_SOURCES = [
   "zpool-history",
   "zpool-events",
   "zed-event",
-  "zpool-iostat",
 ] as const;
 
 export type IngestSource = (typeof INGEST_SOURCES)[number];

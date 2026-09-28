@@ -10,7 +10,6 @@ import { parse as zfsList } from "./zfs-list";
 import { parse as zfsSnapshots } from "./zfs-snapshots";
 import { parse as zpoolEvents } from "./zpool-events";
 import { parse as zpoolHistory } from "./zpool-history";
-import { parse as zpoolIostat } from "./zpool-iostat";
 import { parse as zpoolList } from "./zpool-list";
 import { parse as zpoolStatus } from "./zpool-status";
 
@@ -28,5 +27,4 @@ export const PARSERS: Record<IngestSource, Parser<unknown>> = {
   "zpool-history": zpoolHistory,
   "zpool-events": zpoolEvents,
   "zed-event": zedEvent,
-  "zpool-iostat": zpoolIostat,
 };
