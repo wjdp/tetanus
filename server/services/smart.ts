@@ -246,7 +246,7 @@ function recordStatusChange(
   });
 }
 
-function attributesOfReading(readingId: number): SmartAttributeRow[] {
+export function attributesOfReading(readingId: number): SmartAttributeRow[] {
   return db
     .select()
     .from(smartAttribute)
@@ -400,7 +400,9 @@ function scsiInfo(attributes: MinimalSmartAttribute[]): ScsiInfo {
   return info;
 }
 
-function parsedFromMinimal(reading: MinimalSmartReading): SmartctlXallResult {
+export function parsedFromMinimal(
+  reading: MinimalSmartReading,
+): SmartctlXallResult {
   return {
     device: { name: "", type: "", protocol: reading.protocol },
     smartctl: { version: "", exitStatus: NO_EXIT_FLAGS },
@@ -743,7 +745,7 @@ export function latestReading(diskId: number): SmartReadingRow | null {
   );
 }
 
-function diskProtocol(diskId: number): SmartProtocol | undefined {
+export function diskProtocol(diskId: number): SmartProtocol | undefined {
   const row = db
     .select({ protocol: disk.protocol })
     .from(disk)

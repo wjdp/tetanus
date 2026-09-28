@@ -149,7 +149,7 @@ describe("acceptFault", () => {
   });
 
   it("keeps the disk failed while another attribute still fails", () => {
-    ingestSmart(withAttributeRaw(SDB, 5, 500));
+    ingestSmart(withAttributeRaw(withAttributeRaw(SDB, 198, 0), 5, 500));
     const diskId = k2().id;
     const failing = getSmartOverview(diskId, "30d")
       .attributes.filter((candidate) => candidate.status === "failed")

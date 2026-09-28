@@ -21,8 +21,6 @@ await setup({ host: server.host });
 
 const { enrolToken }: Settings = await (await fetch("/api/settings")).json();
 
-const K2 = readFixture("mars/smartctl/xall-sdb-auto.json");
-
 function withAttributeRaw(body: string, attrId: number, raw: number) {
   const json = JSON.parse(body);
   const attribute = json.ata_smart_attributes.table.find(
@@ -31,6 +29,12 @@ function withAttributeRaw(body: string, attrId: number, raw: number) {
   attribute.raw = { value: raw, string: String(raw) };
   return JSON.stringify(json);
 }
+
+const K2_WITH_PENDING_SECTORS_ONLY = withAttributeRaw(
+  readFixture("mars/smartctl/xall-sdb-auto.json"),
+  198,
+  0,
+);
 
 async function ingestK2(body: string) {
   const response = await fetch(
@@ -84,11 +88,13 @@ function attribute197(smart: Overview) {
   return smart.attributes.find((candidate) => candidate.attrId === "197");
 }
 
-await ingestK2(K2);
+await ingestK2(K2_WITH_PENDING_SECTORS_ONLY);
 const diskId = (
   sqlite
     .prepare("SELECT id FROM Disk WHERE serial = ?")
-    .get(JSON.parse(K2).serial_number) as { id: number }
+    .get(JSON.parse(K2_WITH_PENDING_SECTORS_ONLY).serial_number) as {
+    id: number;
+  }
 ).id;
 
 describe("/api/disks/:id/accept", () => {
@@ -145,7 +151,7 @@ describe("/api/disks/:id/accept", () => {
     expect((await accept(diskId, { attrId: "197" })).status).toBe(201);
     expect(await diskStatus(diskId)).not.toBe("failed");
 
-    await ingestK2(withAttributeRaw(K2, 197, 24));
+    await ingestK2(withAttributeRaw(K2_WITH_PENDING_SECTORS_ONLY, 197, 24));
 
     const smart = await overview(diskId);
     expect(attribute197(smart)).toMatchObject({
