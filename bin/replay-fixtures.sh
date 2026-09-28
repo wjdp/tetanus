@@ -5,7 +5,8 @@ set -euo pipefail
 url=${1:-http://localhost:3000}
 host=${2:-mars}
 fixtures=$(cd "$(dirname "$0")/../test/fixtures" && pwd)
-token=$(curl -sf "$url/api/settings" | sed -n 's/.*"enrolToken":"\([^"]*\)".*/\1/p')
+token=$(curl -sf "$url/api/settings" | jq -r '.enrolToken // empty')
+echo ${url:?} ${host:?} ${token:?}
 
 post() {
   local source=$1 query=$2 file=$3
