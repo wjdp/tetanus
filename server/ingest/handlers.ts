@@ -7,6 +7,7 @@ import {
 } from "~~/server/services/disks";
 import { setToolVersions } from "~~/server/services/hosts";
 import { recordSmartReading } from "~~/server/services/smart";
+import { ZFS_HANDLERS } from "~~/server/services/zfs";
 import type { LsblkResult } from "./lsblk";
 import type { SmartctlXallResult } from "./smartctl-xall";
 import type { UdevResult } from "./udev";
@@ -66,4 +67,5 @@ export const HANDLERS: Partial<Record<IngestSource, IngestHandler<any>>> = {
   udev,
   "vdev-id-conf": vdevIdConf,
   "smartctl-xall": smartctlXall,
+  ...ZFS_HANDLERS,
 };
