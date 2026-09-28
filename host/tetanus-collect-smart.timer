@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect SMART and udev data for tetanus hourly
+
+[Timer]
+Unit=tetanus-collect@smart.service
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

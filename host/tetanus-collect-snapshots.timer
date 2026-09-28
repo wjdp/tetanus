@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect the ZFS snapshot list for tetanus every 6 hours
+
+[Timer]
+Unit=tetanus-collect@snapshots.service
+OnCalendar=00/6:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

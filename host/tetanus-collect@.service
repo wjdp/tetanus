@@ -1,0 +1,25 @@
+[Unit]
+Description=tetanus collector (%i): ship raw host output to the tetanus server
+Documentation=https://github.com/wjdp/tetanus/blob/master/host/README.md
+Wants=network-online.target
+After=network-online.target zfs.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/tetanus/collect.env
+ExecStart=/usr/local/bin/tetanus-collect --only %i
+TimeoutStartSec=15min
+Nice=10
+
+# Runs as root: zpool needs /dev/zfs, smartctl needs raw SG_IO/NVMe ioctls on /dev/sd*
+# and /dev/nvme*. So no User=, PrivateDevices=, DevicePolicy= or capability limits,
+# and no ProtectClock= or ProtectKernelLogs=, which imply a device allow-list.
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
