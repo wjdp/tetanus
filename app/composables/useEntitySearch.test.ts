@@ -1,0 +1,64 @@
+// @vitest-environment nuxt
+import { registerEndpoint } from "@nuxt/test-utils/runtime";
+import { describe, expect, it } from "vitest";
+import {
+  diskSearchEntry,
+  poolSearchEntry,
+  useEntitySearch,
+} from "./useEntitySearch";
+
+registerEndpoint("/api/disks", () => [
+  { id: 3, alias: "K2", model: "WDC WD80EFAX", serial: "VK0ABC" },
+]);
+registerEndpoint("/api/pools", () => [
+  { id: 7, name: "tank", host: { id: 1, name: "mars", displayName: null } },
+]);
+
+describe("diskSearchEntry", () => {
+  it("labels by alias, model and serial and links to the disk page", () => {
+    expect(
+      diskSearchEntry({ id: 3, alias: "K2", model: "WDC", serial: "VK0ABC" }),
+    ).toEqual({
+      id: "disk-3",
+      label: "K2 · WDC · VK0ABC",
+      icon: "i-lucide-hard-drive",
+      to: "/disks/3",
+    });
+  });
+
+  it("drops missing parts and falls back to the id", () => {
+    expect(
+      diskSearchEntry({ id: 4, alias: null, model: "WDC", serial: "S1" }).label,
+    ).toBe("WDC · S1");
+    expect(
+      diskSearchEntry({ id: 5, alias: null, model: null, serial: null }).label,
+    ).toBe("Disk 5");
+  });
+});
+
+describe("poolSearchEntry", () => {
+  it("labels by name and host display name, linking to the pool", () => {
+    const entry = poolSearchEntry({
+      id: 7,
+      name: "tank",
+      host: { name: "mars", displayName: "Mars NAS" },
+    });
+
+    expect(entry.label).toBe("tank · Mars NAS");
+    expect(entry.to).toBe("/zfs/7");
+  });
+});
+
+describe("useEntitySearch", () => {
+  it("loads disks and pools on demand", async () => {
+    const { disks, pools, load } = useEntitySearch();
+    expect(disks.value).toBeNull();
+
+    await load();
+
+    expect(disks.value?.map((entry) => entry.label)).toEqual([
+      "K2 · WDC WD80EFAX · VK0ABC",
+    ]);
+    expect(pools.value?.map((entry) => entry.label)).toEqual(["tank · mars"]);
+  });
+});

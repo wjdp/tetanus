@@ -11,26 +11,43 @@ const goTo = (to: string) => {
   return navigateTo(to);
 };
 
-const groups: CommandPaletteGroup<CommandPaletteItem>[] = [
+interface PaletteTarget {
+  label: string;
+  icon: string;
+  to: string;
+}
+
+const toItem = ({ label, icon, to }: PaletteTarget): CommandPaletteItem => ({
+  label,
+  icon,
+  onSelect: () => goTo(to),
+});
+
+const {
+  disks,
+  pools,
+  loading: entitiesLoading,
+  load: loadEntities,
+} = useEntitySearch();
+
+watch(isOpen, (open) => {
+  if (open) loadEntities();
+});
+
+const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [
   {
     id: "navigation",
     label: "Go to",
-    items: NAVIGATION.map(({ label, icon, to }) => ({
-      label,
-      icon,
-      onSelect: () => goTo(to),
-    })),
+    items: NAVIGATION.map(toItem),
   },
   {
     id: "settings",
     label: "Settings",
-    items: SETTINGS_NAVIGATION.map(({ label, icon, to }) => ({
-      label,
-      icon,
-      onSelect: () => goTo(to),
-    })),
+    items: SETTINGS_NAVIGATION.map(toItem),
   },
-];
+  { id: "disks", label: "Disks", items: (disks.value ?? []).map(toItem) },
+  { id: "pools", label: "Pools", items: (pools.value ?? []).map(toItem) },
+]);
 
 defineShortcuts({
   meta_k: toggle,
@@ -41,7 +58,7 @@ defineShortcuts({
   <UModal
     v-model:open="isOpen"
     title="Command palette"
-    description="Jump to a page"
+    description="Jump to a page, disk or pool"
     :ui="{
       content: 'top-4 translate-y-0 sm:top-1/2 sm:-translate-y-1/2 sm:max-w-2xl',
     }"
@@ -49,7 +66,8 @@ defineShortcuts({
     <template #content>
       <UCommandPalette
         :groups="groups"
-        placeholder="Search pages"
+        placeholder="Search pages, disks and pools"
+        :loading="entitiesLoading"
         close
         class="h-[calc(100dvh-2rem)] sm:h-96"
         @update:open="close"
