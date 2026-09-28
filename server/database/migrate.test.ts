@@ -8,6 +8,8 @@ import { describeMigrations, runMigrations } from "~~/server/database/migrate";
 
 const TABLES = [
   "CollectorRun",
+  "Dataset",
+  "DatasetReading",
   "DiaryEntry",
   "Disk",
   "DiskKey",
@@ -22,13 +24,14 @@ const TABLES = [
   "Setting",
   "SmartAttribute",
   "SmartReading",
+  "Snapshot",
   "TemperatureReading",
   "Vdev",
   "VdevReading",
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 5;
+const MIGRATION_COUNT = 6;
 
 const openConnections: Database.Database[] = [];
 

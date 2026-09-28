@@ -20,6 +20,7 @@ import type {
 import type { Inventory } from "../../shared/inventory-fields";
 import type { SettingsConfig } from "../../shared/schemas/settings";
 import type { AttributeStatus, DeviceStatus } from "../../shared/smart/status";
+import type { ZfsDatasetType } from "../ingest/zfs-list";
 import type { ZpoolStatusScan } from "../ingest/zpool-status";
 import { autoIncrementId, boolean, datetime, json } from "./columns";
 
@@ -331,6 +332,89 @@ export const vdevReading = sqliteTable(
     state: text().notNull(),
   },
   (table) => [index("VdevReading_vdevId_at_idx").on(table.vdevId, table.at)],
+);
+
+export const dataset = sqliteTable(
+  "Dataset",
+  {
+    id: autoIncrementId(),
+    poolId: integer()
+      .notNull()
+      .references(() => pool.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    parentId: integer().references((): AnySQLiteColumn => dataset.id, {
+      onDelete: "set null",
+    }),
+    type: text().$type<ZfsDatasetType>().notNull(),
+    mountpoint: text(),
+    used: integer().notNull(),
+    referenced: integer().notNull(),
+    available: integer().notNull(),
+    logicalUsed: integer(),
+    compressRatio: real(),
+    usedBySnapshots: integer(),
+    usedByDataset: integer(),
+    usedByChildren: integer(),
+    quota: integer(),
+    refQuota: integer(),
+    reservation: integer(),
+    recordSize: integer(),
+    compression: text(),
+    encryption: text(),
+    creation: datetime().notNull(),
+    present: boolean().notNull().default(true),
+    firstSeenAt: datetime().notNull(),
+    lastSeenAt: datetime().notNull(),
+    latestSnapshotAt: datetime(),
+    snapshotCount: integer().notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("Dataset_poolId_name_key").on(table.poolId, table.name),
+    index("Dataset_parentId_idx").on(table.parentId),
+  ],
+);
+
+export const datasetReading = sqliteTable(
+  "DatasetReading",
+  {
+    id: autoIncrementId(),
+    datasetId: integer()
+      .notNull()
+      .references(() => dataset.id, { onDelete: "cascade" }),
+    at: datetime().notNull(),
+    used: integer().notNull(),
+    referenced: integer(),
+    available: integer(),
+    usedBySnapshots: integer(),
+  },
+  (table) => [
+    index("DatasetReading_datasetId_at_idx").on(table.datasetId, table.at),
+  ],
+);
+
+export const snapshot = sqliteTable(
+  "Snapshot",
+  {
+    id: autoIncrementId(),
+    datasetId: integer()
+      .notNull()
+      .references(() => dataset.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    guid: text(),
+    used: integer().notNull(),
+    referenced: integer().notNull(),
+    written: integer().notNull(),
+    creation: datetime().notNull(),
+    lastSeenAt: datetime().notNull(),
+  },
+  (table) => [
+    uniqueIndex("Snapshot_datasetId_name_key").on(table.datasetId, table.name),
+    index("Snapshot_guid_idx").on(table.guid),
+    index("Snapshot_datasetId_creation_idx").on(
+      table.datasetId,
+      table.creation,
+    ),
+  ],
 );
 
 export const zfsEvent = sqliteTable(
