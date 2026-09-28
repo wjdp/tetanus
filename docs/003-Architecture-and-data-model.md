@@ -98,7 +98,7 @@ and sources have reported.
 ```yaml
 services:
   diskbot:
-    image: wjdp/diskbot
+    image: ghcr.io/wjdp/diskbot
     user: "1000:1000"
     ports: ["3000:3000"]
     volumes:
@@ -282,7 +282,7 @@ Tasks (Nitro, grate queue): `evaluate:disk` after any SMART ingest; `evaluate:zf
 `/api/disks`, `/api/disks/:id` (+ PATCH inventory),
 `/api/disks/:id/smart?range=`, `/api/disks/:id/accept` (POST/DELETE),
 `/api/pools`, `/api/pools/:id`, `/api/datasets`, `/api/datasets/:id/snapshots`,
-`/api/diary` (+ POST), `/api/alerts`, `/api/settings`, `/api/health`, `/api/sse`,
+`/api/diary` (+ POST), `/api/alerts`, `/api/settings`, `/health`, `/api/sse`,
 `/api/vdev-id-conf` (GET rendered proposal), `/api/import/scrutiny`,
 `/api/import/obsidian`.
 

@@ -2,7 +2,7 @@ Docs in docs/, managed by wj. Run wj conventions before reading or writing them.
 
 # AGENTS.md
 
-diskbot is a self-hosted disk and ZFS monitor for a home NAS: SMART health, disk lifecycle and inventory, ZFS topology, and a diary of what happened to each disk. A dumb host-side collector ships raw command output to the app, which does all parsing. Single user, no auth, one unprivileged Docker container.
+diskbot is a self-hosted disk and ZFS monitor for home NAS hosts: SMART health, disk lifecycle and inventory, ZFS topology, and a diary of what happened to each disk. A dumb collector on each host ships raw command output to one server, which does all parsing. Single user, no UI auth, one unprivileged Docker container; collectors authenticate with a shared enrol token.
 
 Read `docs/001-Product-goals.md` for the vision, `docs/003-Architecture-and-data-model.md` for the design and `docs/004-Project-plan.md` for the build order before feature or design work.
 
