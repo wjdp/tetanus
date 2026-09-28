@@ -83,3 +83,41 @@ run because one command failed. Read-only, no host writes beyond its own log lin
 ## Findings
 
 (agents append here)
+
+### Ingest seam foundations
+
+- `Payload.device` is `NOT NULL DEFAULT ''` (`NO_DEVICE` in the schema), not nullable.
+  SQLite treats NULLs as distinct in unique indexes, so a nullable `device` would let
+  `unique(hostId, source, device)` hold many device-less rows and break the upsert. An
+  empty string keeps the index a plain column index Drizzle's `onConflictDoUpdate` can
+  target; a generated key column would add a second column for no gain.
+  `CollectorRun.device` stays nullable: it has no unique index.
+- Any exception a parser throws counts as a parse failure (422, `CollectorRun.ok=false`),
+  not only `ParseError`: parsers read untrusted text, and a stray `TypeError` or
+  `JSON.parse` `SyntaxError` is still bad input, not a server fault. `ParseError`
+  (`server/ingest/parseError.ts`) is for deliberate rejections with a readable message.
+- `Parser<T> = (body: string, meta: IngestMeta) => IngestResult<T>` where
+  `IngestResult<T> = { data: T; summary: Record<string, string | number> }`, in
+  `shared/ingest.ts`. The registry is `Record<IngestSource, Parser<unknown>>`, so
+  adding a source to `INGEST_SOURCES` without a parser fails typecheck.
+- `versions` is the only parser that persists in Phase 2: `recordIngest` replaces
+  `Host.toolVersions` with its output. It strips one pair of matching quotes from
+  values (`os="Ubuntu 24.04"`), keeps everything after the first `=`, ignores blank and
+  `#` lines, and rejects a non-empty line with no key.
+- A failed parse records the run but leaves `Payload` alone, so the last good body
+  survives a bad POST.
+- Body limit: a declared `Content-Length` over 16 MiB is refused before reading; the
+  read body is checked again for chunked uploads. Both answer 413. h3 buffers the whole
+  body first, so a chunked upload is only refused after it arrives.
+- The enrol token is compared as SHA-256 digests with `timingSafeEqual`, so neither
+  length nor content leaks through timing.
+- An unknown source still upserts the host first, per the order in the contract.
+- `exitStatus` accepts decimal digits only, 0–255; `device` and `type` are trimmed,
+  1–256 characters. Invalid query → 400.
+- Route tests reach into the database with raw SQL rather than Drizzle: using the
+  Drizzle schema types in a `test/api` file pushed the typed `$fetch` route matcher past
+  TypeScript's stack depth (TS2321) in `settings.e2e.test.ts`. Server-side typed
+  `$fetch` of the new routes is fine.
+- 003's data model sketch still lists `CollectorRun` with `startedAt`/`finishedAt`; the
+  table as built has `receivedAt` plus `device`, `deviceType` and `exitStatus`, since the
+  server only sees when a POST arrives.

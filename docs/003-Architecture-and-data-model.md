@@ -51,23 +51,24 @@ Sources (v1):
 
 | source | command |
 | --- | --- |
+| `versions` | `KEY=value` lines: `zfs`, `zpool`, `kernel`, `smartctl`, `os` |
 | `smartctl-scan` | `smartctl --scan --json` |
 | `smartctl-xall` | `smartctl --xall --json -n standby [-d type] <dev>` |
+| `lsblk` | `lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE` |
+| `udev` | `cat /run/udev/data/b<maj>:<min>` per disk |
+| `vdev-id-conf` | `cat /etc/zfs/vdev_id.conf` |
 | `zpool-status` | `zpool status -j --json-flat-vdevs --json-int -Ppvs` (no `-L`: it resolves `by-vdev` paths to `/dev/sdX` and drops `guid`, `path`, `devid`, `state` from leaf vdevs; verified on OpenZFS 2.4.1) |
 | `zpool-list` | `zpool list -j --json-int -pv` |
-| `zpool-iostat` | `zpool iostat -vpl 1 2` |
 | `zfs-list` | `zfs list -j --json-int -p -t filesystem,volume -o <cols>` |
 | `zfs-snapshots` | `zfs list -j --json-int -p -t snapshot -o name,used,referenced,written,creation -s creation` |
-| `zpool-history` | `zpool history -il` |
-| `zpool-events` | `zpool events -vH` (poll) or ZED hook env (push) |
-| `vdev-id-conf` | `cat /etc/zfs/vdev_id.conf` |
-| `lsblk` | `lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN` |
-| `udev` | `cat /run/udev/data/b<maj>:<min>` per disk |
+| `zpool-history` | `zpool history -il \| tail -n 500` |
+| `zpool-events` | `zpool events -vH` (poll) |
+| `zed-event` | ZED hook posts `KEY=value` lines for every `ZEVENT_*` env var (push) |
 
 Every source has one parser in `server/ingest/<source>.ts`, pure text → typed object,
 tested against fixtures. The server never cares who ran the command. Minimum host is
-OpenZFS 2.3+ so ZFS parsers consume `-j` JSON only; `zpool iostat` is the one text
-parser. Check `output_version.vers_major` on every ZFS payload.
+OpenZFS 2.3+ so ZFS parsers consume `-j` JSON wherever it exists; the ZFS text parsers
+are `zpool-history`, `zpool-events` and `zed-event`. Check `output_version.vers_major` on every ZFS payload.
 
 Producers:
 
