@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatDays, formatHours } from "./format";
+import { byteUnitFor, formatBytes, formatDays, formatHours } from "./format";
 
 describe("formatBytes", () => {
   it("uses decimal units like zfs list and disk labels", () => {
@@ -22,5 +22,16 @@ describe("formatDays", () => {
   it("scales to years past one", () => {
     expect(formatDays(200)).toBe("200 d");
     expect(formatDays(800)).toBe("2.2 y");
+  });
+});
+
+describe("byteUnitFor", () => {
+  it("picks the largest decimal unit the value reaches", () => {
+    expect(byteUnitFor(12_000_138_625_024)).toEqual({
+      unit: "TB",
+      divisor: 1e12,
+    });
+    expect(byteUnitFor(500_107_862_016)).toEqual({ unit: "GB", divisor: 1e9 });
+    expect(byteUnitFor(12)).toEqual({ unit: "B", divisor: 1 });
   });
 });

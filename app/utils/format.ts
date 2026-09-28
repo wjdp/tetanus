@@ -35,3 +35,9 @@ export function formatDate(value: string | Date | null | undefined): string {
 export function formatCelsius(celsius: number | null | undefined): string {
   return celsius === null || celsius === undefined ? "—" : `${celsius} °C`;
 }
+
+export function byteUnitFor(bytes: number): { unit: string; divisor: number } {
+  let unit = 0;
+  while (bytes >= 1000 ** (unit + 1) && unit < BYTE_UNITS.length - 1) unit += 1;
+  return { unit: BYTE_UNITS[unit], divisor: 1000 ** unit };
+}
