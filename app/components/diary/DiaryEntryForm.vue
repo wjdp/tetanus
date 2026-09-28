@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DIARY_SUBJECT_TYPES, type DiarySubjectType } from "#shared/diary";
+import { useDatasetSearch } from "~/components/dataset/useDatasetSearch";
 
 const props = defineProps<{
   subjectType?: DiarySubjectType;
@@ -17,14 +18,42 @@ const toast = useToast();
 
 const needsSubjectId = computed(() => subjectType.value !== "system");
 
-const { data: subjectItems, status: subjectItemsStatus } = useLazyAsyncData(
+const { data: listedItems, status: listedItemsStatus } = useLazyAsyncData(
   () => `diary-subject-items:${subjectType.value}`,
   () => fetchSubjectItems(subjectType.value),
   { server: false, default: () => [] },
 );
 
+const isSearched = computed(() => subjectType.value === "dataset");
+const searchTerm = ref("");
+const { results: datasetResults, loading: datasetsLoading } =
+  useDatasetSearch(searchTerm);
+const seenDatasets = new Map<number, SubjectItem>();
+
+const datasetItems = computed(() => {
+  const found = datasetSubjectItems(datasetResults.value);
+  for (const item of found) seenDatasets.set(item.value, item);
+  const selected =
+    subjectId.value === undefined
+      ? undefined
+      : seenDatasets.get(subjectId.value);
+  return selected && !found.some((item) => item.value === selected.value)
+    ? [selected, ...found]
+    : found;
+});
+
+const subjectItems = computed(() =>
+  isSearched.value ? datasetItems.value : listedItems.value,
+);
+const subjectItemsLoading = computed(() =>
+  isSearched.value
+    ? datasetsLoading.value
+    : listedItemsStatus.value === "pending",
+);
+
 watch(subjectType, () => {
   subjectId.value = undefined;
+  searchTerm.value = "";
 });
 
 const save = async () => {
@@ -69,13 +98,19 @@ const save = async () => {
       >
         <USelectMenu
           v-model="subjectId"
+          v-model:search-term="searchTerm"
           :items="subjectItems"
           value-key="value"
-          :loading="subjectItemsStatus === 'pending'"
+          :ignore-filter="isSearched"
+          :loading="subjectItemsLoading"
           :placeholder="`Choose a ${subjectType}`"
           class="w-full"
           data-testid="subject-picker"
-        />
+        >
+          <template v-if="isSearched && !searchTerm.trim()" #empty>
+            Type part of a dataset name to search.
+          </template>
+        </USelectMenu>
       </UFormField>
     </div>
 

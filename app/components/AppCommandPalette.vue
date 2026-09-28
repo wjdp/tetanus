@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CommandPaletteGroup, CommandPaletteItem } from "@nuxt/ui";
+import { useDatasetSearch } from "~/components/dataset/useDatasetSearch";
 
 const { isOpen, close, toggle } = useCommandPalette();
 
@@ -30,8 +31,23 @@ const {
   load: loadEntities,
 } = useEntitySearch();
 
+const searchTerm = ref("");
+const { results: datasets, loading: datasetsLoading } =
+  useDatasetSearch(searchTerm);
+
+const datasetItems = computed(() =>
+  datasets.value.map((dataset) =>
+    toItem({
+      label: datasetLabel(dataset),
+      icon: "i-lucide-folder-tree",
+      to: `/datasets/${dataset.id}`,
+    }),
+  ),
+);
+
 watch(isOpen, (open) => {
   if (open) loadEntities();
+  else searchTerm.value = "";
 });
 
 const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [
@@ -47,6 +63,12 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [
   },
   { id: "disks", label: "Disks", items: (disks.value ?? []).map(toItem) },
   { id: "pools", label: "Pools", items: (pools.value ?? []).map(toItem) },
+  {
+    id: "datasets",
+    label: "Datasets",
+    items: datasetItems.value,
+    ignoreFilter: true,
+  },
 ]);
 
 defineShortcuts({
@@ -58,16 +80,17 @@ defineShortcuts({
   <UModal
     v-model:open="isOpen"
     title="Command palette"
-    description="Jump to a page, disk or pool"
+    description="Jump to a page, disk, pool or dataset"
     :ui="{
       content: 'top-4 translate-y-0 sm:top-1/2 sm:-translate-y-1/2 sm:max-w-2xl',
     }"
   >
     <template #content>
       <UCommandPalette
+        v-model:search-term="searchTerm"
         :groups="groups"
-        placeholder="Search pages, disks and pools"
-        :loading="entitiesLoading"
+        placeholder="Search pages, disks, pools and datasets"
+        :loading="entitiesLoading || datasetsLoading"
         close
         class="h-[calc(100dvh-2rem)] sm:h-96"
         @update:open="close"

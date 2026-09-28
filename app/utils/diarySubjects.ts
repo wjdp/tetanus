@@ -32,6 +32,12 @@ interface HostOption {
   displayName: string | null;
 }
 
+interface DatasetOption {
+  id: number;
+  name: string;
+  host: { name: string; displayName: string | null };
+}
+
 export const diskSubjectItems = (disks: DiskOption[]): SubjectItem[] =>
   disks.map(({ id, alias, model, serial }) => ({
     label: [alias, model, serial].filter(Boolean).join(" · ") || `Disk ${id}`,
@@ -62,6 +68,15 @@ export const hostSubjectItems = (hosts: HostOption[]): SubjectItem[] =>
     value: id,
   }));
 
+export const datasetLabel = ({ name, host }: DatasetOption) =>
+  `${host.displayName || host.name} · ${name}`;
+
+export const datasetSubjectItems = (datasets: DatasetOption[]): SubjectItem[] =>
+  datasets.map((dataset) => ({
+    label: datasetLabel(dataset),
+    value: dataset.id,
+  }));
+
 export async function fetchSubjectItems(
   subjectType: DiarySubjectType,
 ): Promise<SubjectItem[]> {
@@ -74,6 +89,8 @@ export async function fetchSubjectItems(
       return vdevSubjectItems(await $fetch("/api/pools"));
     case "host":
       return hostSubjectItems(await $fetch("/api/hosts"));
+    case "dataset":
+      return [];
     default:
       return [];
   }

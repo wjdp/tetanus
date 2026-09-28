@@ -44,6 +44,12 @@ describe("DiaryTimeline", () => {
             body: "First paragraph.\n\nSecond paragraph.",
           }),
           entry({ id: 1, at: "2026-09-27T23:00:00.000Z", subjectType: "host" }),
+          entry({
+            id: 4,
+            at: "2026-09-27T22:00:00.000Z",
+            subjectType: "dataset",
+            subjectId: 22,
+          }),
         ],
         subjectLabel: (type: string, id: number) =>
           type === "disk" ? "disk K2" : `${type} ${id}`,
@@ -55,6 +61,7 @@ describe("DiaryTimeline", () => {
     expect(timeline.find('a[href="/disks/4"]').text()).toBe("disk K2");
     expect(timeline.find('a[href="/zfs/7"]').exists()).toBe(true);
     expect(timeline.find('a[href="/settings/hosts"]').exists()).toBe(true);
+    expect(timeline.find('a[href="/datasets/22"]').text()).toBe("dataset 22");
 
     const manual = timeline.findAll('[data-testid="diary-entry"]')[1];
     expect(manual.text()).toContain("manual");

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  datasetSubjectItems,
   diskSubjectItems,
   hostSubjectItems,
   poolSubjectItems,
@@ -70,6 +71,22 @@ describe("diary subject items", () => {
     ).toEqual([
       { label: "Mars NAS", value: 1 },
       { label: "venus", value: 2 },
+    ]);
+  });
+
+  it("labels datasets by host and full dataset name", () => {
+    expect(
+      datasetSubjectItems([
+        {
+          id: 22,
+          name: "tank/media/photos",
+          host: { name: "mars", displayName: null },
+        },
+        { id: 23, name: "tank/vm", host: { name: "mars", displayName: "NAS" } },
+      ]),
+    ).toEqual([
+      { label: "mars · tank/media/photos", value: 22 },
+      { label: "NAS · tank/vm", value: 23 },
     ]);
   });
 });

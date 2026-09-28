@@ -89,6 +89,8 @@ const subjectLink = (entry: TimelineEntry) => {
       return `/disks/${entry.subjectId}`;
     case "pool":
       return `/zfs/${entry.subjectId}`;
+    case "dataset":
+      return `/datasets/${entry.subjectId}`;
     case "host":
       return "/settings/hosts";
     default:

@@ -25,6 +25,33 @@ const { data: entries, refresh } = await useFetch("/api/diary", { query });
 const { data: disks } = await useFetch("/api/disks", { lazy: true });
 const { data: pools } = await useFetch("/api/pools", { lazy: true });
 
+const datasetIds = computed(() => [
+  ...new Set(
+    (entries.value ?? []).flatMap((entry) =>
+      entry.subjectType === "dataset" && entry.subjectId !== null
+        ? [entry.subjectId]
+        : [],
+    ),
+  ),
+]);
+
+const { data: datasetLabels } = useLazyAsyncData(
+  () => `diary-dataset-labels:${datasetIds.value.join(",")}`,
+  async () => {
+    const labelled = await Promise.all(
+      datasetIds.value.map(async (id) => {
+        try {
+          return [id, datasetLabel(await $fetch(`/api/datasets/${id}`))];
+        } catch {
+          return [];
+        }
+      }),
+    );
+    return Object.fromEntries(labelled.filter((pair) => pair.length));
+  },
+  { server: false, default: () => ({}) as Record<number, string> },
+);
+
 const visibleEntries = computed(() =>
   (entries.value ?? []).filter(
     (entry) => kindFilter.value === ALL || entry.kind === kindFilter.value,
@@ -39,6 +66,10 @@ const subjectLabel = (subjectType: DiarySubjectType, id: number) => {
   if (subjectType === "pool") {
     const name = pools.value?.find((row) => row.id === id)?.name;
     return name ? `pool ${name}` : `pool ${id}`;
+  }
+  if (subjectType === "dataset") {
+    const label = datasetLabels.value[id];
+    return label ? `dataset ${label}` : `dataset ${id}`;
   }
   return `${subjectType} ${id}`;
 };
