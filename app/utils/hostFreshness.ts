@@ -65,7 +65,7 @@ export function sourceFreshness(
   run: RunLike | undefined,
   now: number,
 ): SourceFreshness {
-  if (!run || !run.ok) {
+  if (!run?.ok) {
     return {
       source,
       status: "error",
