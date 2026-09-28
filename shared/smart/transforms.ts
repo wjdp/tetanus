@@ -1,5 +1,16 @@
 type Transform = (value: number, rawValue: number, rawString: string) => number;
 
+function leadingInteger(
+  _value: number,
+  rawValue: number,
+  rawString: string,
+): number {
+  const match = /^\s*(\d+)/.exec(rawString);
+  if (!match) return rawValue;
+  const parsed = Number(match[1]);
+  return parsed > Number.MAX_SAFE_INTEGER ? rawValue : parsed;
+}
+
 function seagateCommandTimeout(
   _value: number,
   rawValue: number,
@@ -12,18 +23,9 @@ function seagateCommandTimeout(
   return third >= second && second >= first ? third : rawValue;
 }
 
-function lowestByte(_value: number, rawValue: number): number {
-  return Number(BigInt(rawValue) & 0xffn);
-}
-
 const TRANSFORMS: Record<string, Transform> = {
   "188": seagateCommandTimeout,
-  "194": lowestByte,
 };
-
-export function hasTransform(attrId: string | number): boolean {
-  return Object.hasOwn(TRANSFORMS, String(attrId));
-}
 
 export function transform(
   attrId: string | number,
@@ -31,6 +33,6 @@ export function transform(
   rawValue: number,
   rawString: string,
 ): number {
-  const fn = TRANSFORMS[String(attrId)];
-  return fn ? fn(value, rawValue, rawString) : rawValue;
+  const fn = TRANSFORMS[String(attrId)] ?? leadingInteger;
+  return fn(value, rawValue, rawString);
 }

@@ -1,9 +1,11 @@
 import type { AtaAttribute, SmartctlXallResult } from "#shared/smartctl";
+import { type AttributeClass, attributeClass } from "./classification";
 import {
   ATA_METADATA,
   type AtaAttributeMetadata,
   type AttributeMetadata,
   NVME_METADATA,
+  type ObservedThreshold,
   SCSI_METADATA,
 } from "./metadata";
 import { type AttributeStatus, type DeviceStatus, worstStatus } from "./status";
@@ -19,6 +21,7 @@ export interface EvaluatedAttribute {
   rawString?: string;
   whenFailed?: string;
   transformedValue: number;
+  attributeClass: AttributeClass;
   status: AttributeStatus;
   failureRate?: number;
   reason?: string;
@@ -34,14 +37,8 @@ const NO_THRESHOLD = -1;
 const REASONS = {
   failingNow: "Attribute is failing manufacturer SMART threshold",
   failedInPast: "Attribute has previously failed manufacturer SMART threshold",
-  criticalOverTen:
-    "Observed failure rate for critical attribute is at least 10%",
-  nonCriticalOverTwenty:
-    "Observed failure rate for non-critical attribute is at least 20%",
-  nonCriticalOverTen:
-    "Observed failure rate for non-critical attribute is at least 10%",
-  criticalNoBucket:
-    "Could not determine observed failure rate for critical attribute",
+  defectOverTen:
+    "Observed failure rate for defect-class attribute is at least 10%",
   failingThreshold: "Attribute is failing recommended SMART threshold",
 } as const;
 
@@ -75,31 +72,33 @@ function thresholdValue(
   transformedValue: number,
 ): number {
   if (metadata.displayType === "normalized") return attribute.value;
-  if (metadata.displayType === "transformed") return transformedValue;
-  return attribute.raw.value ?? 0;
+  return transformedValue;
+}
+
+function observedBucket(
+  thresholds: readonly ObservedThreshold[] | undefined,
+  value: number,
+): ObservedThreshold | undefined {
+  const containing = thresholds?.find(
+    ({ low, high }) => low <= value && value <= high,
+  );
+  if (containing) return containing;
+  const top = thresholds?.at(-1);
+  return top && value > top.high ? top : undefined;
 }
 
 function validateObservedThresholds(
   metadata: AtaAttributeMetadata,
+  attrClass: AttributeClass,
   value: number,
   accumulator: StatusAccumulator,
 ): number | undefined {
-  const bucket = metadata.observedThresholds?.find(
-    ({ low, high }) => low <= value && value <= high,
-  );
-  if (!bucket) {
-    if (metadata.critical) {
-      accumulator.raise("warning", REASONS.criticalNoBucket);
-    }
-    return undefined;
-  }
-  const rate = bucket.annualFailureRate;
-  if (metadata.critical) {
-    if (rate >= 0.1) accumulator.raise("failed", REASONS.criticalOverTen);
-  } else if (rate >= 0.2) {
-    accumulator.raise("failed", REASONS.nonCriticalOverTwenty);
-  } else if (rate >= 0.1) {
-    accumulator.raise("warning", REASONS.nonCriticalOverTen);
+  const rate = observedBucket(
+    metadata.observedThresholds,
+    value,
+  )?.annualFailureRate;
+  if (attrClass === "defect" && rate !== undefined && rate >= 0.1) {
+    accumulator.raise("failed", REASONS.defectOverTen);
   }
   return rate;
 }
@@ -114,6 +113,7 @@ function evaluateAtaAttribute(attribute: AtaAttribute): EvaluatedAttribute {
     rawValue,
     rawString,
   );
+  const attrClass = attributeClass(attrId);
   const accumulator = new StatusAccumulator();
   let failureRate: number | undefined;
 
@@ -127,6 +127,7 @@ function evaluateAtaAttribute(attribute: AtaAttribute): EvaluatedAttribute {
     if (metadata) {
       failureRate = validateObservedThresholds(
         metadata,
+        attrClass,
         thresholdValue(metadata, attribute, transformedValue),
         accumulator,
       );
@@ -143,6 +144,7 @@ function evaluateAtaAttribute(attribute: AtaAttribute): EvaluatedAttribute {
     ...(attribute.raw.string !== undefined ? { rawString } : {}),
     ...(attribute.whenFailed ? { whenFailed: attribute.whenFailed } : {}),
     transformedValue,
+    attributeClass: attrClass,
     status: accumulator.status,
     ...(failureRate !== undefined ? { failureRate } : {}),
     ...(accumulator.reason ? { reason: accumulator.reason } : {}),
@@ -169,6 +171,7 @@ function evaluateFixedThreshold(
     value,
     ...(thresh !== NO_THRESHOLD ? { thresh } : {}),
     transformedValue: value,
+    attributeClass: thresh !== NO_THRESHOLD ? "defect" : "context",
     status: accumulator.status,
     ...(accumulator.reason ? { reason: accumulator.reason } : {}),
   };
