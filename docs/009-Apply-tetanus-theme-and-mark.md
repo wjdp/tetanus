@@ -15,7 +15,7 @@ scaffold: palettes, Nuxt UI colour aliases, the mark, favicons.
 2. Nuxt UI colour aliases in `app/app.config.ts`: `primary: rust`, `neutral:
    secondary: stone`, `error: alarm`, `warning: amber`, `success: emerald`,
    `info: sky`.
-3. `app/components/TetanusMark.vue` (platter, hub, optional arm and head), used in
+3. `app/components/TetanusMark.vue` (platter, hub, rust quarter-arc track), used in
    `AppSidebar.vue` in place of the `i-lucide-hard-drive` placeholder.
 4. Favicons in `public/`, wired into `nuxt.config.ts`'s `app.head.link`.
 
