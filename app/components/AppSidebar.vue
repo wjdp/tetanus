@@ -39,7 +39,7 @@ const navLinkUi = {
   >
     <template #header="{ collapsed }">
       <NuxtLink to="/" class="flex min-w-0 items-center gap-2">
-        <UIcon name="i-lucide-hard-drive" class="text-primary size-6 shrink-0" />
+        <TetanusMark :size="24" class="text-highlighted shrink-0" />
         <span
           v-if="!collapsed"
           class="text-highlighted truncate text-lg font-semibold tracking-tight"
