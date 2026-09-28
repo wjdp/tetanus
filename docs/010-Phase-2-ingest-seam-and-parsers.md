@@ -55,7 +55,6 @@ Phases 3–5; in Phase 2 the parsed object is returned and discarded.
 | `zpool-history` | `zpool history -il \| tail -n 500` | `{ entries: [{ at, internal, text, pool }] }` |
 | `zpool-events` | `zpool events -vH` | `{ events: [{ eid, at, class, poolGuid?, vdevGuid?, fields: Record<string,string> }] }`, hex strings decoded to decimal strings, nested nvlists flattened with dot paths |
 | `zed-event` | ZED hook posts `KEY=value` lines for every `ZEVENT_*` env var | one event in the same shape as above |
-| `zpool-iostat` | `zpool iostat -vpl 1 2` | second sample only; `{ pools: [{ name, alloc, free, ops, bandwidth, waits..., children }] }` |
 
 Every ZFS JSON parser checks `output_version.vers_major === 0` and throws otherwise.
 Parsers are pure `(body: string, meta: IngestMeta) => { data: T; summary: object }`
@@ -68,8 +67,12 @@ in `server/ingest/<source>.ts`, exported as `parse`, tested against
 
 ### Host collector
 
-`host/tetanus-collect` (bash, curl only, no jq), `host/tetanus-collect.service` +
-`.timer` (hourly, `RandomizedDelaySec=5m`), `host/zed/all-tetanus.sh`, `host/install.sh`.
+`host/tetanus-collect` (bash, curl only, no jq), a template unit `tetanus-collect@.service`
+with three timers: `zfs` every 10 min (versions, zpool-status, zpool-list, zfs-list,
+zpool-history, zpool-events, vdev-id-conf), `smart` hourly (lsblk, udev, smartctl-scan,
+smartctl-xall), `snapshots` every 6 h (zfs-snapshots). `host/zed/all-tetanus.sh`,
+`host/install.sh`. Decided 2026-09-28: bash stays until the collector needs per-device
+config or platform quirks, then Go; `zpool iostat` dropped from v1.
 Config in `/etc/tetanus/collect.env`: `TETANUS_URL`, `TETANUS_TOKEN`, optional
 `TETANUS_HOST` (defaults to `hostname -s`). Clears `ZPOOL_VDEV_NAME_GUID`,
 `ZPOOL_VDEV_NAME_FOLLOW_LINKS`, `ZPOOL_VDEV_NAME_PATH`. Runs every source in the table,

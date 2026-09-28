@@ -81,9 +81,9 @@ New:
 | Home screen | Pool topology |
 | Host actions | Read-only in v1 |
 | vdev_id.conf | Read + propose, never write |
-| SMART cadence | Hourly, keep every reading |
+| SMART cadence | Hourly, keep every reading. ZFS every 10 min, snapshots every 6 h |
 | Warranty | Expiry date entered by hand |
-| Scrutiny code reuse | Vendor metadata; port evaluation or run their collector, decide later |
+| Scrutiny code reuse | Vendor metadata; parse smartctl JSON in TS server-side. Running their collector is a Later option |
 | Chart library | Decide later |
 | Minimum host | Ubuntu 26.04-like: OpenZFS 2.3+ (JSON output), smartmontools 7.4+ (mars has 7.5) |
 | Scrutiny transition | Separate systems; cut over when ready |

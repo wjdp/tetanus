@@ -67,7 +67,7 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
    `errors` block. `zpool-list` JSON. Reject `output_version.vers_major != 0`.
 4. `zfs-list`, `zfs-snapshots` JSON; `zpool-history` text; `zpool-events -vH` text
    (hex-string numerics); ZED env payload.
-5. `zpool-iostat` text parser (no JSON exists).
+5. ~~`zpool-iostat` text parser~~ dropped from v1 (moved to Later, 2026-09-28).
 6. Host collector: `host/<name>-collect` bash script (curl only), systemd service +
    timer, `host/zed/all-<name>.sh`, `host/install.sh`, docs. Clears `ZPOOL_VDEV_NAME_*`,
    passes `-n standby`, sends smartctl exit status, `Authorization: Bearer <token>` and
@@ -155,6 +155,8 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
 
 ## Later
 
+- `zpool iostat` latency view; the only text parser, needed by no v1 screen.
+
 - vdev_id.conf proposal renderer.
 - Actions behind a flag: short/long self-test, scrub, `zpool clear`.
 - Retention/downsampling if the DB grows past comfort.
@@ -177,8 +179,11 @@ Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
 8. Licence: MIT.
 9. Ingest auth: bearer enrol token required from day one, plus `Tetanus-Host`.
    Multi-host from day one; no local producer in v1.
+10. Scrutiny reuse: (b), parse smartctl JSON in TS server-side; (a) stays under Later.
+11. Collector cadence: ZFS every 10 min, SMART hourly, snapshots every 6 h; three timers,
+    one template unit. Collector stays bash until it needs per-device config.
+12. `zpool iostat` dropped from v1.
 
 ## Unanswered questions
 
-1. Chart library and (a) vs (b) scrutiny reuse: deferred by decision; revisit at phases
-   6 and 2 respectively.
+1. Chart library: deferred by decision; revisit at phase 6.
