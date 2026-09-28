@@ -17,5 +17,6 @@ export const NAVIGATION: NavigationEntry[] = [
 export const SETTINGS_NAVIGATION: NavigationEntry[] = [
   { label: "General", icon: "i-lucide-sliders-horizontal", to: "/settings" },
   { label: "Hosts", icon: "i-lucide-server", to: "/settings/hosts" },
+  { label: "Alerts", icon: "i-lucide-bell", to: "/settings/alerts" },
   { label: "Import", icon: "i-lucide-import", to: "/settings/import" },
 ];
