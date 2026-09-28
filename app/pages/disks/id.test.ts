@@ -72,7 +72,7 @@ registerEndpoint("/api/disks/7/smart", () => ({
       status: "passed",
       displayStatus: "passed",
       acceptance: null,
-      failureRate: null,
+      failureRate: 0.15,
       reason: null,
       rawString: "34",
       trend: "stable",
@@ -175,6 +175,11 @@ describe("disk page", () => {
     expect(rows[1]).toContain("Clear");
     expect(rows[2]).toContain("34 °C");
     expect(rows[2]).not.toContain("Accept");
+
+    const contextRates = page.findAll('[data-testid="context-rate"]');
+    expect(contextRates).toHaveLength(1);
+    expect(contextRates[0]?.text()).toBe("15.0 %");
+    expect(contextRates[0]?.classes()).toContain("text-info");
 
     const selfTests = page.get('[data-testid="self-tests"]');
     expect(selfTests.text()).toContain("Extended offline");

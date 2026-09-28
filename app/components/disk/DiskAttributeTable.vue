@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
-import { orderAttributes } from "./attributeOrder";
+import { isNotableContextRate, orderAttributes } from "./attributeOrder";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 const props = defineProps<{
@@ -47,6 +47,9 @@ const formatNormalised = (attribute: LatestAttribute) =>
 
 const formatFailureRate = (rate: number | null) =>
   rate === null ? "—" : `${(rate * 100).toFixed(1)} %`;
+
+const CONTEXT_RATE_TOOLTIP =
+  "Backblaze fleet rate for this value. Context only: usage and environment attributes do not affect disk status.";
 
 const sparklineValues = (attrId: string) =>
   (props.history[attrId] ?? []).map((point) => point.value);
@@ -129,7 +132,12 @@ const rowClass = (row: { original: LatestAttribute }) =>
     </template>
 
     <template #failureRate-cell="{ row }">
-      <span :class="row.original.failureRate === null ? 'text-dimmed' : ''">
+      <UTooltip v-if="isNotableContextRate(row.original)" :text="CONTEXT_RATE_TOOLTIP">
+        <span class="text-info" data-testid="context-rate">
+          {{ formatFailureRate(row.original.failureRate) }}
+        </span>
+      </UTooltip>
+      <span v-else :class="row.original.failureRate === null ? 'text-dimmed' : ''">
         {{ formatFailureRate(row.original.failureRate) }}
       </span>
     </template>

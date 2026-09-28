@@ -1,4 +1,5 @@
 import type { DiskProtocol } from "#shared/disk";
+import { attributeClass } from "#shared/smart/classification";
 import type { AttributeDisplayStatus } from "#shared/smart/status";
 
 interface RankedAttribute {
@@ -50,4 +51,17 @@ export function countByStatus(attributes: RankedAttribute[]) {
     warning: count("warning"),
     accepted: count("accepted"),
   };
+}
+
+const NOTABLE_CONTEXT_RATE = 0.1;
+
+export function isNotableContextRate(attribute: {
+  attrId: string;
+  failureRate: number | null;
+}): boolean {
+  return (
+    attributeClass(attribute.attrId) === "context" &&
+    attribute.failureRate !== null &&
+    attribute.failureRate >= NOTABLE_CONTEXT_RATE
+  );
 }

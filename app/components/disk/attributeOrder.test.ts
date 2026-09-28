@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   countByStatus,
   defaultAttributeId,
+  isNotableContextRate,
   orderAttributes,
 } from "./attributeOrder";
 
@@ -109,5 +110,32 @@ describe("countByStatus", () => {
         attribute("5", "accepted"),
       ]),
     ).toEqual({ failed: 1, warning: 2, accepted: 1 });
+  });
+});
+
+describe("isNotableContextRate", () => {
+  const rate = (attrId: string, failureRate: number | null) => ({
+    attrId,
+    failureRate,
+  });
+
+  it("flags a context attribute at or above a 10 % fleet rate", () => {
+    expect(isNotableContextRate(rate("4", 0.12))).toBe(true);
+    expect(isNotableContextRate(rate("4", 0.1))).toBe(true);
+    expect(isNotableContextRate(rate("temperature", 0.5))).toBe(true);
+  });
+
+  it("ignores a context attribute below 10 %", () => {
+    expect(isNotableContextRate(rate("4", 0.05))).toBe(false);
+    expect(isNotableContextRate(rate("4", 0.099))).toBe(false);
+  });
+
+  it("ignores defect attributes, whose rate already drives status", () => {
+    expect(isNotableContextRate(rate("197", 0.3))).toBe(false);
+    expect(isNotableContextRate(rate("5", 0.1))).toBe(false);
+  });
+
+  it("ignores a missing rate", () => {
+    expect(isNotableContextRate(rate("4", null))).toBe(false);
   });
 });
