@@ -1,6 +1,6 @@
 ---
 type: task
-status: planned
+status: in-progress
 ---
 
 # Project plan
@@ -10,9 +10,13 @@ Phased build of diskbot per [001](001-Product-goals.md) and
 step is roughly one commit. Order is by dependency, then by how much it improves the
 author's day.
 
+From Phase 1 on, each phase gets its own task doc (`wj new task`); this doc is the index.
+
 ## Phase 0: fixtures from mars
 
-Nothing can be written correctly without real output. All read-only.
+Nothing can be written correctly without real output. All read-only. Steps 1–2 done in
+[005](005-Capture-mars-fixtures.md); steps 3–4 in
+[006](006-Vendor-scrutiny-corpus-and-Q2-event-fixture.md).
 
 1. Script `bin/capture-fixtures.sh`: `zfs version`, `smartctl --version`, `lsb_release
    -a`, `zpool status -j --json-flat-vdevs --json-int -PLpvs` (also without
@@ -32,7 +36,7 @@ Nothing can be written correctly without real output. All read-only.
 
 ## Phase 1: scaffold
 
-Clone grate's shape, not its code.
+Clone grate's shape, not its code. Task: [007](007-Phase-1-scaffold.md).
 
 1. `pnpm create nuxt`, Nuxt 4 + Nuxt UI + Tailwind 4, Biome (grate's config incl.
    `noRestrictedImports` ban on `app/`→`server/`), lefthook, vitest two-project config,
@@ -41,9 +45,10 @@ Clone grate's shape, not its code.
    lifted from grate, `test/setup.ts` with per-file `:memory:` DB, `test/db.ts` flush.
 3. Task queue + SSE + `shared/sse.ts` + `shared/tasks.ts` lifted from grate. Sidebar
    task indicator.
-4. Settings single row, `/api/settings`, `/health`.
-5. Dockerfile (4-stage, static smartmontools 7.5 + `update-smart-drivedb` as scrutiny
-   does), `run.sh`, compose sketch from 003, GitHub workflows (checks, edge, release).
+4. Settings single row (incl. `enrolToken`, generated on first boot), `/api/settings`,
+   `/health`.
+5. Dockerfile (4-stage; no smartmontools, as there is no local producer), `run.sh`,
+   compose sketch from 003, GitHub workflows (checks, edge, release).
 6. `AGENTS.md` + `CLAUDE.md` symlink, README skeleton, `000-Docs.md` project specifics.
 7. Layout: sidebar (Topology, Disks, ZFS, Diary, Settings), command palette shell,
    fault banner slot.
@@ -51,7 +56,8 @@ Clone grate's shape, not its code.
 ## Phase 2: ingest seam and parsers
 
 1. `POST /api/ingest/:source` accepting text, storing `CollectorRun`, dispatching to a
-   parser registry. Unknown source → 400. Body size limit.
+   parser registry. Bearer enrol token check (401 otherwise); `X-Diskbot-Host` header
+   upserts `Host` and sets `CollectorRun.hostId`. Unknown source → 400. Body size limit.
 2. Parsers with fixture tests: `smartctl-scan`, `smartctl-xall` (ATA, NVMe, SCSI;
    `smart_support` dual shape; capacity fallback; WWN reassembly; exit bitmask
    decode), `lsblk`, `udev` (E: and S: lines), `vdev-id-conf` (alias lines, both path
@@ -64,9 +70,10 @@ Clone grate's shape, not its code.
 5. `zpool-iostat` text parser (no JSON exists).
 6. Host collector: `host/<name>-collect` bash script (curl only), systemd service +
    timer, `host/zed/all-<name>.sh`, `host/install.sh`, docs. Clears `ZPOOL_VDEV_NAME_*`,
-   passes `-n standby`, sends smartctl exit status. This is the primary producer.
-7. Local producer (optional mode, SMART/udev/vdev_id.conf only): `server/collect/local.ts`
-   via `execFile`, same parser path. Can be deferred past v1.
+   passes `-n standby`, sends smartctl exit status, `Authorization: Bearer <token>` and
+   `X-Diskbot-Host: $(hostname -s)`. The only producer in v1.
+7. First-run page (enrol token, install one-liner, which hosts and sources have
+   reported) and Settings > Hosts (rename, last seen per source).
 
 ## Phase 3: SMART knowledge
 
@@ -84,9 +91,10 @@ Clone grate's shape, not its code.
 1. `DiskKey` extraction from smartctl + udev + lsblk; `identity.match()` pure; merge on
    ingest; conflict diary + banner.
 2. `Disk` registry upsert on every SMART or scan ingest (self-heal on unknown disks,
-   never throw). `lastSeenAt` on every sighting.
-3. Alias resolution from udev `S:` links, `zpool status -P`, `vdev_id.conf`. Drift
-   detection.
+   never throw). `lastSeenAt` and `lastSeenHostId` on every sighting; a different host
+   → diary "moved from mars to X".
+3. Alias (unique across hosts) resolution from udev `S:` links, `zpool status -P`,
+   `vdev_id.conf`. Drift detection.
 4. State inference + override, `missing` threshold setting, transitions → diary.
 5. `shared/inventory-fields.ts` registry → zod schema, `PATCH /api/disks/:id`, form and
    table generation. Initial fields: purchase date, price, supplier, condition, warranty
@@ -96,11 +104,12 @@ Clone grate's shape, not its code.
 
 ## Phase 5: ZFS topology
 
-1. Upsert `Pool`, `Vdev` from `zpool-status` + `zpool-list`; link `Vdev.diskId` via
-   path/devid → `DiskKey`. `PoolReading`/`VdevReading` per ingest.
+1. Upsert `Pool` (per host), `Vdev` from `zpool-status` + `zpool-list`; link
+   `Vdev.diskId` via path/devid → `DiskKey`. `PoolReading`/`VdevReading` per ingest.
 2. Membership changes and ZFS state changes → diary auto events.
 3. `ZfsEvent` and `PoolHistory` persistence, incremental, gap detection on `eid`.
-4. Home page topology tiles. Pool page with scan state and error counters.
+4. Home page topology tiles, grouped by host. Pool page with scan
+   state and error counters.
 
 ## Phase 6: disk page and inventory UI
 
@@ -115,16 +124,17 @@ Clone grate's shape, not its code.
 1. `DiaryEntry` CRUD, markdown body, global and per-subject timelines.
 2. `FaultAcceptance` create/supersede/clear, overlay in evaluation, accept dialog
    showing trend.
-3. Auto events wired from phases 4–5 (appeared, vanished, joined pool, left pool,
-   attribute changed status, scrub finished, resilver, state override).
+3. Auto events wired from phases 4–5 (appeared, vanished, moved host, joined pool,
+   left pool, attribute changed status, scrub finished, resilver, state override).
 
 ## Phase 8: alerts
 
 1. Rules after each ingest: new unaccepted failed attribute, disk missing, disk
    reappeared, pool not ONLINE, scan finished with errors, fault cleared (recovery).
-   Dedupe on `(rule, subject, value)`.
+   Dedupe on `(rule, subject, value)`. Subjects carry the host name.
 2. Channels: Pushover, generic webhook JSON. Test button.
-3. healthchecks.io ping on a timer; fail ping when a collector source is silent.
+3. healthchecks.io ping per host (`Host.healthchecksUrl`, optional) on a timer; ping
+   succeeds only if that host's sources are fresh.
 4. Collector-silence fault banners.
 
 ## Phase 9: ZFS datasets and snapshots
@@ -136,7 +146,8 @@ Clone grate's shape, not its code.
 ## Phase 10: scrutiny import
 
 1. Importer against scrutiny's InfluxDB HTTP API (token from its config) and its SQLite
-   device table. Join on scrutiny UUID; fall back to model+serial.
+   device table. Join on scrutiny UUID; fall back to model+serial. Takes a target host
+   for the imported readings.
 2. Devices → `Disk` (removed ones become inventory rows with `lastSeenAt`), `smart`
    measurement → `SmartReading`/`SmartAttribute` across all four buckets, `temp` →
    `TemperatureReading`. Coarse older data is coarse; say so in the UI.
@@ -149,6 +160,9 @@ Clone grate's shape, not its code.
 - Retention/downsampling if the DB grows past comfort.
 - Physical bay mapping via `vdev_enc_sysfs_path` / `zpool status -c`.
 - Scrutiny-collector adapter routes, if detection on other people's hardware needs it.
+  Needs the host header mapped.
+- Local producer: in-container `execFile` for SMART, udev and vdev_id.conf (static
+  smartmontools, `/dev` mount, cgroup rules), for users who won't install on the host.
 - ARC stats from `/proc/spl/kstat/zfs`.
 
 ## Answered 2026-09-28
@@ -160,10 +174,11 @@ Clone grate's shape, not its code.
 5. Fixtures scrubbed; project will be published.
 6. Name provisional; single constant.
 7. Purchase price and supplier added as optional; registry-driven fields.
+8. Licence: MIT.
+9. Ingest auth: bearer enrol token required from day one, plus `X-Diskbot-Host`.
+   Multi-host from day one; no local producer in v1.
 
 ## Unanswered questions
 
 1. Chart library and (a) vs (b) scrutiny reuse: deferred by decision; revisit at phases
    6 and 2 respectively.
-2. Licence for publication. MIT matches scrutiny and simplifies attribution.
-3. Ingest auth: bearer token from day one, or loopback-only until someone asks?

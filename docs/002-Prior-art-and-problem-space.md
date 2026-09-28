@@ -1,6 +1,6 @@
 ---
 type: review
-status: open
+status: done
 ---
 
 # Prior art and problem space

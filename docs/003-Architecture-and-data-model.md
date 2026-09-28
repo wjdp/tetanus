@@ -13,9 +13,17 @@ One Nuxt 4 app in one container, as grate. Two things differ from grate:
 
 1. **Data comes from the host**, not from HTTP APIs. `smartctl`, `zpool`, `zfs`, udev,
    `vdev_id.conf`.
-2. **The collector may live outside the container.** ZFS userland must match the kernel
-   module, which a portable image can't promise. So the app never assumes it can run
-   `zpool` itself.
+2. **The collector lives outside the container.** ZFS userland must match the kernel
+   module, which a portable image can't promise. So the app never runs `zpool`, or any
+   other host command, itself.
+
+### Hosts
+
+One server, many hosts. Each host runs the collector and POSTs to the server; the
+container only ingests and processes. A host's identity is its short hostname at
+enrolment; a display name can be set in the UI afterwards. Pools, SMART readings and
+collector runs belong to a host. Disks don't: they move between hosts, so a disk records
+only the host it was last seen on.
 
 ### The ingest seam
 
@@ -24,9 +32,15 @@ that and go further: the collector ships **raw command output**, the server pars
 
 ```
 POST /api/ingest/:source            body: raw stdout of the command, text/plain
+  Authorization: Bearer <enrol token>
+  X-Diskbot-Host: <hostname -s>
   ?device=/dev/sdc&type=sat         (smartctl sources)
   ?exitStatus=64                    (smartctl bitmask; non-zero is data, not failure)
 ```
+
+The enrol token is server-wide, generated on first boot and shown on the first-run and
+settings pages. Wrong or missing token → 401. An unknown host name creates a `Host` row
+on first POST. Each POST is recorded as a `CollectorRun` with its `hostId`.
 
 Sources (v1):
 
@@ -50,30 +64,29 @@ tested against fixtures. The server never cares who ran the command. Minimum hos
 OpenZFS 2.3+ so ZFS parsers consume `-j` JSON only; `zpool iostat` is the one text
 parser. Check `output_version.vers_major` on every ZFS payload.
 
-Three producers can feed the seam:
+Producers:
 
 - **Host script** (default). One bash script, curl only, no jq, no node: runs every
   source in the table on a systemd timer and POSTs. Plus a ZED hook `all-<name>.sh`
-  posting `ZEVENT_*` for lossless events. Decided 2026-09-28: this is the primary
-  producer for **all** sources, SMART included, so the container needs no device access,
-  no capabilities, no `/dev`. Kept minimal: no config beyond the app URL and an optional
-  token.
-- **In-container exec**: Nitro task runs the same commands via `execFile`. Kept as an
-  optional mode for SMART, udev and vdev_id.conf only (static smartmontools in image,
-  `/dev` bind-mounted, cgroup rules), for users who won't install anything on the host.
-  Never for `zfs`.
-- **Scrutiny collector**: its two POST routes are a thin adapter onto `smartctl-scan`
-  and `smartctl-xall`. Optional, cheap to add later.
+  posting `ZEVENT_*` for lossless events. The only producer in v1, for **all** sources,
+  SMART included, so the container needs no device access, no capabilities, no `/dev`.
+  Kept minimal: no config beyond the server URL and enrol token.
+- **Scrutiny collector** (later): its two POST routes are a thin adapter onto
+  `smartctl-scan` and `smartctl-xall`, with the host header mapped from its config.
+
+An in-container producer (`execFile` for SMART, udev and vdev_id.conf; static
+smartmontools, `/dev` bind-mounted) is deferred past v1. Never for `zfs`.
 
 Cadence lives in the host timer for ZFS and SMART; the app records what it receives and
-banners on silence. A "collect now" button is not possible in host mode without a
-callback; accept that, or later add a long-poll the script honours.
+banners on silence. A "collect now" button is not possible without a callback;
+accept that, or later add a long-poll the script honours.
 
-Each source records a `CollectorRun` (started, finished, ok, error, producer). Missing
-runs beyond the expected cadence raise a fault banner: "no ZFS data for 3 h".
+Each source records a `CollectorRun` (host, started, finished, ok, error, producer).
+Missing runs beyond the expected cadence raise a fault banner: "no ZFS data from mars
+for 3 h".
 
-Mode is per source, in settings: `remote | local | off`. Default remote for everything.
-First-run setup page shows what has been received and what hasn't.
+First-run page shows the enrol token, the collector install one-liner, and which hosts
+and sources have reported.
 
 ### Compose sketch
 
@@ -81,21 +94,19 @@ First-run setup page shows what has been received and what hasn't.
 services:
   diskbot:
     image: wjdp/diskbot
-    user: "1000:1000"          # + disk group gid for /dev access if local SMART
+    user: "1000:1000"
     ports: ["3000:3000"]
     volumes:
       - ./data:/app/data
     environment: { TZ: Europe/London }
 ```
 
-That's the whole container in host-collector mode. Only if local SMART mode is enabled:
-add `/dev:/dev:ro`, `/run/udev:/run/udev:ro`, `/etc/zfs/vdev_id.conf:ro`,
-`device_cgroup_rules` (`b 8:* rmw`, `c 259:* rmw`) and `cap_add: [SYS_RAWIO]`
-(+ `SYS_ADMIN` for NVMe). No static device list, ever.
+That's the whole container: no devices, no capabilities, no smartmontools. No static
+device list, ever.
 
-Host side: `/usr/local/bin/<name>-collect`, `<name>-collect.timer`, `zed.d/all-<name>.sh`.
-Installer script in the repo; documented, not automated over SSH. The ingest route
-accepts an optional bearer token for people who put the app on a non-loopback port.
+Host side, on each host: `/usr/local/bin/<name>-collect`, `<name>-collect.timer`,
+`zed.d/all-<name>.sh`. Installer script in the repo takes the server URL and enrol
+token; documented, not automated over SSH.
 
 The project name is provisional. It appears in exactly one constant
 (`shared/app.ts`), and the host script, unit and hook names are derived from it at
@@ -123,8 +134,12 @@ correlation only.
 
 Alias ↔ disk: from udev `S:disk/by-vdev/<alias>` on the live device, from
 `zpool status -P` paths, and from `vdev_id.conf` targets resolved through by-id keys.
-Alias is stored on `Disk`, unique. When `vdev_id.conf` disagrees with the stored alias,
-show drift, don't overwrite.
+Alias is stored on `Disk`, unique across all hosts: the cohort scheme is global and disks
+move between hosts. When `vdev_id.conf` disagrees with the stored alias, show drift,
+don't overwrite.
+
+Disk ↔ host: `Disk.lastSeenHostId` only, no membership table. A disk seen on a
+different host gets a diary auto event ("moved from mars to X").
 
 ## Disk state
 
@@ -175,13 +190,15 @@ Drizzle, SQLite, grate helpers (`autoIncrementId`, `datetime`, `boolean`, `json`
 Table names PascalCase for consistency with grate. Sketch, not schema:
 
 ```
-Disk            id, alias?, scrutinyUuid, model, modelFull, serial, firmware, capacityBytes,
+Host            id, name (unique, hostname -s), displayName?, toolVersions (json),
+                healthchecksUrl?, notes, firstSeenAt, lastSeenAt
+Disk            id, alias? (unique), scrutinyUuid, model, modelFull, serial, firmware, capacityBytes,
                 rotationRate, protocol (ata|nvme|scsi), transport, formFactor,
-                firstSeenAt, lastSeenAt, lastDevicePath, lastDeviceType,
+                firstSeenAt, lastSeenAt, lastSeenHostId, lastDevicePath, lastDeviceType,
                 stateOverride?, notes (md), inventory (json, see below), latestRaw (json),
                 latestStatus, latestTemp, latestPowerOnHours, latestPowerCycles
 DiskKey         diskId, kind, value            unique(kind, value)
-SmartReading    id, diskId, takenAt, devicePath, deviceType, smartPassed, exitStatus,
+SmartReading    id, diskId, hostId, takenAt, devicePath, deviceType, smartPassed, exitStatus,
                 temp, powerOnHours, powerCycles, deviceStatus
 SmartAttribute  readingId, attrId (text: "5" | "media_errors"), value, worst, thresh,
                 rawValue, rawString, whenFailed, transformedValue, status, failureRate
@@ -189,7 +206,7 @@ SmartAttribute  readingId, attrId (text: "5" | "media_errors"), value, worst, th
 TemperatureReading  diskId, at, celsius       unique(diskId, at)
 SelfTest        diskId, type, status, lifetimeHours, lba?, seenAt   unique per (disk, lifetimeHours, type)
 FaultAcceptance id, diskId, attrId, acceptedValue, acceptedAt, note, supersededAt?
-Pool            id, guid, name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
+Pool            id, hostId, guid, name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
                 dedup, scan (json: type, state, started, finished, examined, errors),
                 firstSeenAt, lastSeenAt
 Vdev            id, poolId, guid, parentId?, name, type (root|raidz1|raidz2|mirror|disk|special|log|cache|spare|indirect),
@@ -202,11 +219,11 @@ Dataset         id, poolId, name, type, used, referenced, available, logicalUsed
 Snapshot        id, datasetId, name, used, referenced, written, creation, lastSeenAt
 ZfsEvent        eid, at, class, poolGuid?, vdevGuid?, payload (json)      unique(eid, at)
 PoolHistory     poolId, at, internal, text                                unique(poolId, at, text)
-DiaryEntry      id, subjectType (disk|pool|vdev|system), subjectId, at, kind (manual|auto),
+DiaryEntry      id, subjectType (disk|pool|vdev|host|system), subjectId, at, kind (manual|auto),
                 eventType?, title, body (md), data (json)
 Notification    id, at, channel, dedupeKey, subject, ok, error?
-CollectorRun    id, source, producer, startedAt, finishedAt, ok, error?, bytes
-Setting         single row: thresholds, cadences, notification config, source modes
+CollectorRun    id, hostId, source, producer, startedAt, finishedAt, ok, error?, bytes
+Setting         single row: enrolToken, thresholds, cadences, notification config
 ```
 
 ### Inventory fields
@@ -239,23 +256,25 @@ Retention: keep everything in v1; schema leaves `SmartAttribute` easy to downsam
 Plain functions over `db`, as grate. Pure derivation separated from IO.
 
 - `ingest/*` parsers (pure).
+- `hosts` token check, upsert on ingest, freshness per source.
 - `identity` match/merge (pure over key sets).
 - `disks` registry, state inference, inventory edits.
 - `smart` evaluation (pure), reading persistence, trend, acceptance overlay.
 - `zfs` topology upsert, dataset/snapshot upsert, events, history.
 - `diary` entries; auto-event emitters called by the above.
-- `alerts` rule evaluation after each ingest, dedupe, dispatch (pushover, webhook,
-  healthchecks ping on a timer).
-- `importers/scrutiny`, `importers/obsidian`.
+- `alerts` rule evaluation after each ingest, dedupe, dispatch (pushover, webhook).
+  Subjects carry the host name ("mars: pool tank DEGRADED"). Healthchecks ping per host
+  on a timer, succeeding only if that host's sources are fresh.
+- `importers/scrutiny` (into a chosen target host), `importers/obsidian`.
 - `vdevIdConf` parse + render proposal.
 
-Tasks (Nitro, grate queue): `collect:<source>` for local sources on cron;
-`evaluate:disk` after any SMART ingest; `evaluate:zfs` after ZFS ingest; `alerts:tick`;
+Tasks (Nitro, grate queue): `evaluate:disk` after any SMART ingest; `evaluate:zfs` after ZFS ingest; `alerts:tick`;
 `healthcheck:ping`.
 
 ## API
 
-`/api/ingest/:source` (POST, text). `/api/disks`, `/api/disks/:id` (+ PATCH inventory),
+`/api/ingest/:source` (POST, text, bearer). `/api/hosts`, `/api/hosts/:id` (+ PATCH).
+`/api/disks`, `/api/disks/:id` (+ PATCH inventory),
 `/api/disks/:id/smart?range=`, `/api/disks/:id/accept` (POST/DELETE),
 `/api/pools`, `/api/pools/:id`, `/api/datasets`, `/api/datasets/:id/snapshots`,
 `/api/diary` (+ POST), `/api/alerts`, `/api/settings`, `/api/health`, `/api/sse`,
@@ -267,20 +286,22 @@ and cached, or bundled.
 
 ## UI
 
-- **Home: topology.** Pools → vdevs → disks as a grid of tiles by alias, coloured by
-  effective status. Side rail for spares, missing, removed. Header bar: collector
-  health, last collection time, active scan/resilver.
+- **Home: topology.** Grouped by host, then pools → vdevs → disks as a grid of tiles by
+  alias, coloured by effective status. Side rail for spares, missing, removed. Header
+  bar: collector health and last collection time per host, active scan/resilver.
 - **Disk page.** Nameplate + inventory (editable), status with accept controls,
   attribute table (scrutiny's layout: status, id, name, value, thresh, ideal, failure
   rate, sparkline, expandable explanation), trend chips, temperature and selected
   attribute charts, self-tests, diary for this disk, ZFS membership.
-- **Inventory.** The Obsidian table, live. Sortable, filter by state/pool/cohort.
+- **Inventory.** The Obsidian table, live. Sortable, filter by host/state/pool/cohort;
+  host column (last seen).
   Age (calendar + power-on), warranty remaining, 3.3 V pin.
 - **ZFS.** Pool detail with capacity/frag history and scan history; dataset tree with
   usage; snapshot list per dataset.
 - **Diary.** Global timeline, filter by subject/kind.
-- **Settings.** Sources and modes, cadences, thresholds, notification channels,
-  healthchecks URL, vdev_id.conf proposal, importers.
+- **Settings.** Enrol token and install one-liner; Hosts page (rename, healthchecks
+  URL, last seen per source); cadences, thresholds, notification channels,
+  vdev_id.conf proposal, importers.
 - Fault banners in layout for collector silence, identity conflicts, vdev_id drift.
 - Command palette: jump to disk/pool by alias or serial.
 

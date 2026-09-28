@@ -1,0 +1,68 @@
+{
+  "_source": "webapp/backend/pkg/models/measurements/smart_test.go @ 4e9227146190ed81886e65d34e9584cccbc4ce96",
+  "_note": "device Status is scrutiny's pkg.DeviceStatus bitmask (Passed=0, FailedSmart=1, FailedScrutiny=2); attribute status is pkg.AttributeStatus (Passed=0, FailedSmart=1, WarningScrutiny=2, FailedScrutiny=4). null means no assertion touches this fixture in smart_test.go.",
+  "smart-ata.json": {
+    "test": "TestFromCollectorSmartInfo",
+    "device_status": 0,
+    "attribute_count": 18,
+    "attributes": {
+      "194": { "raw_value": 163210330144, "transformed_value": 32 },
+      "3": { "status": 2 }
+    }
+  },
+  "smart-fail.json": {
+    "test": "TestFromCollectorSmartInfo_Fail_Smart",
+    "device_status": 1,
+    "attribute_count": 0
+  },
+  "smart-fail2.json": {
+    "test": "TestFromCollectorSmartInfo_Fail_ScrutinySmart",
+    "device_status": 3,
+    "attribute_count": 17
+  },
+  "smart-ata-failed-scrutiny.json": {
+    "test": "TestFromCollectorSmartInfo_Fail_ScrutinyNonCriticalFailed",
+    "device_status": 2,
+    "attribute_count": 14,
+    "attributes": {
+      "199": { "status": 4 }
+    }
+  },
+  "smart-nvme-failed.json": {
+    "test": "TestFromCollectorSmartInfo_NVMe_Fail_Scrutiny",
+    "device_status": 2,
+    "attribute_count": 16,
+    "attributes": {
+      "media_errors": { "status": 4 }
+    }
+  },
+  "smart-nvme.json": {
+    "test": "TestFromCollectorSmartInfo_Nvme",
+    "device_status": 0,
+    "attribute_count": 16,
+    "attributes": {
+      "host_reads": { "value": 111303174 },
+      "host_writes": { "value": 83170961 }
+    }
+  },
+  "smart-scsi.json": {
+    "test": "TestFromCollectorSmartInfo_Scsi",
+    "device_status": 0,
+    "attribute_count": 13,
+    "attributes": {
+      "scsi_grown_defect_list": { "value": 56 },
+      "read_errors_corrected_by_eccfast": { "value": 300357663 }
+    }
+  },
+  "smart-ata2.json": null,
+  "smart-ata-date.json": null,
+  "smart-ata-date2.json": null,
+  "smart-ata-full.json": null,
+  "smart-megaraid0.json": null,
+  "smart-megaraid1.json": null,
+  "smart-nvme2.json": null,
+  "smart-pass.json": null,
+  "smart-raid.json": null,
+  "smart-sat.json": null,
+  "smart-scsi2.json": null
+}

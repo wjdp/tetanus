@@ -4,13 +4,14 @@ type: reference
 
 # Product goals
 
-diskbot is a self-hosted, single-host disk and ZFS monitor for a home NAS. It replaces
-scrutiny's SMART dashboard and the hand-maintained Obsidian disk inventory with one
-system that knows every disk the NAS has ever had: where it is, what it's doing, how
-healthy it is, and what happened to it.
+diskbot is a self-hosted disk and ZFS monitor for home NAS hosts: one server, a
+collector per host. It replaces scrutiny's SMART dashboard and the hand-maintained
+Obsidian disk inventory with one system that knows every disk it has ever seen: which
+host it is in, what it's doing, how healthy it is, and what happened to it.
 
-Single user, no auth, one unprivileged Docker container plus a small host-side
-collector (bash + systemd timer + ZED hook). Intended for publication.
+Single user, no UI auth, one unprivileged Docker container plus a small collector on
+each host (bash + systemd timer + ZED hook) that POSTs with a shared enrol token.
+Intended for publication. MIT licence.
 Built on the grate stack: Nuxt 4, Nitro, Drizzle on SQLite, Nuxt UI.
 
 ## Who it's for
@@ -30,8 +31,11 @@ Kept from scrutiny:
 
 New:
 
+- **Hosts.** Several hosts report to one server. Host list with per-host collector
+  health; topology grouped by host.
 - **Aliases.** The author's `K1`/`L3`/`Z5` scheme is the disk's name everywhere. Kernel
-  names (`/dev/sdX`) are shown but never used as identity.
+  names (`/dev/sdX`) are shown but never used as identity. Aliases are unique across
+  hosts.
 - **Lifecycle.** Each disk has a state: in-use, spare, removed, dead, sold. Inferred from
   ZFS membership and device presence, overridable by hand. Removed disks keep their
   history.
@@ -47,8 +51,8 @@ New:
 - **ZFS view.** Pools → vdevs → disks with health, error counters, scrub/resilver state,
   capacity and fragmentation. Datasets and snapshots read-only. Snapshots browsable.
 - **Alerts.** Pushover and webhook on new unaccepted fault, disk vanished/reappeared,
-  pool not ONLINE, scrub with errors, and a recovery notice when a fault clears. Periodic
-  ping to a healthchecks.io URL so silence is itself an alert.
+  pool not ONLINE, scrub with errors, and a recovery notice when a fault clears. Optional
+  per-host ping to a healthchecks.io URL so silence is itself an alert.
 - **vdev_id.conf.** Read for alias matching; can render a proposed file from the
   inventory. Never writes it.
 - **Import.** One-off importers for scrutiny (device list + attribute history via its
@@ -56,7 +60,6 @@ New:
 
 ## What it must not do
 
-- Multi-host. One NAS per instance.
 - Write to the host in v1. No self-tests, scrubs, `zpool clear`. Actions are a later,
   feature-flagged phase.
 - Depend on InfluxDB or any second service.
@@ -87,6 +90,14 @@ New:
 | Fixtures | Serials and WWNs scrubbed; project will be published |
 | Name | "diskbot" is provisional; keep it in one place |
 | Inventory fields | Purchase price and supplier added; fields are registry-driven so new ones are one line |
+| Multi-host | From day one: a collector per host, one server. Container only ingests and processes, never runs host commands |
+| Host enrolment | One server-wide enrol token, generated on first boot, shown on first-run and settings pages. Unknown host name auto-created on first POST; display name editable afterwards |
+| Ingest auth | Every POST sends `Authorization: Bearer <token>` and `X-Diskbot-Host: <hostname -s>`. Wrong or missing token → 401. Required from day one |
+| Alias scope | Unique across all hosts; the cohort scheme is global and disks move between hosts |
+| Local producer | Dropped from v1. Host collector is the only producer; image has no smartmontools, container no `/dev` or capabilities |
+| Disk↔host | `Disk.lastSeenHostId` only; seen on a different host → diary "moved" event |
+| Healthchecks | Optional URL per host; ping succeeds only if that host's sources are fresh |
+| Licence | MIT |
 
 ## Related
 
