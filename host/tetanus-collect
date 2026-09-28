@@ -1,0 +1,385 @@
+#!/usr/bin/env bash
+# tetanus-collect: run read-only ZFS, SMART and udev commands and POST their raw stdout
+# to a tetanus server, which does all parsing. See host/README.md.
+#
+# Usage: tetanus-collect [--only <source|group>] [--dry-run]
+#
+# Non-zero exits are data (smartctl's exit status is a bitmask) and one failing command
+# must not stop the rest, so there is no `set -e`.
+
+set -uo pipefail
+
+readonly version=0.1.0
+readonly default_config=/etc/tetanus/collect.env
+readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
+readonly sources=(
+  versions
+  zpool-status
+  zpool-list
+  zfs-list
+  zfs-snapshots
+  zpool-history
+  zpool-events
+  vdev-id-conf
+  lsblk
+  udev
+  smartctl-scan
+  smartctl-xall
+)
+readonly zfs_group=(versions zpool-status zpool-list zfs-list zpool-history zpool-events vdev-id-conf)
+readonly smart_group=(lsblk udev smartctl-scan smartctl-xall)
+readonly snapshots_group=(zfs-snapshots)
+
+unset ZPOOL_VDEV_NAME_GUID ZPOOL_VDEV_NAME_FOLLOW_LINKS ZPOOL_VDEV_NAME_PATH
+export LC_ALL=C
+
+selected=("${sources[@]}")
+dry_run=0
+lsblk_status=0
+smartctl_scan_status=0
+posted=0
+failed=0
+
+log() {
+  printf 'tetanus-collect: %s\n' "$*" >&2
+}
+
+usage() {
+  cat <<USAGE
+Usage: tetanus-collect [--only <source|group>] [--dry-run]
+
+  --only <name>  run one group or source; default is every source
+                 groups: zfs, smart, snapshots (one systemd timer each)
+                 sources: ${sources[*]}
+  --dry-run      print what would be posted to stdout; no network
+  --version      print the version
+
+Config: \${TETANUS_CONFIG:-$default_config} with TETANUS_URL, TETANUS_TOKEN and
+optionally TETANUS_HOST (default: hostname -s). Variables already set in the
+environment win over the file.
+USAGE
+}
+
+parse_args() {
+  while (($#)); do
+    case $1 in
+      --only)
+        [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+        select_sources "$2"
+        shift 2
+        ;;
+      --dry-run)
+        dry_run=1
+        shift
+        ;;
+      --version)
+        echo "tetanus-collect $version"
+        exit 0
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      *)
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+}
+
+select_sources() {
+  local source
+  case $1 in
+    zfs) selected=("${zfs_group[@]}") ;;
+    smart) selected=("${smart_group[@]}") ;;
+    snapshots) selected=("${snapshots_group[@]}") ;;
+    *)
+      for source in "${sources[@]}"; do
+        if [[ $source == "$1" ]]; then
+          selected=("$source")
+          return 0
+        fi
+      done
+      log "unknown source or group '$1'; expected zfs, smart, snapshots or one of: ${sources[*]}"
+      exit 2
+      ;;
+  esac
+}
+
+# Reads KEY=value lines as systemd's EnvironmentFile does, without executing the file.
+load_config() {
+  local file=${TETANUS_CONFIG:-$default_config} line key value
+  if [[ -r $file ]]; then
+    while IFS= read -r line || [[ -n $line ]]; do
+      line=${line%$'\r'}
+      [[ $line =~ ^[[:space:]]*(export[[:space:]]+)?(TETANUS_(URL|TOKEN|HOST))=(.*)$ ]] || continue
+      key=${BASH_REMATCH[2]}
+      value=${BASH_REMATCH[4]}
+      if [[ $value =~ ^\"(.*)\"$ || $value =~ ^\'(.*)\'$ ]]; then
+        value=${BASH_REMATCH[1]}
+      fi
+      [[ -n ${!key:-} ]] || printf -v "$key" '%s' "$value"
+    done <"$file"
+  fi
+
+  local missing=()
+  [[ -n ${TETANUS_URL:-} ]] || missing+=(TETANUS_URL)
+  [[ -n ${TETANUS_TOKEN:-} ]] || missing+=(TETANUS_TOKEN)
+  if ((${#missing[@]})); then
+    log "config error: ${missing[*]} not set (config file: $file)"
+    exit 1
+  fi
+
+  ingest_url=${TETANUS_URL%/}/api/ingest
+  host=${TETANUS_HOST:-$(hostname -s 2>/dev/null)}
+  if [[ -z $host ]]; then
+    log "config error: TETANUS_HOST not set and hostname -s failed"
+    exit 1
+  fi
+}
+
+urlencode() {
+  local string=$1 encoded='' char i
+  for ((i = 0; i < ${#string}; i++)); do
+    char=${string:i:1}
+    case $char in
+      [A-Za-z0-9._~/:,-]) encoded+=$char ;;
+      *) encoded+=$(printf '%%%02X' "'$char") ;;
+    esac
+  done
+  printf '%s' "$encoded"
+}
+
+# post <source> [query] <body: POSTs stdin as text/plain; logs the HTTP status, never fails.
+post() {
+  local source=$1 query=${2:-}
+  local url=$ingest_url/$source${query:+?$query}
+  local label=$source${query:+?$query}
+
+  if ((dry_run)); then
+    printf '### POST %s\n' "$url"
+    cat
+    printf '\n'
+    posted=$((posted + 1))
+    log "$label: dry run"
+    return 0
+  fi
+
+  local status curl_exit
+  status=$(curl -q --silent --show-error \
+    --max-time 60 --retry 2 \
+    --user-agent "tetanus-collect/$version" \
+    --header @<(printf 'Authorization: Bearer %s\nTetanus-Host: %s\n' "$TETANUS_TOKEN" "$host") \
+    --header 'Content-Type: text/plain' \
+    --data-binary @- \
+    --output /dev/null --write-out '%{http_code}' \
+    "$url")
+  curl_exit=$?
+
+  if [[ $status == 2?? ]]; then
+    posted=$((posted + 1))
+    log "$label: HTTP $status"
+  else
+    failed=$((failed + 1))
+    log "$label: HTTP ${status:-000} (curl exit $curl_exit)"
+  fi
+}
+
+# submit <source> <query> <command exit status> <body file>
+submit() {
+  local source=$1 query=$2 status=$3 body=$4
+  if [[ ! -s $body && $status -ne 0 ]]; then
+    failed=$((failed + 1))
+    log "$source${query:+?$query}: skipped, command exited $status with no output"
+    return 0
+  fi
+  post "$source" "$query" <"$body"
+}
+
+# collect <source> <query> <command...>
+collect() {
+  local source=$1 query=$2
+  shift 2
+  local body=$workdir/$source.out
+  "$@" >"$body" </dev/null
+  submit "$source" "$query" "$?" "$body"
+}
+
+first_line() {
+  "$@" 2>/dev/null </dev/null | head -n 1
+}
+
+os_name() {
+  local name
+  name=$(lsb_release -ds 2>/dev/null)
+  if [[ -z $name && -r /etc/os-release ]]; then
+    name=$(sed -n 's/^PRETTY_NAME=//p' /etc/os-release)
+  fi
+  name=${name#\"}
+  printf '%s' "${name%\"}"
+}
+
+collect_versions() {
+  local body=$workdir/versions.out key value
+  : >"$body"
+  while IFS='=' read -r key value; do
+    [[ -n $value ]] && printf '%s=%s\n' "$key" "$value" >>"$body"
+  done <<VERSIONS
+zfs=$(first_line zfs version)
+zpool=$(first_line zpool version)
+kernel=$(uname -r 2>/dev/null)
+smartctl=$(first_line smartctl --version)
+os=$(os_name)
+VERSIONS
+  submit versions "" 0 "$body"
+}
+
+collect_zpool_status() {
+  collect zpool-status "" zpool status -j --json-flat-vdevs --json-int -Ppvs
+}
+
+collect_zpool_list() {
+  collect zpool-list "" zpool list -j --json-int -pv
+}
+
+collect_zfs_list() {
+  collect zfs-list "" zfs list -j --json-int -p -t filesystem,volume -o "$zfs_list_columns"
+}
+
+collect_zfs_snapshots() {
+  collect zfs-snapshots "" zfs list -j --json-int -p -t snapshot \
+    -o name,used,referenced,written,creation -s creation
+}
+
+collect_zpool_history() {
+  local body=$workdir/zpool-history.out
+  zpool history -il </dev/null | tail -n 500 >"$body"
+  submit zpool-history "" "${PIPESTATUS[0]}" "$body"
+}
+
+collect_zpool_events() {
+  collect zpool-events "" zpool events -vH
+}
+
+collect_vdev_id_conf() {
+  collect vdev-id-conf "" cat /etc/zfs/vdev_id.conf
+}
+
+ensure_lsblk() {
+  [[ -e $workdir/lsblk.out ]] && return 0
+  lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE \
+    >"$workdir/lsblk.out" </dev/null
+  lsblk_status=$?
+}
+
+collect_lsblk() {
+  ensure_lsblk
+  submit lsblk "" "$lsblk_status" "$workdir/lsblk.out"
+}
+
+# Prints MAJ:MIN of every whole disk. TYPE precedes MAJ:MIN in each lsblk object because
+# that is the column order requested above.
+disk_devnums() {
+  grep -oE '"(type|maj:min)": *"[^"]*"' "$1" |
+    awk -F'"' '$2 == "type" { type = $4 } $2 == "maj:min" && type == "disk" { print $4 }'
+}
+
+collect_udev() {
+  local devnum
+  ensure_lsblk
+  while IFS= read -r devnum <&3; do
+    collect udev "device=b$devnum" cat "/run/udev/data/b$devnum"
+  done 3< <(disk_devnums "$workdir/lsblk.out")
+}
+
+ensure_smartctl_scan() {
+  [[ -e $workdir/smartctl-scan.out ]] && return 0
+  smartctl --scan --json >"$workdir/smartctl-scan.out" </dev/null
+  smartctl_scan_status=$?
+}
+
+collect_smartctl_scan() {
+  ensure_smartctl_scan
+  submit smartctl-scan "" "$smartctl_scan_status" "$workdir/smartctl-scan.out"
+}
+
+# Prints "<name>\t<type>" for each entry of the scan's "devices" array.
+scanned_devices() {
+  tr '\n' ' ' <"$1" |
+    sed 's/.*"devices"[[:space:]]*://' |
+    grep -oE '"(name|type)": *"[^"]*"' |
+    awk -F'"' '
+      $2 == "name" { if (name != "") print name "\t" type; name = $4; type = "" }
+      $2 == "type" { type = $4 }
+      END { if (name != "") print name "\t" type }
+    '
+}
+
+# smartctl mis-handles SATA disks behind SAS HBAs when forced to -d scsi, so let it
+# auto-detect for the plain types and pass -d only for the ones that need addressing.
+needs_device_type() {
+  case $1 in
+    "" | ata | scsi | sat) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+collect_smartctl_xall() {
+  local device type args query status body=$workdir/smartctl-xall.out
+  ensure_smartctl_scan
+  while IFS=$'\t' read -r device type <&3; do
+    args=(--xall --json -n standby)
+    query=device=$(urlencode "$device")
+    if needs_device_type "$type"; then
+      args+=(-d "$type")
+      query+="&type=$(urlencode "$type")"
+    fi
+    smartctl "${args[@]}" "$device" >"$body" </dev/null
+    status=$?
+    query+="&exitStatus=$status"
+    if [[ -s $body ]]; then
+      post smartctl-xall "$query" <"$body"
+    else
+      failed=$((failed + 1))
+      log "smartctl-xall?$query: skipped, no output"
+    fi
+  done 3< <(scanned_devices "$workdir/smartctl-scan.out")
+}
+
+run_source() {
+  case $1 in
+    versions) collect_versions ;;
+    zpool-status) collect_zpool_status ;;
+    zpool-list) collect_zpool_list ;;
+    zfs-list) collect_zfs_list ;;
+    zfs-snapshots) collect_zfs_snapshots ;;
+    zpool-history) collect_zpool_history ;;
+    zpool-events) collect_zpool_events ;;
+    vdev-id-conf) collect_vdev_id_conf ;;
+    lsblk) collect_lsblk ;;
+    udev) collect_udev ;;
+    smartctl-scan) collect_smartctl_scan ;;
+    smartctl-xall) collect_smartctl_xall ;;
+  esac
+}
+
+main() {
+  parse_args "$@"
+  load_config
+
+  workdir=$(mktemp -d "${TMPDIR:-/tmp}/tetanus-collect.XXXXXX") || exit 1
+  trap 'rm -rf "$workdir"' EXIT
+
+  local source
+  for source in "${selected[@]}"; do
+    run_source "$source"
+  done
+
+  log "done: $posted sent, $failed failed"
+  exit 0
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  main "$@"
+fi
