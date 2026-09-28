@@ -1,5 +1,6 @@
 import { databasePath, db, sqlite } from "~~/server/database/client";
 import { describeMigrations, runMigrations } from "~~/server/database/migrate";
+import { ensureSettings } from "~~/server/services/settings";
 
 export default defineNitroPlugin(() => {
   if (import.meta.dev) return;
@@ -10,4 +11,5 @@ export default defineNitroPlugin(() => {
     console.error("Database migration failed", error);
     throw error;
   }
+  ensureSettings();
 });
