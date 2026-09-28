@@ -1,13 +1,14 @@
 import {
   type IngestMeta,
+  type IngestSource,
   type IngestSummary,
   isIngestSource,
 } from "#shared/ingest";
 import { db } from "~~/server/database/client";
 import { collectorRun, NO_DEVICE, payload } from "~~/server/database/schema";
+import { HANDLERS, type IngestContext } from "~~/server/ingest/handlers";
 import { PARSERS } from "~~/server/ingest/registry";
-import type { ToolVersions } from "~~/server/ingest/versions";
-import { setToolVersions, upsertHostByName } from "~~/server/services/hosts";
+import { upsertHostByName } from "~~/server/services/hosts";
 import { invalidRequest } from "~~/server/utils/serviceError";
 
 export interface IngestRequest {
@@ -23,8 +24,26 @@ export type IngestOutcome =
   | { ok: true; source: string; host: string; summary: IngestSummary }
   | { ok: false; error: string };
 
-function describeParseFailure(error: unknown) {
+function describeError(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function runHandler(
+  source: IngestSource,
+  context: IngestContext<unknown>,
+): string | null {
+  const handler = HANDLERS[source];
+  if (!handler) return null;
+  try {
+    db.transaction(() => handler(context));
+    return null;
+  } catch (error) {
+    console.error(
+      `Ingest handler for ${source} from ${context.hostName} failed`,
+      error,
+    );
+    return describeError(error);
+  }
 }
 
 export function recordIngest({
@@ -55,7 +74,7 @@ export function recordIngest({
   try {
     parsed = PARSERS[source](body, meta);
   } catch (error) {
-    const message = describeParseFailure(error);
+    const message = describeError(error);
     db.insert(collectorRun)
       .values({ ...run, ok: false, error: message })
       .run();
@@ -76,12 +95,17 @@ export function recordIngest({
         set: { receivedAt, body },
       })
       .run();
+    const handlerError = runHandler(source, {
+      hostId: hostRow.id,
+      hostName: hostRow.name,
+      receivedAt,
+      meta,
+      data: parsed.data,
+      body,
+    });
     db.insert(collectorRun)
-      .values({ ...run, ok: true })
+      .values({ ...run, ok: true, error: handlerError })
       .run();
-    if (source === "versions") {
-      setToolVersions(hostRow.id, parsed.data as ToolVersions);
-    }
   });
 
   return { ok: true, source, host: hostRow.name, summary: parsed.summary };
