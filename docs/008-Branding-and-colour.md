@@ -20,13 +20,16 @@ disk with pending sectors is not a joke.
 
 ## Mark
 
-A hard-disk platter, flat, single colour, no gradients:
+A hard-disk platter, flat, single colour, no gradients. Chosen 2026-09-28 from six
+options; the actuator-arm variants were dropped because the head collided with the hub at
+small sizes.
 
-- Outer circle (platter), inner circle (hub), one actuator arm from the lower-right
-  corner ending in a small head over the platter. Stroke-based, 2 px at 24 px, round
-  caps, so it sits with lucide icons.
-- Rust accent: the head is a filled dot in primary; everything else is `currentColor`.
-  At favicon sizes drop the arm and keep platter + hub + dot.
+- Outer circle (platter) and inner circle (hub), stroke-based, 2 px at 24 px, round
+  caps, so it sits with lucide icons. Everything in `currentColor`.
+- Rust: a quarter-arc on the platter at mid-radius, from 12 o'clock to 3 o'clock, a worn
+  track. Stroke 2.5 at 24 px, 3 at 16 px. It is the only colour.
+- Geometry, viewBox `0 0 24 24`: platter `circle cx=12 cy=12 r=9`; hub
+  `circle cx=12 cy=12 r=2.5`; track `path d="M12 6a6 6 0 0 1 6 6"` in `primary`.
 - Wordmark: `tetanus` in Inter semibold, tracking tight, mark to the left at cap height.
 - Delivered as `app/components/TetanusMark.vue` (inline SVG, `size` prop) and
   `public/favicon.svg` (+ 32 px PNG for old browsers, apple-touch 180 px). Replaces the
