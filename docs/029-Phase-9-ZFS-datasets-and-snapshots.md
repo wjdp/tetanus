@@ -251,3 +251,44 @@ Decisions and deviations:
 - The diary service does not check subject existence per type, so `dataset` needed no
   server change; `POST /api/diary` and `GET /api/diary?subjectType=dataset` work as is.
 - Existing pool tests use `toMatchObject`, so none needed updating for the new fields.
+
+### UI
+
+Step 4 done. Pool page "Datasets" tab (`app/components/dataset/DatasetTree.vue`), dataset
+page `app/pages/datasets/[id].vue`, `dataset` diary subject in the entry form, timeline
+and diary page, and a "Datasets" command palette group.
+
+Decisions and deviations:
+
+- The pool page fetches `/api/pools/:id/datasets` client-side the first time the tab is
+  selected (`useLazyFetch`, `immediate: false`); the tab badge is `datasetCount`.
+- Collapse state lives in the tree component and is lost on reload; everything starts
+  expanded. Destroyed datasets are drawn at 50 % opacity with a `destroyed` badge and
+  collapse only under a destroyed parent: collapsing a present parent leaves them shown.
+- Dataset label is `host · pool/dataset` using `displayName || name`; the pool diary
+  subject still uses `host.name`.
+- One debounced (250 ms) search composable, `app/components/dataset/useDatasetSearch.ts`,
+  feeds both the palette and the diary subject picker. The palette group sets
+  `ignoreFilter` so Fuse does not re-filter server results.
+- The diary page labels dataset subjects by fetching `GET /api/datasets/:id` per distinct
+  dataset id on the page. That payload carries every snapshot; a lightweight
+  `GET /api/datasets?ids=` would be cheaper if dataset diary entries become common.
+- The pool page has no inline add-entry form, so neither has the dataset page. A
+  `/diary?subjectType=dataset&subjectId=` prefill selects the id but the picker shows no
+  label until the user searches, since the search route cannot look up by id.
+- Used chart unit scales to the largest reading (`byteUnitFor` in `app/utils/format.ts`)
+  rather than fixed TB; the chart is replaced by a note below two readings.
+- Dataset page adds a small "Children" link list in the properties panel (from
+  `children`), not in the contract.
+
+Check in a browser after `bin/replay-fixtures.sh`:
+
+- Datasets tab on mars `tank`: indent, chevrons, long names truncating, volume badge,
+  newest snapshot ages, destroyed rows at the bottom.
+- A dataset page with ~100+ snapshots: "Show more" button, table width on narrow screens,
+  properties panel next to the chart at `lg`.
+- A dataset with a single reading (fresh replay): the "not enough readings" note.
+- ⌘K, type part of a dataset name: the Datasets group appears after the debounce and
+  the spinner clears; the group is empty with no term.
+- Diary "New entry" with subject type `dataset`: hint before typing, results while
+  typing, the chosen label stays after the search term resets.

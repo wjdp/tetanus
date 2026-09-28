@@ -14,6 +14,7 @@ const datasets = [
   dataset(3, "tank/media/photos", 2),
   dataset(4, "tank/vm", 1),
   dataset(5, "tank/old", 1, false),
+  dataset(6, "tank/old/child", 5, false),
 ];
 
 const names = (collapsed: number[]) =>
@@ -27,20 +28,37 @@ describe("visibleTreeRows", () => {
       [2, true],
       [3, false],
       [4, false],
-      [5, false],
+      [5, true],
+      [6, false],
     ]);
   });
 
   it("hides every descendant of a collapsed dataset", () => {
-    expect(names([2])).toEqual(["tank", "tank/media", "tank/vm", "tank/old"]);
-    expect(names([1])).toEqual(["tank"]);
+    expect(names([2])).toEqual([
+      "tank",
+      "tank/media",
+      "tank/vm",
+      "tank/old",
+      "tank/old/child",
+    ]);
+    expect(names([5])).toEqual([
+      "tank",
+      "tank/media",
+      "tank/media/photos",
+      "tank/vm",
+      "tank/old",
+    ]);
+  });
+
+  it("keeps destroyed datasets visible when a present parent collapses", () => {
+    expect(names([1])).toEqual(["tank", "tank/old", "tank/old/child"]);
   });
 
   it("puts destroyed datasets after present ones", () => {
-    const shuffled = [datasets[4], ...datasets.slice(0, 4)];
+    const shuffled = [datasets[4], datasets[5], ...datasets.slice(0, 4)];
     expect(
       visibleTreeRows(shuffled, new Set()).map((row) => row.dataset.id),
-    ).toEqual([1, 2, 3, 4, 5]);
+    ).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });
 

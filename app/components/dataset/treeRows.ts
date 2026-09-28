@@ -13,7 +13,7 @@ export interface TreeRow<Dataset extends TreeDataset> {
 
 export const lastSegment = (name: string) => name.split("/").at(-1) ?? name;
 
-export function visibleTreeRows<Dataset extends TreeDataset>(
+function visibleGroupRows<Dataset extends TreeDataset>(
   datasets: Dataset[],
   collapsedIds: ReadonlySet<number>,
 ): TreeRow<Dataset>[] {
@@ -30,16 +30,27 @@ export function visibleTreeRows<Dataset extends TreeDataset>(
     return false;
   };
 
-  const ordered = [
-    ...datasets.filter((dataset) => dataset.present),
-    ...datasets.filter((dataset) => !dataset.present),
-  ];
-
-  return ordered
+  return datasets
     .filter((dataset) => !hiddenByAncestor(dataset))
     .map((dataset) => ({
       dataset,
       hasChildren: parentIds.has(dataset.id),
       collapsed: collapsedIds.has(dataset.id),
     }));
+}
+
+export function visibleTreeRows<Dataset extends TreeDataset>(
+  datasets: Dataset[],
+  collapsedIds: ReadonlySet<number>,
+): TreeRow<Dataset>[] {
+  return [
+    ...visibleGroupRows(
+      datasets.filter((dataset) => dataset.present),
+      collapsedIds,
+    ),
+    ...visibleGroupRows(
+      datasets.filter((dataset) => !dataset.present),
+      collapsedIds,
+    ),
+  ];
 }
