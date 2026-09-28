@@ -12,6 +12,7 @@
     "lint:ci": "biome ci",
     "typecheck": "nuxt typecheck",
     "test": "vitest",
+    "test:host": "bash host/test/run.sh",
     "db:migrate": "tsx server/database/migrate-cli.ts",
     "db:studio": "drizzle-kit studio"
   },
