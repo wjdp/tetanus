@@ -1,11 +1,55 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
+import {
+  linkedDiskIds,
+  railGroups,
+} from "~/components/topology/groupDisks";
 
 useSeoMeta({ title: getPageTitle("Topology") });
 
-const { data: hosts } = await useFetch("/api/hosts");
-const { data: settings } = await useFetch("/api/settings");
+const [
+  { data: hosts, refresh: refreshHosts },
+  { data: pools, refresh: refreshPools },
+  { data: disks, refresh: refreshDisks },
+  { data: settings },
+] = await Promise.all([
+  useFetch("/api/hosts"),
+  useFetch("/api/pools"),
+  useFetch("/api/disks"),
+  useFetch("/api/settings"),
+]);
 const requestUrl = useRequestURL();
+
+const now = ref(Date.now());
+let pollHandle: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+  pollHandle = setInterval(() => {
+    now.value = Date.now();
+    refreshHosts();
+    refreshPools();
+    refreshDisks();
+  }, 60_000);
+});
+
+onUnmounted(() => {
+  if (pollHandle) clearInterval(pollHandle);
+});
+
+const poolsByHost = computed(() => {
+  const byHost = new Map<number, NonNullable<typeof pools.value>>();
+  for (const pool of pools.value ?? []) {
+    byHost.set(pool.host.id, [...(byHost.get(pool.host.id) ?? []), pool]);
+  }
+  return byHost;
+});
+
+const rail = computed(() =>
+  railGroups(
+    disks.value ?? [],
+    linkedDiskIds((pools.value ?? []).map((pool) => pool.vdevs)),
+  ),
+);
 </script>
 
 <template>
@@ -40,6 +84,22 @@ const requestUrl = useRequestURL();
           label="Go to Hosts settings"
         />
       </div>
+    </div>
+
+    <div
+      v-else-if="hosts"
+      class="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]"
+    >
+      <div class="flex min-w-0 flex-col gap-10">
+        <TopologyHostSection
+          v-for="host in hosts"
+          :key="host.id"
+          :host="host"
+          :pools="poolsByHost.get(host.id) ?? []"
+          :now="now"
+        />
+      </div>
+      <TopologyDiskRail :groups="rail" />
     </div>
   </AppPanel>
 </template>

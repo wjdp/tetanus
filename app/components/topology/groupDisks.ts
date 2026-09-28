@@ -1,0 +1,197 @@
+import type { EffectiveDiskState } from "#shared/disk";
+import type { DeviceStatus } from "#shared/smart/status";
+import {
+  deviceStatusColour,
+  diskStateColour,
+  type StatusColour,
+  zfsStateColour,
+} from "~/utils/statusColour";
+import type { PoolScan } from "../pool/scan";
+
+export interface TopologyVdevDisk {
+  id: number;
+  alias: string | null;
+  state: string | null;
+  latestStatus: DeviceStatus;
+}
+
+export interface TopologyVdev {
+  id: number;
+  guid: string;
+  name: string;
+  type: string;
+  state: string;
+  readErrors: number;
+  writeErrors: number;
+  checksumErrors: number;
+  slowIos: number | null;
+  path: string | null;
+  disk: TopologyVdevDisk | null;
+  children: TopologyVdev[];
+}
+
+export interface TopologyDisk {
+  id: number;
+  alias: string | null;
+  model: string | null;
+  serial: string | null;
+  state: EffectiveDiskState;
+  latestStatus: DeviceStatus;
+}
+
+export interface TopologyPool {
+  id: number;
+  name: string;
+  state: string;
+  sizeBytes: number | null;
+  allocBytes: number | null;
+  cap: number | null;
+  frag: number | null;
+  scan: PoolScan | null;
+  vdevs: TopologyVdev | null;
+}
+
+export interface VdevGroup {
+  key: string;
+  label: string;
+  state: string | null;
+  leaves: TopologyVdev[];
+}
+
+export interface RailGroup<Disk extends TopologyDisk = TopologyDisk> {
+  state: EffectiveDiskState;
+  label: string;
+  disks: Disk[];
+}
+
+const CLASS_TYPES = new Set(["log", "cache", "special", "dedup", "spare"]);
+
+const SINGLE_DEVICE_LABEL: Record<string, string> = {
+  disk: "stripe",
+  file: "stripe",
+  log: "log",
+  cache: "cache",
+  spare: "spares",
+  special: "special",
+  dedup: "dedup",
+};
+
+export function leafVdevs(node: TopologyVdev): TopologyVdev[] {
+  if (node.children.length === 0) return [node];
+  return node.children.flatMap(leafVdevs);
+}
+
+function groupLabel(node: TopologyVdev) {
+  return CLASS_TYPES.has(node.type) ? `${node.type} · ${node.name}` : node.name;
+}
+
+export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
+  if (!root) return [];
+  const groups: VdevGroup[] = [];
+  const singles = new Map<string, VdevGroup>();
+  for (const child of root.children) {
+    if (child.children.length > 0) {
+      groups.push({
+        key: child.guid,
+        label: groupLabel(child),
+        state: child.state,
+        leaves: leafVdevs(child),
+      });
+      continue;
+    }
+    const label = SINGLE_DEVICE_LABEL[child.type] ?? child.type;
+    const existing = singles.get(label);
+    if (existing) {
+      existing.leaves.push(child);
+    } else {
+      const group = {
+        key: `single-${label}`,
+        label,
+        state: null,
+        leaves: [child],
+      };
+      singles.set(label, group);
+      groups.push(group);
+    }
+  }
+  return groups;
+}
+
+export function linkedDiskIds(roots: (TopologyVdev | null)[]): Set<number> {
+  const ids = new Set<number>();
+  for (const root of roots) {
+    if (!root) continue;
+    for (const leaf of leafVdevs(root)) {
+      if (leaf.disk) ids.add(leaf.disk.id);
+    }
+  }
+  return ids;
+}
+
+const RAIL_ORDER: { state: EffectiveDiskState; label: string }[] = [
+  { state: "spare", label: "Spare" },
+  { state: "missing", label: "Missing" },
+  { state: "removed", label: "Removed" },
+  { state: "unseen", label: "Unseen" },
+  { state: "in-use", label: "In use, not in a pool" },
+  { state: "dead", label: "Dead" },
+  { state: "retired", label: "Retired" },
+  { state: "sold", label: "Sold" },
+];
+
+export function railGroups<Disk extends TopologyDisk>(
+  disks: Disk[],
+  inPool: Set<number>,
+): RailGroup<Disk>[] {
+  const outside = disks.filter((disk) => !inPool.has(disk.id));
+  return RAIL_ORDER.map(({ state, label }) => ({
+    state,
+    label,
+    disks: outside.filter((disk) => disk.state === state),
+  })).filter((group) => group.disks.length > 0);
+}
+
+const COLOUR_SEVERITY: Record<StatusColour, number> = {
+  neutral: 0,
+  success: 1,
+  info: 2,
+  warning: 3,
+  error: 4,
+};
+
+export function worstColour(...colours: StatusColour[]): StatusColour {
+  return colours.reduce<StatusColour>(
+    (worst, colour) =>
+      COLOUR_SEVERITY[colour] > COLOUR_SEVERITY[worst] ? colour : worst,
+    "neutral",
+  );
+}
+
+export function tileColour(leaf: TopologyVdev): StatusColour {
+  const status = leaf.disk?.latestStatus ?? "unknown";
+  const worst = worstColour(
+    deviceStatusColour(status),
+    zfsStateColour(leaf.state),
+  );
+  if (worst === "neutral" && status === "passed") return "success";
+  return worst;
+}
+
+export function railColour(disk: TopologyDisk): StatusColour {
+  const worst = worstColour(
+    deviceStatusColour(disk.latestStatus),
+    diskStateColour(disk.state),
+  );
+  if (worst === "neutral" && disk.latestStatus === "passed") return "success";
+  return worst;
+}
+
+export function leafLabel(leaf: TopologyVdev): string {
+  if (leaf.disk?.alias) return leaf.disk.alias;
+  const basename = leaf.name.split("/").pop() ?? leaf.name;
+  return basename.replace(/-part\d+$/, "");
+}
+
+export function hasErrors(leaf: TopologyVdev): boolean {
+  return leaf.readErrors + leaf.writeErrors + leaf.checksumErrors > 0;
+}
