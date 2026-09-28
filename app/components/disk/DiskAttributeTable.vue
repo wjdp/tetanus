@@ -9,6 +9,11 @@ const props = defineProps<{
   showNormalised: boolean;
 }>();
 
+const emit = defineEmits<{
+  accept: [attribute: LatestAttribute];
+  clear: [attribute: LatestAttribute];
+}>();
+
 const selected = defineModel<string | null>("selected", { default: null });
 const expanded = ref<Record<string, boolean>>({});
 
@@ -17,8 +22,17 @@ const rows = computed(() => orderAttributes(props.attributes));
 const ATTRIBUTE_STATUS_COLOUR = {
   failed: "error",
   warning: "warning",
+  accepted: "neutral",
   passed: "neutral",
 } as const;
+
+const isAcceptable = (attribute: LatestAttribute) =>
+  attribute.displayStatus === "failed" || attribute.displayStatus === "warning";
+
+const acceptanceTooltip = (attribute: LatestAttribute) =>
+  attribute.acceptance
+    ? `accepted at ${attribute.acceptance.acceptedValue.toLocaleString("en-GB")} on ${formatDate(attribute.acceptance.acceptedAt)}`
+    : "accepted";
 
 const formatValue = (attribute: LatestAttribute) => {
   const unit = attribute.metadata?.transformValueUnit;
@@ -51,6 +65,7 @@ const columns = computed<TableColumn<LatestAttribute>[]>(() => [
   { id: "failureRate", header: "Failure rate", meta: { class: { td: "tabular" } } },
   { id: "trend", header: "Trend" },
   { id: "history", header: "History", meta: { class: { td: "text-muted" } } },
+  { id: "actions", header: "", meta: { class: { td: "text-right" } } },
 ]);
 
 const onSelect = (
@@ -76,11 +91,24 @@ const rowClass = (row: { original: LatestAttribute }) =>
     empty="No attributes in the latest reading."
   >
     <template #status-cell="{ row }">
+      <UTooltip
+        v-if="row.original.displayStatus === 'accepted'"
+        :text="acceptanceTooltip(row.original)"
+      >
+        <UBadge
+          color="neutral"
+          variant="outline"
+          size="sm"
+          label="accepted"
+          data-testid="accepted-badge"
+        />
+      </UTooltip>
       <UBadge
-        :color="ATTRIBUTE_STATUS_COLOUR[row.original.status]"
+        v-else
+        :color="ATTRIBUTE_STATUS_COLOUR[row.original.displayStatus]"
         variant="subtle"
         size="sm"
-        :label="row.original.status"
+        :label="row.original.displayStatus"
       />
     </template>
 
@@ -119,6 +147,25 @@ const rowClass = (row: { original: LatestAttribute }) =>
       <ChartsSparkline :values="sparklineValues(row.original.attrId)" />
     </template>
 
+    <template #actions-cell="{ row }">
+      <UButton
+        v-if="isAcceptable(row.original)"
+        color="neutral"
+        variant="soft"
+        size="xs"
+        label="Accept"
+        @click.stop="emit('accept', row.original)"
+      />
+      <UButton
+        v-else-if="row.original.displayStatus === 'accepted'"
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        label="Clear"
+        @click.stop="emit('clear', row.original)"
+      />
+    </template>
+
     <template #expanded="{ row }">
       <div class="flex max-w-3xl flex-col gap-2 text-sm whitespace-normal">
         <p v-if="row.original.reason" class="text-highlighted">
@@ -126,6 +173,9 @@ const rowClass = (row: { original: LatestAttribute }) =>
         </p>
         <p class="text-muted">
           {{ row.original.metadata?.description || "No description for this attribute." }}
+        </p>
+        <p v-if="row.original.acceptance?.note" class="text-muted">
+          Accepted: {{ row.original.acceptance.note }}
         </p>
         <p v-if="row.original.rawString" class="text-dimmed font-mono text-xs">
           raw {{ row.original.rawString }}

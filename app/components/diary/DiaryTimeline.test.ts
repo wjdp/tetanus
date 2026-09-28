@@ -65,6 +65,33 @@ describe("DiaryTimeline", () => {
     ]);
   });
 
+  it("offers edit and delete only on manual entries", async () => {
+    const timeline = await mountSuspended(DiaryTimeline, {
+      props: {
+        entries: [
+          entry({ id: 2, kind: "manual", eventType: null, title: "Reseated" }),
+          entry({ id: 1, at: "2026-09-28T09:00:00.000Z" }),
+        ],
+      },
+    });
+
+    const [manual, auto] = timeline.findAll('[data-testid="diary-entry"]');
+    expect(manual.find('button[aria-label="Edit entry"]').exists()).toBe(true);
+    expect(manual.find('button[aria-label="Delete entry"]').exists()).toBe(
+      true,
+    );
+    expect(auto.find('[data-testid="diary-entry-actions"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it("hides the subject when asked", async () => {
+    const timeline = await mountSuspended(DiaryTimeline, {
+      props: { entries: [entry({})], showSubject: false },
+    });
+    expect(timeline.find('a[href="/disks/4"]').exists()).toBe(false);
+  });
+
   it("shows the empty message", async () => {
     const timeline = await mountSuspended(DiaryTimeline, {
       props: { entries: [], empty: "Nothing here." },

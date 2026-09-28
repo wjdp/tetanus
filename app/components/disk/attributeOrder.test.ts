@@ -7,10 +7,10 @@ import {
 
 const attribute = (
   attrId: string,
-  status: "passed" | "warning" | "failed",
+  displayStatus: "passed" | "warning" | "failed" | "accepted",
 ) => ({
   attrId,
-  status,
+  displayStatus,
 });
 
 describe("orderAttributes", () => {
@@ -32,6 +32,22 @@ describe("orderAttributes", () => {
     ]);
   });
 
+  it("places accepted between warning and passed", () => {
+    const ordered = orderAttributes([
+      attribute("1", "passed"),
+      attribute("197", "accepted"),
+      attribute("5", "warning"),
+      attribute("198", "failed"),
+    ]);
+
+    expect(ordered.map((entry) => entry.attrId)).toEqual([
+      "198",
+      "5",
+      "197",
+      "1",
+    ]);
+  });
+
   it("does not mutate its input", () => {
     const input = [attribute("1", "passed"), attribute("5", "failed")];
     orderAttributes(input);
@@ -47,6 +63,15 @@ describe("defaultAttributeId", () => {
         "ata",
       ),
     ).toBe("5");
+  });
+
+  it("does not select an accepted attribute over temperature", () => {
+    expect(
+      defaultAttributeId(
+        [attribute("197", "accepted"), attribute("194", "passed")],
+        "ata",
+      ),
+    ).toBe("194");
   });
 
   it("falls back to temperature for the protocol", () => {
@@ -74,14 +99,15 @@ describe("defaultAttributeId", () => {
 });
 
 describe("countByStatus", () => {
-  it("counts failed and warning attributes", () => {
+  it("counts failed, warning and accepted attributes", () => {
     expect(
       countByStatus([
         attribute("1", "failed"),
         attribute("2", "warning"),
         attribute("3", "warning"),
         attribute("4", "passed"),
+        attribute("5", "accepted"),
       ]),
-    ).toEqual({ failed: 1, warning: 2 });
+    ).toEqual({ failed: 1, warning: 2, accepted: 1 });
   });
 });

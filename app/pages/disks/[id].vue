@@ -46,11 +46,15 @@ const onUpdated = (updated: DiskDetail) => {
           <DiskInventoryForm :disk="disk" @updated="onUpdated" />
         </section>
 
-        <DiskSmart :disk-id="disk.id" :protocol="disk.protocol" />
+        <DiskSmart
+          :disk-id="disk.id"
+          :protocol="disk.protocol"
+          @changed="refresh"
+        />
 
-        <DiskZfsMembership :disk-id="disk.id" />
+        <DiskZfsMembership :membership="disk.membership" />
 
-        <DiskDiary :disk-id="disk.id" :entries="disk.diary" @added="refresh" />
+        <DiskDiary :disk-id="disk.id" :entries="disk.diary" @changed="refresh" />
       </template>
     </div>
   </AppPanel>

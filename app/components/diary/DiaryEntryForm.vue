@@ -65,7 +65,7 @@ const save = async () => {
       <UInput v-model="title" class="w-full" maxlength="200" />
     </UFormField>
 
-    <UFormField label="Body" name="body" description="Blank lines separate paragraphs.">
+    <UFormField label="Body" name="body" description="Markdown.">
       <UTextarea v-model="body" class="w-full" :rows="8" />
     </UFormField>
 

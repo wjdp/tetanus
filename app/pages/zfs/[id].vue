@@ -4,7 +4,7 @@ import { getPageTitle } from "#shared/app";
 import { formatTimestamp } from "~/components/pool/timestamp";
 
 const route = useRoute();
-const { data: pool, error } = await useFetch(`/api/pools/${route.params.id}`);
+const { data: pool, error, refresh } = await useFetch(`/api/pools/${route.params.id}`);
 
 if (error.value) {
   throw createError({
@@ -174,32 +174,14 @@ const tabs = computed<TabsItem[]>(() => [
         </template>
 
         <template #diary>
-          <p v-if="pool.diary.length === 0" class="text-dimmed py-4 text-sm">
-            Nothing in the diary for this pool yet.
-          </p>
-          <ul v-else class="divide-default flex flex-col divide-y">
-            <li
-              v-for="entry in pool.diary"
-              :key="entry.id"
-              class="flex flex-col gap-1 py-2 text-sm"
-            >
-              <div class="flex flex-wrap items-baseline gap-x-4">
-                <span class="text-muted tabular">
-                  {{ formatTimestamp(entry.at) }}
-                </span>
-                <span class="text-highlighted">{{ entry.title }}</span>
-                <span
-                  v-if="entry.eventType"
-                  class="text-dimmed font-mono text-xs"
-                >
-                  {{ entry.eventType }}
-                </span>
-              </div>
-              <p v-if="entry.body" class="text-muted whitespace-pre-line">
-                {{ entry.body }}
-              </p>
-            </li>
-          </ul>
+          <div class="py-4">
+            <DiaryTimeline
+              :entries="pool.diary"
+              :show-subject="false"
+              empty="Nothing in the diary for this pool yet."
+              @changed="refresh"
+            />
+          </div>
         </template>
       </UTabs>
     </div>

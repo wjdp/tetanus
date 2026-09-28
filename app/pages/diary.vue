@@ -105,6 +105,7 @@ const onSaved = async () => {
       :entries="visibleEntries"
       :subject-label="subjectLabel"
       empty="Nothing in the diary matches these filters."
+      @changed="refresh"
     />
   </AppPanel>
 

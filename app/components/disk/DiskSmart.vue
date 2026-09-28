@@ -5,12 +5,14 @@ import {
   type SmartHistoryRange,
 } from "#shared/schemas/smart";
 import { countByStatus, defaultAttributeId } from "./attributeOrder";
-import type { SmartOverview } from "./types";
+import type { LatestAttribute, SmartOverview } from "./types";
 
 const props = defineProps<{
   diskId: number;
   protocol: DiskProtocol | null;
 }>();
+
+const emit = defineEmits<{ changed: [] }>();
 
 const range = ref<SmartHistoryRange>("30d");
 const rangeItems = SMART_HISTORY_RANGES.map((value) => ({
@@ -18,7 +20,11 @@ const rangeItems = SMART_HISTORY_RANGES.map((value) => ({
   value,
 }));
 
-const { data: smart, status } = await useFetch<SmartOverview>(
+const {
+  data: smart,
+  status,
+  refresh,
+} = await useFetch<SmartOverview>(
   () => `/api/disks/${props.diskId}/smart`,
   { query: { range } },
 );
@@ -26,6 +32,8 @@ const { data: smart, status } = await useFetch<SmartOverview>(
 const attributes = computed(() => smart.value?.attributes ?? []);
 const counts = computed(() => countByStatus(attributes.value));
 const deviceStatus = computed(() => smart.value?.reading?.deviceStatus ?? "unknown");
+
+const faultCount = computed(() => counts.value.failed + counts.value.warning);
 
 const reasonSummary = computed(() =>
   [
@@ -35,6 +43,45 @@ const reasonSummary = computed(() =>
     .filter(Boolean)
     .join(", "),
 );
+
+const toast = useToast();
+const accepting = ref<LatestAttribute | null>(null);
+const acceptOpen = ref(false);
+const clearing = ref<LatestAttribute | null>(null);
+const clearOpen = ref(false);
+
+const attributeLabel = (attribute: LatestAttribute | null) =>
+  attribute ? (attribute.metadata?.displayName ?? attribute.name) : "";
+
+const onAccept = (attribute: LatestAttribute) => {
+  accepting.value = attribute;
+  acceptOpen.value = true;
+};
+
+const onClear = (attribute: LatestAttribute) => {
+  clearing.value = attribute;
+  clearOpen.value = true;
+};
+
+const refreshAfterChange = async () => {
+  await refresh();
+  emit("changed");
+};
+
+const clearAcceptance = async () => {
+  const attribute = clearing.value;
+  if (!attribute) return;
+  try {
+    await $fetch(
+      `/api/disks/${props.diskId}/accept/${encodeURIComponent(attribute.attrId)}`,
+      { method: "DELETE" },
+    );
+    toast.add({ title: `Cleared ${attributeLabel(attribute)}`, color: "neutral" });
+  } catch {
+    toast.add({ title: "Could not clear the acceptance", color: "error" });
+  }
+  await refreshAfterChange();
+};
 
 const selectedAttribute = ref<string | null>(null);
 watch(
@@ -102,7 +149,10 @@ const attributeSeries = computed(() => {
           :label="deviceStatus"
         />
         <span v-if="reasonSummary" class="text-default">
-          {{ reasonSummary }} {{ counts.failed + counts.warning === 1 ? "attribute" : "attributes" }}
+          {{ reasonSummary }} {{ faultCount === 1 ? "attribute" : "attributes" }}
+        </span>
+        <span v-if="counts.accepted" class="text-muted">
+          · {{ counts.accepted }} accepted
         </span>
         <span class="text-dimmed">
           read {{ formatDate(smart.reading.takenAt) }} from
@@ -125,6 +175,8 @@ const attributeSeries = computed(() => {
         :attributes="attributes"
         :history="smart.history.attributes"
         :show-normalised="protocol === 'ata'"
+        @accept="onAccept"
+        @clear="onClear"
       />
 
       <div v-if="selectedMeta" class="flex flex-col gap-2">
@@ -138,6 +190,23 @@ const attributeSeries = computed(() => {
           :height="160"
         />
       </div>
+
+      <DiskSelfTests :self-tests="smart.selfTests" />
     </template>
+
+    <DiskAcceptFaultModal
+      v-model:open="acceptOpen"
+      :disk-id="diskId"
+      :attribute="accepting"
+      @accepted="refreshAfterChange"
+    />
+
+    <ConfirmModal
+      v-model:open="clearOpen"
+      :title="`Clear acceptance of ${attributeLabel(clearing)}?`"
+      description="The attribute counts towards the disk status again."
+      confirm-label="Clear"
+      :action="clearAcceptance"
+    />
   </section>
 </template>
