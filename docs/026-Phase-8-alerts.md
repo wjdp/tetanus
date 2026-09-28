@@ -79,3 +79,24 @@ recent notifications table (at, channel, rule, subject, ok/error).
 
 - `app/utils/hostFreshness.ts` re-exports via a relative path (`../../shared/hostFreshness`), not `#shared/hostFreshness`: unimport can't resolve the `#shared` alias when scanning `app/utils` for auto-imports, so the alias silently failed to register `allGroupFreshness` etc. as globals.
 - `pingHealthchecks` iterates `listHosts()` sequentially (not `Promise.all`) so one slow/erroring host can't race another's timeout handling; fine at expected host counts.
+
+### Alerts core
+
+Shapes for the UI:
+
+- `GET /api/settings` → `config.notifications`: `{ pushover: { token: "•••", user: "•••" } | null, webhook: { url, secret?: "•••" } | null }`; `secret` is absent when none is stored. `config.alertCursor` (number) is also returned; PATCH rejects it.
+- `PATCH /api/settings` `{ config: { notifications: { pushover?, webhook? } } }`: each channel is optional (omitted = unchanged), `null` disables it, an object replaces it. Send `"•••"` back for any secret to keep the stored value (400 if nothing is stored). An empty webhook `secret` means none. Webhook URL must be http(s). Response is masked.
+- `GET /api/alerts?limit=` (1–500, default 50), newest first: `{ id, at, channel: "pushover" | "webhook", rule, dedupeKey, subject, title, message, ok, error: string | null, diaryEntryId: number | null }`. `subject` is `mars · K2`; `message` is the full line `mars · K2: Current Pending Sector Count failed (16)`; `title` is the rule label.
+- `POST /api/alerts/test` `{ channel }` → `{ ok: true, error: null } | { ok: false, error }` (200 for send failures and for an unconfigured channel, 400 only for a bad body). Test sends are not recorded in `Notification`.
+- Labels: `ALERT_RULES[rule].label`, `ALERT_CHANNEL_LABELS` in `shared/alerts.ts`; `SECRET_MASK` in `shared/schemas/settings.ts`.
+
+Decisions:
+
+- Dedupe key appends the diary entry id: `${rule}:${subjectType}:${subjectId}:${value}:${entryId}`. The contract key without it would alert once ever per disk/pool state, so a pool degrading a second time, or a disk going missing again, would be silent. Emitters already record transitions only and the cursor stops rereads, so the key now guards retries and reruns. Drop the last segment to restore the contract behaviour.
+- Migration `0004_notification` also sets `alertCursor` to the current max diary id on existing installs, so the first pass does not replay the whole diary history as alerts.
+- The cursor advances before sending. Failed sends are retried at the start of later passes for 24 h (by `Notification.at`), re-deriving from the diary entry: a retry updates the same row (`ok`, `error`), and is dropped if the alert no longer derives (fault since accepted, channel removed). A crash mid-pass loses that pass's unsent alerts.
+- `attribute-failed` checks acceptances at pass time, not at event time, so accepting within the tick window also suppresses the alert.
+- Scheduled Nitro tasks (`server/tasks/alerts/tick.ts`, `server/tasks/healthchecks/ping.ts`, cron `*/5 * * * *`) only enqueue the queue task of the same name, so every pass is serialised through the queue. `enqueueUnlessPending` lives in `server/tasks/queueable/alertsTick.ts` (uses `getAllTasks`) and skips only when a *pending* task exists: an in-progress tick may already have read the cursor, so a new one is still queued.
+- `recordIngest` stays synchronous and fires `requestAlertsTick()` without awaiting; queue errors are logged. Unit tests that call `recordIngest` without stubbing `useStorage` log a swallowed error.
+- Pushover priority: 1 alert, 0 recovery and test; `timestamp` is the diary entry time. Webhook test payload has `rule: "test"`, `severity: "test"`, null subject fields.
+- Queue storage is never pruned: with a tick per ingest (when none pending) plus two scheduled tasks every 5 minutes, task records grow unbounded in Nitro storage. Worth pruning done tasks in `queue.ts`.
