@@ -17,18 +17,20 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@iconify-json/lucide": "^1.2.137",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",
+    "markdown-it": "^15.0.2",
     "uplot": "^1.6.32"
   },
   "packageManager": "pnpm@10.34.3",
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
-    "@iconify-json/lucide": "^1.2.127",
     "@nuxt/test-utils": "4.2.0",
     "@nuxt/ui": "^4.11.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
+    "@types/markdown-it": "^14.2.0",
     "@vue/test-utils": "^2.5.0",
     "drizzle-kit": "^0.31.11",
     "happy-dom": "^20.12.0",
