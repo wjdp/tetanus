@@ -1,0 +1,1 @@
+ALTER TABLE `SmartReading` ADD `source` text DEFAULT 'collector' NOT NULL;

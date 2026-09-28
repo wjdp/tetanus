@@ -43,6 +43,13 @@
       "when": 1790630063728,
       "tag": "0005_datasets_and_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790630868103,
+      "tag": "0006_smart_reading_source",
+      "breakpoints": true
     }
   ]
 }

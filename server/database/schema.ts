@@ -161,6 +161,10 @@ export const smartReading = sqliteTable(
     powerOnHours: integer(),
     powerCycles: integer(),
     deviceStatus: text().$type<DeviceStatus>().notNull(),
+    source: text()
+      .$type<"collector" | "scrutiny">()
+      .notNull()
+      .default("collector"),
   },
   (table) => [
     index("SmartReading_diskId_takenAt_idx").on(table.diskId, table.takenAt),

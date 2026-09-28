@@ -15,8 +15,11 @@ import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import {
   downsample,
+  evaluateMinimalReading,
+  evaluateNamedAttributes,
   getSmartHistory,
   getSmartOverview,
+  insertSmartReading,
   latestAttributes,
   MAX_HISTORY_POINTS,
   sctTemperaturePoints,
@@ -382,5 +385,126 @@ describe("trend", () => {
     expect(
       new Set(latestAttributes(diskId).map((attribute) => attribute.trend)),
     ).toEqual(new Set(["new"]));
+  });
+});
+
+describe("evaluateMinimalReading", () => {
+  it("evaluates ATA attributes as the collector path does", () => {
+    const parsed = parseSmartctl(
+      readFixture("mars/smartctl/xall-sdb-auto.json"),
+      {},
+    ).data;
+    const minimal = evaluateMinimalReading({
+      protocol: "ATA",
+      attributes: (parsed.ata?.attributes ?? []).map((attribute) => ({
+        id: String(attribute.id),
+        value: attribute.value,
+        worst: attribute.worst,
+        thresh: attribute.thresh,
+        rawValue: attribute.raw.value,
+        rawString: attribute.raw.string,
+        whenFailed: attribute.whenFailed,
+      })),
+      temperature: parsed.temperature,
+    });
+
+    const strip = ({ name: _name, ...attribute }: { name: string }) =>
+      attribute;
+    expect(minimal.attributes.map(strip)).toEqual(
+      evaluateNamedAttributes(parsed).map(strip),
+    );
+    expect(minimal.deviceStatus).toBe("failed");
+    expect(minimal.temp).toBe(42);
+  });
+
+  it("names ATA attributes from our metadata", () => {
+    const { attributes } = evaluateMinimalReading({
+      protocol: "ATA",
+      attributes: [
+        { id: "197", value: 100, worst: 100, thresh: 0, rawValue: 16 },
+      ],
+    });
+    expect(attributes[0]).toMatchObject({
+      attrId: "197",
+      name: "Current Pending Sector Count",
+      status: "failed",
+    });
+  });
+
+  it("evaluates NVMe attributes by name", () => {
+    const { attributes, deviceStatus } = evaluateMinimalReading({
+      protocol: "NVMe",
+      attributes: [
+        { id: "media_errors", value: 3, thresh: 0 },
+        { id: "available_spare", value: 5, thresh: 10 },
+        { id: "percentage_used", value: 2, thresh: 100 },
+      ],
+    });
+    expect(
+      Object.fromEntries(attributes.map((a) => [a.attrId, a.status])),
+    ).toEqual({
+      media_errors: "failed",
+      available_spare: "failed",
+      percentage_used: "passed",
+    });
+    expect(deviceStatus).toBe("failed");
+  });
+
+  it("evaluates SCSI counters by name", () => {
+    const { attributes } = evaluateMinimalReading({
+      protocol: "SCSI",
+      attributes: [
+        { id: "scsi_grown_defect_list", value: 0 },
+        { id: "read_total_uncorrected_errors", value: 2 },
+      ],
+    });
+    expect(
+      Object.fromEntries(attributes.map((a) => [a.attrId, a.status])),
+    ).toMatchObject({
+      scsi_grown_defect_list: "passed",
+      read_total_uncorrected_errors: "failed",
+    });
+  });
+
+  it("is unknown without attributes", () => {
+    expect(
+      evaluateMinimalReading({ protocol: "NVMe", attributes: [] }).deviceStatus,
+    ).toBe("unknown");
+  });
+});
+
+describe("imported history", () => {
+  it("marks imported attribute points and reports the newest import", () => {
+    ingestSmart(SDA, t0);
+    const row = diskBySerial(SDA_SERIAL);
+    const importedAt = new Date(t0.getTime() - 2 * DAY_MS);
+    const { attributes, deviceStatus } = evaluateMinimalReading({
+      protocol: "ATA",
+      attributes: [
+        { id: "197", value: 100, worst: 100, thresh: 0, rawValue: 0 },
+      ],
+    });
+    insertSmartReading(
+      {
+        diskId: row.id,
+        hostId: row.lastSeenHostId as number,
+        takenAt: importedAt,
+        devicePath: "/dev/sda",
+        deviceStatus,
+        source: "scrutiny",
+      },
+      attributes,
+    );
+
+    const history = getSmartHistory(row.id, "30d", at(HOUR_MS));
+
+    expect(history.attributes["197"]).toEqual([
+      { at: importedAt, value: 0, source: "scrutiny" },
+      { at: t0, value: 0 },
+    ]);
+    expect(history.importedUntil).toEqual(importedAt);
+    expect(getSmartHistory(row.id, "7d", at(10 * DAY_MS)).importedUntil).toBe(
+      null,
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, ne } from "drizzle-orm";
 import type { DiskProtocol } from "#shared/disk";
 import type { IngestMeta } from "#shared/ingest";
 import type { SmartHistoryRange } from "#shared/schemas/smart";
@@ -19,6 +19,8 @@ import {
   overlayStatus,
 } from "#shared/smart/status";
 import type {
+  AtaAttribute,
+  ScsiInfo,
   SctTemperatureHistory,
   SelfTestEntry,
   SmartctlXallResult,
@@ -82,14 +84,18 @@ export interface TemperaturePoint {
   celsius: number;
 }
 
+export type SmartReadingSource = SmartReadingRow["source"];
+
 export interface AttributePoint {
   at: Date;
   value: number;
+  source?: Exclude<SmartReadingSource, "collector">;
 }
 
 export interface SmartHistory {
   temperature: TemperaturePoint[];
   attributes: Record<string, AttributePoint[]>;
+  importedUntil: Date | null;
 }
 
 export interface SmartOverview {
@@ -157,7 +163,7 @@ export function sctTemperaturePoints(
   });
 }
 
-function insertTemperatures(diskId: number, points: TemperaturePoint[]) {
+export function insertTemperatures(diskId: number, points: TemperaturePoint[]) {
   for (const point of points) {
     db.insert(temperatureReading)
       .values({ diskId, ...point })
@@ -278,62 +284,175 @@ function recordAttributeStatusChanges(
   }
 }
 
-export function recordSmartReading({
-  disk: row,
-  hostId,
-  meta,
-  parsed,
-  body,
-  receivedAt,
-}: SmartReadingInput): SmartReadingRow | null {
-  if (parsed.standby) return null;
-
+export function evaluateNamedAttributes(
+  parsed: SmartctlXallResult,
+): EvaluatedAttribute[] {
   const protocol = isSmartProtocol(parsed.device.protocol)
     ? parsed.device.protocol
     : undefined;
-  const evaluated = evaluateReading(parsed).attributes.map((attribute) => ({
+  return evaluateReading(parsed).attributes.map((attribute) => ({
     ...attribute,
     name: attributeName(protocol, attribute),
   }));
-  const temp = presentTemperature(parsed.temperature);
-  const smartPassed = parsed.smartStatus?.passed ?? null;
-  const exitStatus = parsed.smartctl.exitStatus.raw;
+}
 
-  const isLatest =
-    row.latestReadingAt === null || receivedAt >= row.latestReadingAt;
-  const previous = isLatest ? latestReading(row.id) : null;
-  if (isLatest) supersedeIfRisen(row.id, evaluated, receivedAt);
-  const active = activeAcceptances(row.id);
-  const deviceStatus = effectiveDeviceStatus(
-    healthStatus(smartPassed, exitStatus),
-    evaluated,
-    active,
+export interface MinimalSmartAttribute {
+  id: string;
+  value: number;
+  worst?: number | null;
+  thresh?: number | null;
+  rawValue?: number | null;
+  rawString?: string | null;
+  whenFailed?: string | null;
+}
+
+export interface MinimalSmartReading {
+  protocol: SmartProtocol;
+  attributes: MinimalSmartAttribute[];
+  temperature?: number | null;
+  powerOnHours?: number | null;
+  powerCycles?: number | null;
+}
+
+export interface MinimalEvaluation {
+  attributes: EvaluatedAttribute[];
+  deviceStatus: DeviceStatus;
+  temp: number | null;
+}
+
+const NO_ATA_FLAGS = {
+  prefailure: false,
+  updatedOnline: false,
+  performance: false,
+  errorRate: false,
+  eventCount: false,
+  autoKeep: false,
+};
+
+const NO_EXIT_FLAGS = {
+  raw: 0,
+  commandLineError: false,
+  deviceOpenFailed: false,
+  commandFailed: false,
+  diskFailing: false,
+  prefailBelowThreshold: false,
+  pastPrefailBelowThreshold: false,
+  errorLogHasErrors: false,
+  selfTestLogHasErrors: false,
+};
+
+const SCSI_DIRECTION = /^(read|write)_(.+)$/;
+
+function camelCase(snake: string) {
+  return snake.replace(/_([a-z])/g, (_match, letter: string) =>
+    letter.toUpperCase(),
   );
+}
 
-  const reading = db
-    .insert(smartReading)
-    .values({
-      diskId: row.id,
-      hostId,
-      takenAt: receivedAt,
-      devicePath: parsed.device.name || meta.device || "",
-      deviceType: meta.type ?? (parsed.device.type || null),
-      smartPassed,
-      exitStatus,
-      temp,
-      powerOnHours: parsed.powerOnHours ?? null,
-      powerCycles: parsed.powerCycles ?? null,
-      deviceStatus,
-    })
-    .returning()
-    .get();
+function optional<T>(value: T | null | undefined): T | undefined {
+  return value ?? undefined;
+}
 
-  for (const attribute of evaluated) {
+function ataAttributes(attributes: MinimalSmartAttribute[]): AtaAttribute[] {
+  return attributes.flatMap((attribute) => {
+    if (!/^\d+$/.test(attribute.id)) return [];
+    return [
+      {
+        id: Number(attribute.id),
+        name: `Attribute_${attribute.id}`,
+        value: attribute.value,
+        worst: attribute.worst ?? attribute.value,
+        thresh: attribute.thresh ?? 0,
+        whenFailed: attribute.whenFailed || null,
+        raw: {
+          value: optional(attribute.rawValue),
+          string: optional(attribute.rawString),
+        },
+        flags: NO_ATA_FLAGS,
+      },
+    ];
+  });
+}
+
+function nvmeLog(attributes: MinimalSmartAttribute[]) {
+  const log: Record<string, unknown> = {};
+  for (const attribute of attributes) {
+    log[camelCase(attribute.id)] = attribute.value;
+    if (attribute.id === "available_spare" && attribute.thresh != null) {
+      log.availableSpareThreshold = attribute.thresh;
+    }
+  }
+  return log;
+}
+
+function scsiInfo(attributes: MinimalSmartAttribute[]): ScsiInfo {
+  const info: ScsiInfo = {};
+  for (const attribute of attributes) {
+    if (attribute.id === "scsi_grown_defect_list") {
+      info.grownDefects = attribute.value;
+      continue;
+    }
+    const direction = SCSI_DIRECTION.exec(attribute.id);
+    if (!direction) continue;
+    const side = direction[1] as "read" | "write";
+    info[side] = { ...info[side], [camelCase(direction[2])]: attribute.value };
+  }
+  return info;
+}
+
+function parsedFromMinimal(reading: MinimalSmartReading): SmartctlXallResult {
+  return {
+    device: { name: "", type: "", protocol: reading.protocol },
+    smartctl: { version: "", exitStatus: NO_EXIT_FLAGS },
+    identity: {},
+    smartSupport: { available: true, enabled: true },
+    standby: false,
+    temperature: optional(reading.temperature),
+    powerOnHours: optional(reading.powerOnHours),
+    powerCycles: optional(reading.powerCycles),
+    ...(reading.protocol === "ATA"
+      ? { ata: { attributes: ataAttributes(reading.attributes) } }
+      : {}),
+    ...(reading.protocol === "NVMe"
+      ? { nvme: nvmeLog(reading.attributes) }
+      : {}),
+    ...(reading.protocol === "SCSI"
+      ? { scsi: scsiInfo(reading.attributes) }
+      : {}),
+  };
+}
+
+// For readings from other tools: no overall SMART verdict, no acceptances,
+// so the status is the worst attribute status under our own policy.
+export function evaluateMinimalReading(
+  reading: MinimalSmartReading,
+): MinimalEvaluation {
+  const parsed = parsedFromMinimal(reading);
+  const attributes = evaluateNamedAttributes(parsed);
+  return {
+    attributes,
+    deviceStatus: effectiveDeviceStatus(
+      healthStatus(null, null),
+      attributes,
+      new Map(),
+    ),
+    temp: presentTemperature(parsed.temperature),
+  };
+}
+
+export type SmartReadingValues = Omit<typeof smartReading.$inferInsert, "id">;
+
+export function insertSmartReading(
+  values: SmartReadingValues,
+  attributes: EvaluatedAttribute[],
+): SmartReadingRow {
+  const reading = db.insert(smartReading).values(values).returning().get();
+  for (const attribute of attributes) {
     db.insert(smartAttribute)
       .values({
         readingId: reading.id,
-        diskId: row.id,
-        takenAt: receivedAt,
+        diskId: reading.diskId,
+        takenAt: reading.takenAt,
         attrId: attribute.attrId,
         name: attribute.name,
         value: attribute.value,
@@ -349,6 +468,51 @@ export function recordSmartReading({
       })
       .run();
   }
+  return reading;
+}
+
+export function recordSmartReading({
+  disk: row,
+  hostId,
+  meta,
+  parsed,
+  body,
+  receivedAt,
+}: SmartReadingInput): SmartReadingRow | null {
+  if (parsed.standby) return null;
+
+  const evaluated = evaluateNamedAttributes(parsed);
+  const temp = presentTemperature(parsed.temperature);
+  const smartPassed = parsed.smartStatus?.passed ?? null;
+  const exitStatus = parsed.smartctl.exitStatus.raw;
+
+  const isLatest =
+    row.latestReadingAt === null || receivedAt >= row.latestReadingAt;
+  const previous = isLatest ? latestReading(row.id) : null;
+  if (isLatest) supersedeIfRisen(row.id, evaluated, receivedAt);
+  const active = activeAcceptances(row.id);
+  const deviceStatus = effectiveDeviceStatus(
+    healthStatus(smartPassed, exitStatus),
+    evaluated,
+    active,
+  );
+
+  const reading = insertSmartReading(
+    {
+      diskId: row.id,
+      hostId,
+      takenAt: receivedAt,
+      devicePath: parsed.device.name || meta.device || "",
+      deviceType: meta.type ?? (parsed.device.type || null),
+      smartPassed,
+      exitStatus,
+      temp,
+      powerOnHours: parsed.powerOnHours ?? null,
+      powerCycles: parsed.powerCycles ?? null,
+      deviceStatus,
+    },
+    evaluated,
+  );
 
   insertTemperatures(row.id, [
     ...(temp === null ? [] : [{ at: receivedAt, celsius: temp }]),
@@ -444,6 +608,24 @@ function rangeStart(range: SmartHistoryRange, now: Date) {
   return new Date(days === null ? 0 : now.getTime() - days * DAY_MS);
 }
 
+function newestImportedReading(diskId: number, since: Date): Date | null {
+  return (
+    db
+      .select({ takenAt: smartReading.takenAt })
+      .from(smartReading)
+      .where(
+        and(
+          eq(smartReading.diskId, diskId),
+          ne(smartReading.source, "collector"),
+          gte(smartReading.takenAt, since),
+        ),
+      )
+      .orderBy(desc(smartReading.takenAt))
+      .limit(1)
+      .get()?.takenAt ?? null
+  );
+}
+
 export function getSmartHistory(
   diskId: number,
   range: SmartHistoryRange,
@@ -469,8 +651,10 @@ export function getSmartHistory(
       attrId: smartAttribute.attrId,
       at: smartAttribute.takenAt,
       value: smartAttribute.transformedValue,
+      source: smartReading.source,
     })
     .from(smartAttribute)
+    .innerJoin(smartReading, eq(smartReading.id, smartAttribute.readingId))
     .where(
       and(
         eq(smartAttribute.diskId, diskId),
@@ -481,9 +665,9 @@ export function getSmartHistory(
     .all();
 
   const series = new Map<string, AttributePoint[]>();
-  for (const { attrId, at, value } of attributeRows) {
+  for (const { attrId, at, value, source } of attributeRows) {
     const points = series.get(attrId) ?? [];
-    points.push({ at, value });
+    points.push(source === "collector" ? { at, value } : { at, value, source });
     series.set(attrId, points);
   }
 
@@ -492,6 +676,7 @@ export function getSmartHistory(
     attributes: Object.fromEntries(
       [...series].map(([attrId, points]) => [attrId, downsample(points)]),
     ),
+    importedUntil: newestImportedReading(diskId, since),
   };
 }
 
