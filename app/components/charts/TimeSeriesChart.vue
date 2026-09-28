@@ -2,6 +2,7 @@
 import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { alignSeries, type TimeSeries } from "./alignSeries";
+import { formatLegendTime, formatTick } from "./timeAxis";
 
 const props = withDefaults(
   defineProps<{ series: TimeSeries[]; unit?: string; height?: number }>(),
@@ -45,9 +46,16 @@ function options(width: number): uPlot.Options {
     cursor: { points: { size: 8 } },
     legend: { show: true, live: true },
     scales: { x: { time: true } },
-    axes: [axis, axis],
+    axes: [
+      {
+        ...axis,
+        values: (_chart, splits, _axisIndex, _space, increment) =>
+          splits.map((split) => formatTick(split, increment)),
+      },
+      axis,
+    ],
     series: [
-      {},
+      { value: (_chart, value) => formatLegendTime(value) },
       ...props.series.map((entry, index) => ({
         label: entry.label,
         stroke: cssToken(SERIES_TOKENS[index % SERIES_TOKENS.length]),
