@@ -2,6 +2,7 @@ export const DIARY_SUBJECT_TYPES = [
   "disk",
   "pool",
   "vdev",
+  "dataset",
   "host",
   "system",
 ] as const;
