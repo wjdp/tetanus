@@ -97,9 +97,10 @@ describe("/api/disks", () => {
     const detail = await (await fetch(`/api/disks/${id}`)).json();
     expect(detail).toMatchObject({ id, alias: "K2" });
     expect(detail.keys.length).toBeGreaterThan(2);
-    expect(detail.diary).toEqual([
-      expect.objectContaining({ eventType: "alias-set" }),
-    ]);
+    expect(
+      detail.diary.map((entry: { eventType: string }) => entry.eventType),
+    ).toEqual(["alias-set", "disk-appeared"]);
+    expect(detail.membership).toBeNull();
   });
 
   it("404s for a missing disk", async () => {
@@ -139,5 +140,29 @@ describe("/api/disks", () => {
     expect(badDate.status).toBe(400);
     const unknownField = await patchDisk(id, { inventory: { colour: "red" } });
     expect(unknownField.status).toBe(400);
+  });
+
+  it("reports pool membership once zpool status links the disk", async () => {
+    const response = await ingest(
+      "zpool-status",
+      readFixture("mars/zpool-status-stored-paths.json"),
+    );
+    expect(response.status).toBe(200);
+    const id = diskIdBySerial("1AQLP5ME");
+    const membership = {
+      poolId: expect.any(Number),
+      poolName: "tank",
+      vdevName: "/dev/disk/by-vdev/K2-part1",
+      groupName: "raidz1-0",
+      groupType: expect.stringMatching(/^raidz/),
+      vdevState: "ONLINE",
+    };
+    const disks: (DiskListing & { membership: unknown })[] = await (
+      await fetch("/api/disks")
+    ).json();
+    expect(disks.find((row) => row.id === id)?.membership).toEqual(membership);
+    expect((await (await fetch(`/api/disks/${id}`)).json()).membership).toEqual(
+      membership,
+    );
   });
 });

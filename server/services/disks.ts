@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { alias as aliasedTable } from "drizzle-orm/sqlite-core";
 import type {
   DiskKey,
   DiskKeyKind,
@@ -10,7 +11,7 @@ import type { IngestMeta } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
 import type { DiskPatch } from "#shared/schemas/disks";
 import { db } from "~~/server/database/client";
-import { disk, diskKey, host, vdev } from "~~/server/database/schema";
+import { disk, diskKey, host, pool, vdev } from "~~/server/database/schema";
 import type { LsblkResult } from "~~/server/ingest/lsblk";
 import type { SmartctlXallResult } from "~~/server/ingest/smartctl-xall";
 import type { UdevResult } from "~~/server/ingest/udev";
@@ -62,8 +63,18 @@ export interface DiskSighting {
 
 export type AliasSource = "udev" | "vdev-id-conf";
 
+export interface DiskMembership {
+  poolId: number;
+  poolName: string;
+  vdevName: string;
+  groupName: string | null;
+  groupType: string | null;
+  vdevState: string;
+}
+
 export interface DiskSummary extends Omit<DiskRow, "latestRaw"> {
   keys: DiskKey[];
+  membership: DiskMembership | null;
   state: EffectiveDiskState;
   inferredState: DiskState;
   hostName: string | null;
@@ -194,6 +205,17 @@ function createDisk(sighting: DiskSighting): DiskRow {
     .returning()
     .get();
   addKeys(created.id, sighting.keys);
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: created.id,
+    eventType: "disk-appeared",
+    title: `appeared on ${hostName(sighting.hostId)}`,
+    data: {
+      hostId: sighting.hostId,
+      devicePath: sighting.devicePath ?? null,
+    },
+    at: sighting.receivedAt,
+  });
   return created;
 }
 
@@ -481,6 +503,32 @@ export function isPresent(row: Pick<DiskRow, "lastSeenAt">, now: Date) {
   );
 }
 
+function membershipsOf(diskIds: number[]): Map<number, DiskMembership> {
+  if (diskIds.length === 0) return new Map();
+  const group = aliasedTable(vdev, "group");
+  const rows = db
+    .select({
+      diskId: vdev.diskId,
+      poolId: pool.id,
+      poolName: pool.name,
+      vdevName: vdev.name,
+      groupName: group.name,
+      groupType: group.type,
+      vdevState: vdev.state,
+    })
+    .from(vdev)
+    .innerJoin(pool, eq(pool.id, vdev.poolId))
+    .leftJoin(group, eq(group.id, vdev.parentId))
+    .where(and(eq(vdev.present, true), inArray(vdev.diskId, diskIds)))
+    .orderBy(asc(vdev.id))
+    .all();
+  const byDisk = new Map<number, DiskMembership>();
+  for (const { diskId, ...membership } of rows) {
+    if (diskId !== null && !byDisk.has(diskId)) byDisk.set(diskId, membership);
+  }
+  return byDisk;
+}
+
 function diskIdsInPools(): Set<number> {
   const rows = db
     .selectDistinct({ diskId: vdev.diskId })
@@ -555,7 +603,9 @@ function summarise(
   now: Date,
   resolveState: (row: DiskRow) => StateSnapshot,
 ): DiskSummary[] {
-  const keys = keysOf(rows.map((row) => row.id));
+  const diskIds = rows.map((row) => row.id);
+  const keys = keysOf(diskIds);
+  const memberships = membershipsOf(diskIds);
   const hostNames = new Map(
     db
       .select({ id: host.id, name: host.name })
@@ -571,6 +621,7 @@ function summarise(
       ...columns,
       lastState: snapshot.state,
       keys: keys.get(row.id) ?? [],
+      membership: memberships.get(row.id) ?? null,
       ...snapshot,
       hostName:
         row.lastSeenHostId === null

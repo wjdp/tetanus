@@ -108,7 +108,7 @@ describe("importObsidian", () => {
       listDiary({ subjectType: "disk", subjectId: k2.id }).map(
         (entry) => entry.eventType,
       ),
-    ).toEqual(["imported"]);
+    ).toEqual(["imported", "disk-appeared"]);
   });
 
   it("keeps an existing alias and state override", async () => {
@@ -143,6 +143,9 @@ describe("importObsidian", () => {
       [2, "K3"],
       [3, "H1"],
     ]);
+    expect(
+      listDiary().filter((entry) => entry.eventType === "disk-appeared"),
+    ).toEqual([]);
     const disks = await listDisks(seenAt);
     expect(disks.find((row) => row.alias === "K2")).toMatchObject({
       model: "HGST HUH721212ALE604",

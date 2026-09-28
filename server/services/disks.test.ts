@@ -125,6 +125,19 @@ describe("observing mars", () => {
     });
   });
 
+  it("records disk-appeared once, when a sighting creates the disk", () => {
+    ingestLsblk();
+    ingestLsblk("mars", new Date("2026-09-01T11:00:00Z"));
+    const sda = diskBySerial("0UTY8HTE");
+    expect(eventsOf(sda.id, "disk-appeared")).toEqual([
+      expect.objectContaining({
+        title: "appeared on mars",
+        at: seenAt,
+        data: { hostId: sda.lastSeenHostId, devicePath: "/dev/sda" },
+      }),
+    ]);
+  });
+
   it("merges udev into the lsblk disks and takes aliases from by-vdev", () => {
     ingestMars();
     expect(db.select().from(disk).all()).toHaveLength(20);
@@ -301,7 +314,7 @@ describe("disk state, overrides and inventory", () => {
     sdaId = diskBySerial("0UTY8HTE").id;
   });
 
-  function putInPool(diskId: number) {
+  function putInPool(diskId: number, present = true) {
     const mars = upsertHostByName("mars", seenAt);
     const tank = db
       .insert(pool)
@@ -315,18 +328,58 @@ describe("disk state, overrides and inventory", () => {
       })
       .returning()
       .get();
-    db.insert(vdev)
+    const mirror = db
+      .insert(vdev)
       .values({
         poolId: tank.id,
         guid: "2",
+        name: "mirror-0",
+        type: "mirror",
+        state: "ONLINE",
+        lastSeenAt: seenAt,
+      })
+      .returning()
+      .get();
+    db.insert(vdev)
+      .values({
+        poolId: tank.id,
+        guid: "3",
+        parentId: mirror.id,
         name: "K1",
         type: "disk",
-        state: "ONLINE",
+        state: "DEGRADED",
         diskId,
+        present,
         lastSeenAt: seenAt,
       })
       .run();
+    return tank.id;
   }
+
+  it("reports pool membership from the present vdev", async () => {
+    const poolId = putInPool(sdaId);
+    const membership = {
+      poolId,
+      poolName: "tank",
+      vdevName: "K1",
+      groupName: "mirror-0",
+      groupType: "mirror",
+      vdevState: "DEGRADED",
+    };
+    const disks = await listDisks(new Date("2026-09-01T11:00:00Z"));
+    expect(disks.find((row) => row.id === sdaId)?.membership).toEqual(
+      membership,
+    );
+    expect(
+      disks.filter((row) => row.id !== sdaId).map((row) => row.membership),
+    ).toEqual(Array(19).fill(null));
+    expect((await getDisk(sdaId)).membership).toEqual(membership);
+  });
+
+  it("has no membership for a vdev that left the pool", async () => {
+    putInPool(sdaId, false);
+    expect((await getDisk(sdaId)).membership).toBeNull();
+  });
 
   it("lists disks with keys, host and computed state", async () => {
     const disks = await listDisks(new Date("2026-09-01T11:00:00Z"));
