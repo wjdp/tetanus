@@ -166,8 +166,26 @@ describe("importScrutiny matching", () => {
         .all(),
     ).toEqual([
       expect.objectContaining({ kind: "wwn", value: "5000c50bd5ec0ece" }),
+      expect.objectContaining({
+        kind: "model-serial",
+        value: "ST16000NM001G-2K|PH8Y0FJQ",
+      }),
     ]);
     expect(created.readings).toBe(1);
+  });
+
+  it("merges an imported NVMe disk with a later collector sighting", async () => {
+    const created = byKey((await run()).devices)[NVME_KEY];
+    expect(created.matched).toBe("created");
+
+    ingestSmart("xall-nvme0.json", "/dev/nvme0");
+
+    const rows = db
+      .select()
+      .from(disk)
+      .where(eq(disk.serial, NVME_SERIAL))
+      .all();
+    expect(rows.map((row) => row.id)).toEqual([created.diskId]);
   });
 
   it("records the import in each written disk's diary", async () => {

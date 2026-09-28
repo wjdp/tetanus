@@ -1,5 +1,5 @@
 import { and, asc, eq, isNotNull } from "drizzle-orm";
-import type { DiskProtocol } from "#shared/disk";
+import type { DiskKey, DiskProtocol } from "#shared/disk";
 import type { SmartProtocol } from "#shared/smart/metadata";
 import { db } from "~~/server/database/client";
 import {
@@ -11,7 +11,10 @@ import {
 } from "~~/server/database/schema";
 import { addAutoEvent } from "~~/server/services/diary";
 import { type DiskRow, findDiskByKey } from "~~/server/services/disks";
-import { normaliseWwn } from "~~/server/services/identity";
+import {
+  normaliseModelSerial,
+  normaliseWwn,
+} from "~~/server/services/identity";
 import {
   createScrutinyClient,
   type FetchImpl,
@@ -220,14 +223,30 @@ function createInventoryDisk(device: ScrutinyDevice, hostId: number): number {
     })
     .returning({ id: disk.id })
     .get();
-  const wwn = scrutinyWwn(device);
-  if (wwn) {
+  for (const key of inventoryKeys(device)) {
     db.insert(diskKey)
-      .values({ diskId: created.id, kind: "wwn", value: wwn })
+      .values({ diskId: created.id, ...key })
       .onConflictDoNothing()
       .run();
   }
   return created.id;
+}
+
+function inventoryKeys(device: ScrutinyDevice): DiskKey[] {
+  const wwn = scrutinyWwn(device);
+  const model = device.model_name.trim();
+  const serial = device.serial_number.trim();
+  return [
+    ...(wwn ? [{ kind: "wwn" as const, value: wwn }] : []),
+    ...(model && serial
+      ? [
+          {
+            kind: "model-serial" as const,
+            value: normaliseModelSerial(model, serial),
+          },
+        ]
+      : []),
+  ];
 }
 
 interface DevicePlan {
