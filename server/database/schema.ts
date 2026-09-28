@@ -396,3 +396,22 @@ export const diaryEntry = sqliteTable(
     index("DiaryEntry_at_idx").on(table.at),
   ],
 );
+
+export const faultAcceptance = sqliteTable(
+  "FaultAcceptance",
+  {
+    id: autoIncrementId(),
+    diskId: integer()
+      .notNull()
+      .references(() => disk.id, { onDelete: "cascade" }),
+    attrId: text().notNull(),
+    acceptedValue: integer().notNull(),
+    acceptedAt: datetime().notNull(),
+    note: text().notNull().default(""),
+    supersededAt: datetime(),
+    clearedAt: datetime(),
+  },
+  (table) => [
+    index("FaultAcceptance_diskId_attrId_idx").on(table.diskId, table.attrId),
+  ],
+);
