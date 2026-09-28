@@ -1,0 +1,14 @@
+services:
+  diskbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/wjdp/diskbot
+    container_name: diskbot
+    user: "1000:1000"
+    volumes:
+      - ./data:/app/data
+    ports:
+      - 3000:3000
+    environment:
+      - TZ=${TZ:-UTC}
