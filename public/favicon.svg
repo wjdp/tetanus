@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <title>tetanus</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      circle.platter,
+      circle.hub {
+        stroke: #f5f5f4;
+      }
+    }
+  </style>
+  <circle class="platter" cx="12" cy="12" r="9" />
+  <circle class="hub" cx="12" cy="12" r="2.5" />
+  <circle cx="14.6" cy="14.6" r="2" fill="#b5543a" stroke="none" />
+</svg>
