@@ -4,24 +4,24 @@ import { describe, expect, it } from "vitest";
 import TetanusMark from "./TetanusMark.vue";
 
 describe("TetanusMark", () => {
-  it("renders the arm by default", async () => {
+  it("renders platter, hub and track", async () => {
     const component = await mountSuspended(TetanusMark);
 
+    expect(component.findAll("circle")).toHaveLength(2);
     expect(component.find("path").exists()).toBe(true);
   });
 
-  it("omits the arm when arm is false", async () => {
-    const component = await mountSuspended(TetanusMark, {
-      props: { arm: false },
-    });
-
-    expect(component.find("path").exists()).toBe(false);
-  });
-
-  it("gives the head the primary fill class", async () => {
+  it("gives the track the primary stroke class", async () => {
     const component = await mountSuspended(TetanusMark);
 
-    const head = component.findAll("circle").at(-1);
-    expect(head?.classes()).toContain("fill-primary");
+    expect(component.find("path").classes()).toContain("stroke-primary");
+  });
+
+  it("sizes the svg from the size prop", async () => {
+    const component = await mountSuspended(TetanusMark, {
+      props: { size: 48 },
+    });
+
+    expect(component.find("svg").attributes("width")).toBe("48");
   });
 });

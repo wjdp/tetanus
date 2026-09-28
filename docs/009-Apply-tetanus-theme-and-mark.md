@@ -38,11 +38,9 @@ scaffold: palettes, Nuxt UI colour aliases, the mark, favicons.
   head, buttons, focus rings) stay 500 as specced. Not yet applied anywhere — no
   dark-mode text currently uses `text-primary`; flagged here for whoever adds the
   first one.
-- **Mark head placement is provisional.** The head circle at `(14.6, 14.6)` visually
-  collides with the hub (`r 2.5` at the centre) at 24px — the person owning the doc is
-  choosing a new variant. `TetanusMark.vue` and `favicon.svg` were built exactly to
-  the geometry in 008 as it stands; the geometry is expected to change in a follow-up
-  once a replacement is decided.
+- **Mark is option C from the mark options page:** platter, hub and a rust quarter-arc
+  track at mid-radius. The actuator-arm head from the first draft of 008 collided with
+  the hub at 24 px and was replaced before merge; no `arm` prop survives.
 - **Favicon renderer: `rsvg-convert`** (present on this machine). `inkscape` and
   ImageMagick `magick`/`convert` were also available but not needed. `sharp` is not a
   project dependency and was not installed. `apple-touch-icon.png` uses `rsvg-convert

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ size?: number; arm?: boolean }>(), {
+withDefaults(defineProps<{ size?: number }>(), {
   size: 24,
-  arm: true,
 });
 </script>
 
@@ -19,13 +18,10 @@ withDefaults(defineProps<{ size?: number; arm?: boolean }>(), {
   >
     <circle cx="12" cy="12" r="9" />
     <circle cx="12" cy="12" r="2.5" />
-    <path v-if="arm" d="M20.5 20.5 15 15" />
-    <circle
-      cx="14.6"
-      cy="14.6"
-      :r="arm ? 1.6 : 2"
-      class="fill-primary"
-      stroke="none"
+    <path
+      d="M12 6a6 6 0 0 1 6 6"
+      class="stroke-primary"
+      stroke-width="2.5"
     />
   </svg>
 </template>
