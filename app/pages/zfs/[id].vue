@@ -28,15 +28,37 @@ const capacitySeries = computed(() => [
   },
 ]);
 
+const activeTab = ref("vdevs");
+
+const {
+  data: datasets,
+  status: datasetsStatus,
+  execute: loadDatasets,
+} = useLazyFetch(`/api/pools/${route.params.id}/datasets`, {
+  immediate: false,
+  server: false,
+});
+
+watch(activeTab, (tab) => {
+  if (tab === "datasets" && datasetsStatus.value === "idle") loadDatasets();
+});
+
 const tabs = computed<TabsItem[]>(() => [
-  { label: "Vdevs", slot: "vdevs" },
+  { label: "Vdevs", slot: "vdevs", value: "vdevs" },
+  {
+    label: "Datasets",
+    slot: "datasets",
+    value: "datasets",
+    badge: pool.value?.datasetCount || undefined,
+  },
   {
     label: "Events",
     slot: "events",
+    value: "events",
     badge: pool.value?.events.length || undefined,
   },
-  { label: "History", slot: "history" },
-  { label: "Diary", slot: "diary" },
+  { label: "History", slot: "history", value: "history" },
+  { label: "Diary", slot: "diary", value: "diary" },
 ]);
 </script>
 
@@ -111,9 +133,29 @@ const tabs = computed<TabsItem[]>(() => [
         <PoolScanPanel :scan="pool.scan" :now="now" />
       </div>
 
-      <UTabs :items="tabs" variant="link" class="w-full">
+      <UTabs
+        v-model="activeTab"
+        :items="tabs"
+        variant="link"
+        class="w-full"
+      >
         <template #vdevs>
           <PoolVdevTreeTable :root="pool.vdevs" />
+        </template>
+
+        <template #datasets>
+          <p
+            v-if="datasetsStatus === 'error'"
+            class="text-error py-4 text-sm"
+          >
+            Could not load the datasets.
+          </p>
+          <DatasetTree
+            v-else
+            :datasets="datasets?.datasets ?? []"
+            :now="now"
+            :loading="datasetsStatus === 'pending'"
+          />
         </template>
 
         <template #events>

@@ -1,6 +1,7 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
-import { describe, expect, it } from "vitest";
+import { flushPromises } from "@vue/test-utils";
+import { describe, expect, it, vi } from "vitest";
 import PoolPage from "./[id].vue";
 
 const vdev = (
@@ -81,7 +82,47 @@ registerEndpoint("/api/pools/7", () => ({
   ],
   historyScope: "host",
   events: [],
+  datasetCount: 2,
+  snapshotCount: 0,
 }));
+
+const datasetRequests: string[] = [];
+
+registerEndpoint("/api/pools/7/datasets", (event) => {
+  datasetRequests.push(event.path);
+  return {
+    datasets: [
+      {
+        id: 21,
+        name: "tank",
+        parentId: null,
+        depth: 0,
+        type: "filesystem",
+        used: 1e12,
+        referenced: 1e9,
+        compressRatio: 1,
+        quota: null,
+        snapshotCount: 0,
+        latestSnapshotAt: null,
+        present: true,
+      },
+      {
+        id: 22,
+        name: "tank/media",
+        parentId: 21,
+        depth: 1,
+        type: "filesystem",
+        used: 9e11,
+        referenced: 9e11,
+        compressRatio: 1.01,
+        quota: null,
+        snapshotCount: 3,
+        latestSnapshotAt: "2026-09-28T09:00:00.000Z",
+        present: true,
+      },
+    ],
+  };
+});
 
 describe("pool page", () => {
   it("shows the header, scan and vdev tree", async () => {
@@ -96,5 +137,23 @@ describe("pool page", () => {
     expect(tree).toContain("raidz1-0");
     expect(tree).toContain("K1");
     expect(page.find('a[href="/disks/3"]').exists()).toBe(true);
+  });
+
+  it("loads the dataset tree when its tab is first shown", async () => {
+    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const tab = page
+      .findAll('[role="tab"]')
+      .find((element) => element.text().startsWith("Datasets"));
+
+    expect(tab?.text()).toContain("2");
+    expect(datasetRequests).toEqual([]);
+
+    await tab?.trigger("mousedown", { button: 0 });
+    await flushPromises();
+
+    await vi.waitFor(() =>
+      expect(page.find('a[href="/datasets/22"]').exists()).toBe(true),
+    );
+    expect(datasetRequests).toHaveLength(1);
   });
 });
