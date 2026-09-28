@@ -123,3 +123,92 @@ long history; stop the scrutiny containers. Record the date in 004.
 ## Findings
 
 (agents append here)
+
+### Importer
+
+Steps 1–3 done (fixtures, client, evaluation extraction, `source` column, importer).
+
+```ts
+// server/services/importers/scrutiny.ts
+importScrutiny(options: {
+  url: string;
+  hostId: number;
+  dryRun: boolean;
+  fetchImpl?: typeof fetch;
+  onProgress?: (done: number, total: number) => void;
+}): Promise<ScrutinyImportResult>
+
+interface ScrutinyImportResult {
+  dryRun: boolean;
+  devices: {
+    key: string;                 // summary map key: wwn (0x…), NVMe serial, or scrutiny_uuid
+    model: string;
+    serial: string;
+    matched: "wwn" | "uuid" | "serial" | "created";
+    diskId: number | null;       // null for a dry-run creation or a failed device with no match
+    cutoff: Date | null;         // null = no tetanus data, everything imported
+    readings: number;            // SMART points written (or to write)
+    temperatures: number;        // temperature points written (or to write)
+    skipped: number;             // SMART points at/after the cut-off
+    error?: string;              // details call failed; device skipped
+  }[];
+}
+```
+
+Throws `ServiceError(404)` for an unknown `hostId`, `ServiceError(502)` when the summary
+or temperature call fails, `ServiceError(400)` for an unparseable URL. Client:
+`createScrutinyClient(url, fetchImpl)` in `scrutinyApi.ts` (`summary()`,
+`details(key)`, `temperatureHistory()`); `scrutinyFixtureFetch()` serves
+`test/fixtures/scrutiny-api` for tests.
+
+Live instance observations (2026-09-28):
+
+- The NVMe disk has no WWN: its `wwn` field, map key and `device_wwn` are its
+  **serial** (`183356800333`), no `0x`. Only a `0x…` value is treated as a WWN;
+  anything else matches by model and serial.
+- `device_serial_id` carries `scsi-3<wwn>`; `interface_type`, `host_id`, `label`,
+  `device_uuid` are empty; `CreatedAt` is sometimes `+01:00`, nanosecond precision.
+- Each details response carries a top-level `metadata` (scrutiny's attribute
+  metadata), ignored. ATA attrs also carry `status_reason`.
+- The newest SMART point is the live one (e.g. `21:23:01.16Z`); the rest are midnight
+  aggregates. The unmatched fixture disk has a single point.
+- `device_status` 2 (failed by scrutiny) on 5 disks; mars `sdb` (fixture
+  `details-ata.json`) has 197/198 raw 16 from 2026-08-31, which our evaluator also
+  fails (Current Pending Sector Count, failure rate 0.61).
+
+Decisions:
+
+- `SmartHistory` gains `importedUntil: Date | null` (newest imported reading in range)
+  for the disk-page note; attribute points gain `source: "scrutiny"` only when
+  imported (collector points unchanged, so the payload and existing tests stay as
+  they were). `reading.source` also appears on the overview's latest reading.
+- Shared evaluation in `smart.ts`: `evaluateNamedAttributes(parsed)` (used by
+  `recordSmartReading`), `evaluateMinimalReading({ protocol, attributes, temperature,
+  powerOnHours, powerCycles })` (builds a minimal `SmartctlXallResult`: ATA by numeric
+  id, NVMe by snake_case name → nvme log, SCSI by name → `ScsiInfo`), and
+  `insertSmartReading(values, attributes)`. Imported `deviceStatus` is the worst
+  attribute status (no overall SMART verdict, no acceptance overlay); `unknown` with no
+  attributes.
+- Model+serial matching tries the `model-serial` DiskKey first (handles `WD-` and
+  INQUIRY truncation), then `Disk.model`/`serial` compared trimmed, case-insensitive,
+  whitespace collapsed (catches inventory-only disks, which have no model-serial key).
+- Inventory-only disks are inserted directly (not via `observeDisk`, which needs keys,
+  uses one timestamp for first/last seen and writes `disk-appeared`); they also get
+  `lastDevicePath` (`/dev/<device_name>`) and `lastDeviceType`. `latestStatus` is the
+  column default `unknown`.
+- Cut-off and temperatures: temperatures use the same cut-off as SMART points. Sources
+  are the forever temp history, the summary's recent `temp_history` and each SMART
+  point's `temp`, deduped by time. Because the cut-off is the earliest existing reading,
+  "skip a point whose takenAt already has a reading" is implied and not coded
+  separately. A second import finds its own earlier data and writes nothing.
+- A disk with nothing to write (matched, all points after the cut-off) gets no diary
+  entry. Diary data: `url, key, matched, readings, temperatures, skipped, cutoff`.
+- Top-level `cutoffs` from the contract became a per-device `cutoff`.
+- Fixtures reuse `bin/scrub-fixtures.py`'s `fake_serial`/`fake_hex` with the default
+  salt on the scrutiny originals (the script's discovery walks collector files, not
+  scrutiny JSON); the fakes match `test/fixtures/mars`. Written compact, as scrutiny
+  sends them.
+
+Open: inventory-only disks get only a `wwn` key per the contract, so an NVMe disk
+(no WWN) created by import would not merge with a later collector sighting of it; a
+`model-serial` key would fix that.
