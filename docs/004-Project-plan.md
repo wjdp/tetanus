@@ -136,6 +136,8 @@ fixtures into a dev server for that.
 
 ## Phase 7: diary and fault acceptance
 
+Done 2026-09-28: [025](025-Phase-7-diary-and-fault-acceptance.md).
+
 1. `DiaryEntry` CRUD, markdown body, global and per-subject timelines.
 2. `FaultAcceptance` create/supersede/clear, overlay in evaluation, accept dialog
    showing trend.
