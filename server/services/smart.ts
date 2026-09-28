@@ -11,7 +11,13 @@ import {
   attributeMetadata,
   type SmartProtocol,
 } from "#shared/smart/metadata";
-import type { DeviceStatus } from "#shared/smart/status";
+import {
+  type AttributeDisplayStatus,
+  type DeviceStatus,
+  effectiveDeviceStatus,
+  healthStatus,
+  overlayStatus,
+} from "#shared/smart/status";
 import type {
   SctTemperatureHistory,
   SelfTestEntry,
@@ -25,12 +31,19 @@ import {
   smartReading,
   temperatureReading,
 } from "~~/server/database/schema";
+import {
+  activeAcceptances,
+  type FaultAcceptanceRow,
+  listAcceptances,
+  supersedeIfRisen,
+} from "~~/server/services/acceptance";
 import { addAutoEvent } from "~~/server/services/diary";
 import type { DiskRow } from "~~/server/services/disks";
 import { notFound } from "~~/server/utils/serviceError";
 
 export type SmartReadingRow = typeof smartReading.$inferSelect;
 export type SmartAttributeRow = typeof smartAttribute.$inferSelect;
+export type SelfTestRow = typeof selfTest.$inferSelect;
 
 export interface SmartReadingInput {
   disk: DiskRow;
@@ -51,10 +64,17 @@ export interface AttributeMetadataSummary {
   transformValueUnit?: string;
 }
 
+export type AttributeAcceptance = Pick<
+  FaultAcceptanceRow,
+  "id" | "acceptedValue" | "acceptedAt" | "note"
+>;
+
 export interface LatestAttribute
   extends Omit<SmartAttributeRow, "id" | "readingId" | "diskId"> {
   trend: AttributeTrend;
   metadata: AttributeMetadataSummary | null;
+  displayStatus: AttributeDisplayStatus;
+  acceptance: AttributeAcceptance | null;
 }
 
 export interface TemperaturePoint {
@@ -76,6 +96,8 @@ export interface SmartOverview {
   reading: SmartReadingRow | null;
   attributes: LatestAttribute[];
   history: SmartHistory;
+  selfTests: SelfTestRow[];
+  acceptances: FaultAcceptanceRow[];
 }
 
 export const MAX_HISTORY_POINTS = 500;
@@ -172,19 +194,33 @@ function upsertSelfTests(
   }
 }
 
+type StoredAttribute = Pick<
+  SmartAttributeRow,
+  "attrId" | "name" | "status" | "transformedValue"
+>;
+
 function attributeIdsWithStatus(
-  attributes: EvaluatedAttribute[],
-  status: EvaluatedAttribute["status"],
+  attributes: StoredAttribute[],
+  active: ReadonlyMap<string, FaultAcceptanceRow>,
+  status: AttributeDisplayStatus,
 ) {
   return attributes
-    .filter((attribute) => attribute.status === status)
+    .filter(
+      (attribute) =>
+        overlayStatus(
+          attribute.status,
+          attribute.transformedValue,
+          active.get(attribute.attrId),
+        ) === status,
+    )
     .map((attribute) => attribute.attrId);
 }
 
 function recordStatusChange(
-  row: DiskRow,
+  row: Pick<DiskRow, "id" | "latestStatus" | "latestReadingAt">,
   to: DeviceStatus,
-  attributes: EvaluatedAttribute[],
+  attributes: StoredAttribute[],
+  active: ReadonlyMap<string, FaultAcceptanceRow>,
   at: Date,
 ) {
   const from = row.latestStatus;
@@ -197,11 +233,49 @@ function recordStatusChange(
     data: {
       from,
       to,
-      failing: attributeIdsWithStatus(attributes, "failed"),
-      warning: attributeIdsWithStatus(attributes, "warning"),
+      failing: attributeIdsWithStatus(attributes, active, "failed"),
+      warning: attributeIdsWithStatus(attributes, active, "warning"),
     },
     at,
   });
+}
+
+function attributesOfReading(readingId: number): SmartAttributeRow[] {
+  return db
+    .select()
+    .from(smartAttribute)
+    .where(eq(smartAttribute.readingId, readingId))
+    .orderBy(asc(smartAttribute.id))
+    .all();
+}
+
+function recordAttributeStatusChanges(
+  diskId: number,
+  previous: StoredAttribute[],
+  current: StoredAttribute[],
+  at: Date,
+) {
+  const previousByAttr = new Map(
+    previous.map((attribute) => [attribute.attrId, attribute]),
+  );
+  for (const attribute of current) {
+    const before = previousByAttr.get(attribute.attrId);
+    if (!before || before.status === attribute.status) continue;
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: diskId,
+      eventType: "attribute-status-changed",
+      title: `${attribute.name} ${attribute.status} (was ${before.status})`,
+      data: {
+        attrId: attribute.attrId,
+        name: attribute.name,
+        from: before.status,
+        to: attribute.status,
+        value: attribute.transformedValue,
+      },
+      at,
+    });
+  }
 }
 
 export function recordSmartReading({
@@ -217,8 +291,24 @@ export function recordSmartReading({
   const protocol = isSmartProtocol(parsed.device.protocol)
     ? parsed.device.protocol
     : undefined;
-  const { deviceStatus, attributes } = evaluateReading(parsed);
+  const evaluated = evaluateReading(parsed).attributes.map((attribute) => ({
+    ...attribute,
+    name: attributeName(protocol, attribute),
+  }));
   const temp = presentTemperature(parsed.temperature);
+  const smartPassed = parsed.smartStatus?.passed ?? null;
+  const exitStatus = parsed.smartctl.exitStatus.raw;
+
+  const isLatest =
+    row.latestReadingAt === null || receivedAt >= row.latestReadingAt;
+  const previous = isLatest ? latestReading(row.id) : null;
+  if (isLatest) supersedeIfRisen(row.id, evaluated, receivedAt);
+  const active = activeAcceptances(row.id);
+  const deviceStatus = effectiveDeviceStatus(
+    healthStatus(smartPassed, exitStatus),
+    evaluated,
+    active,
+  );
 
   const reading = db
     .insert(smartReading)
@@ -228,8 +318,8 @@ export function recordSmartReading({
       takenAt: receivedAt,
       devicePath: parsed.device.name || meta.device || "",
       deviceType: meta.type ?? (parsed.device.type || null),
-      smartPassed: parsed.smartStatus?.passed ?? null,
-      exitStatus: parsed.smartctl.exitStatus.raw,
+      smartPassed,
+      exitStatus,
       temp,
       powerOnHours: parsed.powerOnHours ?? null,
       powerCycles: parsed.powerCycles ?? null,
@@ -238,14 +328,14 @@ export function recordSmartReading({
     .returning()
     .get();
 
-  for (const attribute of attributes) {
+  for (const attribute of evaluated) {
     db.insert(smartAttribute)
       .values({
         readingId: reading.id,
         diskId: row.id,
         takenAt: receivedAt,
         attrId: attribute.attrId,
-        name: attributeName(protocol, attribute),
+        name: attribute.name,
         value: attribute.value,
         worst: attribute.worst ?? null,
         thresh: attribute.thresh ?? null,
@@ -266,10 +356,16 @@ export function recordSmartReading({
   ]);
   upsertSelfTests(row.id, parsed.selfTests, receivedAt);
 
-  const isLatest =
-    row.latestReadingAt === null || receivedAt >= row.latestReadingAt;
   if (isLatest) {
-    recordStatusChange(row, deviceStatus, attributes, receivedAt);
+    if (previous) {
+      recordAttributeStatusChanges(
+        row.id,
+        attributesOfReading(previous.id),
+        evaluated,
+        receivedAt,
+      );
+    }
+    recordStatusChange(row, deviceStatus, evaluated, active, receivedAt);
     db.update(disk)
       .set({
         latestRaw: body,
@@ -284,6 +380,36 @@ export function recordSmartReading({
   }
 
   return reading;
+}
+
+export function recomputeLatestStatus(diskId: number, now: Date) {
+  const reading = latestReading(diskId);
+  const row = db
+    .select({
+      id: disk.id,
+      latestStatus: disk.latestStatus,
+      latestReadingAt: disk.latestReadingAt,
+    })
+    .from(disk)
+    .where(eq(disk.id, diskId))
+    .get();
+  if (!reading || !row) return;
+  const attributes = attributesOfReading(reading.id);
+  const active = activeAcceptances(diskId);
+  const deviceStatus = effectiveDeviceStatus(
+    healthStatus(reading.smartPassed, reading.exitStatus),
+    attributes,
+    active,
+  );
+  recordStatusChange(row, deviceStatus, attributes, active, now);
+  db.update(smartReading)
+    .set({ deviceStatus })
+    .where(eq(smartReading.id, reading.id))
+    .run();
+  db.update(disk)
+    .set({ latestStatus: deviceStatus })
+    .where(eq(disk.id, diskId))
+    .run();
 }
 
 export function downsample<T extends { at: Date }>(
@@ -445,25 +571,44 @@ export function latestAttributes(diskId: number): LatestAttribute[] {
   const reading = latestReading(diskId);
   if (!reading) return [];
   const protocol = diskProtocol(diskId);
-  const rows = db
+  const active = activeAcceptances(diskId);
+  return attributesOfReading(reading.id).map(
+    ({ id: _id, readingId: _readingId, diskId: _diskId, ...attribute }) => {
+      const metadata = summariseMetadata(protocol, attribute.attrId);
+      const acceptance = active.get(attribute.attrId);
+      return {
+        ...attribute,
+        trend: trendDirection(
+          metadata?.ideal ?? "",
+          attribute.transformedValue,
+          referenceValues(diskId, attribute.attrId, attribute.takenAt),
+        ),
+        metadata,
+        displayStatus: overlayStatus(
+          attribute.status,
+          attribute.transformedValue,
+          acceptance,
+        ),
+        acceptance: acceptance
+          ? {
+              id: acceptance.id,
+              acceptedValue: acceptance.acceptedValue,
+              acceptedAt: acceptance.acceptedAt,
+              note: acceptance.note,
+            }
+          : null,
+      };
+    },
+  );
+}
+
+function listSelfTests(diskId: number): SelfTestRow[] {
+  return db
     .select()
-    .from(smartAttribute)
-    .where(eq(smartAttribute.readingId, reading.id))
-    .orderBy(asc(smartAttribute.id))
+    .from(selfTest)
+    .where(eq(selfTest.diskId, diskId))
+    .orderBy(desc(selfTest.lifetimeHours), desc(selfTest.id))
     .all();
-  return rows.map(({ id: _id, readingId: _readingId, ...attribute }) => {
-    const metadata = summariseMetadata(protocol, attribute.attrId);
-    const { diskId: _diskId, ...columns } = attribute;
-    return {
-      ...columns,
-      trend: trendDirection(
-        metadata?.ideal ?? "",
-        attribute.transformedValue,
-        referenceValues(diskId, attribute.attrId, attribute.takenAt),
-      ),
-      metadata,
-    };
-  });
 }
 
 export function getSmartOverview(
@@ -476,5 +621,7 @@ export function getSmartOverview(
     reading: latestReading(diskId),
     attributes: latestAttributes(diskId),
     history: getSmartHistory(diskId, range, now),
+    selfTests: listSelfTests(diskId),
+    acceptances: listAcceptances(diskId),
   };
 }

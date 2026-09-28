@@ -64,6 +64,8 @@ describe("/api/disks/:id/smart", () => {
         attrId: "5",
         name: "Reallocated Sectors Count",
         trend: "new",
+        displayStatus: "passed",
+        acceptance: null,
         metadata: expect.objectContaining({ ideal: "low", critical: true }),
       }),
     );
@@ -71,6 +73,8 @@ describe("/api/disks/:id/smart", () => {
       { at: expect.any(String), value: 42 },
     ]);
     expect(smart.history.temperature.length).toBeGreaterThan(100);
+    expect(smart.acceptances).toEqual([]);
+    expect(Array.isArray(smart.selfTests)).toBe(true);
 
     const detail = await (await fetch(`/api/disks/${id}`)).json();
     expect(detail).toMatchObject({ latestStatus: "passed", latestTemp: 42 });

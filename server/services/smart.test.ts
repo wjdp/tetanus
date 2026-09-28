@@ -203,6 +203,34 @@ describe("recordSmartReading", () => {
     });
   });
 
+  it("records attribute status changes against the previous reading", () => {
+    ingestSmart(withAttributeRaw(SDA, 197, 16), t0);
+    const diskId = diskBySerial(SDA_SERIAL).id;
+    const attributeEvents = () =>
+      listDiary({ subjectType: "disk", subjectId: diskId }).filter(
+        (entry) => entry.eventType === "attribute-status-changed",
+      );
+    expect(attributeEvents()).toHaveLength(0);
+
+    ingestSmart(withAttributeRaw(SDA, 197, 16), at(HOUR_MS));
+    expect(attributeEvents()).toHaveLength(0);
+
+    ingestSmart(SDA, at(2 * HOUR_MS));
+    expect(attributeEvents()).toMatchObject([
+      {
+        title: "Current Pending Sector Count passed (was failed)",
+        at: at(2 * HOUR_MS),
+        data: {
+          attrId: "197",
+          name: "Current Pending Sector Count",
+          from: "failed",
+          to: "passed",
+          value: 0,
+        },
+      },
+    ]);
+  });
+
   it("keeps the latest fields when an older reading arrives late", () => {
     ingestSmart(SDA, t0);
     ingestSmart(withAttributeRaw(SDA, 197, 16), at(-HOUR_MS));
@@ -289,6 +317,16 @@ describe("history", () => {
     ]);
     expect(history.attributes["194"][0].value).toBe(42);
     expect(history.temperature.length).toBeGreaterThan(100);
+  });
+
+  it("lists self-tests and acceptances newest first in the overview", () => {
+    ingestSmart(readFixture("scrutiny/smart-ata.json"), t0);
+    const [row] = db.select().from(disk).all();
+    const { selfTests, acceptances } = getSmartOverview(row.id, "30d", t0);
+    const hours = selfTests.map((test) => test.lifetimeHours);
+    expect(hours.length).toBeGreaterThan(1);
+    expect(hours).toEqual([...hours].sort((a, b) => b - a));
+    expect(acceptances).toEqual([]);
   });
 
   it("404s for an unknown disk", () => {
