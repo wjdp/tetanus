@@ -21,6 +21,15 @@ const groups: CommandPaletteGroup<CommandPaletteItem>[] = [
       onSelect: () => goTo(to),
     })),
   },
+  {
+    id: "settings",
+    label: "Settings",
+    items: SETTINGS_NAVIGATION.map(({ label, icon, to }) => ({
+      label,
+      icon,
+      onSelect: () => goTo(to),
+    })),
+  },
 ];
 
 defineShortcuts({
