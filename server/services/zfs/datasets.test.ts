@@ -24,6 +24,7 @@ import {
   datasetCounts,
   getDataset,
   listDatasets,
+  lookupDatasets,
   observeZfsList,
   observeZfsSnapshots,
   searchDatasets,
@@ -638,6 +639,17 @@ describe("dataset queries", () => {
         pool: { id: tank.id, name: "tank" },
         host: { id: hostId, name: "mars", displayName: null },
       });
+    });
+
+    it("looks up datasets by id, destroyed ones included", () => {
+      const { hostId } = seedAll();
+      const [first] = searchDatasets("DITI/");
+      const [utn] = searchDatasets("diti/utn");
+      destroy(hostId, UTN);
+      expect(searchDatasets("diti/utn")).toEqual([]);
+      const rows = lookupDatasets([utn.id, first.id, 999999]);
+      expect(rows.map((row) => row.id)).toEqual([first.id, utn.id]);
+      expect(lookupDatasets([])).toEqual([]);
     });
 
     it("limits results and skips destroyed datasets", () => {

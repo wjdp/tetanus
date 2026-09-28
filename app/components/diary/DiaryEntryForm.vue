@@ -28,7 +28,19 @@ const isSearched = computed(() => subjectType.value === "dataset");
 const searchTerm = ref("");
 const { results: datasetResults, loading: datasetsLoading } =
   useDatasetSearch(searchTerm);
-const seenDatasets = new Map<number, SubjectItem>();
+const seenDatasets = reactive(new Map<number, SubjectItem>());
+
+const rememberPrefilledDataset = async () => {
+  const id = subjectId.value;
+  if (!isSearched.value || id === undefined || seenDatasets.has(id)) return;
+  const { datasets } = await $fetch("/api/datasets", {
+    query: { ids: String(id) },
+  });
+  for (const item of datasetSubjectItems(datasets)) {
+    seenDatasets.set(item.value, item);
+  }
+};
+onMounted(rememberPrefilledDataset);
 
 const datasetItems = computed(() => {
   const found = datasetSubjectItems(datasetResults.value);

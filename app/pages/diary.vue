@@ -38,16 +38,13 @@ const datasetIds = computed(() => [
 const { data: datasetLabels } = useLazyAsyncData(
   () => `diary-dataset-labels:${datasetIds.value.join(",")}`,
   async () => {
-    const labelled = await Promise.all(
-      datasetIds.value.map(async (id) => {
-        try {
-          return [id, datasetLabel(await $fetch(`/api/datasets/${id}`))];
-        } catch {
-          return [];
-        }
-      }),
-    );
-    return Object.fromEntries(labelled.filter((pair) => pair.length));
+    if (datasetIds.value.length === 0) return {};
+    const { datasets } = await $fetch("/api/datasets", {
+      query: { ids: datasetIds.value.join(",") },
+    });
+    return Object.fromEntries(
+      datasets.map((row) => [row.id, datasetLabel(row)]),
+    ) as Record<number, string>;
   },
   { server: false, default: () => ({}) as Record<number, string> },
 );

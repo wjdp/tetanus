@@ -679,10 +679,7 @@ function likePattern(query: string) {
   return `%${query.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
 }
 
-export function searchDatasets(
-  query: string,
-  limit = DATASET_SEARCH_LIMIT,
-): DatasetSearchResult[] {
+function datasetSummaries() {
   return db
     .select({
       id: dataset.id,
@@ -692,7 +689,22 @@ export function searchDatasets(
     })
     .from(dataset)
     .innerJoin(pool, eq(pool.id, dataset.poolId))
-    .innerJoin(host, eq(host.id, pool.hostId))
+    .innerJoin(host, eq(host.id, pool.hostId));
+}
+
+export function lookupDatasets(ids: number[]): DatasetSearchResult[] {
+  if (ids.length === 0) return [];
+  return datasetSummaries()
+    .where(inArray(dataset.id, ids))
+    .orderBy(asc(dataset.name), asc(host.name))
+    .all();
+}
+
+export function searchDatasets(
+  query: string,
+  limit = DATASET_SEARCH_LIMIT,
+): DatasetSearchResult[] {
+  return datasetSummaries()
     .where(
       and(
         eq(dataset.present, true),

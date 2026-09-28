@@ -115,6 +115,18 @@ describe("/api/datasets", () => {
     expect(datasets).toHaveLength(20);
   });
 
+  it("looks up datasets by ids", async () => {
+    const { datasets: found } = await (
+      await fetch("/api/datasets?q=DITI/")
+    ).json();
+    const ids = found.slice(0, 2).map((row: { id: number }) => row.id);
+    const { datasets } = await (
+      await fetch(`/api/datasets?ids=${ids.join(",")}`)
+    ).json();
+    expect(datasets.map((row: { id: number }) => row.id)).toEqual(ids);
+    expect((await fetch("/api/datasets?ids=x")).status).toBe(400);
+  });
+
   it("400s without a query", async () => {
     expect((await fetch("/api/datasets")).status).toBe(400);
     expect((await fetch("/api/datasets?q=")).status).toBe(400);

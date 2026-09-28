@@ -14,9 +14,14 @@ afterAll(() => server.stop());
 
 await setup({ host: server.host });
 
+interface HealthResponse {
+  ok: boolean;
+  checks: { database: boolean };
+}
+
 describe("GET /health", () => {
   it("reports the database as healthy", async () => {
-    expect(await $fetch("/health")).toEqual({
+    expect(await $fetch<HealthResponse>("/health")).toEqual({
       ok: true,
       checks: { database: true },
     });

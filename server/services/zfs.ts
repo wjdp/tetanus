@@ -28,6 +28,7 @@ export {
   datasetCounts,
   getDataset,
   listDatasets,
+  lookupDatasets,
   observeZfsList,
   observeZfsSnapshots,
   type SnapshotRow,
