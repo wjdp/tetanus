@@ -1,4 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 
 import { version } from "./package.json";
@@ -40,6 +41,12 @@ export default defineNuxtConfig({
   nitro: {
     typescript: { tsConfig: relaxedIndexAccess() },
     experimental: { tasks: true },
+    serverAssets: [
+      {
+        baseName: "host",
+        dir: fileURLToPath(new URL("host", import.meta.url)),
+      },
+    ],
     scheduledTasks: { "*/5 * * * *": ["alerts:tick", "healthchecks:ping"] },
     ignore: ["**/*.test.ts"],
   },

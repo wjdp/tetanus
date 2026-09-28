@@ -7,12 +7,16 @@ similar). No jq, Python or Node.
 
 ## Install
 
-With the enrol token from the tetanus settings page:
+With the enrol token from the tetanus settings page, which shows this command:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/wjdp/tetanus/master/host/install.sh \
+curl -fsSL https://tetanus.example/host/install.sh \
   | sudo bash -s -- --url https://tetanus.example --token <enrol token>
 ```
+
+The server serves the installer and the files it installs at `/host/<file>`. Piped from
+curl, the installer downloads them from `--url` (or `TETANUS_URL` in an existing config);
+set `TETANUS_SOURCE_URL` to download from elsewhere.
 
 Or from a clone:
 
@@ -87,7 +91,7 @@ sudo tetanus-collect --dry-run --only versions       # print payloads, send noth
 ```sh
 sudo tetanus/host/install.sh --uninstall
 # or
-curl -fsSL https://raw.githubusercontent.com/wjdp/tetanus/master/host/install.sh \
+curl -fsSL https://tetanus.example/host/install.sh \
   | sudo bash -s -- --uninstall
 ```
 

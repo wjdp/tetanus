@@ -144,6 +144,8 @@ Host collector:
   `config_sync` events. Phase 5 should dedupe on `(hostId, eid)`.
 - The installer's curl one-liner points at `raw.githubusercontent.com/wjdp/tetanus`,
   which assumes the publication repo. The working remote is Gitea `wjdp/diskbot`.
+  Resolved 2026-09-28: the server now serves `host/` files at `/host/<file>` and the
+  installer downloads from `--url`.
 - Shell tests (`pnpm test:host`, 21 cases) stub `zpool`, `zfs`, `smartctl`, `lsblk` and
   `curl`; the stubs replay `test/fixtures/mars` only when argv matches `manifest.txt`
   exactly, so the tests pin every command line to what was captured on the real host.

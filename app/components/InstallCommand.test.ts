@@ -10,7 +10,10 @@ describe("InstallCommand", () => {
     });
 
     const text = component.get('[data-testid="install-command"]').text();
-    expect(text).toContain("https://tetanus.example");
+    expect(text).toContain(
+      "curl -fsSL https://tetanus.example/host/install.sh",
+    );
+    expect(text).toContain("--url https://tetanus.example");
     expect(text).toContain("ab".repeat(32));
   });
 });

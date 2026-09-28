@@ -6,7 +6,7 @@ const props = defineProps<{
 
 const command = computed(
   () =>
-    `curl -fsSL https://raw.githubusercontent.com/wjdp/tetanus/master/host/install.sh \\\n  | sudo bash -s -- --url ${props.url} --token ${props.token}`,
+    `curl -fsSL ${props.url}/host/install.sh \\\n  | sudo bash -s -- --url ${props.url} --token ${props.token}`,
 );
 
 const toast = useToast();

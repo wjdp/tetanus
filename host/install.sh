@@ -5,11 +5,10 @@
 #   sudo host/install.sh --uninstall
 #
 # Run from a checkout it installs the files next to it; piped from curl it downloads them
-# from TETANUS_SOURCE_URL (default: this repository's master branch on GitHub).
+# from TETANUS_SOURCE_URL (default: the tetanus server, from --url or the existing config).
 
 set -euo pipefail
 
-readonly source_url=${TETANUS_SOURCE_URL:-https://raw.githubusercontent.com/wjdp/tetanus/master}
 readonly bin_path=/usr/local/bin/tetanus-collect
 readonly unit_dir=/etc/systemd/system
 readonly timers=(tetanus-collect-zfs.timer tetanus-collect-smart.timer tetanus-collect-snapshots.timer)
@@ -55,8 +54,22 @@ parse_args() {
   done
 }
 
+configured_url() {
+  local line value=
+  [[ -r $config_path ]] || return 0
+  while IFS= read -r line || [[ -n $line ]]; do
+    line=${line%$'\r'}
+    [[ $line =~ ^[[:space:]]*(export[[:space:]]+)?TETANUS_URL=(.*)$ ]] || continue
+    value=${BASH_REMATCH[2]}
+    if [[ $value =~ ^\"(.*)\"$ || $value =~ ^\'(.*)\'$ ]]; then
+      value=${BASH_REMATCH[1]}
+    fi
+  done <"$config_path"
+  printf '%s' "$value"
+}
+
 # Sets sources to a directory holding the host/ files: the checkout this script is in,
-# or a temporary download.
+# or a temporary download from the tetanus server.
 fetch_sources() {
   local here
   here=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd || true)
@@ -65,7 +78,9 @@ fetch_sources() {
     return 0
   fi
 
-  local file
+  local file source_url=${TETANUS_SOURCE_URL:-${url:-$(configured_url)}}
+  [[ -n $source_url ]] || die "no server to download from; pass --url"
+  source_url=${source_url%/}
   sources=$(mktemp -d)
   trap 'rm -rf "$sources"' EXIT
   mkdir -p "$sources/zed"
