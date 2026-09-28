@@ -1,5 +1,10 @@
 import { and, asc, eq, isNotNull } from "drizzle-orm";
 import type { DiskKey, DiskProtocol } from "#shared/disk";
+import type {
+  ScrutinyDeviceImport,
+  ScrutinyImportResult,
+  ScrutinyMatch,
+} from "#shared/schemas/import";
 import type { SmartProtocol } from "#shared/smart/metadata";
 import { db } from "~~/server/database/client";
 import {
@@ -33,7 +38,7 @@ import {
 } from "~~/server/services/smart";
 import { notFound } from "~~/server/utils/serviceError";
 
-export type ScrutinyMatch = "wwn" | "uuid" | "serial" | "created";
+export type { ScrutinyDeviceImport, ScrutinyImportResult, ScrutinyMatch };
 
 export interface ImportScrutinyOptions {
   url: string;
@@ -41,24 +46,6 @@ export interface ImportScrutinyOptions {
   dryRun: boolean;
   fetchImpl?: FetchImpl;
   onProgress?: (done: number, total: number) => void;
-}
-
-export interface ScrutinyDeviceImport {
-  key: string;
-  model: string;
-  serial: string;
-  matched: ScrutinyMatch;
-  diskId: number | null;
-  cutoff: Date | null;
-  readings: number;
-  temperatures: number;
-  skipped: number;
-  error?: string;
-}
-
-export interface ScrutinyImportResult {
-  dryRun: boolean;
-  devices: ScrutinyDeviceImport[];
 }
 
 interface DiskMatch {

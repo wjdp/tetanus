@@ -1,10 +1,12 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { $fetch, fetch, setup } from "@nuxt/test-utils/e2e";
+import { fetch, setup } from "@nuxt/test-utils/e2e";
 import { afterAll, describe, expect, it, vi } from "vitest";
+import type { ScrutinyImportResult } from "#shared/schemas/import";
+import type { SseTask } from "#shared/sse";
 import { createDb } from "~~/server/database/client";
 import { runMigrations } from "~~/server/database/migrate";
-import { disk, host } from "~~/server/database/schema";
+import { host } from "~~/server/database/schema";
 import {
   ATA_KEY,
   scrutinyFixtureFetch,
@@ -39,6 +41,14 @@ const mars = db
   .values({ name: "mars", firstSeenAt: now, lastSeenAt: now })
   .returning()
   .get();
+
+// Raw SQL: selecting through Drizzle's Disk types here tips nuxt typecheck
+// into TS2321 on Nitro's route matching elsewhere.
+function countDisks() {
+  return (
+    sqlite.prepare("SELECT count(*) AS n FROM Disk").get() as { n: number }
+  ).n;
+}
 
 function postImport(body: unknown) {
   return fetch("/api/import/scrutiny", {
@@ -90,7 +100,7 @@ describe("POST /api/import/scrutiny", () => {
     expect(preview.devices).toContainEqual(
       expect.objectContaining({ key: ATA_KEY, matched: "created" }),
     );
-    expect(db.select().from(disk).all()).toEqual([]);
+    expect(countDisks()).toBe(0);
   });
 
   it("enqueues the import and stores its summary on the task", async () => {
@@ -104,7 +114,7 @@ describe("POST /api/import/scrutiny", () => {
     expect(taskId).toEqual(expect.any(Number));
     await vi.waitFor(
       async () => {
-        const tasks = await $fetch("/api/tasks");
+        const tasks: SseTask[] = await (await fetch("/api/tasks")).json();
         const task = tasks.find((candidate) => candidate.id === taskId);
         expect(task).toMatchObject({
           name: "import:scrutiny",
@@ -114,14 +124,16 @@ describe("POST /api/import/scrutiny", () => {
       },
       { timeout: 10000, interval: 100 },
     );
-    const result = await $fetch(`/api/import/scrutiny/${taskId}`);
+    const result: ScrutinyImportResult<string> = await (
+      await fetch(`/api/import/scrutiny/${taskId}`)
+    ).json();
     expect(result.dryRun).toBe(false);
     expect(result.devices.map((device) => device.matched)).toEqual([
       "created",
       "created",
       "created",
     ]);
-    expect(db.select().from(disk).all()).toHaveLength(3);
+    expect(countDisks()).toBe(3);
   });
 
   it("404s for a task without a scrutiny result", async () => {
