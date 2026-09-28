@@ -14,17 +14,17 @@ describe("zpool-events parser", () => {
     expect(summary.lastEid).toBe(data.events[data.events.length - 1]?.eid);
 
     const first = data.events[0];
-    expect(first?.eid).toBe(0x2c1);
+    expect(first?.eid).toBe(0x980);
     expect(first?.class).toBe("sysevent.fs.zfs.history_event");
-    expect(first?.pool).toBe("tank");
-    expect(first?.poolGuid).toBe(BigInt("0x4020465f3c37b218").toString());
+    expect(first?.pool).toBe("zeta");
+    expect(first?.poolGuid).toBe(BigInt("0x44ea8dbb345d3bcc").toString());
     expect(first?.fields.history_dsname).toBe(
-      "tank/yoh6kfw@autosnap_2026-09-27_15:00:07_hourly",
+      "zeta/z62a@autosnap_2026-09-28_20:45:03_frequently",
     );
     // history_internal_str = " " decodes to a literal single space, not empty.
     expect(first?.fields.history_internal_str).toBe(" ");
     // built from the `time` field (seconds+nanoseconds), not the local header timestamp
-    expect(first?.at).toBe("2026-09-28T15:00:18.929Z");
+    expect(first?.at).toBe("2026-09-28T20:45:03.619Z");
   });
 
   it("parses the Q2 failure capture (OpenZFS 2.2, embedded nvlists and empty values)", () => {

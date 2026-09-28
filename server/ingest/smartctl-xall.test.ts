@@ -68,7 +68,7 @@ describe("smartctl-xall parser", () => {
     const { data } = parse(body, { exitStatus });
     expect(data.identity.capacityBytes).toBe(250059350016);
     expect(data.nvme?.powerCycles).toBe(144);
-    expect(data.nvme?.powerOnHours).toBe(48988);
+    expect(data.nvme?.powerOnHours).toBe(48993);
     expect(data.identity.wwn).toBeUndefined();
   });
 

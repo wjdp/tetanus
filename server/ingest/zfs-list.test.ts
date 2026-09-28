@@ -21,7 +21,7 @@ describe("zfs-list parser", () => {
       type: "filesystem",
     });
     expect(tank?.properties.used).toEqual({
-      value: 73738833926736,
+      value: 73627902151696,
       source: { type: "NONE", data: "-" },
     });
     expect(tank?.properties.compression).toEqual({

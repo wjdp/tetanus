@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790614464,
-    "asctime": "Mon Sep 28 17:54:24 2026 BST"
+    "time_t": 1790633456,
+    "asctime": "Mon Sep 28 23:10:56 2026 BST"
   },
   "device": {
     "name": "/dev/sdi",
@@ -173,8 +173,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 14411045,
-          "string": "0/14411045"
+          "value": 15826733,
+          "string": "0/15826733"
         }
       },
       {
@@ -261,8 +261,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 474027311,
-          "string": "0/474027311"
+          "value": 474038500,
+          "string": "0/474038500"
         }
       },
       {
@@ -283,8 +283,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 26496,
-          "string": "26496"
+          "value": 26501,
+          "string": "26501"
         }
       },
       {
@@ -400,7 +400,7 @@
       {
         "id": 190,
         "name": "Airflow_Temperature_Cel",
-        "value": 58,
+        "value": 59,
         "worst": 45,
         "thresh": 0,
         "when_failed": "",
@@ -415,8 +415,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 823918634,
-          "string": "42 (Min/Max 28/49)"
+          "value": 823918633,
+          "string": "41 (Min/Max 28/49)"
         }
       },
       {
@@ -466,7 +466,7 @@
       {
         "id": 194,
         "name": "Temperature_Celsius",
-        "value": 42,
+        "value": 41,
         "worst": 55,
         "thresh": 0,
         "when_failed": "",
@@ -481,8 +481,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 25769803818,
-          "string": "42 (0 6 0 0 0)"
+          "value": 25769803817,
+          "string": "41 (0 6 0 0 0)"
         }
       },
       {
@@ -591,8 +591,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 14288050523757627,
-          "string": "23611h+55m+26.696s"
+          "value": 3091212517006401,
+          "string": "23617h+11m+59.729s"
         }
       },
       {
@@ -613,8 +613,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 204954413836,
-          "string": "204954413836"
+          "value": 204954909588,
+          "string": "204954909588"
         }
       },
       {
@@ -635,8 +635,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 1443102640049,
-          "string": "1443102640049"
+          "value": 1443103559985,
+          "string": "1443103559985"
         }
       }
     ]
@@ -646,11 +646,11 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 26496
+    "hours": 26501
   },
   "power_cycle_count": 66,
   "temperature": {
-    "current": 42,
+    "current": 41,
     "power_cycle_min": 28,
     "power_cycle_max": 46,
     "lifetime_min": 12,
@@ -1302,13 +1302,13 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 42,
+      "current": 41,
       "power_cycle_min": 28,
       "power_cycle_max": 46,
       "lifetime_min": 6,
       "lifetime_max": 54,
       "under_limit_count": 0,
-      "over_limit_count": 284
+      "over_limit_count": 288
     },
     "smart_status": {
       "passed": true
@@ -1359,14 +1359,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 74,
+    "index": 80,
     "table": [
-      44,
-      44,
-      42,
-      42,
-      42,
-      42,
       42,
       42,
       42,
@@ -1488,7 +1482,13 @@
       42,
       42,
       42,
-      42
+      42,
+      42,
+      42,
+      41,
+      41,
+      40,
+      40
     ]
   },
   "ata_sct_erc": {
@@ -1526,7 +1526,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 26496,
+            "value": 26501,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1540,7 +1540,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 204923297050,
+            "value": 204923792802,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1554,7 +1554,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 984521745,
+            "value": 984526450,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1568,7 +1568,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 1443098181863,
+            "value": 1443099101799,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1582,7 +1582,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 1590712446,
+            "value": 1590713800,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1616,7 +1616,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 26488,
+            "value": 26494,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1630,7 +1630,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 23896,
+            "value": 23901,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1784,7 +1784,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 42,
+            "value": 41,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1798,7 +1798,7 @@
             "offset": 16,
             "name": "Average Short Term Temperature",
             "size": 1,
-            "value": 43,
+            "value": 42,
             "flags": {
               "value": 192,
               "string": "V--- ",

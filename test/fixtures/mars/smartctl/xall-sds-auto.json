@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790614466,
-    "asctime": "Mon Sep 28 17:54:26 2026 BST"
+    "time_t": 1790633458,
+    "asctime": "Mon Sep 28 23:10:58 2026 BST"
   },
   "device": {
     "name": "/dev/sds",
@@ -192,8 +192,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 9906,
-          "string": "9906"
+          "value": 9912,
+          "string": "9912"
         }
       },
       {
@@ -353,7 +353,7 @@
       {
         "id": 190,
         "name": "Airflow_Temperature_Cel",
-        "value": 68,
+        "value": 62,
         "worst": 44,
         "thresh": 0,
         "when_failed": "",
@@ -368,8 +368,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 32,
-          "string": "32"
+          "value": 38,
+          "string": "38"
         }
       },
       {
@@ -456,8 +456,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 104795494139,
-          "string": "104795494139"
+          "value": 104834075835,
+          "string": "104834075835"
         }
       },
       {
@@ -489,14 +489,14 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 9906
+    "hours": 9912
   },
   "power_cycle_count": 17,
   "endurance_used": {
     "current_percent": 1
   },
   "temperature": {
-    "current": 32,
+    "current": 38,
     "power_cycle_min": 27,
     "power_cycle_max": 42,
     "lifetime_min": 24,
@@ -967,7 +967,7 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 32,
+      "current": 38,
       "power_cycle_min": 27,
       "power_cycle_max": 42,
       "lifetime_min": 24,
@@ -991,40 +991,8 @@
       "limit_max": 70
     },
     "size": 128,
-    "index": 66,
+    "index": 98,
     "table": [
-      38,
-      38,
-      39,
-      38,
-      37,
-      37,
-      37,
-      37,
-      38,
-      37,
-      37,
-      37,
-      37,
-      37,
-      38,
-      38,
-      38,
-      38,
-      37,
-      37,
-      38,
-      37,
-      37,
-      38,
-      37,
-      37,
-      39,
-      37,
-      37,
-      37,
-      36,
-      37,
       37,
       36,
       36,
@@ -1120,7 +1088,39 @@
       32,
       32,
       32,
-      32
+      32,
+      33,
+      33,
+      32,
+      33,
+      33,
+      33,
+      33,
+      33,
+      33,
+      33,
+      33,
+      33,
+      33,
+      34,
+      33,
+      34,
+      34,
+      33,
+      34,
+      34,
+      33,
+      33,
+      33,
+      33,
+      33,
+      33,
+      34,
+      33,
+      33,
+      33,
+      33,
+      38
     ]
   },
   "ata_sct_erc": {
@@ -1156,7 +1156,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 9906,
+            "value": 9912,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1170,7 +1170,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 104795494139,
+            "value": 104834076011,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1184,7 +1184,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 1004576654,
+            "value": 1005056870,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1198,7 +1198,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 13960545472,
+            "value": 13961618640,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1212,7 +1212,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 39384036,
+            "value": 39387677,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1226,7 +1226,7 @@
             "offset": 56,
             "name": "Date and Time TimeStamp",
             "size": 6,
-            "value": 3053000,
+            "value": 445000,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1282,7 +1282,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 32,
+            "value": 38,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1470,7 +1470,7 @@
         "id": 9,
         "name": "Transition from drive PhyRdy to drive PhyNRdy",
         "size": 2,
-        "value": 12493,
+        "value": 32483,
         "overflow": false
       },
       {

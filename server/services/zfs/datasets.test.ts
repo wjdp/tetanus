@@ -121,7 +121,7 @@ describe("observeZfsList", () => {
       parentId: null,
       type: "filesystem",
       mountpoint: "/vol/tank",
-      used: 73738833926736,
+      used: 73627902151696,
       compressRatio: 1.01,
       quota: null,
       refQuota: null,
@@ -311,7 +311,7 @@ describe("observeZfsSnapshots", () => {
       (row) => row.name === "syncoid_oth10_2024-01-09:23:37:26-GMT00:00",
     );
     expect(first).toMatchObject({
-      guid: null,
+      guid: "2085090045664847989",
       used: 1795024,
       referenced: 385706464,
       written: 385706464,
@@ -397,7 +397,12 @@ describe("observeZfsSnapshots", () => {
       guid: `1774734222571039942${index}`,
     }));
     observeZfsSnapshots(hostId, withGuids, T0);
-    observeZfsSnapshots(hostId, marsSnapshots(), hoursAfter(6));
+    const withoutGuids = marsSnapshots();
+    withoutGuids.snapshots = withoutGuids.snapshots.map((entry) => ({
+      ...entry,
+      guid: null,
+    }));
+    observeZfsSnapshots(hostId, withoutGuids, hoursAfter(6));
 
     const guids = db.select({ guid: snapshot.guid }).from(snapshot).all();
     expect(

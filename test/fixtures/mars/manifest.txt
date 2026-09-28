@@ -1,4 +1,4 @@
-# captured 2026-09-28T16:53:44Z
+# captured 2026-09-28T22:10:16Z
 # name	exit	argv
 zfs-version	0	zfs version
 smartctl-version	0	smartctl --version
@@ -12,7 +12,7 @@ zpool-status-text	0	zpool status -PLpvs
 zpool-list	0	zpool list -j --json-int -pv
 zpool-iostat	0	zpool iostat -vpl 1 2
 zfs-list	0	zfs list -j --json-int -p -t filesystem,volume -o name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
-zfs-snapshots	0	zfs list -j --json-int -p -t snapshot -o name,used,referenced,written,creation -s creation
+zfs-snapshots	0	zfs list -j --json-int -p -t snapshot -o name,guid,used,referenced,written,creation -s creation
 zpool-history	0	zpool history -il | tail -n 500
 zpool-events	0	zpool events -vH
 vdev-id-conf	0	cat /etc/zfs/vdev_id.conf

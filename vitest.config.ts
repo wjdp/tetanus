@@ -10,7 +10,12 @@ export default defineConfig({
         test: {
           name: "unit",
           setupFiles: ["test/setup.ts"],
-          exclude: ["**/node_modules/**", ".claude/**", "test/api/**"],
+          exclude: [
+            "**/node_modules/**",
+            ".claude/**",
+            ".output/**",
+            "test/api/**",
+          ],
           env: {
             DATABASE_URL: ":memory:",
           },

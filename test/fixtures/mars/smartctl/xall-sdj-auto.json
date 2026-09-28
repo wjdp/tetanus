@@ -23,8 +23,8 @@
     "exit_status": 64
   },
   "local_time": {
-    "time_t": 1790614464,
-    "asctime": "Mon Sep 28 17:54:24 2026 BST"
+    "time_t": 1790633456,
+    "asctime": "Mon Sep 28 23:10:56 2026 BST"
   },
   "device": {
     "name": "/dev/sdj",
@@ -170,8 +170,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 136552749,
-          "string": "0/136552749"
+          "value": 137774677,
+          "string": "0/137774677"
         }
       },
       {
@@ -258,8 +258,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 500491264,
-          "string": "0/500491264"
+          "value": 500501694,
+          "string": "0/500501694"
         }
       },
       {
@@ -280,8 +280,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 22144,
-          "string": "22144"
+          "value": 22150,
+          "string": "22150"
         }
       },
       {
@@ -588,8 +588,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 2138451331798633,
-          "string": "22121h+08m+17.897s"
+          "value": 6405497045407342,
+          "string": "22126h+24m+51.396s"
         }
       },
       {
@@ -610,8 +610,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 94871950865,
-          "string": "94871950865"
+          "value": 94872338097,
+          "string": "94872338097"
         }
       },
       {
@@ -632,8 +632,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 370438875907,
-          "string": "370438875907"
+          "value": 370439710603,
+          "string": "370439710603"
         }
       }
     ]
@@ -643,7 +643,7 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 22144
+    "hours": 22150
   },
   "power_cycle_count": 37,
   "temperature": {
@@ -1390,7 +1390,7 @@
       "lifetime_min": 18,
       "lifetime_max": 56,
       "under_limit_count": 0,
-      "over_limit_count": 303
+      "over_limit_count": 309
     },
     "smart_status": {
       "passed": true
@@ -1441,14 +1441,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 6,
+    "index": 12,
     "table": [
-      44,
-      44,
-      42,
-      42,
-      42,
-      42,
       42,
       42,
       42,
@@ -1570,6 +1564,12 @@
       42,
       42,
       41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
       41
     ]
   },
@@ -1608,7 +1608,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 22144,
+            "value": 22150,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1622,7 +1622,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 94868652065,
+            "value": 94869039297,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1636,7 +1636,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 631334623,
+            "value": 631339222,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1650,7 +1650,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 370424219935,
+            "value": 370425054631,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1664,7 +1664,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 1557519856,
+            "value": 1557521269,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1698,7 +1698,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 22121,
+            "value": 22127,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1712,7 +1712,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 22119,
+            "value": 22124,
             "flags": {
               "value": 192,
               "string": "V--- ",

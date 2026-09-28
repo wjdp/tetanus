@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790614462,
-    "asctime": "Mon Sep 28 17:54:22 2026 BST"
+    "time_t": 1790633454,
+    "asctime": "Mon Sep 28 23:10:54 2026 BST"
   },
   "device": {
     "name": "/dev/sdf",
@@ -36,8 +36,8 @@
     "protocol": "ATA"
   },
   "power_mode": {
-    "ata_value": 129,
-    "name": "IDLE_A"
+    "ata_value": 255,
+    "name": "ACTIVE or IDLE"
   },
   "model_family": "Seagate Exos X18",
   "model_name": "ST12000NM000J-2TY103",
@@ -173,8 +173,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 23009805,
-          "string": "0/23009805"
+          "value": 23969373,
+          "string": "0/23969373"
         }
       },
       {
@@ -261,8 +261,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 906177392,
-          "string": "0/906177392"
+          "value": 906188748,
+          "string": "0/906188748"
         }
       },
       {
@@ -283,8 +283,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 32936,
-          "string": "32936"
+          "value": 32942,
+          "string": "32942"
         }
       },
       {
@@ -591,8 +591,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 2924194123773848,
-          "string": "30616h+11m+20.842s"
+          "value": 7188499648247709,
+          "string": "30621h+27m+53.703s"
         }
       },
       {
@@ -613,8 +613,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 98758949166,
-          "string": "98758949166"
+          "value": 98759212094,
+          "string": "98759212094"
         }
       },
       {
@@ -635,8 +635,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 17653600398575,
-          "string": "17653600398575"
+          "value": 17653601095215,
+          "string": "17653601095215"
         }
       }
     ]
@@ -646,7 +646,7 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 32936
+    "hours": 32942
   },
   "power_cycle_count": 76,
   "temperature": {
@@ -1292,7 +1292,7 @@
       "lifetime_min": 19,
       "lifetime_max": 54,
       "under_limit_count": 0,
-      "over_limit_count": 281
+      "over_limit_count": 287
     },
     "smart_status": {
       "passed": true
@@ -1343,14 +1343,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 101,
+    "index": 107,
     "table": [
-      43,
-      43,
-      42,
-      42,
-      41,
-      41,
       41,
       42,
       41,
@@ -1472,6 +1466,12 @@
       42,
       41,
       41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
       41
     ]
   },
@@ -1510,7 +1510,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 32936,
+            "value": 32942,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1524,7 +1524,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 98752112677,
+            "value": 98752375605,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1538,7 +1538,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 788324966,
+            "value": 788329742,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1552,7 +1552,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 17653593789806,
+            "value": 17653594486558,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1566,7 +1566,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 2523714992,
+            "value": 2523716336,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1600,7 +1600,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 32869,
+            "value": 32874,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1614,7 +1614,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 31332,
+            "value": 31337,
             "flags": {
               "value": 192,
               "string": "V--- ",

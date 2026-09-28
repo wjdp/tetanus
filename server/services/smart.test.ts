@@ -98,7 +98,7 @@ describe("recordSmartReading", () => {
       latestRaw: body,
       latestStatus: "failed",
       latestTemp: 42,
-      latestPowerOnHours: 50280,
+      latestPowerOnHours: 50285,
       latestReadingAt: t0,
     });
     expect(row.latestPowerCycles).toBe(JSON.parse(body).power_cycle_count);

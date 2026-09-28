@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790614466,
-    "asctime": "Mon Sep 28 17:54:26 2026 BST"
+    "time_t": 1790633458,
+    "asctime": "Mon Sep 28 23:10:58 2026 BST"
   },
   "device": {
     "name": "/dev/sdm",
@@ -196,8 +196,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 33909,
-          "string": "33909"
+          "value": 33914,
+          "string": "33914"
         }
       },
       {
@@ -570,8 +570,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 2801665078044,
-          "string": "2801665078044"
+          "value": 2801672083780,
+          "string": "2801672083780"
         }
       },
       {
@@ -592,8 +592,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 3018724584157,
-          "string": "3018724584157"
+          "value": 3018724641861,
+          "string": "3018724641861"
         }
       },
       {
@@ -724,8 +724,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 2818164405760,
-          "string": "2818164405760"
+          "value": 2818181327360,
+          "string": "2818181327360"
         }
       }
     ]
@@ -735,7 +735,7 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 33909
+    "hours": 33914
   },
   "power_cycle_count": 9,
   "endurance_used": {
@@ -1230,40 +1230,8 @@
       "limit_max": 70
     },
     "size": 128,
-    "index": 66,
+    "index": 98,
     "table": [
-      44,
-      43,
-      44,
-      43,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      43,
-      44,
-      44,
-      43,
-      44,
       44,
       43,
       42,
@@ -1359,6 +1327,38 @@
       43,
       43,
       43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
       43
     ]
   },
@@ -1395,7 +1395,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 33909,
+            "value": 33914,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1409,7 +1409,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 2801665078044,
+            "value": 2801672083780,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1423,7 +1423,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 12657324,
+            "value": 12835733,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1437,7 +1437,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 3018724584157,
+            "value": 3018724641861,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1451,7 +1451,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 1031874,
+            "value": 1033416,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1465,7 +1465,7 @@
             "offset": 56,
             "name": "Date and Time TimeStamp",
             "size": 6,
-            "value": 437000,
+            "value": 1428000,
             "flags": {
               "value": 192,
               "string": "V--- ",

@@ -21,7 +21,7 @@ describe("zfs-snapshots parser", () => {
       name: "tank/yoh6kfw@syncoid_oth10_2024-01-09:23:37:26-GMT00:00",
       dataset: "tank/yoh6kfw",
       snapshot: "syncoid_oth10_2024-01-09:23:37:26-GMT00:00",
-      guid: null,
+      guid: "2085090045664847989",
       used: 1795024,
       referenced: 385706464,
       written: 385706464,
@@ -49,7 +49,12 @@ describe("zfs-snapshots parser", () => {
   });
 
   it("treats a missing guid as null", () => {
-    const { data } = parse(fixture("zfs-snapshots.json"), {});
+    const withoutGuid = fixture("zfs-snapshots.json").replace(
+      /"guid":\s*\{[^}]*\{[^}]*\}\s*\},?/g,
+      "",
+    );
+    const { data } = parse(withoutGuid, {});
+    expect(data.snapshots.length).toBeGreaterThan(0);
     expect(data.snapshots.every((s) => s.guid === null)).toBe(true);
   });
 

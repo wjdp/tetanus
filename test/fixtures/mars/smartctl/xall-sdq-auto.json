@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790614466,
-    "asctime": "Mon Sep 28 17:54:26 2026 BST"
+    "time_t": 1790633458,
+    "asctime": "Mon Sep 28 23:10:58 2026 BST"
   },
   "device": {
     "name": "/dev/sdq",
@@ -192,8 +192,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 55022,
-          "string": "55022"
+          "value": 55027,
+          "string": "55027"
         }
       },
       {
@@ -353,7 +353,7 @@
       {
         "id": 190,
         "name": "Airflow_Temperature_Cel",
-        "value": 70,
+        "value": 69,
         "worst": 43,
         "thresh": 0,
         "when_failed": "",
@@ -368,8 +368,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 30,
-          "string": "30"
+          "value": 31,
+          "string": "31"
         }
       },
       {
@@ -467,14 +467,14 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 55022
+    "hours": 55027
   },
   "power_cycle_count": 1190,
   "endurance_used": {
     "current_percent": 28
   },
   "temperature": {
-    "current": 30,
+    "current": 31,
     "power_cycle_min": 26,
     "power_cycle_max": 39,
     "lifetime_min": 17,
@@ -937,7 +937,7 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 30,
+      "current": 31,
       "power_cycle_min": 26,
       "power_cycle_max": 39,
       "lifetime_min": 17,
@@ -957,42 +957,10 @@
       "limit_max": 70
     },
     "size": 128,
-    "index": 70,
+    "index": 102,
     "table": [
       35,
       35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
       34,
       34,
       34,
@@ -1086,7 +1054,39 @@
       30,
       30,
       30,
-      30
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      31,
+      31,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      31
     ]
   },
   "ata_sct_erc": {
@@ -1159,7 +1159,7 @@
         "id": 9,
         "name": "Transition from drive PhyRdy to drive PhyNRdy",
         "size": 2,
-        "value": 561,
+        "value": 1205,
         "overflow": false
       },
       {

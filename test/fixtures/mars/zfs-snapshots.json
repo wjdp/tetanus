@@ -13,6 +13,13 @@
       "dataset": "tank/yoh6kfw",
       "snapshot_name": "syncoid_oth10_2024-01-09:23:37:26-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 2085090045664847989,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1795024,
           "source": {
@@ -51,6 +58,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_byf0d_2024-08-06:00:50:03-GMT01:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1295718160,
           "source": {
@@ -89,6 +103,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-01-01_00:00:02_monthly",
       "properties": {
+        "guid": {
+          "value": 9152189692699483810,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 230685136,
           "source": {
@@ -127,6 +148,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-02-01_00:00:09_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 175415856,
           "source": {
@@ -165,6 +193,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-03-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 2111197563763735522,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 169812544,
           "source": {
@@ -203,6 +238,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-04-01_00:00:03_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 174188256,
           "source": {
@@ -241,6 +283,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "a0bbsrw-z.b4.x",
       "properties": {
+        "guid": {
+          "value": 4029408987350319319,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 182448640,
           "source": {
@@ -279,6 +328,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-05-01_00:00:02_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 242677424,
           "source": {
@@ -317,6 +373,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-06-01_00:00:11_monthly",
       "properties": {
+        "guid": {
+          "value": 1335237968230649559,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 310391840,
           "source": {
@@ -355,6 +418,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-07-01_00:00:02_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 226113008,
           "source": {
@@ -393,6 +463,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-08-01_00:00:06_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 256388352,
           "source": {
@@ -431,6 +508,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-09-01_00:00:01_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 408201552,
           "source": {
@@ -469,6 +553,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2025-10-01_00:00:02_monthly",
       "properties": {
+        "guid": {
+          "value": 7721422594208521490,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -507,6 +598,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2025-10-01_00:00:04_monthly",
       "properties": {
+        "guid": {
+          "value": 1995669025712963310,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -545,6 +643,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2025-10-01_00:00:06_monthly",
       "properties": {
+        "guid": {
+          "value": 7813992959779835956,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 19681744,
           "source": {
@@ -583,6 +688,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2025-10-01_00:00:07_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -621,6 +733,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2025-10-01_00:00:07_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1229116768,
           "source": {
@@ -659,6 +778,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2025-10-01_00:00:07_monthly",
       "properties": {
+        "guid": {
+          "value": 3066304896698348735,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 309557072,
           "source": {
@@ -697,6 +823,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-10-01_00:00:09_monthly",
       "properties": {
+        "guid": {
+          "value": 812401073012808513,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 580474752,
           "source": {
@@ -735,6 +868,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2025-10-01_00:00:12_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3330997120,
           "source": {
@@ -773,6 +913,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2025-10-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -811,6 +958,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2025-10-01_00:00:20_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1320352,
           "source": {
@@ -849,6 +1003,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2025-10-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 1477965854533390914,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 163680,
           "source": {
@@ -887,6 +1048,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2025-10-01_00:00:27_monthly",
       "properties": {
+        "guid": {
+          "value": 1738783735280060763,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12488598496,
           "source": {
@@ -925,6 +1093,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2025-11-01_00:00:00_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 4784137248,
           "source": {
@@ -963,6 +1138,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2025-11-01_00:00:00_monthly",
       "properties": {
+        "guid": {
+          "value": 3955361801313964502,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1001,6 +1183,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-11-01_00:00:01_monthly",
       "properties": {
+        "guid": {
+          "value": 8400082487188229269,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 129094416,
           "source": {
@@ -1039,6 +1228,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2025-11-01_00:00:02_monthly",
       "properties": {
+        "guid": {
+          "value": 3190529526310372782,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1347632,
           "source": {
@@ -1077,6 +1273,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2025-11-01_00:00:10_monthly",
       "properties": {
+        "guid": {
+          "value": 2340761907665338776,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 207328,
           "source": {
@@ -1115,6 +1318,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2025-11-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 6366564925379019764,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1153,6 +1363,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2025-11-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 4131612530793147335,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1191,6 +1408,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2025-11-01_00:00:22_monthly",
       "properties": {
+        "guid": {
+          "value": 4970410064033848389,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10854881136,
           "source": {
@@ -1229,6 +1453,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2025-11-01_00:00:22_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12173312,
           "source": {
@@ -1267,6 +1498,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2025-11-01_00:00:25_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 964102480,
           "source": {
@@ -1305,6 +1543,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2025-11-01_00:00:30_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1343,6 +1588,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2025-11-01_00:00:41_monthly",
       "properties": {
+        "guid": {
+          "value": 7087728565906492313,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 86504880,
           "source": {
@@ -1381,6 +1633,13 @@
       "dataset": "tank/delf",
       "snapshot_name": "syncoid_mars_2025-11-11:16:37:06-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1293077024,
           "source": {
@@ -1419,6 +1678,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2025-12-01_00:00:01_monthly",
       "properties": {
+        "guid": {
+          "value": 5609409396507636156,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 109120,
           "source": {
@@ -1457,6 +1723,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-01_00:00:01_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 177358192,
           "source": {
@@ -1495,6 +1768,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2025-12-01_00:00:04_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1533,6 +1813,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2025-12-01_00:00:06_monthly",
       "properties": {
+        "guid": {
+          "value": 6606163631392838560,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1571,6 +1858,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2025-12-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1153480240,
           "source": {
@@ -1609,6 +1903,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2025-12-01_00:00:16_monthly",
       "properties": {
+        "guid": {
+          "value": 5364906066668758937,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 11740215344,
           "source": {
@@ -1647,6 +1948,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2025-12-01_00:00:17_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 117042112,
           "source": {
@@ -1685,6 +1993,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2025-12-01_00:00:18_monthly",
       "properties": {
+        "guid": {
+          "value": 8931109811741678197,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1723,6 +2038,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2025-12-01_00:00:19_monthly",
       "properties": {
+        "guid": {
+          "value": 867571176407928825,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 4038345696,
           "source": {
@@ -1761,6 +2083,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2025-12-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 1038575487274283322,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1369456,
           "source": {
@@ -1799,6 +2128,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2025-12-01_00:00:25_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1837,6 +2173,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2025-12-01_00:00:25_monthly",
       "properties": {
+        "guid": {
+          "value": 991015827795506039,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -1875,6 +2218,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-09:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 106359264,
           "source": {
@@ -1913,6 +2263,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-10:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 5347534485401412185,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 109681968,
           "source": {
@@ -1951,6 +2308,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-11:00:50:02-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 31268336,
           "source": {
@@ -1989,6 +2353,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-12:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 24993936,
           "source": {
@@ -2027,6 +2398,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-13:00:50:02-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 2191696000915425848,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 27460048,
           "source": {
@@ -2065,6 +2443,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-14:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 28540336,
           "source": {
@@ -2103,6 +2488,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-15:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 4974276184092467920,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 28900432,
           "source": {
@@ -2141,6 +2533,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-16_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12996192,
           "source": {
@@ -2179,6 +2578,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-16:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12696112,
           "source": {
@@ -2217,6 +2623,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-17_00:00:02_daily",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12499696,
           "source": {
@@ -2255,6 +2668,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-17:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12161424,
           "source": {
@@ -2293,6 +2713,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-18_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 997808272833278351,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 14714832,
           "source": {
@@ -2331,6 +2758,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-18:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 14993088,
           "source": {
@@ -2369,6 +2803,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-19_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 8413629151513564228,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12286912,
           "source": {
@@ -2407,6 +2848,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-19:00:50:02-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 7526722070267747270,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12025024,
           "source": {
@@ -2445,6 +2893,13 @@
       "dataset": "tank/xodnr/yjzdo",
       "snapshot_name": "syncoid_mars_2025-12-19:04:32:43-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 6254042340667353588,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -2483,6 +2938,13 @@
       "dataset": "tank/xodnr/yjzdo",
       "snapshot_name": "syncoid_mars_2025-12-19:04:32:50-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 5667844284024353440,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -2521,6 +2983,13 @@
       "dataset": "tank/xodnr/yjzdo",
       "snapshot_name": "syncoid_mars_2025-12-19:04:32:58-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 2450018657378186852,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -2559,6 +3028,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-20_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 1936646907141917858,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12128688,
           "source": {
@@ -2597,6 +3073,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-20:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12450592,
           "source": {
@@ -2635,6 +3118,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-21_00:00:02_daily",
       "properties": {
+        "guid": {
+          "value": 3632380439737424892,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15265888,
           "source": {
@@ -2673,6 +3163,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-21:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15615072,
           "source": {
@@ -2711,6 +3208,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-22_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 6731578324266352554,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15211328,
           "source": {
@@ -2749,6 +3253,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-22:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15331360,
           "source": {
@@ -2787,6 +3298,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-23_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 8488556386491071622,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 16924512,
           "source": {
@@ -2825,6 +3343,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-23:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 5120679224862698259,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 17262784,
           "source": {
@@ -2863,6 +3388,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-24_00:00:02_daily",
       "properties": {
+        "guid": {
+          "value": 3572138510833384081,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13803680,
           "source": {
@@ -2901,6 +3433,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-24:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13940080,
           "source": {
@@ -2939,6 +3478,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-25_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 300289160934439895,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15418656,
           "source": {
@@ -2977,6 +3523,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-25:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15287712,
           "source": {
@@ -3015,6 +3568,13 @@
       "dataset": "tank/anup07rl/t8a/diti/cflkg",
       "snapshot_name": "syncoid_t8a_2025-12-25:17:59:05-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 7740312466882706939,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3053,6 +3613,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-26_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 1434543461429841753,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13061664,
           "source": {
@@ -3091,6 +3658,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-26:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 6984091674531063607,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13121680,
           "source": {
@@ -3129,6 +3703,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-27_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15145856,
           "source": {
@@ -3167,6 +3748,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-27:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 1332239335506058556,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 15391376,
           "source": {
@@ -3205,6 +3793,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-28_00:00:02_daily",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13825504,
           "source": {
@@ -3243,6 +3838,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-28:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13852784,
           "source": {
@@ -3281,6 +3883,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "autosnap_2025-12-29_00:00:01_daily",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13710928,
           "source": {
@@ -3319,6 +3928,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-29:00:50:01-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13994640,
           "source": {
@@ -3357,6 +3973,13 @@
       "dataset": "tank/anup07rl/t8a/diti",
       "snapshot_name": "syncoid_t8a_2025-12-29:10:21:27-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 789430053134483071,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3395,6 +4018,13 @@
       "dataset": "tank/anup07rl/t8a/diti/efs9el",
       "snapshot_name": "syncoid_t8a_2025-12-29:10:21:29-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 2845105094742935388,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3433,6 +4063,13 @@
       "dataset": "tank/anup07rl/t8a/diti/efs9el/yy",
       "snapshot_name": "syncoid_t8a_2025-12-29:10:23:17-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3471,6 +4108,13 @@
       "dataset": "tank/anup07rl/t8a/diti/vn0o5y5ob",
       "snapshot_name": "syncoid_t8a_2025-12-29:10:27:17-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3509,6 +4153,13 @@
       "dataset": "tank/anup07rl/t8a/diti/cflkg",
       "snapshot_name": "syncoid_t8a_2025-12-29:10:27:27-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3547,6 +4198,13 @@
       "dataset": "tank/anup07rl/t8a/diti/utn",
       "snapshot_name": "syncoid_t8a_2025-12-29:10:27:29-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 7599428282043761151,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3585,6 +4243,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2026-01-11_03:35:44_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1325808,
           "source": {
@@ -3623,6 +4288,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2026-01-11_03:35:49_monthly",
       "properties": {
+        "guid": {
+          "value": 4222365876689266692,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3661,6 +4333,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2026-01-11_03:36:04_monthly",
       "properties": {
+        "guid": {
+          "value": 2080515880538794076,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 672151920,
           "source": {
@@ -3699,6 +4378,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2026-01-11_03:36:19_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 9623123664,
           "source": {
@@ -3737,6 +4423,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2026-01-11_03:36:34_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3706740928,
           "source": {
@@ -3775,6 +4468,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2026-01-11_03:36:49_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3813,6 +4513,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2026-01-11_03:36:54_monthly",
       "properties": {
+        "guid": {
+          "value": 959266206568160761,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 124696880,
           "source": {
@@ -3851,6 +4558,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2026-01-11_03:37:04_monthly",
       "properties": {
+        "guid": {
+          "value": 7380818504461588722,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 120032,
           "source": {
@@ -3889,6 +4603,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2026-01-11_03:37:24_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3927,6 +4648,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2026-01-11_03:38:15_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -3965,6 +4693,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2026-01-11_03:38:20_monthly",
       "properties": {
+        "guid": {
+          "value": 4380881740275055765,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10912,
           "source": {
@@ -4003,6 +4738,13 @@
       "dataset": "tank/anup07rl/byf0d/nth70q",
       "snapshot_name": "syncoid_byf0d_2026-01-11:18:35:50-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4041,6 +4783,13 @@
       "dataset": "tank/anup07rl/byf0d/oo3j0u",
       "snapshot_name": "syncoid_byf0d_2026-01-11:19:24:46-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4079,6 +4828,13 @@
       "dataset": "tank/anup07rl/byf0d/cflkg",
       "snapshot_name": "syncoid_byf0d_2026-01-11:19:55:09-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 6683412147240066721,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4117,6 +4873,13 @@
       "dataset": "tank/anup07rl/byf0d/utn",
       "snapshot_name": "syncoid_byf0d_2026-01-11:23:59:41-GMT00:00",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4155,6 +4918,13 @@
       "dataset": "tank/lbtgy",
       "snapshot_name": "autosnap_2026-01-13_19:38:53_monthly",
       "properties": {
+        "guid": {
+          "value": 2487548377865879674,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1265792,
           "source": {
@@ -4193,6 +4963,13 @@
       "dataset": "tank/lbtgy/wf3ukjwrx",
       "snapshot_name": "autosnap_2026-01-13_19:39:02_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4231,6 +5008,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2026-02-01_00:00:04_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1364000,
           "source": {
@@ -4269,6 +5053,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2026-02-01_00:00:12_monthly",
       "properties": {
+        "guid": {
+          "value": 6532144660295292347,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10912,
           "source": {
@@ -4307,6 +5098,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2026-02-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 5248986372595918639,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 93843200,
           "source": {
@@ -4345,6 +5143,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2026-02-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 2879255051258190206,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 618988656,
           "source": {
@@ -4383,6 +5188,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2026-02-01_00:00:16_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4421,6 +5233,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2026-02-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4459,6 +5278,13 @@
       "dataset": "tank/lbtgy",
       "snapshot_name": "autosnap_2026-02-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 774752,
           "source": {
@@ -4497,6 +5323,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2026-02-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 1160661964061918437,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4535,6 +5368,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2026-02-01_00:00:25_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4573,6 +5413,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2026-02-01_00:00:25_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4611,6 +5458,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2026-02-01_00:00:29_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 9587768784,
           "source": {
@@ -4649,6 +5503,13 @@
       "dataset": "tank/lbtgy/wf3ukjwrx",
       "snapshot_name": "autosnap_2026-02-01_00:00:30_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4687,6 +5548,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2026-02-01_00:00:32_monthly",
       "properties": {
+        "guid": {
+          "value": 5121143041323147641,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 2918829056,
           "source": {
@@ -4725,6 +5593,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2026-03-01_00:00:05_monthly",
       "properties": {
+        "guid": {
+          "value": 1783726632555152480,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4763,6 +5638,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2026-03-01_00:00:08_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4801,6 +5683,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2026-03-01_00:00:10_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 905696,
           "source": {
@@ -4839,6 +5728,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2026-03-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 104367824,
           "source": {
@@ -4877,6 +5773,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2026-03-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 8890957866872460545,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 16393053952,
           "source": {
@@ -4915,6 +5818,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2026-03-01_00:00:19_monthly",
       "properties": {
+        "guid": {
+          "value": 3492007060839441881,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 980055824,
           "source": {
@@ -4953,6 +5863,13 @@
       "dataset": "tank/lbtgy/wf3ukjwrx",
       "snapshot_name": "autosnap_2026-03-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -4991,6 +5908,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2026-03-01_00:00:22_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5029,6 +5953,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2026-03-01_00:00:26_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3701361312,
           "source": {
@@ -5067,6 +5998,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2026-03-01_00:00:27_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5105,6 +6043,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2026-03-01_00:00:28_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5143,6 +6088,13 @@
       "dataset": "tank/lbtgy",
       "snapshot_name": "autosnap_2026-03-01_00:00:29_monthly",
       "properties": {
+        "guid": {
+          "value": 2769216351401178071,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5181,6 +6133,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2026-03-01_00:00:29_monthly",
       "properties": {
+        "guid": {
+          "value": 7439098854728164694,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10912,
           "source": {
@@ -5219,6 +6178,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2026-04-01_00:00:01_monthly",
       "properties": {
+        "guid": {
+          "value": 2700611711444160525,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5257,6 +6223,13 @@
       "dataset": "tank/qb2w60",
       "snapshot_name": "autosnap_2026-04-01_00:00:02_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5295,6 +6268,13 @@
       "dataset": "tank/lbtgy/wf3ukjwrx",
       "snapshot_name": "autosnap_2026-04-01_00:00:03_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5333,6 +6313,13 @@
       "dataset": "tank/delf",
       "snapshot_name": "autosnap_2026-04-01_00:00:07_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 150834400,
           "source": {
@@ -5371,6 +6358,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2026-04-01_00:00:07_monthly",
       "properties": {
+        "guid": {
+          "value": 4705318700845450232,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 793035056,
           "source": {
@@ -5409,6 +6403,13 @@
       "dataset": "zeta/utn/y4jvw",
       "snapshot_name": "autosnap_2026-04-01_00:00:07_monthly",
       "properties": {
+        "guid": {
+          "value": 4705318700845450232,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1143169024,
           "source": {
@@ -5447,6 +6448,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2026-04-01_00:00:08_monthly",
       "properties": {
+        "guid": {
+          "value": 8160346156739367433,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5485,6 +6493,13 @@
       "dataset": "tank/r4v",
       "snapshot_name": "autosnap_2026-04-01_00:00:09_monthly",
       "properties": {
+        "guid": {
+          "value": 7731941097048310465,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3847392,
           "source": {
@@ -5523,6 +6538,13 @@
       "dataset": "tank/oo3j0u/ugkgv8w",
       "snapshot_name": "autosnap_2026-04-01_00:00:09_monthly",
       "properties": {
+        "guid": {
+          "value": 8798665414301087776,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -5561,6 +6583,13 @@
       "dataset": "tank/x4g",
       "snapshot_name": "autosnap_2026-04-01_00:00:10_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5599,6 +6628,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2026-04-01_00:00:12_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 960256,
           "source": {
@@ -5637,6 +6673,13 @@
       "dataset": "tank/oo3j0u/e93i6b",
       "snapshot_name": "autosnap_2026-04-01_00:00:14_monthly",
       "properties": {
+        "guid": {
+          "value": 8269690475859332771,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 4295603216,
           "source": {
@@ -5675,6 +6718,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2026-04-01_00:00:16_monthly",
       "properties": {
+        "guid": {
+          "value": 2407338368478109204,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 104116848,
           "source": {
@@ -5713,6 +6763,13 @@
       "dataset": "tank/yoh6kfw",
       "snapshot_name": "autosnap_2026-04-01_00:00:18_monthly",
       "properties": {
+        "guid": {
+          "value": 7765725262726997695,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10912,
           "source": {
@@ -5751,6 +6808,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2026-04-01_00:00:20_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5789,6 +6853,13 @@
       "dataset": "tank/oo3j0u/lp6jzz",
       "snapshot_name": "autosnap_2026-04-01_00:00:20_monthly",
       "properties": {
+        "guid": {
+          "value": 976386895074258668,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -5827,6 +6898,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2026-04-01_00:00:22_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5865,6 +6943,13 @@
       "dataset": "tank/lbtgy",
       "snapshot_name": "autosnap_2026-04-01_00:00:22_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -5903,6 +6988,13 @@
       "dataset": "tank/oo3j0u",
       "snapshot_name": "autosnap_2026-04-01_00:00:23_monthly",
       "properties": {
+        "guid": {
+          "value": 3896261107967562383,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -5941,6 +7033,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2026-04-01_00:00:23_monthly",
       "properties": {
+        "guid": {
+          "value": 1993407237760104437,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10912,
           "source": {
@@ -5979,6 +7078,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2026-04-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6017,6 +7123,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2026-04-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 5298426206490594367,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3129878048,
           "source": {
@@ -6055,6 +7168,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2026-04-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 12998772688,
           "source": {
@@ -6093,6 +7213,13 @@
       "dataset": "zeta/z62a",
       "snapshot_name": "autosnap_2026-04-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 5298426206490594367,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3207110656,
           "source": {
@@ -6131,6 +7258,13 @@
       "dataset": "zeta/utn",
       "snapshot_name": "autosnap_2026-04-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 13230080000,
           "source": {
@@ -6169,6 +7303,13 @@
       "dataset": "tank/delf/wmq54",
       "snapshot_name": "autosnap_2026-04-01_00:00:26_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -6207,6 +7348,13 @@
       "dataset": "tank/oo3j0u/cq4yed",
       "snapshot_name": "autosnap_2026-04-01_00:00:26_monthly",
       "properties": {
+        "guid": {
+          "value": 5798500329303428781,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1310720,
           "source": {
@@ -6245,6 +7393,13 @@
       "dataset": "tank/a6k",
       "snapshot_name": "autosnap_2026-05-01_00:00:01_monthly",
       "properties": {
+        "guid": {
+          "value": 5826769034022877349,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6283,6 +7438,13 @@
       "dataset": "tank/qb2w60",
       "snapshot_name": "autosnap_2026-05-01_00:00:03_monthly",
       "properties": {
+        "guid": {
+          "value": 4301368007913485230,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6321,6 +7483,13 @@
       "dataset": "tank/efs9el",
       "snapshot_name": "autosnap_2026-05-01_00:00:08_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 104553328,
           "source": {
@@ -6359,6 +7528,13 @@
       "dataset": "tank/wkws/obvinp9",
       "snapshot_name": "autosnap_2026-05-01_00:00:08_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6397,6 +7573,13 @@
       "dataset": "tank/uetq",
       "snapshot_name": "autosnap_2026-05-01_00:00:09_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 894784,
           "source": {
@@ -6435,6 +7618,13 @@
       "dataset": "tank/lbtgy/wf3ukjwrx",
       "snapshot_name": "autosnap_2026-05-01_00:00:10_monthly",
       "properties": {
+        "guid": {
+          "value": 7664218754003001973,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6473,6 +7663,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2026-05-01_00:00:11_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6511,6 +7708,13 @@
       "dataset": "tank/delf/wmq54",
       "snapshot_name": "autosnap_2026-05-01_00:00:12_monthly",
       "properties": {
+        "guid": {
+          "value": 6989817879050363446,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -6549,6 +7753,13 @@
       "dataset": "tank/y4tvsve",
       "snapshot_name": "autosnap_2026-05-01_00:00:12_monthly",
       "properties": {
+        "guid": {
+          "value": 988296291252250554,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10912,
           "source": {
@@ -6587,6 +7798,13 @@
       "dataset": "tank/r4v",
       "snapshot_name": "autosnap_2026-05-01_00:00:13_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3620784,
           "source": {
@@ -6625,6 +7843,13 @@
       "dataset": "tank/lbtgy",
       "snapshot_name": "autosnap_2026-05-01_00:00:14_monthly",
       "properties": {
+        "guid": {
+          "value": 6329784343180374643,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6663,6 +7888,13 @@
       "dataset": "tank/isnsa",
       "snapshot_name": "autosnap_2026-05-01_00:00:18_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6701,6 +7933,13 @@
       "dataset": "tank/mpmlro9",
       "snapshot_name": "autosnap_2026-05-01_00:00:19_monthly",
       "properties": {
+        "guid": {
+          "value": 3032807491796861226,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6739,6 +7978,13 @@
       "dataset": "tank/anup07rl/sdiz/z62a",
       "snapshot_name": "autosnap_2026-05-01_00:00:20_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3657926096,
           "source": {
@@ -6777,6 +8023,13 @@
       "dataset": "zeta/z62a",
       "snapshot_name": "autosnap_2026-05-01_00:00:20_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 3653517312,
           "source": {
@@ -6815,6 +8068,13 @@
       "dataset": "tank/oo3j0u/e93i6b",
       "snapshot_name": "autosnap_2026-05-01_00:00:21_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 4299106384,
           "source": {
@@ -6853,6 +8113,13 @@
       "dataset": "tank/oo3j0u/ugkgv8w",
       "snapshot_name": "autosnap_2026-05-01_00:00:22_monthly",
       "properties": {
+        "guid": {
+          "value": 1793695979048139596,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -6891,6 +8158,13 @@
       "dataset": "tank/x4g",
       "snapshot_name": "autosnap_2026-05-01_00:00:23_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -6929,6 +8203,13 @@
       "dataset": "tank/yoh6kfw",
       "snapshot_name": "autosnap_2026-05-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 10912,
           "source": {
@@ -6967,6 +8248,13 @@
       "dataset": "tank/oo3j0u/lp6jzz",
       "snapshot_name": "autosnap_2026-05-01_00:00:24_monthly",
       "properties": {
+        "guid": {
+          "value": 1649048384558432527,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -7005,6 +8293,13 @@
       "dataset": "tank/oo3j0u",
       "snapshot_name": "autosnap_2026-05-01_00:00:25_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -7043,6 +8338,13 @@
       "dataset": "tank/oo3j0u/cq4yed",
       "snapshot_name": "autosnap_2026-05-01_00:00:26_monthly",
       "properties": {
+        "guid": {
+          "value": 6218105921904545719,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 909312,
           "source": {
@@ -7081,6 +8383,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2026-05-01_00:00:27_monthly",
       "properties": {
+        "guid": {
+          "value": 8433673862542561426,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1036105312,
           "source": {
@@ -7119,6 +8428,13 @@
       "dataset": "zeta/utn/y4jvw",
       "snapshot_name": "autosnap_2026-05-01_00:00:27_monthly",
       "properties": {
+        "guid": {
+          "value": 8433673862542561426,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 1049067520,
           "source": {
@@ -7157,6 +8473,13 @@
       "dataset": "tank/delf",
       "snapshot_name": "autosnap_2026-05-01_00:00:28_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 221184,
           "source": {
@@ -7195,6 +8518,13 @@
       "dataset": "tank/anup07rl/sdiz/utn",
       "snapshot_name": "autosnap_2026-05-01_00:00:27_monthly",
       "properties": {
+        "guid": {
+          "value": 1001804540638653888,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 11797257824,
           "source": {
@@ -7233,6 +8563,13 @@
       "dataset": "zeta/utn",
       "snapshot_name": "autosnap_2026-05-01_00:00:27_monthly",
       "properties": {
+        "guid": {
+          "value": 1001804540638653888,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 11793170432,
           "source": {
@@ -7271,6 +8608,13 @@
       "dataset": "tank/x4g",
       "snapshot_name": "autosnap_2026-06-01_00:00:00_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -7309,6 +8653,13 @@
       "dataset": "tank/delf/wmq54",
       "snapshot_name": "autosnap_2026-06-01_00:00:01_monthly",
       "properties": {
+        "guid": {
+          "value": 7404328789161360245,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -7347,6 +8698,13 @@
       "dataset": "tank/wkws",
       "snapshot_name": "autosnap_2026-06-01_00:00:04_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -7385,6 +8743,13 @@
       "dataset": "tank/oo3j0u/lp6jzz",
       "snapshot_name": "autosnap_2026-06-01_00:00:07_monthly",
       "properties": {
+        "guid": {
+          "value": 7574198955388053266,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 8192,
           "source": {
@@ -7423,6 +8788,13 @@
       "dataset": "tank/anup07rl/sdiz/utn/y4jvw",
       "snapshot_name": "autosnap_2026-06-01_00:00:08_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 977393296,
           "source": {
@@ -7461,6 +8833,13 @@
       "dataset": "zeta/utn/y4jvw",
       "snapshot_name": "autosnap_2026-06-01_00:00:08_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 991911936,
           "source": {
@@ -7499,6 +8878,13 @@
       "dataset": "tank/xodnr/cflkg",
       "snapshot_name": "autosnap_2026-06-01_00:00:09_monthly",
       "properties": {
+        "guid": {
+          "value": 6114651735068461203,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 9056960,
           "source": {
@@ -7537,6 +8923,13 @@
       "dataset": "tank/lbtgy/wf3ukjwrx",
       "snapshot_name": "autosnap_2026-06-01_00:00:10_monthly",
       "properties": {
+        "guid": {
+          "value": 9223372036854775807,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {
@@ -7575,6 +8968,13 @@
       "dataset": "tank/xodnr/mpmlro9",
       "snapshot_name": "autosnap_2026-06-01_00:00:11_monthly",
       "properties": {
+        "guid": {
+          "value": 689341168065507331,
+          "source": {
+            "type": "NONE",
+            "data": "-"
+          }
+        },
         "used": {
           "value": 0,
           "source": {

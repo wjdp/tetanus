@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790614466,
-    "asctime": "Mon Sep 28 17:54:26 2026 BST"
+    "time_t": 1790633458,
+    "asctime": "Mon Sep 28 23:10:58 2026 BST"
   },
   "device": {
     "name": "/dev/sdo",
@@ -192,8 +192,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 28189,
-          "string": "28189"
+          "value": 28194,
+          "string": "28194"
         }
       },
       {
@@ -353,7 +353,7 @@
       {
         "id": 190,
         "name": "Airflow_Temperature_Cel",
-        "value": 70,
+        "value": 69,
         "worst": 43,
         "thresh": 0,
         "when_failed": "",
@@ -368,8 +368,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 30,
-          "string": "30"
+          "value": 31,
+          "string": "31"
         }
       },
       {
@@ -467,14 +467,14 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 28189
+    "hours": 28194
   },
   "power_cycle_count": 35,
   "endurance_used": {
     "current_percent": 2
   },
   "temperature": {
-    "current": 30,
+    "current": 31,
     "power_cycle_min": 25,
     "power_cycle_max": 40,
     "lifetime_min": 16,
@@ -945,7 +945,7 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 30,
+      "current": 31,
       "power_cycle_min": 25,
       "power_cycle_max": 40,
       "lifetime_min": 16,
@@ -969,39 +969,8 @@
       "limit_max": 70
     },
     "size": 128,
-    "index": 84,
+    "index": 115,
     "table": [
-      35,
-      34,
-      34,
-      34,
-      34,
-      34,
-      34,
-      34,
-      34,
-      34,
-      35,
-      34,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      35,
-      34,
-      35,
-      35,
-      34,
-      34,
-      34,
-      34,
-      34,
-      34,
-      34,
-      34,
       34,
       34,
       34,
@@ -1098,7 +1067,38 @@
       30,
       30,
       30,
-      30
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      30,
+      30,
+      31,
+      30,
+      31,
+      30,
+      30,
+      31,
+      31,
+      30,
+      30,
+      30,
+      30,
+      30,
+      31,
+      30,
+      30,
+      30,
+      30,
+      31
     ]
   },
   "ata_sct_erc": {
@@ -1134,7 +1134,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 28189,
+            "value": 28194,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1204,7 +1204,7 @@
             "offset": 56,
             "name": "Date and Time TimeStamp",
             "size": 6,
-            "value": 1303000,
+            "value": 2295000,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1260,7 +1260,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 30,
+            "value": 31,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1448,7 +1448,7 @@
         "id": 9,
         "name": "Transition from drive PhyRdy to drive PhyNRdy",
         "size": 2,
-        "value": 565,
+        "value": 1209,
         "overflow": false
       },
       {

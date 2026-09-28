@@ -17,7 +17,12 @@ describe("zpool-history parser", () => {
   });
 
   it("discards an orphaned continuation at the start of a tail-cut file", () => {
-    const { data } = parse(fixture, {});
+    const body = [
+      "            zeta/z62a@autosnap_2026-09-27_15:00:04_hourly",
+      "2026-09-28.16:00:09 zfs destroy zeta/z62a@autosnap_2026-09-27_15:00:04_hourly [user 0 (root) on mars:linux]",
+    ].join("\n");
+    const { data } = parse(body, {});
+    expect(data.entries).toHaveLength(1);
     const first = data.entries[0];
     expect(first?.text).toBe(
       "zfs destroy zeta/z62a@autosnap_2026-09-27_15:00:04_hourly",
