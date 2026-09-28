@@ -10,6 +10,34 @@
     "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-rust-50: #fdf4f0;
+  --color-rust-100: #fbe5db;
+  --color-rust-200: #f6c8b5;
+  --color-rust-300: #eea287;
+  --color-rust-400: #e37658;
+  --color-rust-500: #d3512f;
+  --color-rust-600: #b53e22;
+  --color-rust-700: #93321d;
+  --color-rust-800: #772b1d;
+  --color-rust-900: #62261b;
+  --color-rust-950: #35100a;
+
+  --color-alarm-50: #fff0f0;
+  --color-alarm-100: #ffdcdc;
+  --color-alarm-200: #ffb8b8;
+  --color-alarm-300: #ff8585;
+  --color-alarm-400: #ff4747;
+  --color-alarm-500: #ff0000;
+  --color-alarm-600: #d90000;
+  --color-alarm-700: #b00000;
+  --color-alarm-800: #8c0000;
+  --color-alarm-900: #700000;
+  --color-alarm-950: #3d0000;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 html,
