@@ -148,3 +148,41 @@ Dataset subjects link to `/datasets/:id`.
 ## Findings
 
 (agents append here)
+
+### Persistence
+
+Steps 1–2 done. Exports for steps 3–4:
+
+- `server/services/zfs.ts` re-exports `observeZfsList(hostId, ZfsListResult, receivedAt)`
+  and `observeZfsSnapshots(hostId, ZfsSnapshotsResult, receivedAt)`, both returning
+  `DatasetIngestSummary { created, destroyed, skipped }`, and the row types `DatasetRow`,
+  `DatasetReadingRow`, `SnapshotRow` (`$inferSelect` of `dataset`, `datasetReading`,
+  `snapshot` in `server/database/schema.ts`). Queries belong in
+  `server/services/zfs/datasets.ts`.
+- `Dataset.used`, `referenced`, `available`, `creation` are not null; every other
+  property is nullable (volumes have no `recordsize`, `mountpoint` `-` → `null`).
+  `mountpoint` keeps `legacy`/`none` verbatim. `Snapshot.used/referenced/written/creation`
+  not null. Unique indexes are named `*_key` like the existing ones.
+
+Decisions and deviations:
+
+- Parser keeps a guid exact by quoting `"guid": {"value": <digits>` in the raw body
+  before `JSON.parse` (same trick as `zpool-status`); a guid that reaches the parser as
+  an unsafe number or non-digits is a `ParseError`.
+- Datasets are marked absent only for pools that appear in the payload, so an exported
+  pool does not flood the diary with `dataset-destroyed`. A pool name shared by two
+  `Pool` rows on the host resolves to the most recently seen.
+- A previously destroyed dataset that reappears gets `dataset-created` again.
+- The handler return value is dropped: `IngestHandler` returns `void`, so
+  `{ created, destroyed }` does not reach the ingest summary (still the parser's
+  counts). Wiring it needs `IngestHandler` to return a summary; not done.
+- Both observers wrap their work in `db.transaction`; under `recordIngest` that nests as a
+  savepoint.
+- `host/test/stub.sh` maps the new snapshot argv to the old fixture until mars is
+  re-captured; drop that case after the re-capture. `host/README.md` shows the
+  `zfs list` command as `…`, so it needed no change. Collector is 0.1.1.
+- `server/database/migrate.test.ts` updated (migration count, table list). `test/db.ts`
+  does not list the new tables; `Pool` cascades clear them.
+- `shellcheck` is not installed here; the collector change was not shellchecked.
+- `app/utils/diarySubjects.ts` has a `default` branch, so adding `dataset` needed no app
+  change.
