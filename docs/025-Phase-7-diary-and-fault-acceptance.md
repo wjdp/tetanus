@@ -84,3 +84,59 @@ Overlay, applied wherever attributes or a disk status are read:
 ## Findings
 
 (agents append here)
+
+### Server (Phase 7 server agent)
+
+Response shapes for the UI (dates are ISO strings over the wire):
+
+- `GET /api/disks/:id/smart` → `SmartOverview`:
+  `{ reading, attributes: LatestAttribute[], history, selfTests: SelfTestRow[],
+  acceptances: FaultAcceptanceRow[] }`.
+  - `LatestAttribute` gains `displayStatus: AttributeDisplayStatus`
+    (`passed | warning | failed | accepted`) and `acceptance: { id, acceptedValue,
+    acceptedAt, note } | null` (the active acceptance only). `status` stays the
+    un-overlaid status.
+  - `SelfTestRow`: `{ id, diskId, type, status, passed, lifetimeHours, lba, seenAt }`,
+    newest first by `lifetimeHours`.
+  - `FaultAcceptanceRow`: `{ id, diskId, attrId, acceptedValue, acceptedAt, note,
+    supersededAt, clearedAt }`, active and historical, newest `acceptedAt` first.
+- `POST /api/disks/:id/accept` `{ attrId, note? }` → 201 `FaultAcceptanceRow`; 409
+  already active; 404 unknown disk or attribute not in the latest reading; 400 bad
+  body. `DELETE /api/disks/:id/accept/:attrId` → 200 `FaultAcceptanceRow` with
+  `clearedAt`; 404 when none active.
+- `DiskSummary.membership` / `DiskDetail.membership`: `{ poolId, poolName, vdevName,
+  groupName, groupType, vdevState } | null`. `vdevName` is the leaf vdev name as ZFS
+  reports it (e.g. `/dev/disk/by-vdev/K2-part1`); `groupName`/`groupType` come from
+  the parent vdev (`raidz1-0`/`raidz1`, or the pool's `root` vdev for a top-level
+  disk), null without a parent.
+- `PATCH /api/diary/:id` `{ title?, body?, at? }` → 200 updated `DiaryEntryRow`;
+  `DELETE /api/diary/:id` → 204. Both 403 for auto entries, 404 missing, 400 invalid.
+  Schemas `diaryEntryPatchSchema`, `diaryParamsSchema` in `shared/schemas/diary.ts`.
+
+New diary `eventType`s: `fault-accepted` (`{ attrId, acceptedValue, trend, note }`),
+`acceptance-cleared` (`{ attrId, acceptedValue }`), `acceptance-superseded`
+(`{ attrId, acceptedValue, value }`), `attribute-status-changed` (`{ attrId, name,
+from, to, value }`), `disk-appeared` (`{ hostId, devicePath }`), `scrub-finished`,
+`resilver-finished` (same data as `scan-finished`).
+
+Decisions:
+
+- `overlayStatus`, `effectiveDeviceStatus` and `healthStatus` live in
+  `shared/smart/status.ts` (pure, usable by the UI) rather than the acceptance
+  service. `healthStatus(smartPassed, exitStatus)` rebuilds the self-assessment from
+  the stored reading (bit 3 of the exit status = disk failing), so the ingest path
+  and the accept/clear recompute share one rule.
+- Accept/clear recompute updates both `Disk.latestStatus` and the latest
+  `SmartReading.deviceStatus`, so `reading.deviceStatus` in the overview agrees with
+  the disk. `smart-status-changed` `failing`/`warning` lists exclude accepted
+  attributes.
+- Supersession and `attribute-status-changed` only run for the newest reading; a
+  late, older reading changes neither.
+- Accepting a `passed` attribute is allowed (the UI only offers it on
+  `failed`/`warning`); it simply has no effect on status.
+- K2's fixture only fails 197 (198 at 18 is not failed), so accepting 197 takes K2
+  from `failed` to `passed`.
+- `acceptance.ts` and `smart.ts` import each other (function-level only).
+- `server/services/importers/obsidian.test.ts` (outside the owned list) now expects
+  `disk-appeared` on a disk created by a sighting before import, and asserts the
+  importer's own inserts emit none.
