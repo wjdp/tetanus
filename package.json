@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
-    "drizzle-orm": "^0.45.3"
+    "drizzle-orm": "^0.45.3",
+    "uplot": "^1.6.32"
   },
   "packageManager": "pnpm@10.34.3",
   "devDependencies": {
