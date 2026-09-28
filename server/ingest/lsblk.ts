@@ -1,5 +1,97 @@
 import type { Parser } from "#shared/ingest";
+import { ParseError } from "./parseError";
 
-export const parse: Parser<unknown> = () => {
-  throw new Error("lsblk parser not implemented");
+export interface LsblkPartition {
+  name: string;
+  path: string;
+  majMin: string;
+  sizeBytes: number;
+  partUuid: string | null;
+  fsType: string | null;
+}
+
+export interface LsblkDisk {
+  name: string;
+  path: string;
+  majMin: string;
+  sizeBytes: number;
+  model: string | null;
+  serial: string | null;
+  wwn: string | null;
+  transport: string | null;
+  rotational: boolean;
+  partitionTableType: string | null;
+  partitions: LsblkPartition[];
+}
+
+export interface LsblkResult {
+  disks: LsblkDisk[];
+}
+
+type Json = Record<string, unknown>;
+
+function stripWwnPrefix(wwn: unknown): string | null {
+  if (typeof wwn !== "string") return null;
+  return wwn.replace(/^0x/i, "").toLowerCase();
+}
+
+function toPartition(entry: Json): LsblkPartition {
+  return {
+    name: entry.name as string,
+    path: entry.path as string,
+    majMin: entry["maj:min"] as string,
+    sizeBytes: entry.size as number,
+    partUuid: (entry.partuuid as string | null) ?? null,
+    fsType: (entry.fstype as string | null) ?? null,
+  };
+}
+
+function toDisk(entry: Json): LsblkDisk {
+  const children = Array.isArray(entry.children) ? entry.children : [];
+  const partitions = (children as Json[])
+    .filter((child) => child.type === "part")
+    .map(toPartition);
+
+  return {
+    name: entry.name as string,
+    path: entry.path as string,
+    majMin: entry["maj:min"] as string,
+    sizeBytes: entry.size as number,
+    model: (entry.model as string | null) ?? null,
+    serial: (entry.serial as string | null) ?? null,
+    wwn: stripWwnPrefix(entry.wwn),
+    transport: (entry.tran as string | null) ?? null,
+    rotational: Boolean(entry.rota),
+    partitionTableType: (entry.pttype as string | null) ?? null,
+    partitions,
+  };
+}
+
+export const parse: Parser<LsblkResult> = (body) => {
+  if (body.trim() === "") throw new ParseError("Empty lsblk body");
+  let json: unknown;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    throw new ParseError("lsblk body is not valid JSON");
+  }
+  if (typeof json !== "object" || json === null) {
+    throw new ParseError("lsblk body is not a JSON object");
+  }
+
+  const blockdevices = (json as Json).blockdevices;
+  if (!Array.isArray(blockdevices)) {
+    throw new ParseError("lsblk body missing blockdevices array");
+  }
+
+  const disks = (blockdevices as Json[])
+    .filter((entry) => entry.type === "disk")
+    .map(toDisk);
+
+  const partitions = disks.reduce(
+    (total, disk) => total + disk.partitions.length,
+    0,
+  );
+
+  return { data: { disks }, summary: { disks: disks.length, partitions } };
 };
