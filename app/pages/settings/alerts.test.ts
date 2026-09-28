@@ -1,17 +1,17 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
-import { flushPromises } from "@vue/test-utils";
+import { flushPromises, type VueWrapper } from "@vue/test-utils";
 import { readBody } from "h3";
 import { describe, expect, it, vi } from "vitest";
-import { SECRET_MASK } from "#shared/schemas/settings";
 import AlertsPage from "./alerts.vue";
 
 const notifications = {
-  pushover: { token: SECRET_MASK, user: SECRET_MASK },
+  pushover: { token: "app-token", user: "user-key" },
   webhook: null,
 };
 
 const patched: unknown[] = [];
+const tested: string[] = [];
 
 registerEndpoint("/api/settings", {
   method: "GET",
@@ -31,7 +31,7 @@ registerEndpoint("/api/settings", {
       config: {
         missingAfterDays: 7,
         alertCursor: 0,
-        notifications: body.config.notifications,
+        notifications: { ...notifications, ...body.config.notifications },
       },
     };
   },
@@ -70,24 +70,40 @@ registerEndpoint("/api/alerts/test", {
   method: "POST",
   handler: async (event) => {
     const { channel } = await readBody(event);
+    tested.push(channel);
     return channel === "pushover"
       ? { ok: true, error: null }
       : { ok: false, error: "Webhook is not configured" };
   },
 });
 
+const card = (page: VueWrapper, channel: string) =>
+  page.get(`[data-testid="channel-${channel}"]`);
+
+const button = (page: VueWrapper, channel: string, label: string) =>
+  card(page, channel)
+    .findAll("button")
+    .find((candidate) => candidate.text() === label);
+
 describe("alerts settings page", () => {
-  it("renders both channels with stored secrets masked", async () => {
+  it("shows stored secrets in plain text", async () => {
     const page = await mountSuspended(AlertsPage);
 
-    const pushover = page.get('[data-testid="channel-pushover"]');
-    const secrets = pushover.findAll('input[type="password"]');
-    expect(
-      secrets.map((input) => (input.element as HTMLInputElement).value),
-    ).toEqual([SECRET_MASK, SECRET_MASK]);
-    expect(page.get('[data-testid="channel-webhook"]').text()).toContain(
-      "Disabled.",
+    const values = card(page, "pushover")
+      .findAll("input")
+      .map((input) => (input.element as HTMLInputElement).value);
+    expect(values).toEqual(["app-token", "user-key"]);
+    expect(card(page, "pushover").find('input[type="password"]').exists()).toBe(
+      false,
     );
+  });
+
+  it("offers no actions for a disabled, unchanged channel", async () => {
+    const page = await mountSuspended(AlertsPage);
+    const webhook = card(page, "webhook");
+
+    expect(webhook.text()).toContain("Disabled.");
+    expect(webhook.findAll('button:not([role="switch"])')).toHaveLength(0);
   });
 
   it("lists recent notifications with rule labels and results", async () => {
@@ -101,31 +117,54 @@ describe("alerts settings page", () => {
     expect(table.text()).toContain("Webhook");
   });
 
-  it("saves masks unchanged and sends null for a disabled channel", async () => {
+  it("saves only the edited channel", async () => {
     const page = await mountSuspended(AlertsPage);
-    await page.get("form").trigger("submit");
+    expect(
+      button(page, "pushover", "Save")?.attributes("disabled"),
+    ).toBeDefined();
+
+    await card(page, "pushover").findAll("input")[1]?.setValue("new-user");
+    await card(page, "pushover").trigger("submit");
     await flushPromises();
 
-    expect(patched.at(-1)).toEqual({ config: { notifications } });
+    expect(patched.at(-1)).toEqual({
+      config: {
+        notifications: { pushover: { token: "app-token", user: "new-user" } },
+      },
+    });
+    expect(
+      button(page, "pushover", "Save")?.attributes("disabled"),
+    ).toBeDefined();
   });
 
-  it("shows the test result inline", async () => {
+  it("saves before sending a test when there are unsaved changes", async () => {
     const page = await mountSuspended(AlertsPage);
-    for (const channel of ["pushover", "webhook"]) {
-      const button = page
-        .get(`[data-testid="channel-${channel}"]`)
-        .findAll("button")
-        .find((candidate) => candidate.text() === "Send test");
-      await button?.trigger("click");
-    }
+    const patchesBefore = patched.length;
+
+    await card(page, "pushover").findAll("input")[0]?.setValue("typed-token");
+    await button(page, "pushover", "Save and send test")?.trigger("click");
+
     await vi.waitFor(() => {
-      const results = page.findAll('[data-testid="test-result"]');
       expect(
-        results.map((result) => [result.text(), result.classes()]),
-      ).toEqual([
-        ["Sent", expect.arrayContaining(["text-muted"])],
-        ["Webhook is not configured", expect.arrayContaining(["text-error"])],
-      ]);
+        card(page, "pushover").get('[data-testid="test-result"]').text(),
+      ).toBe("Test sent");
+    });
+    expect(patched.length).toBe(patchesBefore + 1);
+    expect(tested.at(-1)).toBe("pushover");
+  });
+
+  it("shows a failed test inline", async () => {
+    const page = await mountSuspended(AlertsPage);
+    await card(page, "webhook").get('button[role="switch"]').trigger("click");
+    await card(page, "webhook")
+      .findAll("input")[0]
+      ?.setValue("https://hooks.example/t");
+    await button(page, "webhook", "Save and send test")?.trigger("click");
+
+    await vi.waitFor(() => {
+      const result = card(page, "webhook").get('[data-testid="test-result"]');
+      expect(result.text()).toBe("Webhook is not configured");
+      expect(result.classes()).toContain("text-error");
     });
   });
 });

@@ -53,54 +53,19 @@ describe("/api/settings", () => {
     expect(response.status).toBe(400);
   });
 
-  it("masks notification secrets and keeps them when the mask is sent back", async () => {
-    const saved = await $fetch("/api/settings", {
-      method: "PATCH",
-      body: {
-        config: {
-          notifications: {
-            pushover: { token: "app-token", user: "user-key" },
-            webhook: { url: "https://hooks.example/t", secret: "s3cret" },
-          },
-        },
-      },
-    });
-    const masked = {
-      pushover: { token: "•••", user: "•••" },
-      webhook: { url: "https://hooks.example/t", secret: "•••" },
-    };
-    expect(saved.config.notifications).toEqual(masked);
-
-    const resaved = await $fetch("/api/settings", {
-      method: "PATCH",
-      body: { config: { notifications: masked } },
-    });
-    expect(resaved.config.notifications).toEqual(masked);
-    const { sqlite: check } = createDb(databaseFile);
-    const [config] = check
-      .prepare(`SELECT config FROM Setting`)
-      .raw()
-      .get() as [string];
-    check.close();
-    expect(JSON.parse(config).notifications).toEqual({
+  it("stores notification secrets and returns them", async () => {
+    const notifications = {
       pushover: { token: "app-token", user: "user-key" },
       webhook: { url: "https://hooks.example/t", secret: "s3cret" },
-    });
-  });
-
-  it("400s when the mask is sent with nothing stored", async () => {
-    await $fetch("/api/settings", {
+    };
+    const saved = await $fetch("/api/settings", {
       method: "PATCH",
-      body: { config: { notifications: { pushover: null } } },
+      body: { config: { notifications } },
     });
-    const response = await fetch("/api/settings", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        config: { notifications: { pushover: { token: "•••", user: "•••" } } },
-      }),
-    });
-    expect(response.status).toBe(400);
+    expect(saved.config.notifications).toEqual(notifications);
+    expect((await $fetch("/api/settings")).config.notifications).toEqual(
+      notifications,
+    );
   });
 
   it("refuses to move the alert cursor", async () => {

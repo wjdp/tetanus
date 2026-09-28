@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { SECRET_MASK } from "#shared/schemas/settings";
+import type { AlertChannel } from "#shared/alerts";
+import { APP_NAME } from "#shared/app";
+import type { NotificationsConfig } from "#shared/schemas/settings";
 import {
   type ChannelForms,
   channelFormsFrom,
-  notificationsPatch,
+  channelPatch,
+  isChannelDirty,
 } from "~/components/alerts/channelForms";
 
 const NOTIFICATIONS_LIMIT = 100;
 const POLL_INTERVAL_MS = 60_000;
+const UNCONFIGURED: NotificationsConfig = { pushover: null, webhook: null };
 
 const { data: settings } = await useFetch("/api/settings");
 const { data: notifications, refresh: refreshNotifications } = await useFetch(
@@ -15,17 +19,14 @@ const { data: notifications, refresh: refreshNotifications } = await useFetch(
   { query: { limit: NOTIFICATIONS_LIMIT }, default: () => [] },
 );
 
-const forms = ref<ChannelForms>(
-  channelFormsFrom({ pushover: null, webhook: null }),
-);
+const storedForms = () =>
+  channelFormsFrom(settings.value?.config.notifications ?? UNCONFIGURED);
 
-watch(
-  () => settings.value?.config.notifications,
-  (notificationsConfig) => {
-    if (notificationsConfig) forms.value = channelFormsFrom(notificationsConfig);
-  },
-  { immediate: true },
-);
+const saved = ref<ChannelForms>(storedForms());
+const forms = ref<ChannelForms>(storedForms());
+
+const dirty = (channel: AlertChannel) =>
+  isChannelDirty(forms.value, saved.value, channel);
 
 let pollHandle: ReturnType<typeof setInterval> | undefined;
 
@@ -37,30 +38,24 @@ onUnmounted(() => {
   if (pollHandle) clearInterval(pollHandle);
 });
 
-const selectMask = (event: FocusEvent) => {
-  const input = event.target as HTMLInputElement;
-  if (input.value === SECRET_MASK) input.select();
-};
-
 const toast = useToast();
-const saving = ref(false);
 
-const save = async () => {
-  saving.value = true;
+const saveChannel = async (channel: AlertChannel) => {
   try {
     settings.value = await $fetch("/api/settings", {
       method: "PATCH",
-      body: { config: { notifications: notificationsPatch(forms.value) } },
+      body: { config: { notifications: channelPatch(forms.value, channel) } },
     });
-    toast.add({ title: "Alert settings saved", color: "success" });
+    saved.value = { ...saved.value, [channel]: storedForms()[channel] };
+    forms.value = { ...forms.value, [channel]: storedForms()[channel] };
+    return true;
   } catch (error) {
     toast.add({
       title: "Could not save alert settings",
       description: (error as { data?: { message?: string } }).data?.message,
       color: "error",
     });
-  } finally {
-    saving.value = false;
+    return false;
   }
 };
 </script>
@@ -69,28 +64,72 @@ const save = async () => {
   <section class="flex flex-col gap-6">
     <h2 class="text-highlighted text-lg font-semibold">Alerts</h2>
 
-    <form class="flex flex-col gap-4" @submit.prevent="save">
+    <div class="flex flex-col gap-4">
       <AlertsChannelCard
         v-model:enabled="forms.pushover.enabled"
         channel="pushover"
         description="Push notifications through the Pushover API."
+        :dirty="dirty('pushover')"
+        :save="() => saveChannel('pushover')"
       >
-        <UFormField label="Application token" name="pushoverToken" required>
+        <div class="flex items-center gap-3">
+          <img
+            src="/pushover-icon.png"
+            alt=""
+            width="48"
+            height="48"
+            class="size-12 shrink-0"
+          />
+          <p class="text-muted text-sm">
+            <ULink
+              to="https://pushover.net/apps/build"
+              external
+              target="_blank"
+              class="text-primary"
+            >
+              Create a Pushover application</ULink
+            >
+            and upload this icon for it.
+            <ULink
+              to="/pushover-icon.png"
+              :download="`${APP_NAME}-pushover.png`"
+              external
+              class="text-primary"
+            >
+              Download icon
+            </ULink>
+          </p>
+        </div>
+        <UFormField
+          label="API token"
+          name="pushoverToken"
+          description="Shown on the application's page once created."
+          required
+        >
           <UInput
             v-model="forms.pushover.token"
-            type="password"
             autocomplete="off"
+            spellcheck="false"
             class="w-full font-mono"
-            @focus="selectMask"
           />
         </UFormField>
         <UFormField label="User key" name="pushoverUser" required>
+          <template #description>
+            Shown on your
+            <ULink
+              to="https://pushover.net/"
+              external
+              target="_blank"
+              class="text-primary"
+            >
+              Pushover dashboard</ULink
+            >.
+          </template>
           <UInput
             v-model="forms.pushover.user"
-            type="password"
             autocomplete="off"
+            spellcheck="false"
             class="w-full font-mono"
-            @focus="selectMask"
           />
         </UFormField>
       </AlertsChannelCard>
@@ -99,6 +138,8 @@ const save = async () => {
         v-model:enabled="forms.webhook.enabled"
         channel="webhook"
         description="A JSON POST to your own endpoint for each alert."
+        :dirty="dirty('webhook')"
+        :save="() => saveChannel('webhook')"
       >
         <UFormField label="URL" name="webhookUrl" required>
           <UInput
@@ -115,22 +156,13 @@ const save = async () => {
         >
           <UInput
             v-model="forms.webhook.secret"
-            type="password"
             autocomplete="off"
+            spellcheck="false"
             class="w-full font-mono"
-            @focus="selectMask"
           />
         </UFormField>
       </AlertsChannelCard>
-
-      <UButton
-        type="submit"
-        color="primary"
-        label="Save"
-        :loading="saving"
-        class="self-start"
-      />
-    </form>
+    </div>
 
     <section class="flex flex-col gap-3">
       <h3 class="text-highlighted font-semibold">Recent notifications</h3>

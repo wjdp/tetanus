@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-export const SECRET_MASK = "•••";
-
 const secret = z.string().trim().min(1).max(500);
 
 export const pushoverConfigSchema = z.strictObject({

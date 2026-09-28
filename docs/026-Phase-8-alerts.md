@@ -49,7 +49,8 @@ every 5 minutes. `healthchecks:ping` scheduled every 5 minutes.
 `Setting.config.notifications`: `{ pushover: { token, user } | null, webhook: { url,
 secret? } | null }` (zod in `shared/schemas/settings.ts`; secrets returned by
 `GET /api/settings` are masked as `"•••"` and a PATCH with the mask keeps the stored
-value). Pushover: `https://api.pushover.net/1/messages.json`, priority 0 for recovery,
+value; later removed: secrets come back in clear, like the enrol token, and each
+channel card saves on its own, with "Send test" saving first). Pushover: `https://api.pushover.net/1/messages.json`, priority 0 for recovery,
 1 for alert, title = rule label, message = subject text. Webhook: `POST` JSON
 `{ rule, severity, subject, subjectType, subjectId, host, title, message, at, dedupeKey
 }`, header `Tetanus-Signature: sha256=<hmac>` (derived from the app name, no `X-`) when `secret` is set. 10 s timeout.

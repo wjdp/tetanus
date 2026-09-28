@@ -1,3 +1,4 @@
+import type { AlertChannel } from "#shared/alerts";
 import type {
   NotificationsConfig,
   PushoverConfig,
@@ -51,9 +52,18 @@ const webhookPatch = ({
 }: WebhookForm): WebhookConfig | null =>
   enabled ? { url: url.trim(), secret: secret.trim() } : null;
 
-export const notificationsPatch = (
+export const channelPatch = (
   forms: ChannelForms,
-): NotificationsConfig => ({
-  pushover: pushoverPatch(forms.pushover),
-  webhook: webhookPatch(forms.webhook),
-});
+  channel: AlertChannel,
+): Partial<NotificationsConfig> =>
+  channel === "pushover"
+    ? { pushover: pushoverPatch(forms.pushover) }
+    : { webhook: webhookPatch(forms.webhook) };
+
+export const isChannelDirty = (
+  forms: ChannelForms,
+  saved: ChannelForms,
+  channel: AlertChannel,
+) =>
+  JSON.stringify(channelPatch(forms, channel)) !==
+  JSON.stringify(channelPatch(saved, channel));
