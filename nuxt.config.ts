@@ -26,6 +26,8 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ["@nuxt/test-utils/module", "@nuxt/ui"],
   css: ["~/assets/css/main.css"],
+  // Helper modules live beside their components; only .vue files are components.
+  components: [{ path: "~/components", extensions: ["vue"] }],
   runtimeConfig: {
     public: { version: version + (process.env.VERSION_SUFFIX ?? "") },
   },
