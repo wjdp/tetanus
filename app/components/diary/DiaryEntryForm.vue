@@ -17,6 +17,16 @@ const toast = useToast();
 
 const needsSubjectId = computed(() => subjectType.value !== "system");
 
+const { data: subjectItems, status: subjectItemsStatus } = useLazyAsyncData(
+  () => `diary-subject-items:${subjectType.value}`,
+  () => fetchSubjectItems(subjectType.value),
+  { server: false, default: () => [] },
+);
+
+watch(subjectType, () => {
+  subjectId.value = undefined;
+});
+
 const save = async () => {
   saving.value = true;
   try {
@@ -44,7 +54,7 @@ const save = async () => {
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="save">
     <div class="flex gap-3">
-      <UFormField label="Subject" name="subjectType" class="flex-1">
+      <UFormField label="Subject type" name="subjectType" class="flex-1">
         <USelect
           v-model="subjectType"
           :items="[...DIARY_SUBJECT_TYPES]"
@@ -53,11 +63,19 @@ const save = async () => {
       </UFormField>
       <UFormField
         v-if="needsSubjectId"
-        label="Subject id"
+        label="Subject"
         name="subjectId"
-        class="w-32"
+        class="flex-[2]"
       >
-        <UInputNumber v-model="subjectId" :min="1" class="w-full" />
+        <USelectMenu
+          v-model="subjectId"
+          :items="subjectItems"
+          value-key="value"
+          :loading="subjectItemsStatus === 'pending'"
+          :placeholder="`Choose a ${subjectType}`"
+          class="w-full"
+          data-testid="subject-picker"
+        />
       </UFormField>
     </div>
 

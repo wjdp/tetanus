@@ -15,7 +15,27 @@ registerEndpoint("/api/diary", {
   },
 });
 
+registerEndpoint("/api/disks", () => [
+  { id: 3, alias: "K1", model: "WDC WD80", serial: "AAA" },
+  { id: 4, alias: "K2", model: "WDC WD80", serial: "BBB" },
+]);
+
+registerEndpoint("/api/hosts", () => [
+  { id: 7, name: "mars", displayName: null },
+]);
+
 describe("DiaryEntryForm", () => {
+  it("selects the pre-filled subject in the picker", async () => {
+    const form = await mountSuspended(DiaryEntryForm, {
+      props: { subjectType: "disk", subjectId: 4 },
+    });
+    await vi.waitFor(() =>
+      expect(form.get('[data-testid="subject-picker"]').text()).toContain(
+        "K2 · WDC WD80 · BBB",
+      ),
+    );
+  });
+
   it("posts a pre-filled entry and emits saved", async () => {
     const onSaved = vi.fn();
     const form = await mountSuspended(DiaryEntryForm, {
@@ -35,5 +55,20 @@ describe("DiaryEntryForm", () => {
       },
     ]);
     await vi.waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+  });
+
+  it("clears the subject when the subject type changes", async () => {
+    const form = await mountSuspended(DiaryEntryForm, {
+      props: { subjectType: "disk", subjectId: 4 },
+    });
+    (form.vm as unknown as { subjectType: string }).subjectType = "host";
+    await form.get('input[name="title"]').setValue("Moved rack");
+    await form.get("form").trigger("submit");
+    await flushPromises();
+
+    expect(posted.at(-1)).toMatchObject({
+      subjectType: "host",
+      subjectId: null,
+    });
   });
 });
