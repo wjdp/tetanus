@@ -228,7 +228,8 @@ PoolHistory     poolId, at, internal, text                                unique
 DiaryEntry      id, subjectType (disk|pool|vdev|host|system), subjectId, at, kind (manual|auto),
                 eventType?, title, body (md), data (json)
 Notification    id, at, channel, dedupeKey, subject, ok, error?
-CollectorRun    id, hostId, source, producer, startedAt, finishedAt, ok, error?, bytes
+CollectorRun    id, hostId, source, device?, deviceType?, exitStatus?, receivedAt, ok, error?, bytes, producer?
+Payload         id, hostId, source, device ('' when none), receivedAt, body   unique(hostId, source, device)
 Setting         single row: enrolToken, thresholds, cadences, notification config
 ```
 
