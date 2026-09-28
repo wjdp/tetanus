@@ -40,13 +40,14 @@ Nuxt UI 4 colour aliases; Tailwind 4 `@theme` for the custom palette.
 | --- | --- | --- |
 | `primary` | `rust` (custom, below) | Brand mark dot, active nav indicator, primary button, focus ring, links on hover. Nothing else. |
 | `neutral` | `stone` | Surfaces, borders, body text. Warm to sit with rust. |
-| `error` | `rose` | Failed attribute or disk, pool FAULTED/UNAVAIL, missing disk. Cool red, distinct from rust. |
+| `error` | `alarm` (custom, below) | Failed attribute or disk, pool FAULTED/UNAVAIL, missing disk. Pure red, unmistakable next to rust. |
 | `warning` | `amber` | Warning attribute, DEGRADED, scrub with errors, accepted-but-risen. |
 | `success` | `emerald` | Recovery notices and explicit "all clear" only. Never the default tile colour. |
 | `info` | `sky` | Scrub/resilver in progress, informational banners. |
 | `secondary` | `stone` | Unused; alias to neutral so nothing accidentally introduces a second brand hue. |
 
-Rust palette (oxidised iron, sits between red and orange, main step 500):
+Rust palette (oxidised iron, sits between red and orange, main step 500). Decided 2026-09-28
+against a swatch page; alternatives (redder, oranger, muted) rejected:
 
 ```
 --color-rust-50:  #fdf4f0;  --color-rust-500: #d3512f;
@@ -57,14 +58,26 @@ Rust palette (oxidised iron, sits between red and orange, main step 500):
                             --color-rust-950: #35100a;
 ```
 
+Alarm palette (pure red for failed; 500 is `#ff0000`; text on light backgrounds uses 600
+or darker because 500 on white is 4.0:1):
+
+```
+--color-alarm-50:  #fff0f0;  --color-alarm-500: #ff0000;
+--color-alarm-100: #ffdcdc;  --color-alarm-600: #d90000;
+--color-alarm-200: #ffb8b8;  --color-alarm-700: #b00000;
+--color-alarm-300: #ff8585;  --color-alarm-800: #8c0000;
+--color-alarm-400: #ff4747;  --color-alarm-900: #700000;
+                             --color-alarm-950: #3d0000;
+```
+
 Rules that keep red from being overused:
 
-0. **Bright red means failing, nothing else.** `rose` appears only on a failed state. Rust
+0. **Bright red means failing, nothing else.** `alarm` appears only on a failed state. Rust
    is warm and muted by comparison and must never be pushed towards a saturated red.
 1. **Primary never carries status.** Topology tiles, attribute rows, chips and charts use
    `error`/`warning`/`success`/`info` or neutral. A rust tile would read as a fault.
 2. **Passed is quiet.** Healthy disks and pools are neutral surfaces with a small
-   `success` dot, not green cards. The home screen should be mostly stone; anything red
+   `success` dot, not green cards. Confirmed against the swatch page. The home screen should be mostly stone; anything red
    or amber on it is a problem.
 3. **One primary action per view.** Everything else is `neutral` `ghost`/`soft`.
 4. **Dark mode first.** Default to system, but design in dark and check light. Rust 500
