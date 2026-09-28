@@ -32,6 +32,7 @@ export const settingsConfigSchema = z.object({
   missingAfterDays: z.number().int().min(1).max(365),
   notifications: notificationsConfigSchema,
   alertCursor: z.number().int().min(0),
+  smartPolicyVersion: z.number().int().min(0),
 });
 
 export type SettingsConfig = z.infer<typeof settingsConfigSchema>;
@@ -40,6 +41,7 @@ export const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
   missingAfterDays: 7,
   notifications: { pushover: null, webhook: null },
   alertCursor: 0,
+  smartPolicyVersion: 0,
 };
 
 export const settingsPatchSchema = z.strictObject({
