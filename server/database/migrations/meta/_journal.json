@@ -8,6 +8,13 @@
       "when": 1790616975734,
       "tag": "0000_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790618611594,
+      "tag": "0001_hosts_and_ingest",
+      "breakpoints": true
     }
   ]
 }

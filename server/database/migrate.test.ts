@@ -6,9 +6,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createDb } from "~~/server/database/client";
 import { describeMigrations, runMigrations } from "~~/server/database/migrate";
 
-const TABLES = ["Setting"];
+const TABLES = ["CollectorRun", "Host", "Payload", "Setting"];
 
-const MIGRATION_COUNT = 1;
+const MIGRATION_COUNT = 2;
 
 const openConnections: Database.Database[] = [];
 

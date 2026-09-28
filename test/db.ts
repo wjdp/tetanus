@@ -1,8 +1,13 @@
 import { db } from "~~/server/database/client";
-import { setting } from "~~/server/database/schema";
+import {
+  collectorRun,
+  host,
+  payload,
+  setting,
+} from "~~/server/database/schema";
 
-const TABLES = [setting];
+const TABLES_CHILDREN_FIRST = [collectorRun, payload, host, setting];
 
 export function flushDb() {
-  for (const table of TABLES) db.delete(table).run();
+  for (const table of TABLES_CHILDREN_FIRST) db.delete(table).run();
 }
