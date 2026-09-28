@@ -62,6 +62,25 @@ export async function updateTaskStatus(taskId: number, status: Task["state"]) {
   console.log(`Task ${taskId} ${status}`);
 }
 
+// Results live beside the task rather than on it: /api/tasks stays a light
+// list and each importer exposes its own typed result route.
+function getTaskResultKey(taskId: number) {
+  return `taskResult:${taskId}`;
+}
+
+export async function setTaskResult(taskId: number, result: object) {
+  const storage = await useStorage();
+  if (!(await getTask(taskId))) {
+    throw new Error(`Task ${taskId} not found`);
+  }
+  await storage.set(getTaskResultKey(taskId), result);
+}
+
+export async function getTaskResult<T>(taskId: number): Promise<T | null> {
+  const storage = await useStorage();
+  return ((await storage.get(getTaskResultKey(taskId))) as T | null) ?? null;
+}
+
 export async function completeTask(taskId: number, status: "done" | "failed") {
   await updateTaskStatus(taskId, status);
   const storage = await useStorage();
@@ -87,6 +106,7 @@ export async function pruneFinishedTasks(keep = FINISHED_TASKS_KEPT) {
     .slice(keep);
   for (const task of expired) {
     await storage.remove(getTaskKey(task.id));
+    await storage.remove(getTaskResultKey(task.id));
   }
 }
 

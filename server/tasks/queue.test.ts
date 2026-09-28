@@ -7,6 +7,9 @@ import {
   FINISHED_TASKS_KEPT,
   getAllTasks,
   getCurrentTask,
+  getTaskResult,
+  pruneFinishedTasks,
+  setTaskResult,
   updateTaskStatus,
 } from "~~/server/tasks/queue";
 
@@ -90,6 +93,21 @@ describe("task queue", () => {
     await completeTask(1, "failed");
 
     expect(await getCurrentTask()).toBeNull();
+  });
+
+  it("stores a task's result beside it until the task is pruned", async () => {
+    await createTask("noop");
+
+    await setTaskResult(1, { devices: 3 });
+    await completeTask(1, "done");
+
+    expect(await getTaskResult(1)).toEqual({ devices: 3 });
+    expect(await getAllTasks()).toEqual([
+      { id: 1, name: "noop", state: "done" },
+    ]);
+    await pruneFinishedTasks(0);
+    expect(await getTaskResult(1)).toBeNull();
+    await expect(setTaskResult(99, {})).rejects.toThrow(/not found/);
   });
 
   it("refuses to update a task that does not exist", async () => {
