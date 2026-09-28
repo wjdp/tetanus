@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, lte, ne } from "drizzle-orm";
 import type { DiskProtocol } from "#shared/disk";
 import type { IngestMeta } from "#shared/ingest";
 import type { SmartHistoryRange } from "#shared/schemas/smart";
@@ -12,7 +12,9 @@ import {
   type SmartProtocol,
 } from "#shared/smart/metadata";
 import {
+  ATTRIBUTE_STATUSES,
   type AttributeDisplayStatus,
+  type AttributeStatus,
   type DeviceStatus,
   effectiveDeviceStatus,
   healthStatus,
@@ -27,6 +29,7 @@ import type {
 } from "#shared/smartctl";
 import { db } from "~~/server/database/client";
 import {
+  diaryEntry,
   disk,
   selfTest,
   smartAttribute,
@@ -77,6 +80,17 @@ export interface LatestAttribute
   metadata: AttributeMetadataSummary | null;
   displayStatus: AttributeDisplayStatus;
   acceptance: AttributeAcceptance | null;
+  statusChanges: AttributeStatusChange[];
+  statusSince: Date | null;
+  valueSince: Date;
+  firstNonZeroAt: Date | null;
+}
+
+export interface AttributeStatusChange {
+  at: Date;
+  from: AttributeStatus;
+  to: AttributeStatus;
+  value: number;
 }
 
 export interface TemperaturePoint {
@@ -110,6 +124,7 @@ export const MAX_HISTORY_POINTS = 500;
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 const TREND_WINDOWS_DAYS = [7, 30] as const;
+const MAX_STATUS_CHANGES = 5;
 
 const RANGE_DAYS: Record<SmartHistoryRange, number | null> = {
   "7d": 7,
@@ -718,6 +733,92 @@ function referenceValues(diskId: number, attrId: string, takenAt: Date) {
   });
 }
 
+function isAttributeStatus(value: unknown): value is AttributeStatus {
+  return ATTRIBUTE_STATUSES.includes(value as AttributeStatus);
+}
+
+function statusChangesByAttribute(
+  diskId: number,
+): Map<string, AttributeStatusChange[]> {
+  const entries = db
+    .select({ at: diaryEntry.at, data: diaryEntry.data })
+    .from(diaryEntry)
+    .where(
+      and(
+        eq(diaryEntry.subjectType, "disk"),
+        eq(diaryEntry.subjectId, diskId),
+        eq(diaryEntry.eventType, "attribute-status-changed"),
+      ),
+    )
+    .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
+    .all();
+  const changes = new Map<string, AttributeStatusChange[]>();
+  for (const { at, data } of entries) {
+    const { attrId, from, to, value } = data;
+    if (typeof attrId !== "string" || typeof value !== "number") continue;
+    if (!isAttributeStatus(from) || !isAttributeStatus(to)) continue;
+    const forAttribute = changes.get(attrId) ?? [];
+    forAttribute.push({ at, from, to, value });
+    changes.set(attrId, forAttribute);
+  }
+  return changes;
+}
+
+function valueSince(
+  diskId: number,
+  attrId: string,
+  transformedValue: number,
+  takenAt: Date,
+): Date {
+  const ofAttribute = and(
+    eq(smartAttribute.diskId, diskId),
+    eq(smartAttribute.attrId, attrId),
+  );
+  const lastDifferent = db
+    .select({ takenAt: smartAttribute.takenAt })
+    .from(smartAttribute)
+    .where(
+      and(
+        ofAttribute,
+        lte(smartAttribute.takenAt, takenAt),
+        ne(smartAttribute.transformedValue, transformedValue),
+      ),
+    )
+    .orderBy(desc(smartAttribute.takenAt), desc(smartAttribute.id))
+    .limit(1)
+    .get();
+  const runStart = db
+    .select({ takenAt: smartAttribute.takenAt })
+    .from(smartAttribute)
+    .where(
+      lastDifferent
+        ? and(ofAttribute, gt(smartAttribute.takenAt, lastDifferent.takenAt))
+        : ofAttribute,
+    )
+    .orderBy(asc(smartAttribute.takenAt), asc(smartAttribute.id))
+    .limit(1)
+    .get();
+  return runStart?.takenAt ?? takenAt;
+}
+
+function firstNonZeroAt(diskId: number, attrId: string): Date | null {
+  return (
+    db
+      .select({ takenAt: smartAttribute.takenAt })
+      .from(smartAttribute)
+      .where(
+        and(
+          eq(smartAttribute.diskId, diskId),
+          eq(smartAttribute.attrId, attrId),
+          gt(smartAttribute.transformedValue, 0),
+        ),
+      )
+      .orderBy(asc(smartAttribute.takenAt), asc(smartAttribute.id))
+      .limit(1)
+      .get()?.takenAt ?? null
+  );
+}
+
 function summariseMetadata(
   protocol: SmartProtocol | undefined,
   attrId: string,
@@ -759,10 +860,12 @@ export function latestAttributes(diskId: number): LatestAttribute[] {
   if (!reading) return [];
   const protocol = diskProtocol(diskId);
   const active = activeAcceptances(diskId);
+  const changes = statusChangesByAttribute(diskId);
   return attributesOfReading(reading.id).map(
     ({ id: _id, readingId: _readingId, diskId: _diskId, ...attribute }) => {
       const metadata = summariseMetadata(protocol, attribute.attrId);
       const acceptance = active.get(attribute.attrId);
+      const attributeChanges = changes.get(attribute.attrId) ?? [];
       return {
         ...attribute,
         trend: trendDirection(
@@ -784,6 +887,17 @@ export function latestAttributes(diskId: number): LatestAttribute[] {
               note: acceptance.note,
             }
           : null,
+        statusChanges: attributeChanges.slice(0, MAX_STATUS_CHANGES),
+        statusSince:
+          attributeChanges.find((change) => change.to === attribute.status)
+            ?.at ?? null,
+        valueSince: valueSince(
+          diskId,
+          attribute.attrId,
+          attribute.transformedValue,
+          attribute.takenAt,
+        ),
+        firstNonZeroAt: firstNonZeroAt(diskId, attribute.attrId),
       };
     },
   );

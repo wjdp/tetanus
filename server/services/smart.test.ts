@@ -9,7 +9,7 @@ import {
   temperatureReading,
 } from "~~/server/database/schema";
 import { parse as parseSmartctl } from "~~/server/ingest/smartctl-xall";
-import { listDiary } from "~~/server/services/diary";
+import { addAutoEvent, listDiary } from "~~/server/services/diary";
 import { type DiskRow, observeDisk } from "~~/server/services/disks";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
@@ -385,6 +385,82 @@ describe("trend", () => {
     expect(
       new Set(latestAttributes(diskId).map((attribute) => attribute.trend)),
     ).toEqual(new Set(["new"]));
+  });
+});
+
+describe("attribute row history", () => {
+  function pendingOf(diskId: number) {
+    return latestAttributes(diskId).find(
+      (attribute) => attribute.attrId === "197",
+    );
+  }
+
+  it("lists the five newest status changes and the time since the current status", () => {
+    const raws = [0, 16, 0, 16, 0, 16, 0, 16];
+    raws.forEach((raw, index) => {
+      ingestSmart(withAttributeRaw(SDA, 197, raw), at(index * HOUR_MS));
+    });
+    const diskId = diskBySerial(SDA_SERIAL).id;
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: diskId,
+      eventType: "attribute-status-changed",
+      title: "malformed",
+      data: { attrId: "197", from: 1, to: "passed", value: 0 },
+      at: at(10 * HOUR_MS),
+    });
+
+    const pending = pendingOf(diskId);
+    expect(pending?.status).toBe("failed");
+    expect(pending?.statusChanges).toEqual(
+      [7, 6, 5, 4, 3].map((index) => ({
+        at: at(index * HOUR_MS),
+        from: index % 2 ? "passed" : "failed",
+        to: index % 2 ? "failed" : "passed",
+        value: raws[index],
+      })),
+    );
+    expect(pending?.statusSince).toEqual(at(7 * HOUR_MS));
+    expect(
+      latestAttributes(diskId).find((attribute) => attribute.attrId === "5")
+        ?.statusChanges,
+    ).toEqual([]);
+  });
+
+  it("has no status since without a change", () => {
+    ingestSmart(SDA, t0);
+    ingestSmart(SDA, at(HOUR_MS));
+    const pending = pendingOf(diskBySerial(SDA_SERIAL).id);
+    expect(pending?.statusChanges).toEqual([]);
+    expect(pending?.statusSince).toBeNull();
+  });
+
+  it("dates the current value from the start of its unbroken run", () => {
+    ingestSmart(withAttributeRaw(SDA, 197, 4), t0);
+    ingestSmart(withAttributeRaw(SDA, 197, 4), at(HOUR_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 2), at(2 * HOUR_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 4), at(3 * HOUR_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 4), at(4 * HOUR_MS));
+    const diskId = diskBySerial(SDA_SERIAL).id;
+
+    const attributes = latestAttributes(diskId);
+    expect(pendingOf(diskId)?.valueSince).toEqual(at(3 * HOUR_MS));
+    expect(
+      attributes.find((attribute) => attribute.attrId === "5")?.valueSince,
+    ).toEqual(t0);
+  });
+
+  it("dates the first non-zero reading", () => {
+    ingestSmart(SDA, t0);
+    ingestSmart(withAttributeRaw(SDA, 197, 2), at(HOUR_MS));
+    ingestSmart(SDA, at(2 * HOUR_MS));
+    const diskId = diskBySerial(SDA_SERIAL).id;
+
+    const attributes = latestAttributes(diskId);
+    expect(pendingOf(diskId)?.firstNonZeroAt).toEqual(at(HOUR_MS));
+    expect(
+      attributes.find((attribute) => attribute.attrId === "5")?.firstNonZeroAt,
+    ).toBeNull();
   });
 });
 

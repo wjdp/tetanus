@@ -67,6 +67,10 @@ describe("/api/disks/:id/smart", () => {
         displayStatus: "passed",
         acceptance: null,
         metadata: expect.objectContaining({ ideal: "low", critical: true }),
+        statusChanges: [],
+        statusSince: null,
+        valueSince: expect.any(String),
+        firstNonZeroAt: null,
       }),
     );
     expect(smart.history.attributes["194"]).toEqual([
