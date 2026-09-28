@@ -21,6 +21,7 @@ const disk = (overrides: Record<string, unknown>) => ({
   warrantyDaysLeft: 500,
   inventory: {},
   keys: [],
+  membership: null,
   ...overrides,
 });
 
@@ -80,5 +81,28 @@ describe("disks inventory page", () => {
     const expired = page.get('[data-warranty-days="-10"]');
     expect(expired.text()).toBe("expired");
     expect(expired.classes()).not.toContain("text-error");
+  });
+
+  it("shows the pool and offers distinct pools to filter by", async () => {
+    const tank = {
+      poolId: 3,
+      poolName: "tank",
+      vdevName: "/dev/disk/by-vdev/K1-part1",
+      groupName: "raidz1-0",
+      groupType: "raidz1",
+      vdevState: "ONLINE",
+    };
+    disks = [
+      disk({ id: 1, alias: "K1", membership: tank }),
+      disk({ id: 2, alias: "K2", membership: { ...tank, vdevName: "K2" } }),
+      disk({ id: 3, alias: "K3" }),
+    ];
+    const page = await mountSuspended(DisksPage);
+
+    expect(page.findAll('a[href="/zfs/3"]').map((link) => link.text())).toEqual(
+      ["tank", "tank"],
+    );
+    expect(page.findAll("tbody tr")[2].text()).toContain("—");
+    expect(page.find('[aria-label="Filter by pool"]').exists()).toBe(true);
   });
 });

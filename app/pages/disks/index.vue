@@ -2,8 +2,10 @@
 import { getPageTitle } from "#shared/app";
 import {
   ALL_HOSTS,
+  ALL_POOLS,
   type InventoryFilterState,
   NO_HOST,
+  NO_POOL,
 } from "~/components/inventory/InventoryFilters.vue";
 
 useSeoMeta({ title: getPageTitle("Disks") });
@@ -22,6 +24,7 @@ onUnmounted(() => {
 
 const filters = ref<InventoryFilterState>({
   host: ALL_HOSTS,
+  pool: ALL_POOLS,
   states: [],
   search: "",
 });
@@ -36,16 +39,31 @@ const hosts = computed(() =>
   ].sort(),
 );
 
+const pools = computed(() =>
+  [
+    ...new Set(
+      allDisks.value.flatMap((row) =>
+        row.membership ? [row.membership.poolName] : [],
+      ),
+    ),
+  ].sort(),
+);
+
 const states = computed(() =>
   [...new Set(allDisks.value.map((row) => row.state))].sort(),
 );
 
 const visibleDisks = computed(() => {
-  const { host, states: wantedStates, search } = filters.value;
+  const { host, pool, states: wantedStates, search } = filters.value;
   const needle = search.trim().toLowerCase();
   return allDisks.value.filter((row) => {
     if (host === NO_HOST && row.hostName !== null) return false;
     if (host !== ALL_HOSTS && host !== NO_HOST && row.hostName !== host) {
+      return false;
+    }
+    const poolName = row.membership?.poolName ?? null;
+    if (pool === NO_POOL && poolName !== null) return false;
+    if (pool !== ALL_POOLS && pool !== NO_POOL && poolName !== pool) {
       return false;
     }
     if (wantedStates.length && !wantedStates.includes(row.state)) return false;
@@ -90,7 +108,7 @@ const countLabel = computed(() =>
     </div>
 
     <template v-else>
-      <InventoryFilters v-model="filters" :hosts="hosts" :states="states" />
+      <InventoryFilters v-model="filters" :hosts="hosts" :pools="pools" :states="states" />
       <InventoryTable :disks="visibleDisks" />
     </template>
   </AppPanel>

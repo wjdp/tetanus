@@ -19,6 +19,7 @@ interface InventoryDisk {
   ageDays: number | null;
   warrantyDaysLeft: number | null;
   inventory: Partial<Inventory>;
+  membership: { poolId: number; poolName: string } | null;
 }
 
 defineProps<{ disks: InventoryDisk[] }>();
@@ -86,6 +87,12 @@ const columns: TableColumn<InventoryDisk>[] = [
     id: "host",
     accessorFn: (row) => optional(row.hostName),
     header: sortableHeader("Host"),
+    sortUndefined: "last",
+  },
+  {
+    id: "pool",
+    accessorFn: (row) => optional(row.membership?.poolName ?? null),
+    header: sortableHeader("Pool"),
     sortUndefined: "last",
   },
   { id: "state", accessorKey: "state", header: sortableHeader("State") },
@@ -172,6 +179,18 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
 
     <template #host-cell="{ row }">
       {{ row.original.hostName ?? "—" }}
+    </template>
+
+    <template #pool-cell="{ row }">
+      <NuxtLink
+        v-if="row.original.membership"
+        :to="`/zfs/${row.original.membership.poolId}`"
+        class="text-default hover:text-primary"
+        @click.stop
+      >
+        {{ row.original.membership.poolName }}
+      </NuxtLink>
+      <span v-else class="text-dimmed">—</span>
     </template>
 
     <template #state-cell="{ row }">
