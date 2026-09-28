@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~~/server/database/client";
 import { collectorRun, host, payload } from "~~/server/database/schema";
 import { HANDLERS, type IngestHandler } from "~~/server/ingest/handlers";
@@ -207,5 +207,78 @@ describe("recordIngest", () => {
       expect(db.select().from(payload).get()).toMatchObject({ body: "zfs=1" });
       expect(db.select().from(host).get()).toMatchObject({ notes: "" });
     });
+  });
+});
+
+describe("alerts tick after ingest", () => {
+  const items = new Map<string, unknown>();
+  const storage = {
+    get: async (key: string) => items.get(key) ?? null,
+    set: async (key: string, value: unknown) => {
+      items.set(key, value);
+    },
+    remove: async (key: string) => {
+      items.delete(key);
+    },
+    getKeys: async (base: string) =>
+      [...items.keys()].filter((key) => key.startsWith(base)),
+    getItems: async (keys: string[]) =>
+      keys.map((key) => ({ key, value: items.get(key) })),
+  };
+
+  async function queuedTasks() {
+    await vi.waitFor(async () => {
+      expect((await storage.getKeys("task:")).length).toBeGreaterThan(0);
+    });
+    return (await storage.getItems(await storage.getKeys("task:"))).map(
+      ({ value }) => value,
+    );
+  }
+
+  beforeEach(() => {
+    flushDb();
+    items.clear();
+    vi.stubGlobal("useStorage", () => storage);
+    vi.stubGlobal("runTask", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const ingest = () =>
+    recordIngest({
+      hostName: "mars",
+      source: "versions",
+      meta: {},
+      body: "zfs=2.4.1\n",
+      receivedAt,
+    });
+
+  it("queues an alerts tick after a successful ingest", async () => {
+    ingest();
+    expect(await queuedTasks()).toEqual([
+      expect.objectContaining({ name: "alerts:tick", state: "pending" }),
+    ]);
+  });
+
+  it("does not queue a second tick while one is pending", async () => {
+    ingest();
+    await queuedTasks();
+    ingest();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(await queuedTasks()).toHaveLength(1);
+  });
+
+  it("does not queue a tick when parsing fails", async () => {
+    recordIngest({
+      hostName: "mars",
+      source: "versions",
+      meta: {},
+      body: "not a key value line",
+      receivedAt,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(await storage.getKeys("task:")).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ import { collectorRun, NO_DEVICE, payload } from "~~/server/database/schema";
 import { HANDLERS, type IngestContext } from "~~/server/ingest/handlers";
 import { PARSERS } from "~~/server/ingest/registry";
 import { upsertHostByName } from "~~/server/services/hosts";
+import { requestAlertsTick } from "~~/server/tasks/queueable/alertsTick";
 import { invalidRequest } from "~~/server/utils/serviceError";
 
 export interface IngestRequest {
@@ -108,5 +109,6 @@ export function recordIngest({
       .run();
   });
 
+  void requestAlertsTick();
   return { ok: true, source, host: hostRow.name, summary: parsed.summary };
 }

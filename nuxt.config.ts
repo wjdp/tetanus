@@ -40,6 +40,7 @@ export default defineNuxtConfig({
   nitro: {
     typescript: { tsConfig: relaxedIndexAccess() },
     experimental: { tasks: true },
+    scheduledTasks: { "*/5 * * * *": ["alerts:tick", "healthchecks:ping"] },
     ignore: ["**/*.test.ts"],
   },
   vite: {

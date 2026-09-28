@@ -1,4 +1,4 @@
-export const TASK_NAMES = ["noop"] as const;
+export const TASK_NAMES = ["noop", "alerts:tick", "healthchecks:ping"] as const;
 
 export type TaskName = (typeof TASK_NAMES)[number];
 
