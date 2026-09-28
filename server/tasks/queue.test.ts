@@ -4,6 +4,7 @@ import { sseHooks } from "~~/server/sse";
 import {
   completeTask,
   createTask,
+  FINISHED_TASKS_KEPT,
   getAllTasks,
   getCurrentTask,
   updateTaskStatus,
@@ -93,5 +94,33 @@ describe("task queue", () => {
 
   it("refuses to update a task that does not exist", async () => {
     await expect(updateTaskStatus(99, "done")).rejects.toThrow(/not found/);
+  });
+
+  it("keeps only the newest finished tasks and every unfinished one", async () => {
+    const finishedCount = FINISHED_TASKS_KEPT + 5;
+    for (let id = 1; id <= finishedCount + 2; id++) await createTask("noop");
+    for (let id = 1; id < finishedCount; id++) {
+      await updateTaskStatus(id, id % 2 ? "done" : "failed");
+    }
+    await updateTaskStatus(finishedCount + 1, "in_progress");
+
+    await completeTask(finishedCount, "done");
+
+    const tasks = await getAllTasks();
+    const finishedIds = tasks
+      .filter((task) => task.state === "done" || task.state === "failed")
+      .map((task) => task.id)
+      .sort((a, b) => a - b);
+    expect(finishedIds).toHaveLength(FINISHED_TASKS_KEPT);
+    expect(finishedIds[0]).toBe(6);
+    expect(finishedIds.at(-1)).toBe(finishedCount);
+    expect(
+      tasks
+        .filter((task) => task.id > finishedCount)
+        .map(({ id, state }) => [id, state]),
+    ).toEqual([
+      [finishedCount + 1, "in_progress"],
+      [finishedCount + 2, "pending"],
+    ]);
   });
 });

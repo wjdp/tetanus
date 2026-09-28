@@ -3,6 +3,7 @@ import { useSseEvent } from "~~/server/sse";
 
 const CURRENT_TASK_ID = "currentTaskId";
 const LAST_TASK_KEY = "lastTaskId";
+export const FINISHED_TASKS_KEPT = 200;
 
 export interface Task {
   id: number;
@@ -71,7 +72,22 @@ export async function completeTask(taskId: number, status: "done" | "failed") {
   } else {
     await storage.remove(CURRENT_TASK_ID);
   }
+  await pruneFinishedTasks();
   return nextTask;
+}
+
+const isFinished = (task: Task) =>
+  task.state === "done" || task.state === "failed";
+
+export async function pruneFinishedTasks(keep = FINISHED_TASKS_KEPT) {
+  const storage = await useStorage();
+  const expired = (await getAllTasks())
+    .filter(isFinished)
+    .sort((a, b) => b.id - a.id)
+    .slice(keep);
+  for (const task of expired) {
+    await storage.remove(getTaskKey(task.id));
+  }
 }
 
 export async function createTask(
