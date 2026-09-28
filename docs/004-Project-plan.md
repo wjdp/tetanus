@@ -161,7 +161,8 @@ Done 2026-09-28: [026](026-Phase-8-alerts.md).
 
 ## Phase 9: ZFS datasets and snapshots
 
-In progress 2026-09-28: [029](029-Phase-9-ZFS-datasets-and-snapshots.md).
+Done 2026-09-28: [029](029-Phase-9-ZFS-datasets-and-snapshots.md). The mars `zfs-snapshots` fixture
+still needs re-capturing with `guid` (user); `host/test/stub.sh` carries a temporary mapping until then.
 
 1. `Dataset`, `Snapshot` upsert on slow cadence; never list on request path.
 2. Dataset tree page with used/referenced/compressratio/quota; snapshot list per
