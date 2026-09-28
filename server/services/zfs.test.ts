@@ -285,8 +285,9 @@ describe("zpool-status", () => {
     tank(later).scan = { ...scan, endTime: 1789411657 };
     run("zpool-status", later, minutesAfter(30));
 
-    const finished = diary("scan-finished");
+    const finished = diary("scrub-finished");
     expect(finished).toHaveLength(2);
+    expect(diary("scan-finished")).toEqual([]);
     expect(finished[0]).toMatchObject({
       subjectType: "pool",
       title: "tank scrub finished with 0 errors",
@@ -298,6 +299,29 @@ describe("zpool-status", () => {
         endTime: 1789325257,
       },
     });
+  });
+
+  it("names resilvers and unknown scan functions", () => {
+    const scan = tank(marsStatus()).scan;
+    if (!scan) throw new Error("tank has no scan");
+    const withScan = (scanFunction: string, endTime: number) => {
+      const status = marsStatus();
+      tank(status).scan = { ...scan, function: scanFunction, endTime };
+      return status;
+    };
+    run("zpool-status", withScan("SCRUB", 1));
+    run("zpool-status", withScan("RESILVER", 2), minutesAfter(10));
+    run("zpool-status", withScan("REBUILD", 3), minutesAfter(20));
+
+    expect(diary("resilver-finished")).toMatchObject([
+      {
+        title: "tank resilver finished with 0 errors",
+        data: { function: "RESILVER", endTime: 2 },
+      },
+    ]);
+    expect(diary("scan-finished")).toMatchObject([
+      { data: { function: "REBUILD", endTime: 3 } },
+    ]);
   });
 
   it("moves a pool to its new host", () => {

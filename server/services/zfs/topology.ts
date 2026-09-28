@@ -65,6 +65,15 @@ function scanFinished(
   return previous?.state !== "FINISHED" || previous.endTime !== current.endTime;
 }
 
+const SCAN_EVENT_TYPES: Record<string, string> = {
+  SCRUB: "scrub-finished",
+  RESILVER: "resilver-finished",
+};
+
+function scanEventType(scanFunction: string) {
+  return SCAN_EVENT_TYPES[scanFunction.toUpperCase()] ?? "scan-finished";
+}
+
 function recordPoolChanges(
   existing: PoolRow,
   observed: ZpoolStatusPool,
@@ -96,7 +105,7 @@ function recordPoolChanges(
     addAutoEvent({
       subjectType: "pool",
       subjectId: existing.id,
-      eventType: "scan-finished",
+      eventType: scanEventType(scanFunction),
       title: `${observed.name} ${scanFunction.toLowerCase()} finished with ${errors} error${errors === 1 ? "" : "s"}`,
       data: { function: scanFunction, errors, examined, endTime },
       at: new Date(endTime * 1000),
