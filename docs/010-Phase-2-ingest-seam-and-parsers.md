@@ -121,3 +121,30 @@ run because one command failed. Read-only, no host writes beyond its own log lin
 - 003's data model sketch still lists `CollectorRun` with `startedAt`/`finishedAt`; the
   table as built has `receivedAt` plus `device`, `deviceType` and `exitStatus`, since the
   server only sees when a POST arrives.
+
+Host collector:
+
+- Three timers drive one template unit, `tetanus-collect@.service`, via `--only zfs |
+  smart | snapshots`. Hardening kept: `ProtectSystem=strict`, `ProtectHome`,
+  `PrivateTmp`, `NoNewPrivileges`, `ProtectKernelTunables`, `ProtectControlGroups`,
+  `RestrictSUIDSGID`, `RestrictRealtime`, `LockPersonality`. Left out because they
+  block `/dev/sd*`, `/dev/nvme*` or `/dev/zfs`: `PrivateDevices`, `DevicePolicy`,
+  `CapabilityBoundingSet`, `User=`, `ProtectClock`, `ProtectKernelLogs`.
+- The token reaches curl through `-H @<(…)`, never argv, so it does not show in `ps`.
+  Config is read as `KEY=value` lines, never sourced.
+- `udev` is posted for whole disks only (lsblk type `disk`); the whole-disk record
+  carries the `disk/by-vdev/<alias>` link, so partition records are not needed.
+- On mars `smartctl --scan` reports `-d scsi` for every SATA disk behind the HBA. The
+  collector omits `-d` for `ata`/`scsi`/`sat`, so the `xall-*-auto.json` fixtures are
+  the real input; the `-d scsi` captures are kept for comparison only.
+- A command that exits 0 with no output still posts an empty body (e.g. `zpool history`
+  with no pools), so every parser rejects an empty body with a `ParseError` and the run
+  is recorded as failed. A non-zero exit with no output is skipped and logged.
+- The ZED hook posts every event class; busy pools will send many `history_event` and
+  `config_sync` events. Phase 5 should dedupe on `(hostId, eid)`.
+- The installer's curl one-liner points at `raw.githubusercontent.com/wjdp/tetanus`,
+  which assumes the publication repo. The working remote is Gitea `wjdp/diskbot`.
+- Shell tests (`pnpm test:host`, 21 cases) stub `zpool`, `zfs`, `smartctl`, `lsblk` and
+  `curl`; the stubs replay `test/fixtures/mars` only when argv matches `manifest.txt`
+  exactly, so the tests pin every command line to what was captured on the real host.
+  CI has a separate `host` job with shellcheck and bats.
