@@ -44,7 +44,8 @@ scaffold: palettes, Nuxt UI colour aliases, the mark, favicons.
 - **Favicon renderer: `rsvg-convert`** (present on this machine). `inkscape` and
   ImageMagick `magick`/`convert` were also available but not needed. `sharp` is not a
   project dependency and was not installed. `apple-touch-icon.png` uses `rsvg-convert
-  -b '#0c0a09'` for the background per 008.
+  -b '#0c0a09'` for the background per 008, rendered from a copy of the SVG with the
+  strokes swapped to `#f5f5f4`, since a PNG cannot carry the dark-mode media query.
 - Everything in 008 was applied as written (bar the ramp/geometry revisions above);
   nothing was dropped.
 
