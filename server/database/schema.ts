@@ -9,6 +9,7 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import type { AlertChannel, NotificationRule } from "../../shared/alerts";
 import type { DiaryEntryKind, DiarySubjectType } from "../../shared/diary";
 import type {
   DiskKeyKind,
@@ -413,5 +414,28 @@ export const faultAcceptance = sqliteTable(
   },
   (table) => [
     index("FaultAcceptance_diskId_attrId_idx").on(table.diskId, table.attrId),
+  ],
+);
+
+export const notification = sqliteTable(
+  "Notification",
+  {
+    id: autoIncrementId(),
+    at: datetime().notNull(),
+    channel: text().$type<AlertChannel>().notNull(),
+    rule: text().$type<NotificationRule>().notNull(),
+    dedupeKey: text().notNull(),
+    subject: text().notNull(),
+    title: text().notNull(),
+    message: text().notNull(),
+    ok: boolean().notNull(),
+    error: text(),
+    diaryEntryId: integer().references(() => diaryEntry.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => [
+    index("Notification_dedupeKey_idx").on(table.dedupeKey),
+    index("Notification_at_idx").on(table.at),
   ],
 );

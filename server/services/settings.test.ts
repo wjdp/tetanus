@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS_CONFIG } from "#shared/schemas/settings";
+import { DEFAULT_SETTINGS_CONFIG, SECRET_MASK } from "#shared/schemas/settings";
 import { db } from "~~/server/database/client";
 import { setting } from "~~/server/database/schema";
 import {
   ensureSettings,
   getSettings,
+  maskSettings,
+  setAlertCursor,
   updateSettings,
 } from "~~/server/services/settings";
 import { flushDb } from "~~/test/db";
@@ -57,5 +59,73 @@ describe("settings", () => {
     expect((await updateSettings({ config: {} })).config.missingAfterDays).toBe(
       3,
     );
+  });
+
+  it("keeps the alert cursor when config is patched", async () => {
+    setAlertCursor(42);
+    await updateSettings({ config: { missingAfterDays: 3 } });
+    expect((await getSettings()).config.alertCursor).toBe(42);
+  });
+});
+
+describe("notification settings", () => {
+  const pushover = { token: "app-token", user: "user-key" };
+  const webhook = { url: "https://hooks.example/tetanus", secret: "s3cret" };
+
+  beforeEach(async () => {
+    flushDb();
+    await updateSettings({ config: { notifications: { pushover, webhook } } });
+  });
+
+  it("masks every secret on read", async () => {
+    expect(maskSettings(await getSettings()).config.notifications).toEqual({
+      pushover: { token: SECRET_MASK, user: SECRET_MASK },
+      webhook: { url: webhook.url, secret: SECRET_MASK },
+    });
+  });
+
+  it("leaves an unset webhook secret out of the masked view", async () => {
+    await updateSettings({
+      config: { notifications: { webhook: { url: webhook.url } } },
+    });
+    expect(
+      maskSettings(await getSettings()).config.notifications.webhook,
+    ).toEqual({ url: webhook.url });
+  });
+
+  it("keeps stored secrets when the mask is sent back", async () => {
+    await updateSettings({
+      config: {
+        notifications: {
+          pushover: { token: SECRET_MASK, user: "new-user" },
+          webhook: { url: "https://hooks.example/new", secret: SECRET_MASK },
+        },
+      },
+    });
+    expect((await getSettings()).config.notifications).toEqual({
+      pushover: { token: "app-token", user: "new-user" },
+      webhook: { url: "https://hooks.example/new", secret: "s3cret" },
+    });
+  });
+
+  it("patches one channel and leaves the other", async () => {
+    await updateSettings({ config: { notifications: { pushover: null } } });
+    expect((await getSettings()).config.notifications).toEqual({
+      pushover: null,
+      webhook,
+    });
+  });
+
+  it("refuses the mask when nothing is stored", async () => {
+    await updateSettings({ config: { notifications: { pushover: null } } });
+    await expect(
+      updateSettings({
+        config: {
+          notifications: {
+            pushover: { token: SECRET_MASK, user: SECRET_MASK },
+          },
+        },
+      }),
+    ).rejects.toThrow(/no stored value/);
   });
 });

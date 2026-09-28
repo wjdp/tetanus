@@ -13,6 +13,7 @@ const TABLES = [
   "DiskKey",
   "FaultAcceptance",
   "Host",
+  "Notification",
   "Payload",
   "Pool",
   "PoolHistory",
@@ -27,7 +28,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 4;
+const MIGRATION_COUNT = 5;
 
 const openConnections: Database.Database[] = [];
 

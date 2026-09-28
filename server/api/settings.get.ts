@@ -1,5 +1,5 @@
-import { getSettings } from "~~/server/services/settings";
+import { getSettings, maskSettings } from "~~/server/services/settings";
 
 export default defineEventHandler(async () => {
-  return await getSettings();
+  return maskSettings(await getSettings());
 });

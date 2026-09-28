@@ -25,4 +25,38 @@ describe("settingsPatchSchema", () => {
       settingsPatchSchema.parse({ config: { missingAfterDays: 0 } }),
     ).toThrow();
   });
+
+  it("does not let a patch move the alert cursor", () => {
+    expect(() =>
+      settingsPatchSchema.parse({ config: { alertCursor: 0 } }),
+    ).toThrow();
+  });
+
+  it("accepts one notification channel at a time", () => {
+    expect(
+      settingsPatchSchema.parse({
+        config: { notifications: { webhook: { url: "https://x.test/h" } } },
+      }),
+    ).toEqual({
+      config: { notifications: { webhook: { url: "https://x.test/h" } } },
+    });
+  });
+
+  it("drops an empty webhook secret", () => {
+    expect(
+      settingsPatchSchema.parse({
+        config: {
+          notifications: { webhook: { url: "https://x.test/h", secret: "" } },
+        },
+      }).config.notifications?.webhook,
+    ).toEqual({ url: "https://x.test/h" });
+  });
+
+  it("rejects a non-http webhook URL", () => {
+    expect(() =>
+      settingsPatchSchema.parse({
+        config: { notifications: { webhook: { url: "file:///etc/passwd" } } },
+      }),
+    ).toThrow();
+  });
 });
