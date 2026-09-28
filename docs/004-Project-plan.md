@@ -80,6 +80,9 @@ Done 2026-09-28: [010](010-Phase-2-ingest-seam-and-parsers.md). Outstanding: a s
 
 ## Phase 3: SMART knowledge
 
+Done 2026-09-28: [011](011-Phase-3-SMART-knowledge.md). Self-tests are persisted but not yet
+exposed by the API.
+
 1. `bin/generate-smart-metadata` (Go one-file program or script) producing
    `shared/smart/metadata.json` from a scrutiny checkout. Commit the JSON.
 2. `shared/smart/transforms.ts` (188, 194). `shared/smart/evaluate.ts`: attribute and
@@ -90,6 +93,9 @@ Done 2026-09-28: [010](010-Phase-2-ingest-seam-and-parsers.md). Outstanding: a s
 4. Trend: 7 d / 30 d comparison per attribute.
 
 ## Phase 4: disks, identity, state
+
+Done 2026-09-28: [012](012-Phase-4-disks-identity-and-state.md); the Obsidian importer
+(step 6) landed with Phase 6.
 
 1. `DiskKey` extraction from smartctl + udev + lsblk; `identity.match()` pure; merge on
    ingest; conflict diary + banner.
@@ -107,6 +113,8 @@ Done 2026-09-28: [010](010-Phase-2-ingest-seam-and-parsers.md). Outstanding: a s
 
 ## Phase 5: ZFS topology
 
+Done 2026-09-28: [013](013-Phase-5-ZFS-topology.md).
+
 1. Upsert `Pool` (per host), `Vdev` from `zpool-status` + `zpool-list`; link
    `Vdev.diskId` via path/devid → `DiskKey`. `PoolReading`/`VdevReading` per ingest.
 2. Membership changes and ZFS state changes → diary auto events.
@@ -115,6 +123,10 @@ Done 2026-09-28: [010](010-Phase-2-ingest-seam-and-parsers.md). Outstanding: a s
    state and error counters.
 
 ## Phase 6: disk page and inventory UI
+
+Done 2026-09-28: [014](014-Phase-6-disk-page-and-inventory-UI.md). Chart library: uPlot.
+Not yet validated in a browser by the author; `bin/replay-fixtures.sh` loads the mars
+fixtures into a dev server for that.
 
 1. Disk page: nameplate, inventory edit, attribute table with explanation rows, failure
    rate, inline SVG sparklines.
@@ -190,4 +202,4 @@ Done 2026-09-28: [010](010-Phase-2-ingest-seam-and-parsers.md). Outstanding: a s
 
 ## Unanswered questions
 
-1. Chart library: deferred by decision; revisit at phase 6.
+1. ~~Chart library~~ uPlot, decided at phase 6.
