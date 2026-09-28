@@ -281,4 +281,32 @@ describe("alerts tick after ingest", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(await storage.getKeys("task:")).toEqual([]);
   });
+
+  it("stays quiet when task storage is not initialised", async () => {
+    vi.unstubAllGlobals();
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    ingest();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it("logs other queue failures", async () => {
+    vi.stubGlobal("useStorage", () => {
+      throw new Error("storage offline");
+    });
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    ingest();
+    await vi.waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith(
+        "Could not queue alerts:tick",
+        expect.objectContaining({ message: "storage offline" }),
+      ),
+    );
+    consoleError.mockRestore();
+  });
 });

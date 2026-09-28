@@ -10,10 +10,14 @@ export async function enqueueUnlessPending(name: TaskName) {
   return createTask(name);
 }
 
+const isStorageUninitialised = (error: unknown) =>
+  error instanceof ReferenceError && /\buseStorage\b/.test(error.message);
+
 export async function requestAlertsTick() {
   try {
     await enqueueUnlessPending("alerts:tick");
   } catch (error) {
+    if (isStorageUninitialised(error)) return;
     console.error("Could not queue alerts:tick", error);
   }
 }
