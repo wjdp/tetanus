@@ -1,100 +1,28 @@
 import type { IngestMeta, Parser } from "#shared/ingest";
+import type {
+  AtaAttribute,
+  ScsiInfo,
+  SctTemperatureHistory,
+  SelfTestEntry,
+  SmartctlExitFlags,
+  SmartctlXallDevice,
+  SmartctlXallIdentity,
+  SmartctlXallResult,
+} from "#shared/smartctl";
 import { ParseError } from "./parseError";
 
-export interface SmartctlXallDevice {
-  name: string;
-  type: string;
-  protocol: string;
-}
-
-export interface SmartctlExitFlags {
-  raw: number;
-  commandLineError: boolean;
-  deviceOpenFailed: boolean;
-  commandFailed: boolean;
-  diskFailing: boolean;
-  prefailBelowThreshold: boolean;
-  pastPrefailBelowThreshold: boolean;
-  errorLogHasErrors: boolean;
-  selfTestLogHasErrors: boolean;
-}
-
-export interface AtaAttributeFlags {
-  value?: number;
-  string?: string;
-  prefailure: boolean;
-  updatedOnline: boolean;
-  performance: boolean;
-  errorRate: boolean;
-  eventCount: boolean;
-  autoKeep: boolean;
-}
-
-export interface AtaAttribute {
-  id: number;
-  name: string;
-  value: number;
-  worst: number;
-  thresh: number;
-  whenFailed: string | null;
-  raw: { value?: number; string?: string };
-  flags: AtaAttributeFlags;
-}
-
-export interface SelfTestEntry {
-  type?: string;
-  status?: string;
-  passed: boolean;
-  lifetimeHours?: number;
-  lba?: number;
-}
-
-export interface SctTemperatureHistory {
-  intervalMinutes?: number;
-  values: (number | null)[];
-}
-
-export interface ScsiErrorCounters {
-  correctedErrors?: number;
-  uncorrectedErrors?: number;
-}
-
-export interface ScsiInfo {
-  grownDefects?: number;
-  read?: ScsiErrorCounters;
-  write?: ScsiErrorCounters;
-  verify?: ScsiErrorCounters;
-  startStopCycleCounter?: unknown;
-}
-
-export interface SmartctlXallIdentity {
-  model?: string;
-  modelFamily?: string;
-  serial?: string;
-  firmware?: string;
-  wwn?: string;
-  capacityBytes?: number;
-  rotationRate?: number;
-  formFactor?: string;
-  transport?: string;
-}
-
-export interface SmartctlXallResult {
-  device: SmartctlXallDevice;
-  smartctl: { version: string; exitStatus: SmartctlExitFlags };
-  identity: SmartctlXallIdentity;
-  smartSupport: { available: boolean; enabled: boolean };
-  smartStatus?: { passed: boolean };
-  standby: boolean;
-  temperature?: number;
-  powerOnHours?: number;
-  powerCycles?: number;
-  ata?: { attributes: AtaAttribute[] };
-  nvme?: Record<string, unknown>;
-  scsi?: ScsiInfo;
-  selfTests?: SelfTestEntry[];
-  sctTemperatureHistory?: SctTemperatureHistory;
-}
+export type {
+  AtaAttribute,
+  AtaAttributeFlags,
+  ScsiErrorCounters,
+  ScsiInfo,
+  SctTemperatureHistory,
+  SelfTestEntry,
+  SmartctlExitFlags,
+  SmartctlXallDevice,
+  SmartctlXallIdentity,
+  SmartctlXallResult,
+} from "#shared/smartctl";
 
 type Json = Record<string, unknown>;
 
@@ -228,11 +156,20 @@ function extractScsi(json: Json): ScsiInfo | undefined {
     for (const key of ["read", "write", "verify"] as const) {
       const entry = log[key] as Json | undefined;
       if (entry) {
+        const count = (field: string) => entry[field] as number | undefined;
         scsi[key] = {
-          correctedErrors: entry.total_errors_corrected as number | undefined,
-          uncorrectedErrors: entry.total_uncorrected_errors as
-            | number
-            | undefined,
+          correctedErrors: count("total_errors_corrected"),
+          uncorrectedErrors: count("total_uncorrected_errors"),
+          errorsCorrectedByEccfast: count("errors_corrected_by_eccfast"),
+          errorsCorrectedByEccdelayed: count("errors_corrected_by_eccdelayed"),
+          errorsCorrectedByRereadsRewrites: count(
+            "errors_corrected_by_rereads_rewrites",
+          ),
+          totalErrorsCorrected: count("total_errors_corrected"),
+          correctionAlgorithmInvocations: count(
+            "correction_algorithm_invocations",
+          ),
+          totalUncorrectedErrors: count("total_uncorrected_errors"),
         };
       }
     }

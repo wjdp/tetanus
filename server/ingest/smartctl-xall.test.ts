@@ -78,6 +78,14 @@ describe("smartctl-xall parser", () => {
     expect(data.scsi?.grownDefects).toBe(56);
     expect(data.scsi?.read?.correctedErrors).toBe(300357663);
     expect(data.scsi?.read?.uncorrectedErrors).toBe(0);
+    expect(data.scsi?.read).toMatchObject({
+      errorsCorrectedByEccfast: 300357663,
+      errorsCorrectedByEccdelayed: 0,
+      errorsCorrectedByRereadsRewrites: 0,
+      totalErrorsCorrected: 300357663,
+      correctionAlgorithmInvocations: 0,
+      totalUncorrectedErrors: 0,
+    });
   });
 
   it("decodes a deviceOpenFailed exit with no data as standby", () => {
