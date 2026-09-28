@@ -146,6 +146,8 @@ Done 2026-09-28: [025](025-Phase-7-diary-and-fault-acceptance.md).
 
 ## Phase 8: alerts
 
+Done 2026-09-28: [026](026-Phase-8-alerts.md).
+
 1. Rules after each ingest: new unaccepted failed attribute, disk missing, disk
    reappeared, pool not ONLINE, scan finished with errors, fault cleared (recovery).
    Dedupe on `(rule, subject, value)`. Subjects carry the host name. Later rules

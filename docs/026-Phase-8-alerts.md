@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Phase 8 alerts
@@ -52,7 +52,7 @@ secret? } | null }` (zod in `shared/schemas/settings.ts`; secrets returned by
 value). Pushover: `https://api.pushover.net/1/messages.json`, priority 0 for recovery,
 1 for alert, title = rule label, message = subject text. Webhook: `POST` JSON
 `{ rule, severity, subject, subjectType, subjectId, host, title, message, at, dedupeKey
-}`, header `X-Tetanus-Signature: sha256=<hmac>` when `secret` is set. 10 s timeout.
+}`, header `Tetanus-Signature: sha256=<hmac>` (derived from the app name, no `X-`) when `secret` is set. 10 s timeout.
 
 `Notification` table: id, at, channel, rule, dedupeKey, subject, title, message, ok,
 error nullable, diaryEntryId nullable; index(dedupeKey), index(at). A failed send is
