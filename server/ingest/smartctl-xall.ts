@@ -1,5 +1,392 @@
-import type { Parser } from "#shared/ingest";
+import type { IngestMeta, Parser } from "#shared/ingest";
+import { ParseError } from "./parseError";
 
-export const parse: Parser<unknown> = () => {
-  throw new Error("smartctl-xall parser not implemented");
+export interface SmartctlXallDevice {
+  name: string;
+  type: string;
+  protocol: string;
+}
+
+export interface SmartctlExitFlags {
+  raw: number;
+  commandLineError: boolean;
+  deviceOpenFailed: boolean;
+  commandFailed: boolean;
+  diskFailing: boolean;
+  prefailBelowThreshold: boolean;
+  pastPrefailBelowThreshold: boolean;
+  errorLogHasErrors: boolean;
+  selfTestLogHasErrors: boolean;
+}
+
+export interface AtaAttributeFlags {
+  value?: number;
+  string?: string;
+  prefailure: boolean;
+  updatedOnline: boolean;
+  performance: boolean;
+  errorRate: boolean;
+  eventCount: boolean;
+  autoKeep: boolean;
+}
+
+export interface AtaAttribute {
+  id: number;
+  name: string;
+  value: number;
+  worst: number;
+  thresh: number;
+  whenFailed: string | null;
+  raw: { value?: number; string?: string };
+  flags: AtaAttributeFlags;
+}
+
+export interface SelfTestEntry {
+  type?: string;
+  status?: string;
+  passed: boolean;
+  lifetimeHours?: number;
+  lba?: number;
+}
+
+export interface SctTemperatureHistory {
+  intervalMinutes?: number;
+  values: (number | null)[];
+}
+
+export interface ScsiErrorCounters {
+  correctedErrors?: number;
+  uncorrectedErrors?: number;
+}
+
+export interface ScsiInfo {
+  grownDefects?: number;
+  read?: ScsiErrorCounters;
+  write?: ScsiErrorCounters;
+  verify?: ScsiErrorCounters;
+  startStopCycleCounter?: unknown;
+}
+
+export interface SmartctlXallIdentity {
+  model?: string;
+  modelFamily?: string;
+  serial?: string;
+  firmware?: string;
+  wwn?: string;
+  capacityBytes?: number;
+  rotationRate?: number;
+  formFactor?: string;
+  transport?: string;
+}
+
+export interface SmartctlXallResult {
+  device: SmartctlXallDevice;
+  smartctl: { version: string; exitStatus: SmartctlExitFlags };
+  identity: SmartctlXallIdentity;
+  smartSupport: { available: boolean; enabled: boolean };
+  smartStatus?: { passed: boolean };
+  standby: boolean;
+  temperature?: number;
+  powerOnHours?: number;
+  powerCycles?: number;
+  ata?: { attributes: AtaAttribute[] };
+  nvme?: Record<string, unknown>;
+  scsi?: ScsiInfo;
+  selfTests?: SelfTestEntry[];
+  sctTemperatureHistory?: SctTemperatureHistory;
+}
+
+type Json = Record<string, unknown>;
+
+function parseJson(body: string): Json {
+  if (body.trim() === "") throw new ParseError("Empty smartctl-xall body");
+  let json: unknown;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    throw new ParseError("smartctl-xall body is not valid JSON");
+  }
+  if (typeof json !== "object" || json === null) {
+    throw new ParseError("smartctl-xall body is not a JSON object");
+  }
+  return json as Json;
+}
+
+function decodeExitFlags(raw: number): SmartctlExitFlags {
+  const bit = (n: number) => (raw & (1 << n)) !== 0;
+  return {
+    raw,
+    commandLineError: bit(0),
+    deviceOpenFailed: bit(1),
+    commandFailed: bit(2),
+    diskFailing: bit(3),
+    prefailBelowThreshold: bit(4),
+    pastPrefailBelowThreshold: bit(5),
+    errorLogHasErrors: bit(6),
+    selfTestLogHasErrors: bit(7),
+  };
+}
+
+function resolveExitStatus(json: Json, meta: IngestMeta): number {
+  if (typeof meta.exitStatus === "number") return meta.exitStatus;
+  const smartctl = json.smartctl as Json | undefined;
+  const fallback = smartctl?.exit_status;
+  return typeof fallback === "number" ? fallback : 0;
+}
+
+function reassembleWwn(raw: unknown): string | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const wwn = raw as Json;
+  const { naa, oui, id } = wwn;
+  if (
+    typeof naa !== "number" ||
+    typeof oui !== "number" ||
+    typeof id !== "number"
+  ) {
+    return undefined;
+  }
+  return `${naa.toString(16)}${oui.toString(16).padStart(6, "0")}${id.toString(16).padStart(9, "0")}`;
+}
+
+function parseSmartSupport(raw: unknown): {
+  available: boolean;
+  enabled: boolean;
+} {
+  if (typeof raw === "boolean") return { available: raw, enabled: raw };
+  if (typeof raw === "object" && raw !== null) {
+    const obj = raw as Json;
+    const available = Boolean(obj.available);
+    const enabled = typeof obj.enabled === "boolean" ? obj.enabled : available;
+    return { available, enabled };
+  }
+  return { available: false, enabled: false };
+}
+
+function hasSmartData(json: Json): boolean {
+  if (json.ata_smart_attributes || json.nvme_smart_health_information_log) {
+    return true;
+  }
+  return Object.keys(json).some((key) => key.startsWith("scsi_"));
+}
+
+function toCamel(key: string): string {
+  return key.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
+}
+
+function camelCaseShallow(obj: Json): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) out[toCamel(key)] = value;
+  return out;
+}
+
+function extractAtaAttributes(json: Json): AtaAttribute[] | undefined {
+  const attributes = json.ata_smart_attributes as Json | undefined;
+  const table = attributes?.table;
+  if (!Array.isArray(table)) return undefined;
+  return table.map((entry) => {
+    const row = entry as Json;
+    const raw = (row.raw as Json | undefined) ?? {};
+    const flags = (row.flags as Json | undefined) ?? {};
+    const whenFailed = row.when_failed;
+    return {
+      id: row.id as number,
+      name: row.name as string,
+      value: row.value as number,
+      worst: row.worst as number,
+      thresh: row.thresh as number,
+      whenFailed:
+        typeof whenFailed === "string" && whenFailed !== "" ? whenFailed : null,
+      raw: {
+        value: raw.value as number | undefined,
+        string: raw.string as string | undefined,
+      },
+      flags: {
+        value: flags.value as number | undefined,
+        string: flags.string as string | undefined,
+        prefailure: Boolean(flags.prefailure),
+        updatedOnline: Boolean(flags.updated_online),
+        performance: Boolean(flags.performance),
+        errorRate: Boolean(flags.error_rate),
+        eventCount: Boolean(flags.event_count),
+        autoKeep: Boolean(flags.auto_keep),
+      },
+    };
+  });
+}
+
+function extractScsi(json: Json): ScsiInfo | undefined {
+  if (!hasSmartData(json) && !json.scsi_error_counter_log) return undefined;
+  const isScsi = Object.keys(json).some((key) => key.startsWith("scsi_"));
+  if (!isScsi) return undefined;
+
+  const scsi: ScsiInfo = {};
+  if (typeof json.scsi_grown_defect_list === "number") {
+    scsi.grownDefects = json.scsi_grown_defect_list;
+  }
+  const log = json.scsi_error_counter_log as Json | undefined;
+  if (log) {
+    for (const key of ["read", "write", "verify"] as const) {
+      const entry = log[key] as Json | undefined;
+      if (entry) {
+        scsi[key] = {
+          correctedErrors: entry.total_errors_corrected as number | undefined,
+          uncorrectedErrors: entry.total_uncorrected_errors as
+            | number
+            | undefined,
+        };
+      }
+    }
+  }
+  if (json.scsi_start_stop_cycle_counter !== undefined) {
+    scsi.startStopCycleCounter = json.scsi_start_stop_cycle_counter;
+  }
+  return scsi;
+}
+
+function extractSelfTests(json: Json): SelfTestEntry[] | undefined {
+  const entries: SelfTestEntry[] = [];
+
+  const ataLog = json.ata_smart_self_test_log as Json | undefined;
+  const ataTable = (ataLog?.standard as Json | undefined)?.table;
+  if (Array.isArray(ataTable)) {
+    for (const entry of ataTable) {
+      const row = entry as Json;
+      const type = row.type as Json | undefined;
+      const status = row.status as Json | undefined;
+      entries.push({
+        type: type?.string as string | undefined,
+        status: status?.string as string | undefined,
+        passed: Boolean(status?.passed),
+        lifetimeHours: row.lifetime_hours as number | undefined,
+        ...(row.lba !== undefined ? { lba: row.lba as number } : {}),
+      });
+    }
+  }
+
+  const nvmeLog = json.nvme_self_test_log as Json | undefined;
+  const nvmeTable = nvmeLog?.table;
+  if (Array.isArray(nvmeTable)) {
+    for (const entry of nvmeTable) {
+      const row = entry as Json;
+      const code = row.self_test_code as Json | undefined;
+      const result = row.self_test_result as Json | undefined;
+      entries.push({
+        type: code?.string as string | undefined,
+        status: result?.string as string | undefined,
+        passed: result?.value === 0,
+        lifetimeHours: row.power_on_hours as number | undefined,
+        ...(row.lba !== undefined ? { lba: row.lba as number } : {}),
+      });
+    }
+  }
+
+  return entries.length > 0 ? entries : undefined;
+}
+
+function extractSctTemperatureHistory(
+  json: Json,
+): SctTemperatureHistory | undefined {
+  const history = json.ata_sct_temperature_history as Json | undefined;
+  if (!history || !Array.isArray(history.table)) return undefined;
+  return {
+    intervalMinutes: history.logging_interval_minutes as number | undefined,
+    values: history.table as (number | null)[],
+  };
+}
+
+export const parse: Parser<SmartctlXallResult> = (body, meta) => {
+  const json = parseJson(body);
+  const exitStatusRaw = resolveExitStatus(json, meta);
+  const flags = decodeExitFlags(exitStatusRaw);
+
+  const smartctlJson = json.smartctl as Json | undefined;
+  const version = Array.isArray(smartctlJson?.version)
+    ? (smartctlJson.version as unknown[]).join(".")
+    : "";
+
+  const deviceJson = (json.device as Json | undefined) ?? {};
+  const device: SmartctlXallDevice = {
+    name: (deviceJson.name as string | undefined) ?? meta.device ?? "",
+    type: (deviceJson.type as string | undefined) ?? meta.type ?? "",
+    protocol: (deviceJson.protocol as string | undefined) ?? "",
+  };
+
+  const standby = flags.deviceOpenFailed && !hasSmartData(json);
+
+  const identity: SmartctlXallIdentity = {};
+  if (typeof json.model_name === "string") identity.model = json.model_name;
+  if (typeof json.model_family === "string") {
+    identity.modelFamily = json.model_family;
+  }
+  if (typeof json.serial_number === "string") {
+    identity.serial = json.serial_number;
+  }
+  if (typeof json.firmware_version === "string") {
+    identity.firmware = json.firmware_version;
+  }
+  const wwn = reassembleWwn(json.wwn);
+  if (wwn) identity.wwn = wwn;
+  const userCapacity = json.user_capacity as Json | undefined;
+  const capacityBytes =
+    (json.nvme_total_capacity as number | undefined) ??
+    (userCapacity?.bytes as number | undefined);
+  if (typeof capacityBytes === "number") identity.capacityBytes = capacityBytes;
+  if (typeof json.rotation_rate === "number") {
+    identity.rotationRate = json.rotation_rate;
+  }
+  const formFactor = json.form_factor as Json | undefined;
+  if (typeof formFactor?.name === "string") {
+    identity.formFactor = formFactor.name;
+  }
+  if (device.protocol) identity.transport = device.protocol;
+
+  const smartSupport = parseSmartSupport(json.smart_support);
+  const smartStatus = json.smart_status as Json | undefined;
+
+  const temperatureJson = json.temperature as Json | undefined;
+  const powerOnTime = json.power_on_time as Json | undefined;
+
+  const ataAttributes = extractAtaAttributes(json);
+  const scsi = extractScsi(json);
+  const nvmeLog = json.nvme_smart_health_information_log as Json | undefined;
+
+  const data: SmartctlXallResult = {
+    device,
+    smartctl: { version, exitStatus: flags },
+    identity,
+    smartSupport,
+    standby,
+    ...(smartStatus
+      ? { smartStatus: { passed: Boolean(smartStatus.passed) } }
+      : {}),
+    ...(typeof temperatureJson?.current === "number"
+      ? { temperature: temperatureJson.current }
+      : {}),
+    ...(typeof powerOnTime?.hours === "number"
+      ? { powerOnHours: powerOnTime.hours }
+      : {}),
+    ...(typeof json.power_cycle_count === "number"
+      ? { powerCycles: json.power_cycle_count }
+      : {}),
+    ...(ataAttributes ? { ata: { attributes: ataAttributes } } : {}),
+    ...(nvmeLog ? { nvme: camelCaseShallow(nvmeLog) } : {}),
+    ...(scsi ? { scsi } : {}),
+  };
+
+  const selfTests = extractSelfTests(json);
+  if (selfTests) data.selfTests = selfTests;
+  const sctTemperatureHistory = extractSctTemperatureHistory(json);
+  if (sctTemperatureHistory) data.sctTemperatureHistory = sctTemperatureHistory;
+
+  return {
+    data,
+    summary: {
+      model: identity.model ?? "",
+      serial: identity.serial ?? "",
+      protocol: device.protocol,
+      exitStatus: exitStatusRaw,
+      standby: standby ? 1 : 0,
+      attributes: ataAttributes?.length ?? 0,
+    },
+  };
 };
