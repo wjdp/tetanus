@@ -1,7 +1,11 @@
 import {
   and,
+  asc,
+  count,
+  desc,
   eq,
   getTableColumns,
+  gte,
   inArray,
   lt,
   type SQL,
@@ -12,6 +16,7 @@ import { db } from "~~/server/database/client";
 import {
   dataset,
   datasetReading,
+  host,
   pool,
   snapshot,
 } from "~~/server/database/schema";
@@ -24,7 +29,12 @@ import type {
   ZfsSnapshot,
   ZfsSnapshotsResult,
 } from "~~/server/ingest/zfs-snapshots";
-import { addAutoEvent } from "~~/server/services/diary";
+import {
+  addAutoEvent,
+  type DiaryEntryRow,
+  listDiary,
+} from "~~/server/services/diary";
+import { notFound } from "~~/server/utils/serviceError";
 import type { PoolRow } from "./topology";
 
 export type DatasetRow = typeof dataset.$inferSelect;
@@ -475,4 +485,221 @@ export function observeZfsSnapshots(
       skipped,
     };
   });
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const DATASET_READING_DAYS = 90;
+export const DATASET_SEARCH_LIMIT = 20;
+
+export interface DatasetSummary extends DatasetRow {
+  depth: number;
+}
+
+export interface DatasetHost {
+  id: number;
+  name: string;
+  displayName: string | null;
+}
+
+export interface DatasetChild {
+  id: number;
+  name: string;
+  used: number;
+  present: boolean;
+}
+
+export interface DatasetSnapshot extends SnapshotRow {
+  ageMs: number;
+}
+
+export interface DatasetDetail extends DatasetSummary {
+  pool: { id: number; name: string; guid: string };
+  host: DatasetHost;
+  children: DatasetChild[];
+  snapshots: DatasetSnapshot[];
+  readings: DatasetReadingRow[];
+  diary: DiaryEntryRow[];
+}
+
+export interface DatasetCounts {
+  datasets: number;
+  snapshots: number;
+  latestSnapshotAt: Date | null;
+}
+
+export interface DatasetSearchResult {
+  id: number;
+  name: string;
+  pool: { id: number; name: string };
+  host: DatasetHost;
+}
+
+function depthOf(name: string) {
+  return name.split("/").length - 1;
+}
+
+function compareDatasetPaths(a: string, b: string) {
+  const left = a.split("/");
+  const right = b.split("/");
+  for (let index = 0; index < Math.min(left.length, right.length); index++) {
+    if (left[index] !== right[index]) {
+      return left[index] < right[index] ? -1 : 1;
+    }
+  }
+  return left.length - right.length;
+}
+
+export function listDatasets(poolId: number): DatasetSummary[] {
+  const poolRow = db
+    .select({ id: pool.id })
+    .from(pool)
+    .where(eq(pool.id, poolId))
+    .get();
+  if (!poolRow) throw notFound(`Pool ${poolId} not found`);
+  return db
+    .select()
+    .from(dataset)
+    .where(eq(dataset.poolId, poolId))
+    .all()
+    .sort(
+      (a, b) =>
+        Number(b.present) - Number(a.present) ||
+        compareDatasetPaths(a.name, b.name),
+    )
+    .map((row) => ({ ...row, depth: depthOf(row.name) }));
+}
+
+function datasetChildren(id: number): DatasetChild[] {
+  return db
+    .select({
+      id: dataset.id,
+      name: dataset.name,
+      used: dataset.used,
+      present: dataset.present,
+    })
+    .from(dataset)
+    .where(eq(dataset.parentId, id))
+    .all()
+    .sort(
+      (a, b) =>
+        Number(b.present) - Number(a.present) ||
+        compareDatasetPaths(a.name, b.name),
+    );
+}
+
+function datasetSnapshots(id: number, now: Date): DatasetSnapshot[] {
+  return db
+    .select()
+    .from(snapshot)
+    .where(eq(snapshot.datasetId, id))
+    .orderBy(desc(snapshot.creation), desc(snapshot.id))
+    .all()
+    .map((row) => ({ ...row, ageMs: now.getTime() - row.creation.getTime() }));
+}
+
+function recentDatasetReadings(id: number, now: Date) {
+  return db
+    .select()
+    .from(datasetReading)
+    .where(
+      and(
+        eq(datasetReading.datasetId, id),
+        gte(
+          datasetReading.at,
+          new Date(now.getTime() - DATASET_READING_DAYS * DAY_MS),
+        ),
+      ),
+    )
+    .orderBy(asc(datasetReading.at), asc(datasetReading.id))
+    .all();
+}
+
+export function getDataset(id: number, now = new Date()): DatasetDetail {
+  const row = db
+    .select({
+      dataset,
+      pool: { id: pool.id, name: pool.name, guid: pool.guid },
+      host: { id: host.id, name: host.name, displayName: host.displayName },
+    })
+    .from(dataset)
+    .innerJoin(pool, eq(pool.id, dataset.poolId))
+    .innerJoin(host, eq(host.id, pool.hostId))
+    .where(eq(dataset.id, id))
+    .get();
+  if (!row) throw notFound(`Dataset ${id} not found`);
+  return {
+    ...row.dataset,
+    depth: depthOf(row.dataset.name),
+    pool: row.pool,
+    host: row.host,
+    children: datasetChildren(id),
+    snapshots: datasetSnapshots(id, now),
+    readings: recentDatasetReadings(id, now),
+    diary: listDiary({ subjectType: "dataset", subjectId: id }),
+  };
+}
+
+const EMPTY_COUNTS: DatasetCounts = {
+  datasets: 0,
+  snapshots: 0,
+  latestSnapshotAt: null,
+};
+
+export function datasetCountsByPool(
+  poolIds: number[],
+): Map<number, DatasetCounts> {
+  const counts = new Map<number, DatasetCounts>(
+    poolIds.map((id) => [id, { ...EMPTY_COUNTS }]),
+  );
+  if (poolIds.length === 0) return counts;
+  const rows = db
+    .select({
+      poolId: dataset.poolId,
+      datasets: count(),
+      snapshots:
+        sql<number>`coalesce(sum(${dataset.snapshotCount}), 0)`.mapWith(Number),
+      latestSnapshotAt:
+        sql<Date | null>`max(${dataset.latestSnapshotAt})`.mapWith(
+          dataset.latestSnapshotAt,
+        ),
+    })
+    .from(dataset)
+    .where(and(inArray(dataset.poolId, poolIds), eq(dataset.present, true)))
+    .groupBy(dataset.poolId)
+    .all();
+  for (const { poolId, ...row } of rows) counts.set(poolId, row);
+  return counts;
+}
+
+export function datasetCounts(poolId: number): DatasetCounts {
+  return datasetCountsByPool([poolId]).get(poolId) ?? { ...EMPTY_COUNTS };
+}
+
+function likePattern(query: string) {
+  return `%${query.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+}
+
+export function searchDatasets(
+  query: string,
+  limit = DATASET_SEARCH_LIMIT,
+): DatasetSearchResult[] {
+  return db
+    .select({
+      id: dataset.id,
+      name: dataset.name,
+      pool: { id: pool.id, name: pool.name },
+      host: { id: host.id, name: host.name, displayName: host.displayName },
+    })
+    .from(dataset)
+    .innerJoin(pool, eq(pool.id, dataset.poolId))
+    .innerJoin(host, eq(host.id, pool.hostId))
+    .where(
+      and(
+        eq(dataset.present, true),
+        sql`${dataset.name} like ${likePattern(query)} escape '\\'`,
+      ),
+    )
+    .orderBy(asc(dataset.name), asc(host.name))
+    .limit(limit)
+    .all();
 }

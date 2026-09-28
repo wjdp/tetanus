@@ -13,12 +13,25 @@ import { observeZpoolHistory } from "./zfs/history";
 import { observeZpoolList, observeZpoolStatus } from "./zfs/topology";
 
 export {
+  DATASET_READING_DAYS,
+  DATASET_SEARCH_LIMIT,
+  type DatasetChild,
+  type DatasetCounts,
+  type DatasetDetail,
+  type DatasetHost,
   type DatasetIngestSummary,
   type DatasetReadingRow,
   type DatasetRow,
+  type DatasetSearchResult,
+  type DatasetSnapshot,
+  type DatasetSummary,
+  datasetCounts,
+  getDataset,
+  listDatasets,
   observeZfsList,
   observeZfsSnapshots,
   type SnapshotRow,
+  searchDatasets,
 } from "./zfs/datasets";
 export { observeZfsEvents } from "./zfs/events";
 export { observeZpoolHistory } from "./zfs/history";

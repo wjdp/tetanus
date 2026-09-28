@@ -13,6 +13,7 @@ import {
 } from "~~/server/database/schema";
 import type { DiaryEntryRow } from "~~/server/services/diary";
 import { notFound } from "~~/server/utils/serviceError";
+import { datasetCountsByPool } from "./datasets";
 import type { PoolRow, VdevRow } from "./topology";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -41,6 +42,8 @@ export interface PoolHost {
 export interface PoolSummary extends Omit<PoolRow, "hostId"> {
   host: PoolHost;
   vdevs: VdevNode | null;
+  datasetCount: number;
+  snapshotCount: number;
 }
 
 export type PoolReadingRow = typeof poolReading.$inferSelect;
@@ -116,13 +119,18 @@ function withoutPoolId(node: VdevNode & { poolId?: number }): VdevNode {
 }
 
 function summarise(rows: { pool: PoolRow; host: PoolHost }[]): PoolSummary[] {
-  const trees = vdevTrees(rows.map((row) => row.pool.id));
+  const poolIds = rows.map((row) => row.pool.id);
+  const trees = vdevTrees(poolIds);
+  const counts = datasetCountsByPool(poolIds);
   return rows.map(({ pool: poolRow, host: hostRow }) => {
     const { hostId: _hostId, ...columns } = poolRow;
+    const poolCounts = counts.get(poolRow.id);
     return {
       ...columns,
       host: hostRow,
       vdevs: trees.get(poolRow.id) ?? null,
+      datasetCount: poolCounts?.datasets ?? 0,
+      snapshotCount: poolCounts?.snapshots ?? 0,
     };
   });
 }

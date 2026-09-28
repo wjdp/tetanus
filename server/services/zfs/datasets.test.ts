@@ -16,10 +16,19 @@ import {
   parse as parseZfsSnapshots,
   type ZfsSnapshotsResult,
 } from "~~/server/ingest/zfs-snapshots";
+import { addManualEntry } from "~~/server/services/diary";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
-import { observeZfsList, observeZfsSnapshots } from "./datasets";
+import {
+  datasetCounts,
+  getDataset,
+  listDatasets,
+  observeZfsList,
+  observeZfsSnapshots,
+  searchDatasets,
+} from "./datasets";
+import { getPool, listPools } from "./queries";
 
 const T0 = new Date("2026-09-28T17:00:00Z");
 const TANK_DATASETS = 80;
@@ -400,5 +409,249 @@ describe("observeZfsSnapshots", () => {
     observeZfsSnapshots(hostId, marsSnapshots(), T0);
     observeZfsSnapshots(hostId, { snapshots: [] }, hoursAfter(6));
     expect(db.select().from(diaryEntry).all()).toEqual([]);
+  });
+});
+
+describe("dataset queries", () => {
+  const UTN = "tank/anup07rl/t8a/diti/utn";
+  const DITI = "tank/anup07rl/t8a/diti";
+
+  function seedAll() {
+    const seeded = seedTank();
+    observeZfsList(seeded.hostId, marsList(), T0);
+    observeZfsSnapshots(seeded.hostId, marsSnapshots(), T0);
+    return seeded;
+  }
+
+  function destroy(hostId: number, name: string) {
+    observeZfsList(hostId, withoutDataset(marsList(), name), hoursAfter(1));
+  }
+
+  describe("listDatasets", () => {
+    it("lists every dataset in tree order with depth and parent", () => {
+      const { tank } = seedAll();
+      const rows = listDatasets(tank.id);
+
+      expect(rows).toHaveLength(TANK_DATASETS);
+      expect(rows.slice(0, 4).map((row) => [row.name, row.depth])).toEqual([
+        ["tank", 0],
+        ["tank/a6k", 1],
+        ["tank/anup07rl", 1],
+        ["tank/anup07rl/byf0d", 2],
+      ]);
+      const utn = rows.find((row) => row.name === UTN);
+      expect(utn).toMatchObject({
+        depth: 4,
+        parentId: datasetNamed(DITI).id,
+        snapshotCount: 50,
+      });
+    });
+
+    it("keeps children directly after their parent", () => {
+      const { tank } = seedAll();
+      const names = listDatasets(tank.id).map((row) => row.name);
+      for (const [index, name] of names.entries()) {
+        const parent = name.slice(0, name.lastIndexOf("/"));
+        if (name === "tank") continue;
+        const parentIndex = names.indexOf(parent);
+        const between = names.slice(parentIndex + 1, index);
+        expect(between.every((other) => other.startsWith(`${parent}/`))).toBe(
+          true,
+        );
+      }
+    });
+
+    it("puts destroyed datasets last", () => {
+      const { hostId, tank } = seedAll();
+      destroy(hostId, "tank/a6k");
+      const rows = listDatasets(tank.id);
+      expect(rows.at(-1)).toMatchObject({ name: "tank/a6k", present: false });
+      expect(rows.slice(0, -1).every((row) => row.present)).toBe(true);
+    });
+
+    it("404s for an unknown pool", () => {
+      expect(() => listDatasets(999)).toThrow(
+        expect.objectContaining({ statusCode: 404 }),
+      );
+    });
+  });
+
+  describe("getDataset", () => {
+    it("returns the dataset with pool, host, children, snapshots and readings", () => {
+      const { hostId, tank } = seedAll();
+      const diti = datasetNamed(DITI);
+      const detail = getDataset(diti.id, hoursAfter(2));
+
+      expect(detail).toMatchObject({
+        id: diti.id,
+        name: DITI,
+        depth: 3,
+        pool: { id: tank.id, name: "tank", guid: tank.guid },
+        host: { id: hostId, name: "mars", displayName: null },
+        diary: [],
+      });
+      expect(detail.children.map((child) => child.name)).toEqual([
+        "tank/anup07rl/t8a/diti/cflkg",
+        "tank/anup07rl/t8a/diti/efs9el",
+        UTN,
+        "tank/anup07rl/t8a/diti/vn0o5y5ob",
+      ]);
+      expect(detail.children[0]).toEqual({
+        id: expect.any(Number),
+        name: "tank/anup07rl/t8a/diti/cflkg",
+        used: expect.any(Number),
+        present: true,
+      });
+      expect(detail.readings).toHaveLength(1);
+    });
+
+    it("lists snapshots newest first with their age", () => {
+      seedAll();
+      const now = hoursAfter(2);
+      const { snapshots } = getDataset(datasetNamed(UTN).id, now);
+
+      expect(snapshots).toHaveLength(50);
+      const creations = snapshots.map((row) => row.creation.getTime());
+      expect(creations).toEqual([...creations].sort((a, b) => b - a));
+      expect(snapshots[0]?.ageMs).toBe(
+        now.getTime() - (snapshots[0]?.creation.getTime() ?? 0),
+      );
+    });
+
+    it("keeps readings from the last 90 days in ascending order", () => {
+      const { hostId } = seedAll();
+      const utn = datasetNamed(UTN);
+      db.insert(datasetReading)
+        .values([
+          { datasetId: utn.id, at: new Date("2026-05-01T00:00:00Z"), used: 1 },
+          { datasetId: utn.id, at: new Date("2026-09-01T00:00:00Z"), used: 2 },
+        ])
+        .run();
+      observeZfsList(hostId, marsList(), hoursAfter(30));
+
+      const readings = getDataset(utn.id, hoursAfter(31)).readings;
+      expect(readings.map((row) => row.at)).toEqual([
+        new Date("2026-09-01T00:00:00Z"),
+        T0,
+        hoursAfter(30),
+      ]);
+    });
+
+    it("includes diary entries for the dataset subject only", () => {
+      const { tank } = seedAll();
+      const utn = datasetNamed(UTN);
+      addManualEntry({
+        subjectType: "dataset",
+        subjectId: utn.id,
+        title: "moved to new host",
+      });
+      addManualEntry({
+        subjectType: "pool",
+        subjectId: tank.id,
+        title: "pool note",
+      });
+      expect(getDataset(utn.id).diary.map((entry) => entry.title)).toEqual([
+        "moved to new host",
+      ]);
+    });
+
+    it("still renders a destroyed dataset", () => {
+      const { hostId } = seedAll();
+      destroy(hostId, UTN);
+      expect(getDataset(datasetNamed(UTN).id)).toMatchObject({
+        present: false,
+        snapshotCount: 50,
+      });
+    });
+
+    it("404s for an unknown dataset", () => {
+      expect(() => getDataset(999)).toThrow(
+        expect.objectContaining({ statusCode: 404 }),
+      );
+    });
+  });
+
+  describe("datasetCounts", () => {
+    it("counts present datasets, their snapshots and the newest one", () => {
+      const { tank } = seedAll();
+      const newest = db
+        .select()
+        .from(snapshot)
+        .orderBy(snapshot.creation)
+        .all()
+        .at(-1);
+      expect(datasetCounts(tank.id)).toEqual({
+        datasets: TANK_DATASETS,
+        snapshots: TANK_SNAPSHOTS,
+        latestSnapshotAt: newest?.creation,
+      });
+    });
+
+    it("leaves out destroyed datasets", () => {
+      const { hostId, tank } = seedAll();
+      destroy(hostId, UTN);
+      expect(datasetCounts(tank.id)).toMatchObject({
+        datasets: TANK_DATASETS - 1,
+        snapshots: TANK_SNAPSHOTS - 50,
+      });
+    });
+
+    it("is zero for a pool without datasets", () => {
+      const { tank } = seedTank();
+      expect(datasetCounts(tank.id)).toEqual({
+        datasets: 0,
+        snapshots: 0,
+        latestSnapshotAt: null,
+      });
+    });
+
+    it("feeds the pool summary and detail", () => {
+      const { tank } = seedAll();
+      expect(listPools()).toMatchObject([
+        {
+          id: tank.id,
+          datasetCount: TANK_DATASETS,
+          snapshotCount: TANK_SNAPSHOTS,
+        },
+      ]);
+      expect(getPool(tank.id)).toMatchObject({
+        datasetCount: TANK_DATASETS,
+        snapshotCount: TANK_SNAPSHOTS,
+      });
+    });
+  });
+
+  describe("searchDatasets", () => {
+    it("matches names case-insensitively, ordered by name", () => {
+      const { hostId, tank } = seedAll();
+      const results = searchDatasets("DITI/");
+      expect(results.map((row) => row.name)).toEqual([
+        "tank/anup07rl/t8a/diti/cflkg",
+        "tank/anup07rl/t8a/diti/efs9el",
+        "tank/anup07rl/t8a/diti/efs9el/yy",
+        UTN,
+        "tank/anup07rl/t8a/diti/vn0o5y5ob",
+      ]);
+      expect(results[0]).toEqual({
+        id: expect.any(Number),
+        name: "tank/anup07rl/t8a/diti/cflkg",
+        pool: { id: tank.id, name: "tank" },
+        host: { id: hostId, name: "mars", displayName: null },
+      });
+    });
+
+    it("limits results and skips destroyed datasets", () => {
+      const { hostId } = seedAll();
+      expect(searchDatasets("tank", 5)).toHaveLength(5);
+      expect(searchDatasets("tank")).toHaveLength(20);
+      destroy(hostId, UTN);
+      expect(searchDatasets("diti/utn")).toEqual([]);
+    });
+
+    it("treats LIKE wildcards literally", () => {
+      seedAll();
+      expect(searchDatasets("%")).toEqual([]);
+      expect(searchDatasets("_")).toEqual([]);
+    });
   });
 });
