@@ -1,0 +1,45 @@
+{
+  "name": "diskbot",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "lint": "biome check --write",
+    "lint:ci": "biome ci",
+    "typecheck": "nuxt typecheck",
+    "test": "vitest",
+    "db:migrate": "tsx server/database/migrate-cli.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.3"
+  },
+  "packageManager": "pnpm@10.34.3",
+  "devDependencies": {
+    "@biomejs/biome": "2.5.11",
+    "@iconify-json/lucide": "^1.2.127",
+    "@nuxt/test-utils": "^4.2.0",
+    "@nuxt/ui": "^4.11.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/better-sqlite3": "^9.6.0",
+    "@vue/test-utils": "^2.5.0",
+    "drizzle-kit": "^0.31.11",
+    "happy-dom": "^20.12.0",
+    "hookable": "^5.5.3",
+    "lefthook": "^2.1.12",
+    "nuxt": "^4.5.2",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "vue": "latest",
+    "vue-router": "latest",
+    "vue-tsc": "^3.3.11",
+    "zod": "^4.6.5"
+  }
+}

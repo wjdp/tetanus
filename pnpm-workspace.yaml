@@ -1,0 +1,11 @@
+onlyBuiltDependencies:
+  - better-sqlite3
+  - esbuild
+  - lefthook
+  - vue-demi
+
+ignoredBuiltDependencies:
+  # Pulled in transitively via drizzle-orm's optional peer @prisma/client
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
