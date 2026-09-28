@@ -36,3 +36,30 @@ command palette. Built on the Phase 3–5 APIs. Chart library decided 2026-09-28
 ## Findings
 
 (agents append here)
+
+### Disk page and command palette (2026-09-28)
+
+- Self-tests left out of `/disks/:id`: `recordSmartReading` stores them in `SelfTest`, but
+  neither `SmartOverview` nor `DiskDetail` exposes them. Add `selfTests` (newest first,
+  capped) to `GET /api/disks/:id/smart` or the disk detail, then a `DiskSelfTests`
+  section.
+- ZFS membership is found client-side by walking every tree from `GET /api/pools` for
+  `VdevNode.disk.id`. Cheap at home scale, but `DiskDetail` could carry
+  `membership: { poolId, poolName, path: string[], vdev }` since `diskIdsInPools`
+  already queries `Vdev` per request.
+- `SmartReading.deviceStatus` is the status line source; its reason is summarised as
+  counts of failed/warning attributes. A `reason` per reading (as scrutiny shows) would
+  need server work.
+- Response types come from `InternalApi` in `nitropack/types` (type-only), in
+  `app/components/disk/types.ts`, since Biome bans `~~/server` imports in `app/`.
+- Nuxt scans `.ts` files under `app/components/` as components, so pure helpers there
+  (`attributeOrder.ts`, `membership.ts`, …) register harmless phantom components and
+  must not share a name with a `.vue` file (`zfsMembership.ts` clashed with
+  `DiskZfsMembership.vue`). Worth setting `components: [{ path: "~/components",
+  extensions: [".vue"] }]` or moving helpers to `app/utils/`.
+- Charts: single series on a page, so strokes use `--ui-text-highlighted` (then
+  muted/dimmed for extra series); axes `--ui-text-muted`, grid `--ui-border`, read at
+  render and re-read on colour-mode change. No categorical palette was needed yet; rust
+  never used. uPlot's live legend is the hover readout.
+- Command palette loads disks and pools once, on first open; entities created after
+  that appear on reload.
