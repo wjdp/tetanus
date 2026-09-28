@@ -100,3 +100,10 @@ Decisions:
 - `recordIngest` stays synchronous and fires `requestAlertsTick()` without awaiting; queue errors are logged. Unit tests that call `recordIngest` without stubbing `useStorage` log a swallowed error.
 - Pushover priority: 1 alert, 0 recovery and test; `timestamp` is the diary entry time. Webhook test payload has `rule: "test"`, `severity: "test"`, null subject fields.
 - Queue storage is never pruned: with a tick per ingest (when none pending) plus two scheduled tasks every 5 minutes, task records grow unbounded in Nitro storage. Worth pruning done tasks in `queue.ts`.
+
+### UI and queue follow-ups
+
+- Settings › Alerts: channel cards (`app/components/alerts/ChannelCard.vue`) own their "Send test"; tests use the *saved* settings, so the card says so. Secret inputs are `type="password"` and select the mask on focus so typing replaces it. Form ↔ PATCH mapping is pure in `app/components/alerts/channelForms.ts`; a PATCH 400 (e.g. enabling Pushover with blank fields) surfaces its message in the error toast.
+- Diary subject picker also covers `vdev` (not in the brief): vdevs flattened from `/api/pools` trees, labelled `host · pool · vdev`, root excluded. Pool labels use `host.name` (matching alert subjects), not `displayName`. Items load per subject type via `useLazyAsyncData` with a reactive key, client-only; changing the type clears the chosen subject. Mapping lives in `app/utils/diarySubjects.ts`.
+- Queue: `completeTask` prunes finished (`done`/`failed`) task records beyond the newest `FINISHED_TASKS_KEPT` (200); pending and in-progress are never touched. It reads every task record per completion, fine at this size.
+- `requestAlertsTick` swallows only a `ReferenceError` naming `useStorage` (unit tests without Nitro's auto-import); other queue failures are still logged. `recordIngest` is unchanged.
