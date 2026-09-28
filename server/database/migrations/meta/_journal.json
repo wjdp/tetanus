@@ -15,6 +15,13 @@
       "when": 1790618611594,
       "tag": "0001_hosts_and_ingest",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790620947642,
+      "tag": "0002_disks_smart_zfs_diary",
+      "breakpoints": true
     }
   ]
 }

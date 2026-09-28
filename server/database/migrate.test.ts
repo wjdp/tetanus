@@ -6,9 +6,27 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createDb } from "~~/server/database/client";
 import { describeMigrations, runMigrations } from "~~/server/database/migrate";
 
-const TABLES = ["CollectorRun", "Host", "Payload", "Setting"];
+const TABLES = [
+  "CollectorRun",
+  "DiaryEntry",
+  "Disk",
+  "DiskKey",
+  "Host",
+  "Payload",
+  "Pool",
+  "PoolHistory",
+  "PoolReading",
+  "SelfTest",
+  "Setting",
+  "SmartAttribute",
+  "SmartReading",
+  "TemperatureReading",
+  "Vdev",
+  "VdevReading",
+  "ZfsEvent",
+];
 
-const MIGRATION_COUNT = 2;
+const MIGRATION_COUNT = 3;
 
 const openConnections: Database.Database[] = [];
 
