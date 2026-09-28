@@ -89,3 +89,45 @@ page with scan state, error counters, capacity history, events and history tail.
   A later ingest with the header fills `poolId` on existing rows.
 - The pool detail `diary` merges pool and vdev subjects (vdev events are recorded
   against the vdev), so it's a direct query rather than `listDiary`.
+
+### UI (topology and pool pages)
+
+- Code: `app/pages/index.vue` (topology), `app/pages/zfs/index.vue` (pool list),
+  `app/pages/zfs/[id].vue` (pool page), `app/components/topology/` (host section, pool
+  card, disk tile, rail, status dot) and `app/components/pool/` (scan panel, vdev tree
+  table). Pure helpers: `topology/groupDisks.ts` (vdev groups, rail groups, tile
+  colour), `pool/scan.ts` (active scan, progress, time left), `pool/vdevRows.ts`.
+- Vdev groups: each top-level vdev with children is a row labelled by name, prefixed
+  with its class for special/log/dedup/spare (`special · mirror-4`). Childless top-level
+  vdevs are collected into one row per class: `stripe`, `cache`, `log`, `spares`.
+  Nested `replacing`/`spare` vdevs are flattened into the leaves of their group.
+- Tile mark: worst of `deviceStatusColour(latestStatus)` and `zfsStateColour(vdev.state)`,
+  and a `success` dot when both are quiet and SMART passed (008 "small success dot").
+  Unlinked leaves are dashed, muted, show "unlinked" and the raw path in a tooltip.
+- Rail is global, not per host: `/api/disks` has `hostName` but pools are per host, and
+  spares or missing disks often have no meaningful host. Groups: spare, missing,
+  removed, unseen, "in use, not in a pool" (in-use disks the linker could not attach
+  to a vdev), dead, retired, sold.
+- Active scan: any `scan.state` other than `FINISHED`/`CANCELED`/`NONE`. Time left is
+  elapsed × (1 − f) / f on `examined/toExamine`; crude during the scan phase of a
+  sequential scrub, which examines far faster than it issues. `issued` isn't in the
+  stored scan, so the better estimate isn't possible yet.
+- Pool capacity bar turns `warning` at `cap` ≥ 90 %; otherwise neutral.
+- `/zfs` "Data errors" is `Pool.errors`; scrub errors sit in the "Last scrub" cell.
+- Timestamps on the pool page are UTC (`YYYY-MM-DD HH:MM UTC`) to avoid SSR/client
+  timezone hydration mismatches; a shared local-time formatter would be nicer.
+- `UTooltip` needs the provider from `UApp`, so component tests mounting a page alone
+  stub it (`app/pages/index.test.ts`).
+- `.ts` files under `app/components/` are registered as bogus components
+  (`TopologyGroupDisks`, `PoolScan`, ...; see `.nuxt/components.d.ts`). Harmless, but
+  `components: [{ path: "~/components", extensions: ["vue"] }]` in `nuxt.config.ts`
+  would stop it; the disk agent's helpers have the same issue.
+- Left out: temperature on tiles, pool/vdev capacity per top-level vdev, frag history
+  chart (only `allocBytes` is charted), scan history (only the current scan is
+  stored), dataset tree and snapshots (Phase 6+), and per-vdev reading history.
+- API gaps: `VdevNode.disk` lacks `latestTemp` and `model` (tiles would show
+  temperature, the tree would show model); `PoolSummary.scan` lacks `issued`/
+  `pass_start` for an accurate time-left; `GET /api/pools` has no per-host grouping or
+  host `lastRuns`, so the home page fetches `/api/hosts` separately; events carry
+  `vdevGuid` but not the vdev name/alias, so the events tab shows raw guids; no
+  capacity series longer than `POOL_READING_DAYS` (30).
