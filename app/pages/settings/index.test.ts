@@ -1,7 +1,7 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { describe, expect, it, vi } from "vitest";
-import SettingsPage from "./settings.vue";
+import SettingsPage from "./index.vue";
 
 const enrolToken = "ab".repeat(32);
 
