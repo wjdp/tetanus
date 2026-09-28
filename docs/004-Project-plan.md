@@ -94,8 +94,8 @@ exposed by the API.
 
 ## Phase 4: disks, identity, state
 
-Done 2026-09-28: [012](012-Phase-4-disks-identity-and-state.md); the Obsidian importer
-(step 6) landed with Phase 6.
+Done 2026-09-28: [012](012-Phase-4-disks-identity-and-state.md). The Obsidian importer
+(step 6) landed with Phase 6 and was removed again on 2026-09-28: not worth keeping.
 
 1. `DiskKey` extraction from smartctl + udev + lsblk; `identity.match()` pure; merge on
    ingest; conflict diary + banner.
@@ -108,7 +108,7 @@ Done 2026-09-28: [012](012-Phase-4-disks-identity-and-state.md); the Obsidian im
 5. `shared/inventory-fields.ts` registry → zod schema, `PATCH /api/disks/:id`, form and
    table generation. Initial fields: purchase date, price, supplier, condition, warranty
    expiry, 3.3 V pin.
-6. Obsidian importer: paste/upload the Bases table as markdown or CSV; match rows to
+6. ~~Obsidian importer:~~ (removed) paste/upload the Bases table as markdown or CSV; match rows to
    disks by serial, create inventory-only rows for the rest (H1–H4).
 
 ## Phase 5: ZFS topology

@@ -100,10 +100,7 @@ const countLabel = computed(() =>
         <NuxtLink to="/settings/hosts" class="text-highlighted hover:text-primary underline">
           Settings › Hosts
         </NuxtLink>
-        has the install command; an Obsidian table can be pasted under
-        <NuxtLink to="/settings/import" class="text-highlighted hover:text-primary underline">
-          Settings › Import
-        </NuxtLink>.
+        has the install command.
       </p>
     </div>
 

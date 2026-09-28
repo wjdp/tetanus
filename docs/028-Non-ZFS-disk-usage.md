@@ -95,7 +95,6 @@ Form shows the inferred value as placeholder when unset.
 
 - `missing` alert unchanged; a missing system disk means the host is silent anyway and
   the collector-silence fault covers it.
-- Obsidian importer: no purpose column; leave.
 - `zpool-status` alias resolution untouched.
 
 ## Out of scope

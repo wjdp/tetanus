@@ -14,12 +14,11 @@ describe("NAVIGATION", () => {
 });
 
 describe("SETTINGS_NAVIGATION", () => {
-  it("lists General, Hosts, Alerts and Import", () => {
+  it("lists General, Hosts and Alerts", () => {
     expect(SETTINGS_NAVIGATION.map(({ label, to }) => [label, to])).toEqual([
       ["General", "/settings"],
       ["Hosts", "/settings/hosts"],
       ["Alerts", "/settings/alerts"],
-      ["Import", "/settings/import"],
     ]);
   });
 });
