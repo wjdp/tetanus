@@ -63,3 +63,52 @@ command palette. Built on the Phase 3–5 APIs. Chart library decided 2026-09-28
   never used. uPlot's live legend is the hover readout.
 - Command palette loads disks and pools once, on first open; entities created after
   that appear on reload.
+
+### Inventory table, diary and Obsidian importer (2026-09-28)
+
+- Importer synonyms (`COLUMN_SYNONYMS` in `shared/importers/obsidianTable.ts`), matched
+  after lowercasing and dropping everything but `a-z0-9./`, so `Serial Number`,
+  `serial_number` and `serialNumber` are one key. First header wins per target.
+  - alias: alias, name, id, disk, label
+  - model: model, model number
+  - serial: serial, serial number, serial no, sn, s/n
+  - capacity: capacity, size
+  - pool: pool, zpool
+  - status: status, state
+  - purchaseDate: purchased, purchase date, bought, date purchased
+  - purchasePrice: price, cost, purchase price, paid
+  - supplier: supplier, vendor, shop, seller, retailer
+  - purchaseCondition: condition, purchase condition
+  - warrantyExpiry: warranty, warranty expiry, warranty until
+  - pin33Taped: 3.3v, 3.3 v pin, 3.3v pin, pin, 3.3 v, taped
+  - plus every `INVENTORY_FIELDS` key and label.
+- Cells: Obsidian wikilinks `[[K2]]` / `[[K2|label]]` reduce to their text; `—`/`-`
+  count as empty. Unreadable values (bad date, `DEGRADED` status, invalid alias) are
+  dropped with a per-row warning rather than failing the row. `x` reads as false,
+  paired with `✓`.
+- Pool column is mapped and shown but not stored: pool membership comes from
+  `zpool status`, and there is no inventory field for it. The contract's pool column
+  and pool filter on `/disks` are left out because `DiskSummary` has no pool; needs the
+  `membership` field suggested above.
+- Matching: model-serial key, then `findDiskBySerial` (the `Disk.serial` column, or a
+  `DiskKey` value ending in the serial at a `|`, `_`, `-` or space boundary, `WD-`
+  stripped as in `normaliseModelSerial`), then alias. A serial matching several disks,
+  or an alias match whose stored serial differs, is skipped with a reason rather than
+  merged. Serial-only disks created by an import have no `DiskKey`, so the `Disk.serial`
+  lookup is what makes a second import idempotent.
+- Matched rows overwrite the inventory keys the row provides and fill `model`, `serial`,
+  `capacityBytes` only when null. Alias is set only when the disk has none and the alias
+  is free (warning otherwise).
+- Diary `imported` events are written only when a matched row changed something (and
+  always for created disks), so re-importing the same table adds no diary noise.
+- Status SPARE/REMOVED on a created disk becomes its `stateOverride`, so an Obsidian
+  REMOVED disk shows `removed`, not `unseen`.
+- Real imports run in one transaction; dry runs in a transaction rolled back by a
+  sentinel error, so the preview is exact (created ids in a preview are not links).
+- `/disks`: expired warranties show `expired` in dimmed text, not `error`: 008 keeps
+  alarm for failing hardware, and an expired warranty needs no action. Under 90 days is
+  amber. Filtering is client-side over `GET /api/disks`; sorting is TanStack with
+  `sortUndefined: "last"` so unaliased and unknown values sit last in both directions.
+- `/diary`: days are grouped and times shown in UTC (matches `formatDate`, avoids SSR
+  hydration drift). Kind is filtered client-side as `GET /api/diary` has no kind
+  parameter. `?subjectType=&subjectId=` pre-fills and opens the new-entry slideover.

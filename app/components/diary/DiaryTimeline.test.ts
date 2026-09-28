@@ -1,9 +1,21 @@
 // @vitest-environment nuxt
 import { mountSuspended } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
+import type { DiaryEntryKind, DiarySubjectType } from "#shared/diary";
 import DiaryTimeline from "./DiaryTimeline.vue";
 
-const entry = (overrides: Record<string, unknown>) => ({
+interface Entry {
+  id: number;
+  subjectType: DiarySubjectType;
+  subjectId: number | null;
+  at: string;
+  kind: DiaryEntryKind;
+  eventType: string | null;
+  title: string;
+  body: string;
+}
+
+const entry = (overrides: Partial<Entry>): Entry => ({
   id: 1,
   subjectType: "disk",
   subjectId: 4,
