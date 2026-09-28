@@ -186,3 +186,68 @@ Decisions and deviations:
 - `shellcheck` is not installed here; the collector change was not shellchecked.
 - `app/utils/diarySubjects.ts` has a `default` branch, so adding `dataset` needed no app
   change.
+
+### Queries and routes
+
+Step 3 done. Services in `server/services/zfs/datasets.ts`, re-exported from
+`server/services/zfs.ts` with their types (`DatasetSummary`, `DatasetDetail`,
+`DatasetChild`, `DatasetSnapshot`, `DatasetCounts`, `DatasetSearchResult`). Dates are ISO
+strings over JSON. `Dataset` below is every `Dataset` column: `id, poolId, name,
+parentId, type, mountpoint, used, referenced, available, logicalUsed, compressRatio,
+usedBySnapshots, usedByDataset, usedByChildren, quota, refQuota, reservation,
+recordSize, compression, encryption, creation, present, firstSeenAt, lastSeenAt,
+latestSnapshotAt, snapshotCount`.
+
+`GET /api/pools` and `GET /api/pools/:id` gain, per pool, counting present datasets only:
+
+```
+datasetCount: number, snapshotCount: number
+```
+
+`GET /api/pools/:id/datasets` (404 for an unknown pool):
+
+```
+{ datasets: (Dataset & { depth: number })[] }
+```
+
+Present datasets first, then destroyed ones; each group in depth-first tree order (a
+parent is followed directly by its descendants). `depth` is the number of `/` in `name`.
+
+`GET /api/datasets/:id` (404 when missing; destroyed datasets still resolve):
+
+```
+Dataset & {
+  depth: number,
+  pool: { id, name, guid },
+  host: { id, name, displayName },
+  children: { id, name, used, present }[],          present first, tree order
+  snapshots: (Snapshot & { ageMs: number })[],      all, newest first
+  readings: DatasetReading[],                        last 90 d, ascending
+  diary: DiaryEntry[]                                subject dataset, newest first, 100
+}
+```
+
+`Snapshot` is `id, datasetId, name, guid, used, referenced, written, creation,
+lastSeenAt`; `DatasetReading` is `id, datasetId, at, used, referenced, available,
+usedBySnapshots`.
+
+`GET /api/datasets?q=` (`q` trimmed, 1–100 chars, else 400):
+
+```
+{ datasets: { id, name, pool: { id, name }, host: { id, name, displayName } }[] }
+```
+
+Case-insensitive substring match on the full name, present only, ordered by name,
+at most 20. `%`, `_` and `\` in `q` match literally.
+
+Decisions and deviations:
+
+- Tree order is computed in JS by comparing `/`-separated segments: SQLite's byte order
+  puts `tank/a-b` between `tank/a` and `tank/a/c`.
+- `listDatasets` throws 404 for an unknown pool rather than returning `[]`, so the route
+  can 404.
+- `datasetCountsByPool(poolIds)` is also exported from `datasets.ts` (one grouped query,
+  used by `listPools`/`getPool`); `datasetCounts(poolId)` wraps it.
+- The diary service does not check subject existence per type, so `dataset` needed no
+  server change; `POST /api/diary` and `GET /api/diary?subjectType=dataset` work as is.
+- Existing pool tests use `toMatchObject`, so none needed updating for the new fields.
