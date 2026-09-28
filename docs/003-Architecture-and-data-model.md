@@ -40,7 +40,12 @@ POST /api/ingest/:source            body: raw stdout of the command, text/plain
 
 The enrol token is server-wide, generated on first boot and shown on the first-run and
 settings pages. Wrong or missing token → 401. An unknown host name creates a `Host` row
-on first POST. Each POST is recorded as a `CollectorRun` with its `hostId`.
+on first POST. Each POST is recorded as a `CollectorRun` with its `hostId`. The header
+name is derived from the app-name constant like the script and unit names; `X-Diskbot-Host`
+is its current spelling.
+
+Pool GUIDs are global: a pool exported from one host and imported on another is the same
+`Pool` row with `hostId` moved. Event ids (`eid`) are per host.
 
 Sources (v1):
 
@@ -206,7 +211,7 @@ SmartAttribute  readingId, attrId (text: "5" | "media_errors"), value, worst, th
 TemperatureReading  diskId, at, celsius       unique(diskId, at)
 SelfTest        diskId, type, status, lifetimeHours, lba?, seenAt   unique per (disk, lifetimeHours, type)
 FaultAcceptance id, diskId, attrId, acceptedValue, acceptedAt, note, supersededAt?
-Pool            id, hostId, guid, name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
+Pool            id, hostId (current), guid (unique), name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
                 dedup, scan (json: type, state, started, finished, examined, errors),
                 firstSeenAt, lastSeenAt
 Vdev            id, poolId, guid, parentId?, name, type (root|raidz1|raidz2|mirror|disk|special|log|cache|spare|indirect),
@@ -217,7 +222,7 @@ VdevReading     vdevId, at, readErrors, writeErrors, cksumErrors, slowIos, state
 Dataset         id, poolId, name, type, used, referenced, available, logicalUsed,
                 compressRatio, usedBySnapshots, mountpoint, quota, creation, lastSeenAt
 Snapshot        id, datasetId, name, used, referenced, written, creation, lastSeenAt
-ZfsEvent        eid, at, class, poolGuid?, vdevGuid?, payload (json)      unique(eid, at)
+ZfsEvent        hostId, eid, at, class, poolGuid?, vdevGuid?, payload (json)   unique(hostId, eid, at)
 PoolHistory     poolId, at, internal, text                                unique(poolId, at, text)
 DiaryEntry      id, subjectType (disk|pool|vdev|host|system), subjectId, at, kind (manual|auto),
                 eventType?, title, body (md), data (json)
