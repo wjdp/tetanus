@@ -97,6 +97,6 @@ describe("usageColour", () => {
     expect(usageColour("zfs")).toBe("info");
     expect(usageColour("filesystem")).toBe("neutral");
     expect(usageColour("empty")).toBe("neutral");
-    expect(usageColour("unknown")).toBe("warning");
+    expect(usageColour("unknown")).toBe("neutral");
   });
 });

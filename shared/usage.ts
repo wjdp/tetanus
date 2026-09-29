@@ -74,14 +74,6 @@ export function usageShort(usage: DiskUsage, poolName: string | null): string {
   }
 }
 
-export function usageColour(kind: UsageKind): "neutral" | "info" | "warning" {
-  switch (kind) {
-    case "zfs":
-      return "info";
-    case "filesystem":
-    case "empty":
-      return "neutral";
-    case "unknown":
-      return "warning";
-  }
+export function usageColour(kind: UsageKind): "neutral" | "info" {
+  return kind === "zfs" ? "info" : "neutral";
 }

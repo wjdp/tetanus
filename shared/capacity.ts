@@ -1,0 +1,2 @@
+export const CAPACITY_WARNING_PERCENT = 80;
+export const CAPACITY_ERROR_PERCENT = 90;

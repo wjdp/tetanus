@@ -1,45 +1,24 @@
 import type { EffectiveDiskState } from "#shared/disk";
 import type { DeviceStatus } from "#shared/smart/status";
+import {
+  DEVICE_STATUS_VOCABULARY,
+  LIFECYCLE_VOCABULARY,
+  type StatusColour,
+} from "./vocabulary";
 
-export type StatusColour = "neutral" | "warning" | "error" | "success" | "info";
+export type { StatusColour } from "./vocabulary";
+export { zfsStateColour } from "./vocabulary";
 
-// Per docs/008: alarm (error) only for a failing state; passed is quiet.
 export function deviceStatusColour(status: DeviceStatus): StatusColour {
-  if (status === "failed") return "error";
-  if (status === "warning") return "warning";
-  return "neutral";
+  return status === "passed"
+    ? "neutral"
+    : DEVICE_STATUS_VOCABULARY[status].colour;
 }
 
 export function diskStateColour(
   state: EffectiveDiskState | null,
 ): StatusColour {
-  switch (state) {
-    case "missing":
-    case "dead":
-      return "error";
-    case "in-use":
-    case "spare":
-    case "removed":
-    case "sold":
-    case "retired":
-    case "unseen":
-    case null:
-      return "neutral";
-  }
-}
-
-const POOL_STATE_COLOUR: Record<string, StatusColour> = {
-  ONLINE: "neutral",
-  DEGRADED: "warning",
-  FAULTED: "error",
-  UNAVAIL: "error",
-  OFFLINE: "warning",
-  REMOVED: "warning",
-  SUSPENDED: "error",
-};
-
-export function zfsStateColour(state: string): StatusColour {
-  return POOL_STATE_COLOUR[state] ?? "warning";
+  return state ? LIFECYCLE_VOCABULARY[state].colour : "neutral";
 }
 
 export function attributeTrendColour(

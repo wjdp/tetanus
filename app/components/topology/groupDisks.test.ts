@@ -187,8 +187,8 @@ describe("tileColour", () => {
     expect(tileColour(leaf("K1", 1, { state: "FAULTED" }))).toBe("error");
   });
 
-  it("stays neutral for an unlinked leaf with unknown status", () => {
-    expect(tileColour(vdev({ name: "/dev/sdz1" }))).toBe("neutral");
+  it("takes the ONLINE green for an unlinked leaf with unknown status", () => {
+    expect(tileColour(vdev({ name: "/dev/sdz1" }))).toBe("success");
   });
 });
 
