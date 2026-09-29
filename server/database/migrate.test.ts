@@ -31,7 +31,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 10;
+const MIGRATION_COUNT = 11;
 
 const openConnections: Database.Database[] = [];
 
@@ -148,10 +148,14 @@ describe("0009_host_collector_version", () => {
     const { db, sqlite } = open(":memory:");
     runMigrations(sqlite, db);
     sqlite.exec(`
+      ALTER TABLE Host DROP COLUMN temperatureThresholds;
       ALTER TABLE Host DROP COLUMN collectorVersion;
       ALTER TABLE Host DROP COLUMN collectorStatus;
       DELETE FROM __drizzle_migrations
-        WHERE created_at = (SELECT max(created_at) FROM __drizzle_migrations);
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 2
+        );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
       INSERT INTO CollectorRun (hostId, source, receivedAt, ok, bytes, producer)
@@ -164,6 +168,7 @@ describe("0009_host_collector_version", () => {
 
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0009_host_collector_version",
+      "0010_host_temperature_thresholds",
     ]);
     expect(
       sqlite
