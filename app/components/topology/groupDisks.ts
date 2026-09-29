@@ -71,6 +71,7 @@ export interface TopologyPool {
 export interface VdevGroup {
   key: string;
   type: string;
+  isClass: boolean;
   label: string;
   state: string | null;
   sizeBytes: number | null;
@@ -91,7 +92,10 @@ export interface Dot {
   shape: DotShape;
 }
 
-const CLASS_TYPES = new Set(["log", "cache", "special", "dedup", "spare"]);
+const CLASS_ORDER = ["special", "log", "cache", "dedup", "spare"];
+const CLASS_TYPES = new Set(CLASS_ORDER);
+
+const classRank = (group: VdevGroup) => CLASS_ORDER.indexOf(group.type);
 
 const SINGLE_DEVICE_LABEL: Record<string, string> = {
   disk: "stripe",
@@ -128,6 +132,7 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
       groups.push({
         key: child.guid,
         type: child.type,
+        isClass: CLASS_TYPES.has(child.type),
         label: groupLabel(child),
         state: child.state,
         sizeBytes: child.sizeBytes,
@@ -144,6 +149,7 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
       const group: VdevGroup = {
         key: `single-${label}`,
         type: child.type,
+        isClass: CLASS_TYPES.has(child.type),
         label,
         state: null,
         sizeBytes: null,
@@ -158,7 +164,7 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
     group.sizeBytes = sumKnown(group.leaves.map((leaf) => leaf.sizeBytes));
     group.allocBytes = sumKnown(group.leaves.map((leaf) => leaf.allocBytes));
   }
-  return groups;
+  return groups.sort((a, b) => classRank(a) - classRank(b));
 }
 
 export function linkedDiskIds(roots: (TopologyVdev | null)[]): Set<number> {

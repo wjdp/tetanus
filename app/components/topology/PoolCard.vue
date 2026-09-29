@@ -7,6 +7,10 @@ import { type TopologyPool, vdevGroups } from "./groupDisks";
 const props = defineProps<{ pool: TopologyPool; now: number }>();
 
 const groups = computed(() => vdevGroups(props.pool.vdevs));
+const classDividerIndex = computed(() => {
+  const index = groups.value.findIndex((group) => group.isClass);
+  return index > 0 ? index : null;
+});
 const scanRunning = computed(() => activeScan(props.pool.scan, props.now));
 const lastScan = computed(() => {
   const scan = props.pool.scan;
@@ -75,8 +79,10 @@ const capColour = computed(() => capacityColour(props.pool.cap));
 
     <div v-else class="flex flex-col gap-3">
       <TopologyVdevRow
-        v-for="group in groups"
+        v-for="(group, index) in groups"
         :key="group.key"
+        :class="{ 'border-default border-t pt-3': index === classDividerIndex }"
+        :data-class-divider="index === classDividerIndex || undefined"
         :type="group.type"
         :label="group.label"
         :state="group.state"

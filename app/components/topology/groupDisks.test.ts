@@ -59,9 +59,9 @@ describe("vdevGroups", () => {
       ]),
     ).toEqual([
       ["raidz1", "raidz1-0", "ONLINE", ["K1", "K2", "K3"]],
+      ["disk", "stripe", null, ["sdz1"]],
       ["special", "special · mirror-1", "DEGRADED", ["S1", "S2", "S3"]],
       ["cache", "cache", null, ["C1", "C2"]],
-      ["disk", "stripe", null, ["sdz1"]],
     ]);
   });
 
@@ -71,8 +71,38 @@ describe("vdevGroups", () => {
     ).toEqual([
       [54e12, 11e12],
       [null, null],
-      [2e12, 5e11],
       [null, null],
+      [2e12, 5e11],
+    ]);
+  });
+
+  it("puts data vdevs first and class vdevs after them in class order", () => {
+    const mixed = vdev({
+      name: "tank",
+      type: "root",
+      children: [
+        leaf("C1", 1, { type: "cache" }),
+        vdev({ name: "mirror-0", type: "mirror", children: [leaf("M1", 2)] }),
+        leaf("L1", 3, { type: "log" }),
+        vdev({ name: "mirror-1", type: "special", children: [leaf("S1", 4)] }),
+        leaf("P1", 5, { type: "spare" }),
+        vdev({ name: "raidz2-2", type: "raidz2", children: [leaf("R1", 6)] }),
+        vdev({ name: "/dev/sdz1", type: "disk", path: "/dev/sdz1" }),
+        vdev({ name: "mirror-3", type: "dedup", children: [leaf("D1", 7)] }),
+      ],
+    });
+
+    expect(
+      vdevGroups(mixed).map((group) => [group.label, group.isClass]),
+    ).toEqual([
+      ["mirror-0", false],
+      ["raidz2-2", false],
+      ["stripe", false],
+      ["special · mirror-1", true],
+      ["log", true],
+      ["cache", true],
+      ["dedup · mirror-3", true],
+      ["spares", true],
     ]);
   });
 
