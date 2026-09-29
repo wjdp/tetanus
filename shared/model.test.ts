@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bareModel, modelWithoutVendor } from "./model";
+import { bareModel, displayModel, modelWithoutVendor } from "./model";
 
 describe("bareModel", () => {
   it.each([
@@ -60,5 +60,25 @@ describe("modelWithoutVendor", () => {
       "WD120EMAZ-11BLFA0",
     );
     expect(modelWithoutVendor("Samsung SSD 870 EVO 2TB")).toBe("870 EVO 2TB");
+  });
+});
+
+describe("displayModel", () => {
+  it.each([
+    ["WDC WD120EMAZ-11BLFA0", "western-digital", "WD120EMAZ-11BLFA0"],
+    ["WDC WD120EMAZ-11BLFA0", undefined, "WD120EMAZ-11BLFA0"],
+    ["TOSHIBA MG09ACA18TE", "toshiba", "MG09ACA18TE"],
+    ["Samsung SSD 870 EVO 2TB", "samsung", "870 EVO 2TB"],
+    ["INTEL SSDSC2BB480G6R", null, "SSDSC2BB480G6R"],
+    ["ST12000NM000J-2TY103", "seagate", "ST12000NM000J-2TY103"],
+    ["WDC WD120EMAZ-11BLFA0", "seagate", "WDC WD120EMAZ-11BLFA0"],
+  ] as const)("%s (%s) → %s", (input, vendor, expected) => {
+    expect(displayModel(input, vendor)).toBe(expected);
+  });
+
+  it("returns null for blank input", () => {
+    expect(displayModel(null)).toBeNull();
+    expect(displayModel("  ")).toBeNull();
+    expect(displayModel(undefined, "seagate")).toBeNull();
   });
 });
