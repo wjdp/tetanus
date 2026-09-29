@@ -29,7 +29,35 @@ registerEndpoint("/api/disks/7", () => ({
     deviceType: "sat",
     linkSpeed: { maxBps: 6_000_000_000, currentBps: 6_000_000_000 },
   },
-  specs: null,
+  specs: {
+    source: "nasdisks",
+    snapshot: "2026-09-04",
+    matchedModel: "WD80EFAX",
+    model: "WD80EFAX",
+    brand: "WD",
+    line: "Red",
+    capacityTb: 8,
+    rpm: 5400,
+    cacheMb: 256,
+    interface: "SATA",
+    formFactor: "3.5",
+    recordingTech: "cmr",
+    ercTler: true,
+    isHelium: false,
+    driveClass: "NAS",
+    mediaType: "hdd",
+    inProduction: false,
+    alsoSoldAs: [],
+    nandType: null,
+    tbwTb: null,
+    dwpd: null,
+    hasDram: null,
+    hasPlp: null,
+    sustainedWriteMbps: null,
+    afrPct: 0.9,
+    reliabilityDriveCount: 4321,
+    reliabilitySource: "Backblaze thru Q2 2026",
+  },
   lastDevicePath: "/dev/sdb",
   firstSeenAt: at,
   lastSeenAt: at,
@@ -245,6 +273,9 @@ describe("disk page", () => {
     expect(text).toContain("HDD · 5400 rpm · CMR");
     expect(text).toContain("512e");
     expect(text).not.toContain("Protocol");
+    expect(text).toContain("WD Red");
+    expect(text).toContain("0.9 % · 4,321 drives · Backblaze thru Q2 2026");
+    expect(text).toContain("Specs: nasdisks.com (CC BY 4.0)");
     expect(text).toContain("VK0ABC");
     expect(text).toContain("8.00 TB");
     expect(text).toContain("5.7 y old");

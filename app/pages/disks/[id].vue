@@ -50,6 +50,8 @@ const onUpdated = (updated: DiskDetail) => {
           <DiskInventoryForm :disk="disk" @updated="onUpdated" />
         </section>
 
+        <DiskSpecs :disk="disk" />
+
         <DiskSmart
           :disk-id="disk.id"
           :protocol="disk.protocol"
