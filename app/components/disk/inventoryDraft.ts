@@ -3,6 +3,7 @@ import {
   type Inventory,
   type InventoryKey,
 } from "#shared/inventory-fields";
+import { warrantyDefault, warrantyYearsFor } from "#shared/product-lines";
 
 export type InventoryDraft = Record<
   InventoryKey,
@@ -34,3 +35,25 @@ export function inventoryFromDraft(draft: InventoryDraft): Inventory {
     }),
   ) as Inventory;
 }
+
+export interface WarrantySuggestion {
+  date: string;
+  text: string;
+}
+
+export function warrantySuggestion(
+  draft: InventoryDraft,
+  line: string | null | undefined,
+): WarrantySuggestion | null {
+  const years = warrantyYearsFor(line);
+  const date = warrantyDefault({
+    purchaseDate: stringOrNull(draft.purchaseDate),
+    purchaseCondition: stringOrNull(draft.purchaseCondition),
+    line,
+  });
+  if (draft.warrantyExpiry || years === null || date === null) return null;
+  return { date, text: `${years} y from purchase → ${date} (${line} default)` };
+}
+
+const stringOrNull = (value: InventoryDraft[InventoryKey]) =>
+  typeof value === "string" ? value : null;

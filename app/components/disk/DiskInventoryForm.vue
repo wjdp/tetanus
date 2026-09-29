@@ -8,6 +8,7 @@ import {
   draftFromInventory,
   type InventoryDraft,
   inventoryFromDraft,
+  warrantySuggestion,
 } from "./inventoryDraft";
 import type { DiskDetail } from "./types";
 
@@ -54,6 +55,10 @@ const dateHint = computed<Partial<Record<string, string>>>(() => ({
         ? `expired ${formatDays(-props.disk.warrantyDaysLeft)} ago`
         : `${formatDays(props.disk.warrantyDaysLeft)} left`,
 }));
+
+const suggestedWarranty = computed(() =>
+  warrantySuggestion(draft.value, props.disk.specs?.line),
+);
 
 interface FetchFailure {
   statusCode?: number;
@@ -115,6 +120,21 @@ const save = async () => {
         :name="field.key"
         :hint="dateHint[field.key]"
       >
+        <template
+          v-if="field.key === 'warrantyExpiry' && suggestedWarranty"
+          #hint
+        >
+          <span data-testid="warranty-suggestion">
+            {{ suggestedWarranty.text }}
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="link"
+              label="Apply"
+              @click="setField('warrantyExpiry', suggestedWarranty.date)"
+            />
+          </span>
+        </template>
         <UInput
           v-if="field.type === 'date'"
           :model-value="textValue(field.key)"
