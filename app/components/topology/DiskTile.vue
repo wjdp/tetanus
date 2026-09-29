@@ -14,6 +14,7 @@ import {
   type TopologyDisk,
   type TopologyVdev,
   tileColour,
+  tileStateMark,
 } from "./groupDisks";
 
 const props = defineProps<
@@ -26,6 +27,9 @@ const label = computed(() =>
 );
 const dot = computed(() =>
   props.leaf ? tileColour(props.leaf) : diskDot(props.disk),
+);
+const stateMark = computed(() =>
+  props.disk ? tileStateMark(props.disk) : null,
 );
 const purposeBadge = computed(() =>
   facts.value?.purpose ? PURPOSE_BADGE[facts.value.purpose] : null,
@@ -95,10 +99,17 @@ const tooltip = computed(() =>
           {{ label }}
         </span>
         <UBadge v-if="purposeBadge" v-bind="purposeBadge" class="shrink-0" />
+        <UIcon
+          v-if="stateMark"
+          :name="stateMark.icon"
+          :title="stateMark.label"
+          class="text-muted ml-auto size-4 shrink-0"
+          data-testid="disk-tile-state-mark"
+        />
         <TopologyStatusDot
           :colour="dot.colour"
           :shape="dot.shape"
-          class="ml-auto"
+          :class="{ 'ml-auto': !stateMark }"
         />
       </span>
 

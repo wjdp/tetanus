@@ -7,6 +7,7 @@ import {
   DEVICE_STATUS_VOCABULARY,
   type DotShape,
   LIFECYCLE_VOCABULARY,
+  type LifecycleVocabulary,
   type StatusColour,
   worstColour,
   zfsStateColour,
@@ -205,21 +206,27 @@ const HOST_GROUPS: GroupSpec[] = [
     icon: "i-lucide-cpu",
     matches: (disk) => disk.purpose === "system",
   },
-  ...[
-    byState("spare"),
-    byState("in-use", "in use, not in a pool"),
-    byState("removed"),
-    byState("dead"),
-    byState("retired"),
-    byState("sold"),
-  ].map((spec) => ({
-    ...spec,
-    matches: (disk: TopologyDisk) =>
-      disk.purpose !== "system" && spec.matches(disk),
-  })),
+  {
+    key: "other",
+    state: null,
+    label: "other",
+    icon: "i-lucide-hard-drive",
+    matches: (disk) => disk.purpose !== "system",
+  },
 ];
 
 const HISTORY_STATES = new Set<EffectiveDiskState>(["dead", "retired", "sold"]);
+
+const MARKED_TILE_STATES = new Set<EffectiveDiskState>([
+  ...HISTORY_STATES,
+  "removed",
+]);
+
+export function tileStateMark(disk: TopologyDisk): LifecycleVocabulary | null {
+  return MARKED_TILE_STATES.has(disk.state)
+    ? LIFECYCLE_VOCABULARY[disk.state]
+    : null;
+}
 
 export const HISTORY_KEY = "history";
 

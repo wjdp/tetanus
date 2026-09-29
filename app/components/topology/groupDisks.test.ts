@@ -8,6 +8,7 @@ import {
   railGroups,
   type TopologyDisk,
   tileColour,
+  tileStateMark,
   vdevGroups,
 } from "./groupDisks";
 import {
@@ -142,41 +143,54 @@ describe("railGroups", () => {
     const dead = disk(1, { state: "dead", present: true, lastSeenHostId: 2 });
     expect(railGroups([dead], new Set())).toEqual([]);
     expect(keysAndIds(hostDiskGroups([dead], 2, new Set()))).toEqual([
-      ["dead", [1]],
+      ["other", [1]],
     ]);
   });
 });
 
 describe("hostDiskGroups", () => {
-  it("groups the host's present disks outside pools, system first", () => {
-    const live = { present: true, lastSeenHostId: 1 };
+  const live = { present: true, lastSeenHostId: 1 };
+
+  it("splits the host's present disks outside pools into system and other", () => {
     const disks = [
       disk(1, { ...live, state: "sold" }),
       disk(2, { ...live, state: "dead" }),
       disk(3, { ...live, state: "in-use" }),
-      disk(4, { ...live, state: "spare" }),
+      disk(4, { ...live, state: "spare", purpose: "other" }),
       disk(5, { ...live, state: "in-use", purpose: "system" }),
-      disk(6, { ...live, state: "retired" }),
-      disk(7, { ...live, state: "spare", lastSeenHostId: 2 }),
-      disk(8, { state: "spare", lastSeenHostId: 1 }),
-      disk(9, { ...live, state: "in-use" }),
+      disk(6, { ...live, state: "spare", lastSeenHostId: 2 }),
+      disk(7, { state: "spare", lastSeenHostId: 1 }),
+      disk(8, { ...live, state: "in-use" }),
     ];
 
-    const groups = hostDiskGroups(disks, 1, new Set([9]));
+    const groups = hostDiskGroups(disks, 1, new Set([8]));
     expect(keysAndIds(groups)).toEqual([
       ["system", [5]],
-      ["spare", [4]],
-      ["in-use", [3]],
-      ["dead", [2]],
-      ["retired", [6]],
-      ["sold", [1]],
+      ["other", [1, 2, 3, 4]],
     ]);
-    expect(groups.map((group) => group.label).slice(0, 4)).toEqual([
-      "system",
-      "Spare",
-      "in use, not in a pool",
-      "Dead",
+    expect(groups.map((group) => [group.label, group.icon])).toEqual([
+      ["system", "i-lucide-cpu"],
+      ["other", "i-lucide-hard-drive"],
     ]);
+  });
+
+  it("omits an empty group", () => {
+    expect(keysAndIds(hostDiskGroups([disk(1, live)], 1, new Set()))).toEqual([
+      ["other", [1]],
+    ]);
+  });
+});
+
+describe("tileStateMark", () => {
+  it("marks tiles of disks that are gone or removed, not live ones", () => {
+    const mark = (state: TopologyDisk["state"]) =>
+      tileStateMark(disk(1, { state }))?.icon ?? null;
+    expect(mark("dead")).toBe("i-lucide-skull");
+    expect(mark("removed")).toBe("i-lucide-unplug");
+    expect(mark("sold")).toBe("i-lucide-banknote");
+    expect(mark("retired")).toBe("i-lucide-archive");
+    expect(mark("in-use")).toBeNull();
+    expect(mark("spare")).toBeNull();
   });
 });
 

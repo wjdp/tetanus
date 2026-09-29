@@ -226,7 +226,7 @@ describe("index page", () => {
     expect(tiles[2]?.attributes("href")).toBeUndefined();
 
     const other = page.get('[data-testid="other-disks-card"]');
-    expect(other.text()).toContain("Spare");
+    expect(other.text()).toContain("other");
     expect(other.text()).toContain("Z9");
     expect(other.find('[data-media="ssd"]').exists()).toBe(true);
 

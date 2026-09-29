@@ -68,6 +68,18 @@ describe("TopologyDiskTile", () => {
     expect(tile.find('[data-media="ssd"]').exists()).toBe(true);
   });
 
+  it("marks a disk tile with its state only when the disk is gone", async () => {
+    const dead = await mountTile({ disk: diskFixture(9, { state: "dead" }) });
+    expect(
+      dead.get('[data-testid="disk-tile-state-mark"]').attributes("title"),
+    ).toBe("Dead");
+
+    const spare = await mountTile({ disk: diskFixture(9, { state: "spare" }) });
+    expect(spare.find('[data-testid="disk-tile-state-mark"]').exists()).toBe(
+      false,
+    );
+  });
+
   it("colours temperature by the disk's thresholds", async () => {
     const at = async (latestTemp: number) => {
       const tile = await mountTile({

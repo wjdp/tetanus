@@ -84,7 +84,10 @@ describe("TopologyHostSection", () => {
       expect.stringContaining("RMA1"),
     ]);
     expect(rows[0]?.text()).toContain("system");
-    expect(rows[1]?.text()).toContain("Dead");
+    expect(rows[1]?.text()).toContain("other");
+    expect(
+      rows[1]?.get('[data-testid="disk-tile-state-mark"]').attributes("title"),
+    ).toBe("Dead");
     expect(section.findAll('[data-testid="pool-card"]')).toHaveLength(1);
   });
 
