@@ -233,6 +233,54 @@ missing columns as unknown. Bump collector to 0.3.0. Not required for anything a
 
 (agents append here)
 
+### T2
+
+- `shared/model.ts` `bareModel`: vendor prefix, trailing capacity word, then a
+  `-variant` suffix only after an 8+ char alphanumeric code, so part numbers where the
+  suffix matters (`HAT5320-24T`, `MZ-77Q8T0`, `SB-RKT4P-8TB`) survive. Also exports
+  `modelWithoutVendor`.
+- Index keys are each dataset `model`/`also_sold_as` verbatim plus its `bareModel`
+  (unless two rows collide on it). Lookup tries the vendor-stripped model first, then
+  the bare one. Needed because upstream keeps some suffixes (`MZ7L37T6HBLA-00W07`).
+- Upstream placeholder keys (`MG08ACA16Tx`, `WUH721816ALE6Lx`) already list their real
+  variants in `also_sold_as`, so no wildcard matching.
+- Snapshot is 139 KB, not ~40 KB: 298 keyed rows of 24 fields, one row per line, sorted
+  by model with sorted keys. Column arrays would come to ~45 KB but give unreadable
+  diffs. Excluded from Biome in `biome.json`. `overrides.json` is Biome-formatted.
+- Snapshot validation happens in the test, not at runtime, so a bad refresh fails
+  `pnpm test` and cannot break ingest.
+- Samsung consumer rows are keyed by retail part number (`MZ-77Q2T0`) but smartctl
+  reports `Samsung SSD 870 QVO 2TB`, so they never match. Fix upstream or add a
+  line-based index later.
+- Overrides differ from the spec: mars has `SSDSC2BB480G6R` (DC S3510), not `G7`, so both
+  are seeded. Dell `…R` rebadges go in `also_sold_as`. `WD120EDBZ` has its own row because
+  it reports 7200 rpm. `WD120EDAZ` reports no SCT ERC, so the EMAZ group has
+  `erc_tler: null`. S3520 NAND is MLC. Left null because not confirmed from a datasheet:
+  S4610 TBW, SM863a DWPD, S3510 TBW, and every EVO TBW and capacity.
+- For T3: `specsNeedRefresh(specs, previousModel, model)` is true when the model changed,
+  the snapshot differs, or specs is null. A miss is re-checked on every observation, which
+  costs one map lookup.
+- mars coverage: 7/20 from nasdisks, 13/20 local, 0 misses:
+
+| Disk | model_name | matched | source |
+|---|---|---|---|
+| nvme0 | WDS250G3X0C-00SJG0 | WDS250G3X0C | local |
+| sda, sdb | WDC WD120EMAZ-11BLFA0 | WD120EMAZ | local |
+| sdc | WDC WD120EDAZ-11F3RA0 | WD120EDAZ | local |
+| sdd | WDC WD120EMFZ-11A6JA0 | WD120EMFZ | local |
+| sde | WDC WD120EDBZ-11B1HA0 | WD120EDBZ | local |
+| sdf | ST12000NM000J-2TY103 | ST12000NM000J | nasdisks |
+| sdg | TOSHIBA MG09ACA18TE | MG09ACA18TE | nasdisks |
+| sdh, sdi | ST18000NM000J-2TV103 | ST18000NM000J | nasdisks |
+| sdj, sdl | ST16000NM001G-2KK103 | ST16000NM001G | nasdisks |
+| sdk | ST16000NM000J-2TW103 | ST16000NM000J | nasdisks |
+| sdm | SAMSUNG MZ7KM480HMHQ-00005 | MZ7KM480HMHQ | local |
+| sdn | SSDSC2KG480G8R | SSDSC2KG480G8R | local |
+| sdo | Samsung SSD 860 EVO 500GB | 860 EVO | local |
+| sdp | INTEL SSDSC2BB480G6R | SSDSC2BB480G6R | local |
+| sdq | Samsung SSD 850 EVO 500GB | 850 EVO | local |
+| sdr, sds | Samsung SSD 870 EVO 2TB | 870 EVO | local |
+
 ## Decisions (2026-09-29)
 
 1. Columns for `media`, `interface`, `recordingTech`, block sizes, `trimSupported`; JSON
