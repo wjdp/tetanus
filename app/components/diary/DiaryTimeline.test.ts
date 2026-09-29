@@ -11,6 +11,7 @@ interface Entry {
   at: string;
   kind: DiaryEntryKind;
   eventType: string | null;
+  data?: unknown;
   title: string;
   body: string;
 }
@@ -89,6 +90,43 @@ describe("DiaryTimeline", () => {
     );
     expect(auto.find('[data-testid="diary-entry-actions"]').exists()).toBe(
       false,
+    );
+  });
+
+  it("shows the event icon in the gutter", async () => {
+    const timeline = await mountSuspended(DiaryTimeline, {
+      props: {
+        entries: [
+          entry({ id: 3, data: { from: "in-use", to: "dead" } }),
+          entry({
+            id: 2,
+            at: "2026-09-28T09:00:00.000Z",
+            eventType: "smart-status-changed",
+            data: { from: "passed", to: "failed" },
+          }),
+          entry({
+            id: 1,
+            at: "2026-09-28T08:00:00.000Z",
+            kind: "manual",
+            eventType: null,
+          }),
+        ],
+      },
+    });
+
+    const [state, smart, manual] = timeline.findAll(
+      '[data-testid="diary-entry-icon"]',
+    );
+    expect(state.find("[data-icon]").attributes("data-icon")).toBe(
+      "i-lucide-skull",
+    );
+    expect(smart.find("[data-colour]").attributes()).toMatchObject({
+      "data-colour": "error",
+      "data-shape": "filled",
+      "aria-label": "SMART failed",
+    });
+    expect(manual.find("[data-icon]").attributes("data-icon")).toBe(
+      "i-lucide-pencil",
     );
   });
 

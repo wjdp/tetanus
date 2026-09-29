@@ -8,6 +8,7 @@ interface TimelineEntry {
   at: string | Date;
   kind: DiaryEntryKind;
   eventType: string | null;
+  data?: unknown;
   title: string;
   body: string;
 }
@@ -107,13 +108,23 @@ const subjectLink = (entry: TimelineEntry) => {
       <h3 class="text-muted text-sm font-semibold tabular-nums">
         {{ group.day }}
       </h3>
-      <ul class="border-default flex flex-col gap-3 border-l pl-4">
+      <ul class="border-default ml-2 flex flex-col gap-3 border-l pl-5">
         <li
           v-for="entry in group.entries"
           :key="entry.id"
-          class="flex flex-col gap-1"
+          class="relative flex flex-col gap-1"
           data-testid="diary-entry"
         >
+          <span
+            class="bg-default absolute top-0.5 -left-5 flex size-4 -translate-x-1/2 items-center justify-center"
+            data-testid="diary-entry-icon"
+          >
+            <DiaryEventIcon
+              :event-type="entry.eventType"
+              :data="entry.data"
+              :manual="entry.kind === 'manual'"
+            />
+          </span>
           <div class="flex flex-wrap items-center gap-2 text-sm">
             <span class="text-dimmed font-mono text-xs tabular-nums">
               {{ timeOf(entry.at) }}
