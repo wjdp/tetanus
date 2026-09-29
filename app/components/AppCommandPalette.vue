@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CommandPaletteGroup, CommandPaletteItem } from "@nuxt/ui";
 import { useDatasetSearch } from "~/components/dataset/useDatasetSearch";
+import { ENTITY_ICON } from "~/utils/vocabulary";
 
 const { isOpen, close, toggle } = useCommandPalette();
 
@@ -39,7 +40,7 @@ const datasetItems = computed(() =>
   datasets.value.map((dataset) =>
     toItem({
       label: datasetLabel(dataset),
-      icon: "i-lucide-folder-tree",
+      icon: ENTITY_ICON.dataset,
       to: `/datasets/${dataset.id}`,
     }),
   ),

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { DIARY_SUBJECT_TYPES } from "#shared/diary";
 import {
+  DIARY_SUBJECT_ICON,
   datasetSubjectItems,
   diskSubjectItems,
   hostSubjectItems,
@@ -88,5 +90,20 @@ describe("diary subject items", () => {
       { label: "mars · tank/media/photos", value: 22 },
       { label: "NAS · tank/vm", value: 23 },
     ]);
+  });
+});
+
+describe("DIARY_SUBJECT_ICON", () => {
+  it.each(DIARY_SUBJECT_TYPES)("has a lucide icon for %s", (subjectType) => {
+    expect(DIARY_SUBJECT_ICON[subjectType]).toMatch(/^i-lucide-/);
+  });
+
+  it("borrows the entity icons", () => {
+    expect(DIARY_SUBJECT_ICON).toMatchObject({
+      disk: "i-lucide-hard-drive",
+      pool: "i-lucide-database",
+      dataset: "i-lucide-folder-tree",
+      host: "i-lucide-server",
+    });
   });
 });

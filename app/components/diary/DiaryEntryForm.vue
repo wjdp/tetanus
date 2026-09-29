@@ -16,6 +16,12 @@ const body = ref("");
 const saving = ref(false);
 const toast = useToast();
 
+const subjectTypeItems = DIARY_SUBJECT_TYPES.map((value) => ({
+  label: value,
+  value,
+  icon: DIARY_SUBJECT_ICON[value],
+}));
+
 const needsSubjectId = computed(() => subjectType.value !== "system");
 
 const { data: listedItems, status: listedItemsStatus } = useLazyAsyncData(
@@ -98,7 +104,8 @@ const save = async () => {
       <UFormField label="Subject type" name="subjectType" class="flex-1">
         <USelect
           v-model="subjectType"
-          :items="[...DIARY_SUBJECT_TYPES]"
+          :items="subjectTypeItems"
+          :icon="DIARY_SUBJECT_ICON[subjectType]"
           class="w-full"
         />
       </UFormField>

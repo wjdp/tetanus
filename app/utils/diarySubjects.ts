@@ -1,4 +1,14 @@
 import type { DiarySubjectType } from "#shared/diary";
+import { ENTITY_ICON } from "~/utils/vocabulary";
+
+export const DIARY_SUBJECT_ICON: Record<DiarySubjectType, string> = {
+  disk: ENTITY_ICON.disk,
+  pool: ENTITY_ICON.pool,
+  vdev: "i-lucide-layers",
+  dataset: ENTITY_ICON.dataset,
+  host: ENTITY_ICON.host,
+  system: ENTITY_ICON.diary,
+};
 
 export interface SubjectItem {
   label: string;

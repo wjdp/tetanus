@@ -35,5 +35,9 @@ describe("AppCommandPalette", () => {
       expect(document.body.textContent).toContain("mars · tank/media/photos"),
     );
     expect(document.body.textContent).toContain("Datasets");
+    const option = [...document.body.querySelectorAll('[role="option"]')].find(
+      (item) => item.textContent?.includes("tank/media/photos"),
+    );
+    expect(option?.innerHTML).toContain("folder-tree");
   });
 });

@@ -147,8 +147,12 @@ const subjectLink = (entry: TimelineEntry) => {
               <NuxtLink
                 v-if="entry.subjectId !== null && subjectLink(entry)"
                 :to="subjectLink(entry) ?? undefined"
-                class="text-muted hover:text-primary"
+                class="text-muted hover:text-primary inline-flex items-center gap-1"
               >
+                <UIcon
+                  :name="DIARY_SUBJECT_ICON[entry.subjectType]"
+                  class="size-3.5"
+                />
                 {{ subjectLabel(entry.subjectType, entry.subjectId) }}
               </NuxtLink>
               <span v-else class="text-muted">{{ entry.subjectType }}</span>

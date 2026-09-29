@@ -60,6 +60,7 @@ describe("DiaryTimeline", () => {
     const headings = timeline.findAll("h3").map((heading) => heading.text());
     expect(headings).toEqual(["2026-09-28", "2026-09-27"]);
     expect(timeline.find('a[href="/disks/4"]').text()).toBe("disk K2");
+    expect(timeline.find('a[href="/disks/4"]').html()).toContain("hard-drive");
     expect(timeline.find('a[href="/zfs/7"]').exists()).toBe(true);
     expect(timeline.find('a[href="/settings/hosts"]').exists()).toBe(true);
     expect(timeline.find('a[href="/datasets/22"]').text()).toBe("dataset 22");

@@ -46,6 +46,7 @@ describe("poolSearchEntry", () => {
 
     expect(entry.label).toBe("tank · Mars NAS");
     expect(entry.to).toBe("/zfs/7");
+    expect(entry.icon).toBe("i-lucide-database");
   });
 });
 

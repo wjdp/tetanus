@@ -73,7 +73,11 @@ const subjectLabel = (subjectType: DiarySubjectType, id: number) => {
 
 const subjectItems = [
   { label: "All subjects", value: ALL },
-  ...DIARY_SUBJECT_TYPES.map((value) => ({ label: value, value })),
+  ...DIARY_SUBJECT_TYPES.map((value) => ({
+    label: value,
+    value,
+    icon: DIARY_SUBJECT_ICON[value],
+  })),
 ];
 const kindItems = [
   { label: "All kinds", value: ALL },

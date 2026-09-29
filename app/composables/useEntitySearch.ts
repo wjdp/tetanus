@@ -1,3 +1,5 @@
+import { ENTITY_ICON } from "~/utils/vocabulary";
+
 export interface EntitySearchEntry {
   id: string;
   label: string;
@@ -26,7 +28,7 @@ export function diskSearchEntry(disk: SearchableDisk): EntitySearchEntry {
     id: `disk-${disk.id}`,
     label:
       joinLabel([disk.alias, disk.model, disk.serial]) || `Disk ${disk.id}`,
-    icon: "i-lucide-hard-drive",
+    icon: ENTITY_ICON.disk,
     to: `/disks/${disk.id}`,
   };
 }
@@ -35,7 +37,7 @@ export function poolSearchEntry(pool: SearchablePool): EntitySearchEntry {
   return {
     id: `pool-${pool.id}`,
     label: joinLabel([pool.name, pool.host.displayName || pool.host.name]),
-    icon: "i-lucide-database",
+    icon: ENTITY_ICON.pool,
     to: `/zfs/${pool.id}`,
   };
 }
