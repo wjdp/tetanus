@@ -22,6 +22,9 @@ const disk = (overrides: Record<string, unknown>) => ({
   inventory: {},
   keys: [],
   membership: null,
+  usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
+  purpose: null,
+  purposeInferred: false,
   ...overrides,
 });
 

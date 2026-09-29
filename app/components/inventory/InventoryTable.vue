@@ -113,6 +113,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
       >
         {{ row.original.purpose }}
       </span>
+      <span v-else class="text-dimmed">—</span>
     </template>
 
     <template #usage-cell="{ row }">
