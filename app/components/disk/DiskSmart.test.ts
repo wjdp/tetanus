@@ -5,13 +5,13 @@ import DiskSmart from "./DiskSmart.vue";
 
 const at = "2026-09-20T12:00:00.000Z";
 
-function smartOverview(importedUntil: string | null) {
+function smartOverview(importedUntil: string | null, deviceStatus = "passed") {
   return {
     reading: {
       id: 1,
       takenAt: at,
       devicePath: "/dev/sdb",
-      deviceStatus: "passed",
+      deviceStatus,
       source: "collector",
     },
     attributes: [],
@@ -25,6 +25,8 @@ registerEndpoint("/api/disks/21/smart", () =>
   smartOverview("2026-09-09T00:00:00.000Z"),
 );
 registerEndpoint("/api/disks/22/smart", () => smartOverview(null));
+registerEndpoint("/api/disks/23/smart", () => smartOverview(null, "unknown"));
+registerEndpoint("/api/disks/24/smart", () => smartOverview(null, "failed"));
 
 const note = '[data-testid="imported-note"]';
 
@@ -47,4 +49,22 @@ describe("DiskSmart", () => {
     expect(component.text()).toContain("read 2026-09-20");
     expect(component.find(note).exists()).toBe(false);
   });
+
+  it.each([
+    [22, "passed", "text-default"],
+    [23, "unknown", "text-default"],
+    [24, "failed", "text-error"],
+  ])(
+    "badges disk %i as %s in %s, leaving green to the nameplate",
+    async (diskId, status, textClass) => {
+      const component = await mountSuspended(DiskSmart, {
+        props: { diskId, protocol: "ata" },
+      });
+
+      const badge = component.get('[data-testid="smart-status"]');
+      expect(badge.text()).toBe(status);
+      expect(badge.classes()).toContain(textClass);
+      expect(badge.classes()).not.toContain("text-success");
+    },
+  );
 });

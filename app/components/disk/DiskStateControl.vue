@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { STATE_OVERRIDES, type StateOverride } from "#shared/disk";
-import { usageColour, usageDetail } from "#shared/usage";
+import { usageDetail } from "#shared/usage";
+import { usageColour } from "~/utils/vocabulary";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{ disk: DiskDetail }>();

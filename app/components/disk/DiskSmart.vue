@@ -4,6 +4,7 @@ import {
   SMART_HISTORY_RANGES,
   type SmartHistoryRange,
 } from "#shared/schemas/smart";
+import { DEVICE_STATUS_VOCABULARY } from "~/utils/vocabulary";
 import { countByStatus } from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
@@ -32,6 +33,12 @@ const {
 const attributes = computed(() => smart.value?.attributes ?? []);
 const counts = computed(() => countByStatus(attributes.value));
 const deviceStatus = computed(() => smart.value?.reading?.deviceStatus ?? "unknown");
+
+const statusBadgeColour = computed(() =>
+  deviceStatus.value === "passed"
+    ? "neutral"
+    : DEVICE_STATUS_VOCABULARY[deviceStatus.value].colour,
+);
 
 const faultCount = computed(() => counts.value.failed + counts.value.warning);
 
@@ -115,9 +122,10 @@ const temperatureSeries = computed(() => [
     <template v-else>
       <div class="flex flex-wrap items-center gap-2 text-sm">
         <UBadge
-          :color="deviceStatusColour(deviceStatus)"
+          :color="statusBadgeColour"
           variant="subtle"
           :label="deviceStatus"
+          data-testid="smart-status"
         />
         <span v-if="reasonSummary" class="text-default">
           {{ reasonSummary }} {{ faultCount === 1 ? "attribute" : "attributes" }}
