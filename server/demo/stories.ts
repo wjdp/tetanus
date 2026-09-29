@@ -135,6 +135,8 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
 
   // Story 2: A7 reallocations, 0 before the climb, 24 at the anchor, then one per 4 days.
   const A7_REALLOCATED_AT_ANCHOR = 24;
+  /** The default SMART policy fails Reallocated_Sector_Ct above 16 (observed-threshold table). */
+  const A7_FAILS_AT_REALLOCATED = 17;
   function a7Reallocated(t: Date): number {
     if (ms(t) < ms(timeline.a7ClimbFrom)) return 0;
     if (ms(t) <= ms(timeline.anchor)) {
@@ -767,14 +769,18 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
       HostName,
       DatasetModel[],
     ][]) {
+      const byName = new Map(
+        datasets.map((dataset) => [dataset.name, dataset]),
+      );
       for (const dataset of datasets) {
         if (!dataset.name.includes("/") || dataset.replicaOf) continue;
+        const parent = byName.get(dataset.name.replace(/\/[^/]+$/, ""));
         const options = [
           dataset.volsize !== null && `-V ${dataset.volsize}`,
           dataset.recordsize !== null &&
             dataset.recordsize !== 128 * 1024 &&
             `-o recordsize=${dataset.recordsize / (1024 * 1024)}M`,
-          dataset.compression !== "lz4" &&
+          dataset.compression !== parent?.compression &&
             `-o compression=${dataset.compression}`,
           dataset.mountpoint === "none" && "-o mountpoint=none",
         ].filter(Boolean);
@@ -879,12 +885,15 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
     zpoolEvents,
     poolHistory,
     zfsInstants,
-    seeds: createSeeds(timeline, a7FirstReallocationAt()),
+    seeds: createSeeds(
+      timeline,
+      a7ReallocatedReachesAt(A7_FAILS_AT_REALLOCATED),
+    ),
   };
 
-  function a7FirstReallocationAt(): Date {
+  function a7ReallocatedReachesAt(count: number): Date {
     const span = ms(timeline.anchor) - ms(timeline.a7ClimbFrom);
-    const progress = (1 / A7_REALLOCATED_AT_ANCHOR) ** (1 / 1.4);
+    const progress = (count / A7_REALLOCATED_AT_ANCHOR) ** (1 / 1.4);
     return new Date(Math.ceil(ms(timeline.a7ClimbFrom) + progress * span));
   }
 }
@@ -901,6 +910,8 @@ export interface Seeds {
 }
 
 function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
+  // V2's reallocations cross the policy threshold days before smartctl's own verdict.
+  const v2FailedAt = addMs(timeline.v2DegradingFrom, 3 * DAY_MS);
   const days = (count: number, from = timeline.anchor) =>
     addMs(from, count * DAY_MS);
   const hours = (count: number, from: Date) => addMs(from, count * HOUR_MS);
@@ -1092,7 +1103,7 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
         subject: disk("A7"),
         eventType: "attribute-status-changed",
         value: "5",
-        detail: "Reallocated_Sector_Ct failed (1)",
+        detail: "Reallocated Sectors Count failed (17)",
         at: a7FailedAt,
       },
       {
@@ -1100,8 +1111,8 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
         subject: disk("V2"),
         eventType: "smart-status-changed",
         value: "failed",
-        detail: "SMART failed (was warning)",
-        at: timeline.v2SmartFailedAt,
+        detail: "SMART failed (was passed)",
+        at: v2FailedAt,
       },
       {
         rule: "pool-degraded",
@@ -1124,7 +1135,7 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
         subject: disk("V5"),
         eventType: "state-changed",
         value: "missing",
-        detail: "missing (was in-use)",
+        detail: "missing (was spare)",
         at: hours(2, timeline.v5PulledAt),
       },
     ],

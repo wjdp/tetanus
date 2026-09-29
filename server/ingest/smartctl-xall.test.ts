@@ -62,6 +62,25 @@ describe("smartctl-xall parser", () => {
     expect(data.standby).toBe(false);
   });
 
+  it("reads the extended (GP) self-test log smartctl 7.5 -x prints", () => {
+    const body = readFixture("mars/smartctl/xall-sdd-auto.json");
+    const { data } = parse(body, {});
+    expect(data.selfTests?.slice(0, 2)).toEqual([
+      {
+        type: "Short offline",
+        status: "Completed without error",
+        passed: true,
+        lifetimeHours: 0,
+      },
+      {
+        type: "Extended offline",
+        status: "Aborted by host",
+        passed: false,
+        lifetimeHours: 0,
+      },
+    ]);
+  });
+
   it("parses an NVMe drive", () => {
     const body = readFixture("mars/smartctl/xall-nvme0.json");
     const exitStatus = readFixtureExit("mars/smartctl/xall-nvme0.json");

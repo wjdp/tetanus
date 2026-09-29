@@ -183,8 +183,10 @@ function extractScsi(json: Json): ScsiInfo | undefined {
 function extractSelfTests(json: Json): SelfTestEntry[] | undefined {
   const entries: SelfTestEntry[] = [];
 
+  // `-x` reads the GP log (`extended`) and falls back to the SMART log (`standard`).
   const ataLog = json.ata_smart_self_test_log as Json | undefined;
-  const ataTable = (ataLog?.standard as Json | undefined)?.table;
+  const ataTable = ((ataLog?.extended ?? ataLog?.standard) as Json | undefined)
+    ?.table;
   if (Array.isArray(ataTable)) {
     for (const entry of ataTable) {
       const row = entry as Json;

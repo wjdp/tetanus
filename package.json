@@ -16,6 +16,8 @@
     "test:host": "bash host/test/run.sh",
     "db:migrate": "tsx server/database/migrate-cli.ts",
     "db:studio": "drizzle-kit studio",
+    "demo:seed": "tsx --tsconfig .nuxt/tsconfig.server.json server/demo/cli.ts seed",
+    "demo:tick": "tsx --tsconfig .nuxt/tsconfig.server.json server/demo/cli.ts tick",
     "build:demo": "pnpm demo:migrations && TETANUS_TARGET=cloudflare nuxt build",
     "demo:migrations": "tsx deploy/cloudflare/bundleMigrations.ts",
     "demo:typecheck": "pnpm demo:migrations && tsc -p deploy/cloudflare",

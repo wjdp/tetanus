@@ -76,12 +76,14 @@ function renderScan(host: HostModel, disks: DiskModel[]): string {
 /**
  * The SMART and block-device sources (`versions`, `vdev-id-conf`, `lsblk`, `udev`,
  * `smartctl-scan`, `smartctl-xall`) for `host` at `t`, in the collector's order and
- * with the `meta` it sends (see `SOURCE_META`).
+ * with the `meta` it sends (see `SOURCE_META`). `xallFor` limits which disks get a
+ * `smartctl-xall` post, for replay instants that only need identity and presence.
  */
 export function renderSmart(
   world: DemoWorld,
   host: HostModel,
   t: Date,
+  { xallFor = () => true }: { xallFor?: (disk: DiskModel) => boolean } = {},
 ): HostPayload[] {
   const { stories, fleet } = world;
   const hostDisks = fleet.disks.filter((disk) => disk.host === host.name);
@@ -116,7 +118,7 @@ export function renderSmart(
       }),
     ),
     { source: "smartctl-scan", meta: {}, body: renderScan(host, present) },
-    ...present.map((disk): HostPayload => {
+    ...present.filter(xallFor).map((disk): HostPayload => {
       const { body, exitStatus } = renderXall(stories, host, disk, t);
       return {
         source: "smartctl-xall",

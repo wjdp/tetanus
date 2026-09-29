@@ -23,11 +23,8 @@ const SHORT_TEST = { weekday: 3, hour: 2 } as const;
 const LONG_TEST = { dayOfMonth: 15, hour: 3 } as const;
 const NVME_SHORT_TEST_MINUTES = 2;
 
-/**
- * smartctl 7.5 `-x` prints the GP (`extended`) self-test log, but the parser reads only
- * `standard.table`; emitting `standard` keeps the demo's self-test history visible.
- */
-const SELF_TEST_LOG_KEY = "standard";
+/** smartctl `-x` prints the GP (`extended`) self-test log, as in the mars fixtures. */
+const SELF_TEST_LOG_KEY = "extended";
 
 const EXIT_BITS = {
   diskFailing: 1 << 3,

@@ -1075,6 +1075,7 @@ function atlasDatasets(): DatasetModel[] {
       name: "scratch",
       createdAt: SCRATCH_CREATED,
       referenced: [96 * KiB, 96 * KiB],
+      compression: "off",
     }),
     dataset({
       name: "scratch/downloads",
@@ -1100,6 +1101,7 @@ function styxDatasets(): DatasetModel[] {
       name,
       createdAt: vaultCreated,
       referenced: [200 * KiB, 200 * KiB],
+      compression: "zstd",
       ...(mountpoint !== undefined && { mountpoint }),
     });
   const sources = new Map(
