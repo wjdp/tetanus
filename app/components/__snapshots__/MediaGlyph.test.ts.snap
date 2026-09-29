@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MediaGlyph > draws the hdd platter without the rust track 1`] = `
+"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-media="hdd">
+  <circle cx="12" cy="12" r="9"></circle>
+  <circle cx="12" cy="12" r="2.5"></circle>
+</svg>"
+`;
+
+exports[`MediaGlyph > draws the ssd microchip at 16 px 1`] = `"<span class="iconify i-lucide:microchip shrink-0" aria-hidden="true" style="width: 16px; height: 16px;" data-media="ssd"></span>"`;
