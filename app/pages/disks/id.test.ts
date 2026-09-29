@@ -349,6 +349,12 @@ describe("disk page", () => {
     expect(selfTests.text()).toContain("123456");
 
     expect(text).toContain("raidz2-0");
+    const vdevTypeIcon = page.get("[data-vdev-type]");
+    expect(vdevTypeIcon.attributes("data-vdev-type")).toBe("raidz2");
+    expect(vdevTypeIcon.html()).toContain("i-lucide:layers");
+    const membershipState = page.get('[data-testid="membership-state"]');
+    expect(membershipState.text()).toBe("ONLINE");
+    expect(membershipState.classes()).toContain("text-success");
     expect(text).toContain("K2-part1");
     expect(page.find('a[href="/zfs/3"]').text()).toBe("tank");
     expect(text).toContain("warning (was passed)");

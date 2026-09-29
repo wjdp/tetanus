@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { zfsStateColour } from "~/utils/vocabulary";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{ membership: DiskDetail["membership"] }>();
@@ -7,8 +8,10 @@ const leafName = computed(
   () => props.membership?.vdevName.split("/").at(-1) ?? "",
 );
 
+const isTopLevelDisk = computed(() => props.membership?.groupType === "root");
+
 const groupName = computed(() =>
-  props.membership?.groupType === "root" ? null : props.membership?.groupName,
+  isTopLevelDisk.value ? null : props.membership?.groupName,
 );
 </script>
 
@@ -30,9 +33,11 @@ const groupName = computed(() =>
         </ULink>
         <template v-if="groupName">
           <UIcon name="i-lucide-chevron-right" class="text-dimmed size-4" />
+          <VdevTypeIcon v-if="membership.groupType" :type="membership.groupType" />
           <span class="text-default">{{ groupName }}</span>
         </template>
         <UIcon name="i-lucide-chevron-right" class="text-dimmed size-4" />
+        <VdevTypeIcon v-if="isTopLevelDisk" type="disk" />
         <span class="text-default font-mono text-xs" :title="membership.vdevName">
           {{ leafName }}
         </span>
@@ -41,6 +46,7 @@ const groupName = computed(() =>
         :color="zfsStateColour(membership.vdevState)"
         variant="subtle"
         :label="membership.vdevState"
+        data-testid="membership-state"
       />
     </div>
   </section>
