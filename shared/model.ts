@@ -57,3 +57,13 @@ export function bareModel(model: string | null | undefined): string | null {
   const withoutVariant = withoutCapacity.replace(MODEL_CODE_WITH_VARIANT, "$1");
   return withoutVariant || null;
 }
+
+export function resolveModelShort(
+  inventory: { modelShort?: string | null } | null,
+  specs: { line: string | null } | null,
+  model: string | null,
+): string | null {
+  return (
+    inventory?.modelShort?.trim() || specs?.line || bareModel(model) || null
+  );
+}

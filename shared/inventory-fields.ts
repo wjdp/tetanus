@@ -5,6 +5,7 @@ import type { Vendor } from "./vendor";
 
 export const INVENTORY_FIELDS = [
   { key: "purpose", label: "Purpose", type: "enum", values: PURPOSES },
+  { key: "modelShort", label: "Short model", type: "text" },
   { key: "purchaseDate", label: "Purchased", type: "date" },
   { key: "purchasePrice", label: "Price", type: "money" },
   { key: "supplier", label: "Supplier", type: "text" },

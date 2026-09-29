@@ -9,6 +9,7 @@ describe("inventory draft", () => {
   it("fills every field, null when unset", () => {
     expect(draftFromInventory({ supplier: "eBay" })).toEqual({
       purpose: null,
+      modelShort: null,
       purchaseDate: null,
       purchasePrice: null,
       supplier: "eBay",
@@ -23,6 +24,7 @@ describe("inventory draft", () => {
     expect(
       inventoryFromDraft({
         purpose: "",
+        modelShort: "Exos X18",
         purchaseDate: "",
         purchasePrice: "129.99",
         supplier: "  ",
@@ -33,6 +35,7 @@ describe("inventory draft", () => {
       }),
     ).toEqual({
       purpose: null,
+      modelShort: "Exos X18",
       purchaseDate: null,
       purchasePrice: 129.99,
       supplier: null,

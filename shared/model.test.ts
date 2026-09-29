@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { bareModel, displayModel, modelWithoutVendor } from "./model";
+import {
+  bareModel,
+  displayModel,
+  modelWithoutVendor,
+  resolveModelShort,
+} from "./model";
 
 describe("bareModel", () => {
   it.each([
@@ -80,5 +85,39 @@ describe("displayModel", () => {
     expect(displayModel(null)).toBeNull();
     expect(displayModel("  ")).toBeNull();
     expect(displayModel(undefined, "seagate")).toBeNull();
+  });
+});
+
+describe("resolveModelShort", () => {
+  const model = "ST18000NM000J-2TV103";
+
+  it("prefers the inventory override", () => {
+    expect(
+      resolveModelShort(
+        { modelShort: "Big Exos" },
+        { line: "Exos X18" },
+        model,
+      ),
+    ).toBe("Big Exos");
+  });
+
+  it("falls back to the drive-db line", () => {
+    expect(
+      resolveModelShort({ modelShort: null }, { line: "Exos X18" }, model),
+    ).toBe("Exos X18");
+    expect(
+      resolveModelShort({ modelShort: "  " }, { line: "Exos X18" }, model),
+    ).toBe("Exos X18");
+  });
+
+  it("falls back to the bare model", () => {
+    expect(resolveModelShort(null, { line: null }, model)).toBe(
+      "ST18000NM000J",
+    );
+    expect(resolveModelShort({}, null, model)).toBe("ST18000NM000J");
+  });
+
+  it("is null without a model", () => {
+    expect(resolveModelShort(null, null, null)).toBeNull();
   });
 });
