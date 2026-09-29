@@ -2,10 +2,12 @@
 import { interfaceLabel } from "#shared/hardware";
 import { displayModel } from "#shared/model";
 import { usageColour, usageShort } from "#shared/usage";
+import { DEVICE_STATUS_VOCABULARY, PURPOSE_BADGE } from "~/utils/vocabulary";
 import { SORT_FIELDS, sortDisks } from "./inventorySort";
 import {
   type InventoryDisk,
   type SortingState,
+  temperatureClass,
   warrantyClass,
   warrantyLabel,
 } from "./types";
@@ -80,21 +82,21 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
               </span>
             </div>
             <div class="flex shrink-0 flex-col items-end gap-1">
-              <UBadge
-                :color="deviceStatusColour(disk.latestStatus)"
-                variant="subtle"
-                size="sm"
+              <span
+                class="text-muted flex items-center gap-1.5 text-sm"
+                :title="DEVICE_STATUS_VOCABULARY[disk.latestStatus].label"
               >
+                <TopologyStatusDot
+                  :colour="DEVICE_STATUS_VOCABULARY[disk.latestStatus].colour"
+                  :shape="DEVICE_STATUS_VOCABULARY[disk.latestStatus].shape"
+                />
                 {{ disk.latestStatus }}
-              </UBadge>
-              <UBadge
-                :color="diskStateColour(disk.state)"
-                variant="subtle"
+              </span>
+              <LifecycleBadge
+                :state="disk.state"
+                :overridden="disk.stateOverride !== null"
                 size="sm"
-                :title="disk.stateOverride ? 'State set by hand' : undefined"
-              >
-                {{ disk.state }}{{ disk.stateOverride ? " *" : "" }}
-              </UBadge>
+              />
             </div>
           </div>
 
@@ -112,18 +114,20 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
               <dd v-if="disk.membership" class="truncate">
                 {{ disk.membership.poolName }}
               </dd>
-              <dd
-                v-else-if="disk.purpose"
-                class="truncate"
-                :class="disk.purposeInferred ? 'text-dimmed italic' : 'text-muted'"
-              >
-                {{ disk.purpose }}
+              <dd v-else-if="disk.purpose">
+                <UBadge
+                  v-bind="PURPOSE_BADGE[disk.purpose]"
+                  :class="{ italic: disk.purposeInferred }"
+                  :title="disk.purposeInferred ? 'Purpose inferred from usage' : undefined"
+                />
               </dd>
               <dd v-else class="text-dimmed">—</dd>
             </div>
             <div class="flex flex-col">
               <dt class="text-dimmed text-xs">Temp</dt>
-              <dd class="tabular-nums">{{ formatCelsius(disk.latestTemp) }}</dd>
+              <dd class="tabular-nums" :class="temperatureClass(disk)">
+                {{ formatCelsius(disk.latestTemp) }}
+              </dd>
             </div>
             <div class="flex flex-col">
               <dt class="text-dimmed text-xs">Power-on</dt>
@@ -138,7 +142,7 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
             <div class="flex flex-col">
               <dt class="text-dimmed text-xs">Media</dt>
               <dd v-if="mediaLabel(disk.media, disk.rotationRate)" class="flex items-center gap-1">
-                <UIcon :name="mediaIcon(disk.media) ?? ''" class="text-muted size-4" />
+                <MediaGlyph :media="disk.media" :size="16" class="text-muted" />
                 {{ mediaLabel(disk.media, disk.rotationRate) }}
               </dd>
               <dd v-else class="text-dimmed">—</dd>

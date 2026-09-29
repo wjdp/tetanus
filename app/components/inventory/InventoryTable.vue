@@ -3,10 +3,12 @@ import type { TableColumn } from "@nuxt/ui";
 import { interfaceLabel, sectorFormat } from "#shared/hardware";
 import { displayModel } from "#shared/model";
 import { usageColour, usageShort } from "#shared/usage";
+import { DEVICE_STATUS_VOCABULARY, PURPOSE_BADGE } from "~/utils/vocabulary";
 import { SORT_FIELDS } from "./inventorySort";
 import {
   type InventoryDisk,
   type SortingState,
+  temperatureClass,
   warrantyClass,
   warrantyLabel,
 } from "./types";
@@ -117,7 +119,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
         v-if="mediaLabel(row.original.media, row.original.rotationRate)"
         class="flex items-center gap-1.5"
       >
-        <UIcon :name="mediaIcon(row.original.media) ?? ''" class="text-muted size-4" />
+        <MediaGlyph :media="row.original.media" :size="16" class="text-muted" />
         {{ mediaLabel(row.original.media, row.original.rotationRate) }}
       </span>
       <span v-else class="text-dimmed">—</span>
@@ -154,13 +156,12 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
       >
         {{ row.original.membership.poolName }}
       </NuxtLink>
-      <span
+      <UBadge
         v-else-if="row.original.purpose"
-        :class="row.original.purposeInferred ? 'text-dimmed italic' : 'text-muted'"
+        v-bind="PURPOSE_BADGE[row.original.purpose]"
+        :class="{ italic: row.original.purposeInferred }"
         :title="row.original.purposeInferred ? 'Purpose inferred from usage' : undefined"
-      >
-        {{ row.original.purpose }}
-      </span>
+      />
       <span v-else class="text-dimmed">—</span>
     </template>
 
@@ -176,36 +177,35 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
     </template>
 
     <template #state-cell="{ row }">
-      <div class="flex items-center gap-1.5">
-        <UBadge
-          :color="diskStateColour(row.original.state)"
-          variant="subtle"
-          size="sm"
-        >
-          {{ row.original.state }}
-        </UBadge>
-        <span
-          v-if="row.original.stateOverride"
-          class="text-dimmed text-xs"
-          title="State set by hand"
-        >
-          override
-        </span>
-      </div>
+      <LifecycleBadge
+        :state="row.original.state"
+        :overridden="row.original.stateOverride !== null"
+        size="sm"
+      />
     </template>
 
     <template #status-cell="{ row }">
-      <UBadge
-        :color="deviceStatusColour(row.original.latestStatus)"
-        variant="subtle"
-        size="sm"
+      <span
+        class="text-muted flex items-center gap-1.5"
+        :title="DEVICE_STATUS_VOCABULARY[row.original.latestStatus].label"
       >
+        <TopologyStatusDot
+          :colour="DEVICE_STATUS_VOCABULARY[row.original.latestStatus].colour"
+          :shape="DEVICE_STATUS_VOCABULARY[row.original.latestStatus].shape"
+          class="size-1.5!"
+        />
         {{ row.original.latestStatus }}
-      </UBadge>
+      </span>
     </template>
 
     <template #temp-cell="{ row }">
-      <span class="tabular-nums">{{ formatCelsius(row.original.latestTemp) }}</span>
+      <span
+        class="tabular-nums"
+        :class="temperatureClass(row.original)"
+        data-testid="inventory-temp"
+      >
+        {{ formatCelsius(row.original.latestTemp) }}
+      </span>
     </template>
 
     <template #powerOn-cell="{ row }">

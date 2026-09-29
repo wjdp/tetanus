@@ -19,6 +19,7 @@ const disk = (overrides: Record<string, unknown>) => ({
   stateOverride: null,
   latestStatus: "passed",
   latestTemp: 34,
+  tempThresholds: { warning: 45, error: 55 },
   latestPowerOnHours: 20_000,
   ageDays: 400,
   warrantyDaysLeft: 500,
@@ -68,7 +69,9 @@ describe("disks inventory page", () => {
 
     expect(aliasColumn(page)).toEqual(["K2", "K10", "—"]);
     expect(page.get('[data-testid="disk-count"]').text()).toBe("· 3");
-    expect(page.text()).toContain("override");
+    expect(page.get('[data-state="spare"]').attributes("title")).toBe(
+      "set by hand",
+    );
   });
 
   it("filters by text search and updates the count", async () => {
@@ -96,6 +99,19 @@ describe("disks inventory page", () => {
     const expired = page.get('[data-warranty-days="-10"]');
     expect(expired.text()).toBe("expired");
     expect(expired.classes()).not.toContain("text-error");
+  });
+
+  it("renders SMART dots with shape and hot temperatures in colour", async () => {
+    disks = [
+      disk({ id: 1, alias: "K1", latestStatus: "unknown", latestTemp: 45 }),
+    ];
+    const page = await mountSuspended(DisksPage);
+    const row = page.get("tbody tr");
+
+    expect(row.get("[data-shape]").attributes("data-shape")).toBe("hollow");
+    expect(row.get('[data-testid="inventory-temp"]').classes()).toContain(
+      "text-warning",
+    );
   });
 
   it("shows the pool and offers distinct pools to filter by", async () => {
@@ -167,6 +183,8 @@ describe("disks inventory page", () => {
       expect(ssd).toContain("SSD");
       expect(ssd).toContain("NVMe");
       expect(ssd).toContain("990 PRO");
+      expect(page.find('tbody tr [data-media="hdd"]').exists()).toBe(true);
+      expect(page.find('tbody tr [data-media="ssd"]').exists()).toBe(true);
     });
 
     it("hides the sector column by default", async () => {

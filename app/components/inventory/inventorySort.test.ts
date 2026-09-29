@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TEMPERATURE_DEFAULTS } from "#shared/temperature";
 import { UNKNOWN_USAGE } from "#shared/usage";
 import { SORT_FIELDS, sortDisks } from "./inventorySort";
 import type { InventoryDisk } from "./types";
@@ -17,6 +18,7 @@ const disk = (
   stateOverride: null,
   latestStatus: "passed",
   latestTemp: null,
+  tempThresholds: TEMPERATURE_DEFAULTS.hdd,
   latestPowerOnHours: null,
   ageDays: null,
   warrantyDaysLeft: null,
