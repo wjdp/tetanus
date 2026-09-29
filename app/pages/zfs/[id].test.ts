@@ -66,6 +66,10 @@ registerEndpoint("/api/pools/7", () => ({
         checksumErrors: 2,
         disk: { id: 3, alias: "K1", state: "in-use", latestStatus: "passed" },
       }),
+      vdev("/dev/disk/by-vdev/K2-part1", "disk", [], {
+        id: 99,
+        disk: { id: 4, alias: "K2", state: "in-use", latestStatus: "unknown" },
+      }),
     ]),
   ]),
   readings: [],
@@ -137,6 +141,31 @@ describe("pool page", () => {
     expect(tree).toContain("raidz1-0");
     expect(tree).toContain("K1");
     expect(page.find('a[href="/disks/3"]').exists()).toBe(true);
+  });
+
+  it("colours ONLINE green and marks vdev types and SMART dots", async () => {
+    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const tree = page.get('[data-testid="vdev-tree"]');
+
+    for (const state of tree.findAll('[data-testid="vdev-state"]')) {
+      expect(state.classes()).toContain("text-success");
+    }
+    expect(
+      tree
+        .findAll("[data-vdev-type]")
+        .map((icon) => icon.attributes("data-vdev-type")),
+    ).toEqual(["raidz1"]);
+
+    const dots = tree.findAll("[data-shape]");
+    expect(
+      dots.map((dot) => [
+        dot.attributes("data-colour"),
+        dot.attributes("data-shape"),
+      ]),
+    ).toEqual([
+      ["success", "filled"],
+      ["neutral", "hollow"],
+    ]);
   });
 
   it("loads the dataset tree when its tab is first shown", async () => {
