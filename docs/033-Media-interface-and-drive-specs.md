@@ -301,6 +301,36 @@ missing columns as unknown. Bump collector to 0.3.0. Not required for anything a
   of a confident term: `SkyHawk AI`, `IronWolf 125/525`, `Enterprise Capacity V5`, WD
   white-label lines. `warrantyDefault` clamps 29 Feb to 28 Feb.
 
+### T1
+
+- mars replay (lsblk + every `-auto` smartctl + `xall-nvme0`) gives 15 × sata/sas,
+  4 × sata/sata, 1 × nvme/nvme as expected. `xall-nvme0.json` has no `-auto` twin;
+  it is already auto-detected (`device.type: nvme`).
+- `scrutiny/smart-scsi.json` has no `scsi_transport_protocol`, so by the rules it
+  classifies `interface: unknown`. Added `test/fixtures/synthetic-smartctl/xall-sas.json`
+  (that fixture plus `SAS (SPL-4)`) for the sas path. The forced `-d scsi` mars fixtures
+  do carry `SAS (SPL-4)`: the HBA's link, not the drive, which is why they must not be sent.
+- No mars HDD advertises TRIM; the TRIM-on-HDD tell is tested with a patched identity.
+  Only `sdd` (`Western Digital Red (CMR)`) has a recording suffix; every other hdd is
+  `unknown` until the dataset (T3) or the override fills it.
+- `interface` beyond the spec: with no smartctl protocol, lsblk `tran` `sata`/`nvme` map
+  straight through (hint only); `sas`/`usb` stay `unknown` since the drive behind may be
+  SATA. smartctl's `unknown` media/interface is not written, so an lsblk hint survives.
+- `interfaceLabel` with an unknown interface falls back to the link label, else null.
+- `recordingTechInferred` lives in `hardware`; smartctl replaces `hardware` wholesale on
+  each observation and `refreshRecordingTech` re-adds the flag straight after. T3's
+  `specMismatch` will need the same treatment (or merge rather than replace).
+- drizzle-kit 0.31 needs a TTY for the rename prompt. Generated with `transport` still in
+  the schema, then prepended ``ALTER TABLE `Disk` RENAME COLUMN `transport` TO `link` ``
+  to the SQL and renamed the key in `0008_snapshot.json`; a second `generate` reports no
+  changes. `vendor` was added to the same migration by hand after it had been applied to
+  `dev.db`, so `dev.db` got a manual `ALTER TABLE Disk ADD vendor text`.
+- Inventory gate: `media` / `vendors` props on field entries, `isFieldVisible(field,
+  { media, vendor })`. Hidden fields keep their stored value.
+- Scrutiny importer sets `media` from rotation rate on created disks.
+- `test/api/host.e2e.test.ts` "does not serve ../package.json" times out; unrelated,
+  pre-existing in this tree.
+
 ## Decisions (2026-09-29)
 
 1. Columns for `media`, `interface`, `recordingTech`, block sizes, `trimSupported`; JSON
