@@ -45,3 +45,16 @@ body {
   background-color: var(--ui-bg);
   color: var(--ui-text);
 }
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="option"]:not([data-disabled]),
+  [role="menuitem"]:not([data-disabled]),
+  [role="menuitemcheckbox"]:not([data-disabled]),
+  [role="tab"]:not([data-disabled]),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+}

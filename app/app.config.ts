@@ -12,5 +12,11 @@ export default defineAppConfig({
       info: "sky",
       secondary: "stone",
     },
+    table: {
+      slots: {
+        tbody:
+          "[&>tr]:data-[selectable=true]:cursor-pointer [&>tr]:data-[selectable=true]:hover:bg-elevated",
+      },
+    },
   },
 });
