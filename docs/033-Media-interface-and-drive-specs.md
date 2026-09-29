@@ -349,6 +349,54 @@ missing columns as unknown. Bump collector to 0.3.0. Not required for anything a
 - Rail: `TopologyDisk` gains `media`; glyph carries a `title`. Pool tiles untouched.
 - Specs panel and `specMismatch` note are not part of T5a.
 
+### T3
+
+- `server/services/hardware.ts` `deriveHardware(previous, observation)`: one pure pass
+  computing specs, dataset fills, `specMismatch`, vendor, recording tech and the
+  `hardware` JSON. `observeDisk` takes a `derive(previous)` callback and spreads its
+  result into the same insert/update, so one write per observation. The post-write
+  `refreshRecordingTech` is gone from the smartctl path (kept for inventory patch; it
+  preserves `specMismatch`).
+- `hardware` is rebuilt as observed fields + fresh derived flags; when an observation
+  carries no hardware fields the previous observed ones are kept. Derived flags
+  (`recordingTechInferred`, `specMismatch`) are recomputed, never carried over.
+- Fill precedence: this observation → dataset → stored value (lsblk hints). The dataset
+  beats lsblk `rota`/`tran` hints since it is keyed by exact model. Mismatch is only
+  checked against values in this observation, so an earlier fill never reports as one.
+- Normalisation: form factor strips ` inches`/`"` and uppercases (`3.5 inches` ≡ `3.5`,
+  `m.2` ≡ `M.2`); a dataset `3.5`/`2.5` fills as `3.5 inches` to match smartctl. Dataset
+  interface lowercased. Line format: `rotationRate: observed 7200, dataset 5400`.
+- Vendor: smartctl path uses the observation's `wwn` key; falls back to the stored vendor
+  when there is no evidence. lsblk also supplies vendor as a hint (fills null only), so a
+  disk with no SMART yet has one. Scrutiny-created disks run the same `deriveHardware`.
+- `DiskSummary` (list and detail) gains `sectorFormat: SectorFormat | null` and
+  `interfaceLabel: string | null`; the new columns were already passed through, `specs`
+  included.
+- mars replay: 0 mismatches, 0 inferred, every hdd `cmr`, specs 13 local / 7 nasdisks.
+  NVMe form factor filled `M.2`.
+
+| Disk | model | media | interface/link | recording | vendor | specs |
+|---|---|---|---|---|---|---|
+| nvme0 | WDS250G3X0C-00SJG0 | ssd | nvme/nvme | — | western-digital | local |
+| sda, sdb | WDC WD120EMAZ-11BLFA0 | hdd | sata/sas | cmr | western-digital | local |
+| sdc | WDC WD120EDAZ-11F3RA0 | hdd | sata/sas | cmr | western-digital | local |
+| sdd | WDC WD120EMFZ-11A6JA0 | hdd | sata/sas | cmr | western-digital | local |
+| sde | WDC WD120EDBZ-11B1HA0 | hdd | sata/sas | cmr | western-digital | local |
+| sdf | ST12000NM000J-2TY103 | hdd | sata/sas | cmr | seagate | nasdisks |
+| sdg | TOSHIBA MG09ACA18TE | hdd | sata/sas | cmr | toshiba | nasdisks |
+| sdh, sdi | ST18000NM000J-2TV103 | hdd | sata/sas | cmr | seagate | nasdisks |
+| sdj, sdl | ST16000NM001G-2KK103 | hdd | sata/sas | cmr | seagate | nasdisks |
+| sdk | ST16000NM000J-2TW103 | hdd | sata/sas | cmr | seagate | nasdisks |
+| sdm | SAMSUNG MZ7KM480HMHQ-00005 | ssd | sata/sas | — | samsung | local |
+| sdn | SSDSC2KG480G8R | ssd | sata/sas | — | intel | local |
+| sdo | Samsung SSD 860 EVO 500GB | ssd | sata/sata | — | samsung | local |
+| sdp | INTEL SSDSC2BB480G6R | ssd | sata/sas | — | intel | local |
+| sdq | Samsung SSD 850 EVO 500GB | ssd | sata/sata | — | samsung | local |
+| sdr, sds | Samsung SSD 870 EVO 2TB | ssd | sata/sata | — | samsung | local |
+
+- T1 tests adjusted: sda now resolves `cmr` from the dataset; the TRIM-on-HDD test uses a
+  model the dataset misses, since sde's local row says cmr.
+
 ## Decisions (2026-09-29)
 
 1. Columns for `media`, `interface`, `recordingTech`, block sizes, `trimSupported`; JSON
