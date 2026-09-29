@@ -57,7 +57,8 @@ describe("useFaults", () => {
     await flushPromises();
 
     expect(component.text()).toContain("collector-silent:mars");
-    expect(component.text()).toContain("No data from mars for");
+    expect(component.text()).toContain('"host":"mars"');
+    expect(component.text()).toContain("No data for");
   });
 
   it("raises no fault when a group is fresh", async () => {
@@ -76,8 +77,9 @@ describe("useFaults", () => {
     await flushPromises();
 
     expect(component.text()).toContain("collector-incompatible:mars:0.2.0");
+    expect(component.text()).toContain('"host":"mars"');
     expect(component.text()).toContain(
-      "mars collector 0.2.0 is too old; tetanus needs 0.3.0 or later",
+      "Collector 0.2.0 is too old; 0.3.0 or later is needed",
     );
     expect(component.text()).toContain("/host/install.sh | sudo bash");
   });

@@ -47,8 +47,9 @@ export function useFaults() {
       ) {
         result.push({
           id: incompatibleId,
-          title: `${host.name} collector ${version} is too old; tetanus needs ${MIN_COLLECTOR_VERSION} or later`,
-          description: `Upgrade it on ${host.name}: ${upgradeCommand(serverUrl)}`,
+          host: host.name,
+          title: `Collector ${version} is too old; ${MIN_COLLECTOR_VERSION} or later is needed`,
+          command: upgradeCommand(serverUrl),
         });
       }
 
@@ -69,7 +70,8 @@ export function useFaults() {
 
       result.push({
         id,
-        title: `No data from ${host.name} for ${formatDuration(worstAgeMs)}`,
+        host: host.name,
+        title: `No data for ${formatDuration(worstAgeMs)}`,
       });
     }
     return result;

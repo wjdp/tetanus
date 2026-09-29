@@ -4,19 +4,8 @@ const props = defineProps<{
   label: string;
 }>();
 
-const toast = useToast();
-
-const copy = async () => {
-  try {
-    await navigator.clipboard.writeText(props.command);
-    toast.add({ title: `${props.label} copied`, color: "success" });
-  } catch {
-    toast.add({
-      title: `Could not copy the ${props.label.toLowerCase()}`,
-      color: "error",
-    });
-  }
-};
+const copyToClipboard = useCopyToClipboard();
+const copy = () => copyToClipboard(props.command, props.label);
 </script>
 
 <template>

@@ -2,16 +2,11 @@
 const { data: settings } = await useFetch("/api/settings");
 
 const demo = useRuntimeConfig().public.demo;
-const toast = useToast();
+const copyToClipboard = useCopyToClipboard();
 
-const copyEnrolToken = async () => {
+const copyEnrolToken = () => {
   if (!settings.value) return;
-  try {
-    await navigator.clipboard.writeText(settings.value.enrolToken);
-    toast.add({ title: "Enrol token copied", color: "success" });
-  } catch {
-    toast.add({ title: "Could not copy the enrol token", color: "error" });
-  }
+  return copyToClipboard(settings.value.enrolToken, "Enrol token");
 };
 </script>
 
