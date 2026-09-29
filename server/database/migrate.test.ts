@@ -31,7 +31,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 7;
+const MIGRATION_COUNT = 8;
 
 const openConnections: Database.Database[] = [];
 
