@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: in-progress
 ---
 
 # Home page redesign and status vocabulary rollout
@@ -8,7 +8,8 @@ status: todo
 Redesign of the Topology page and rollout of the
 [037 status and icon vocabulary](037-Status-and-icon-vocabulary.md) to every page that
 shows a status. Decisions taken 2026-09-29 in a review of the home page; 037 is the
-contract, this is the work.
+contract, this is the work. Two phases: the home page (§Home page, order steps 1 to 5)
+ships first; the rollout to the other pages (§Vocabulary rollout, steps 6 and 7) follows.
 
 ## Why
 
@@ -70,10 +71,34 @@ Three lines, `w-36` (9 rem), `h-20`:
 - Unlinked leaf (no disk): dashed border, path basename, no glyph, dimmed "unlinked".
 - Hover: `border-accented` and a 1 px lift (`-translate-y-px`), 150 ms.
 
+### Host-local disks
+
+Decided 2026-09-29: a disk physically present on a host renders under that host, not in
+the rail. boxy had two `dead` disks plugged in for a pre-RMA check and they sat in the
+rail as if nobody could see them.
+
+- **Live** = `present` (seen within `PRESENT_WINDOW_MS`, from `lastSeenAt`) and
+  `lastSeenHostId` set. State override is irrelevant: a `dead` disk plugged into boxy is
+  live. `listDisks` returns `present: boolean` so the client never re-derives the window.
+- Host section order: pools first, then one **Other disks** card (same border and padding
+  as a pool card, header "Other disks" with no state badge) holding one vdev-style row per
+  group: label column carries the lifecycle icon and label from 037 (`sys` badge group is
+  labelled "system"), tiles to the right. Group order: `system`, `spare`, `in-use`
+  ("in use, not in a pool"), `dead`, `retired`, `sold`. Tiles are the same `DiskTile`
+  fed a `TopologyDisk` (no leaf): dot = `railColour`, no vdev state line, no counters.
+- A host with no pools and no live disks keeps "No pools reported yet."; a host with
+  live disks and no pools shows only the Other disks card.
+- Rail keeps only disks nobody can see: `missing`, `removed`, `unseen`, then the
+  `History` disclosure for `dead` / `retired` / `sold` with no live sighting. Empty
+  text becomes "Every known disk is attached to a host."
+- `groupDisks.ts`: `hostDiskGroups(disks, hostId, inPool)` and `railGroups` filtering
+  on `!present`. `index.vue` passes each host its disks.
+
 ### Rail
 
 - Row: dot, media glyph, alias, `sys`/`other` badge, short model, capacity, host.
 - Group headers gain the lifecycle icon from 037.
+- Only non-present disks (§Host-local disks).
 - `Dead`, `Retired`, `Sold` collapse into one `History (n)` disclosure, closed by
   default, open state remembered in `localStorage` (`topology.historyOpen`).
 - Empty rail text unchanged.
@@ -129,18 +154,24 @@ per-status rules, and rule 2 gains "ONLINE is the other green".
 3. `Host.temperatureThresholds` migration, hosts patch route and settings inputs;
    `modelShort` inventory field and resolver; pools API and disks list fields.
 4. Tile, vdev row, pool card, rail, host strip. Check dark and light, phone width.
-5. Rollout to the other pages, one commit per row of the table.
-6. Docs 008 amendment.
+5. Host-local disks: Other disks card, rail filter, index wiring.
+6. Rollout to the other pages, one commit per row of the table. Later phase.
+7. Docs 008 amendment. Later phase.
+
+Steps 1 to 5 are being built by delegated agents from 2026-09-29; `statusColour.ts`
+and `mediaIcon` stay as thin wrappers over the vocabulary module until step 6 removes
+them, so the other pages keep working untouched.
 
 ## Tests
 
 - `vocabulary/*.test.ts`: every enum member has an entry (type-level) and the colour
   rules 037 calls out as changes (`ONLINE` success, `dead` neutral).
 - `groupDisks.test.ts`: history grouping, tile colour with hollow shape, vdev usage sums
-  for single-device groups.
+  for single-device groups, host disk groups and the rail `present` filter.
 - `DiskTile.test.ts` (new): three lines, temp colour by media, counters replace line 3,
   unlinked leaf.
-- `HostSection.test.ts` (new): summary strip counts and raw capacity.
+- `HostSection.test.ts` (new): summary strip counts and raw capacity; Other disks card
+  present, absent, and a pool-less host with live disks.
 - `shared/temperature.test.ts`: defaults, per-host override, blank falls back.
 - `hosts.e2e`: PATCH thresholds round-trips and validates ranges (warning < error).
 - `index.test.ts`: history disclosure closed by default and persisted.
