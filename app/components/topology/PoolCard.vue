@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { zfsStateColour } from "~/utils/statusColour";
-import { isScanActive, scanEndedAt, scanProgress } from "../pool/scan";
+import { capacityColour, zfsStateColour } from "~/utils/vocabulary";
+import { isScanActive, scanEndedAt } from "../pool/scan";
+import { activeScan } from "./activeScan";
 import { type TopologyPool, vdevGroups } from "./groupDisks";
-import { STATUS_TEXT_CLASS } from "./statusClasses";
 
 const props = defineProps<{ pool: TopologyPool; now: number }>();
 
 const groups = computed(() => vdevGroups(props.pool.vdevs));
-const activeScan = computed(() => {
-  const scan = props.pool.scan;
-  return scan && isScanActive(scan) ? scanProgress(scan, props.now) : null;
-});
+const scanRunning = computed(() => activeScan(props.pool.scan, props.now));
 const lastScan = computed(() => {
   const scan = props.pool.scan;
   if (!scan || isScanActive(scan)) return null;
@@ -20,9 +17,7 @@ const lastScan = computed(() => {
     errors: scan.errors,
   };
 });
-const capColour = computed(() =>
-  (props.pool.cap ?? 0) >= 90 ? "warning" : "neutral",
-);
+const capColour = computed(() => capacityColour(props.pool.cap));
 </script>
 
 <template>
@@ -40,18 +35,17 @@ const capColour = computed(() =>
       <UBadge :color="zfsStateColour(pool.state)" variant="subtle" size="sm">
         {{ pool.state }}
       </UBadge>
-      <span v-if="activeScan" class="text-info text-sm">
-        {{ activeScan.verb }} running {{ activeScan.percent }} %
-      </span>
       <span
-        v-else-if="lastScan"
+        v-if="lastScan"
         class="text-sm"
         :class="lastScan.errors > 0 ? 'text-warning' : 'text-muted'"
       >
         Last {{ lastScan.verb }} {{ formatDate(lastScan.endedAt) }} ·
         {{ lastScan.errors }} errors
       </span>
-      <span v-else class="text-dimmed text-sm">No scrub recorded</span>
+      <span v-else-if="!scanRunning" class="text-dimmed text-sm">
+        No scrub recorded
+      </span>
     </header>
 
     <div class="flex flex-col gap-1">
@@ -64,6 +58,15 @@ const capColour = computed(() =>
         {{ formatBytes(pool.allocBytes) }} of {{ formatBytes(pool.sizeBytes) }}
         · {{ pool.cap ?? "—" }} % · frag {{ pool.frag ?? "—" }} %
       </p>
+      <template v-if="scanRunning">
+        <UProgress
+          :model-value="scanRunning.percent"
+          color="info"
+          size="2xs"
+          data-testid="scan-progress"
+        />
+        <p class="text-info tabular text-sm">{{ scanRunning.text }}</p>
+      </template>
     </div>
 
     <p v-if="groups.length === 0" class="text-dimmed text-sm">
@@ -71,32 +74,21 @@ const capColour = computed(() =>
     </p>
 
     <div v-else class="flex flex-col gap-3">
-      <div
+      <TopologyVdevRow
         v-for="group in groups"
         :key="group.key"
-        class="flex flex-col gap-2 sm:flex-row sm:items-start"
-        data-testid="vdev-group"
+        :type="group.type"
+        :label="group.label"
+        :state="group.state"
+        :size-bytes="group.sizeBytes"
+        :alloc-bytes="group.allocBytes"
       >
-        <div class="flex w-40 shrink-0 flex-col sm:pt-1">
-          <span class="text-toned truncate font-mono text-sm">
-            {{ group.label }}
-          </span>
-          <span
-            v-if="group.state"
-            class="text-xs"
-            :class="STATUS_TEXT_CLASS[zfsStateColour(group.state)]"
-          >
-            {{ group.state }}
-          </span>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <TopologyDiskTile
-            v-for="leaf in group.leaves"
-            :key="leaf.guid"
-            :leaf="leaf"
-          />
-        </div>
-      </div>
+        <TopologyDiskTile
+          v-for="leaf in group.leaves"
+          :key="leaf.guid"
+          :leaf="leaf"
+        />
+      </TopologyVdevRow>
     </div>
   </article>
 </template>
