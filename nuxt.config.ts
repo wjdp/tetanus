@@ -38,8 +38,14 @@ export default defineNuxtConfig({
     },
   },
   fonts: {
+    defaults: {
+      weights: [400, 500, 600, 700],
+      styles: ["normal"],
+      subsets: ["latin"],
+      preload: true,
+    },
     families: [
-      { name: "Inter", provider: "google" },
+      { name: "Inter", provider: "google", styles: ["normal", "italic"] },
       { name: "JetBrains Mono", provider: "google" },
     ],
   },
