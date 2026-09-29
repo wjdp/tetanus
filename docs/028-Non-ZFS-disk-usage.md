@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Non-ZFS disk usage
@@ -48,11 +48,12 @@ re-captured on the host (user action); until then the parser treats a missing
 
 ```ts
 type UsageKind = "zfs" | "filesystem" | "empty" | "unknown";
+interface DiskMount { fsType: string; path: string; via: string[] } // via: mapper chain outermost-first, e.g. ["luks", "lvm"]
 interface DiskUsage {
   kind: UsageKind;
-  fsTypes: string[];        // distinct, excluding zfs_member's reserved partition
-  mountPoints: string[];    // flattened across partitions and mapper children
-  system: boolean;          // any mountPoint is "/" or "/boot"
+  fsTypes: string[];        // distinct, sorted, across disk, partitions and mapper children
+  mounts: DiskMount[];      // one per mounted path; "[SWAP]" counts as a mount
+  system: boolean;          // any mount path is "/" or "/boot"
 }
 ```
 
@@ -65,7 +66,7 @@ interface DiskUsage {
   same pattern as `latestRaw`. Compute-on-read is not enough: usage feeds the
   `inPool`-style set in `stateResolver`, and `Payload` is only the latest body.
 - `inferState` gains `mounted: boolean` (usage.kind === "filesystem" and
-  `mountPoints.length > 0`): `present && (inPool || mounted)` → `in-use`.
+  `mounts.length > 0`): `present && (inPool || mounted)` → `in-use`.
   Unmounted filesystem stays `spare`; the disk page shows "has ext4 data".
 - Kind change → diary `usage-changed` with `{ from, to, fsTypes }`, title such as
   `formatted ext4`, `joined pool tank`, `wiped`. Suppressed when either side is
@@ -125,4 +126,14 @@ Form shows the inferred value as placeholder when unset.
 
 ## Findings
 
-(agents append here)
+Built 2026-09-29, commits da9afb8..e593280.
+
+- Types live in `shared/usage.ts` (`DiskUsage`, `usageDetail`, `usageShort`,
+  `usageColour`, `PURPOSES`); inference in `server/services/usage.ts`.
+- `Disk.latestUsage` holds the lsblk-derived usage; `kind` is forced to `zfs` on read when
+  the disk is a present vdev, so pool membership always wins.
+- `/boot/efi` alone does not make a disk `system`; only `/` and `/boot` do.
+- A disk holding only active swap counts as mounted and so `in-use`.
+- User actions outstanding: deploy collector 0.2.0 to hosts, re-capture the mars fixture
+  (`bin/capture-fixtures.sh`) so `nvme0n1` stops reading `unknown`, run `pnpm db:migrate`
+  on the dev DB.
