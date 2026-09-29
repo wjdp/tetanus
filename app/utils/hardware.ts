@@ -2,15 +2,6 @@ import type { DriveSpec } from "#shared/drive-spec";
 import type { HardwareJson, Media, RecordingTech } from "#shared/hardware";
 import type { Vendor } from "#shared/vendor";
 
-const MEDIA_ICONS: Record<Media, string | null> = {
-  hdd: "i-lucide-hard-drive",
-  ssd: "i-lucide-memory-stick",
-  unknown: null,
-};
-
-export const mediaIcon = (media: Media | null | undefined) =>
-  media ? MEDIA_ICONS[media] : null;
-
 export function mediaLabel(
   media: Media | null | undefined,
   rotationRate: number | null | undefined,

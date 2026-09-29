@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
+import type { DiaryEventType } from "#shared/diary";
 import { db } from "~~/server/database/client";
 import {
   pool,
@@ -65,12 +66,12 @@ function scanFinished(
   return previous?.state !== "FINISHED" || previous.endTime !== current.endTime;
 }
 
-const SCAN_EVENT_TYPES: Record<string, string> = {
+const SCAN_EVENT_TYPES: Record<string, DiaryEventType> = {
   SCRUB: "scrub-finished",
   RESILVER: "resilver-finished",
 };
 
-function scanEventType(scanFunction: string) {
+function scanEventType(scanFunction: string): DiaryEventType {
   return SCAN_EVENT_TYPES[scanFunction.toUpperCase()] ?? "scan-finished";
 }
 

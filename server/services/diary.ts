@@ -1,5 +1,5 @@
 import { and, desc, eq, type SQL } from "drizzle-orm";
-import type { DiarySubjectType } from "#shared/diary";
+import type { DiaryEventType, DiarySubjectType } from "#shared/diary";
 import type {
   DiaryEntryInput,
   DiaryEntryPatch,
@@ -16,7 +16,7 @@ export const DEFAULT_DIARY_LIMIT = 100;
 export interface AutoEvent {
   subjectType: DiarySubjectType;
   subjectId: number | null;
-  eventType: string;
+  eventType: DiaryEventType;
   title: string;
   body?: string;
   data?: Record<string, unknown>;
@@ -83,7 +83,7 @@ export function listDiary({
 export function latestAutoEvent(
   subjectType: DiarySubjectType,
   subjectId: number,
-  eventType: string,
+  eventType: DiaryEventType,
 ): DiaryEntryRow | undefined {
   return db
     .select()
