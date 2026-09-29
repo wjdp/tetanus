@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: in-progress
 ---
 
 # Intermittent hosts
@@ -101,6 +101,19 @@ host-id → reference time map to `stateResolver` rather than re-querying per di
 - [037](037-Status-and-icon-vocabulary.md) §Collector freshness: add an `offline` row
   (neutral chip, `intermittent` hosts only).
 
+### Host order
+
+Added 2026-09-29: hosts appear on the home page, hosts page and anywhere else that
+lists them in a user-set order, not by name.
+
+- `Host.position: integer().notNull().default(0)`, in the same migration. `listHosts`
+  orders by `position`, then `name`, so new hosts land first-come at 0 until moved.
+- `PUT /api/hosts/order` with `hostOrderSchema = { hostIds: number[] }` (the full list,
+  unique). `reorderHosts(hostIds)` writes `position = index`; unknown ids or a list
+  that is not every host throws `ServiceError(400)`.
+- Hosts page: up / down buttons per row (no drag library in the stack); each move
+  sends the whole order.
+
 ## Order
 
 1. Schema, migration, patch schema, `updateHost` (URL rule), `listHosts` returns the
@@ -109,7 +122,8 @@ host-id → reference time map to `stateResolver` rather than re-querying per di
 3. `useFaults` skips offline hosts.
 4. Disk state reference time + tests (off for weeks, pulled while on, boot window).
 5. Hosts page switch and badge; host header chip; 037 row.
-6. Demo (`server/demo/`): add or mark one seeded host intermittent, last contact
+6. Host order: column, service, route, hosts page buttons.
+7. Demo (`server/demo/`): add or mark one seeded host intermittent, last contact
    about 12 days before the demo's `now`, with disks in a pool, so the offline chip
    and the held disk states are visible.
 
@@ -122,7 +136,9 @@ host-id → reference time map to `stateResolver` rather than re-querying per di
   intermittent host throws 400.
 - `disks.test.ts`: the four cases under §Disk state reference time; no `state-changed`
   diary entry while offline.
-- `test/api/hosts.e2e.test.ts`: PATCH `intermittent` round-trips.
+- `hosts.test.ts`: `reorderHosts` sets order; rejects partial or unknown lists.
+- `test/api/hosts.e2e.test.ts`: PATCH `intermittent` round-trips; PUT order changes
+  `GET /api/hosts` order.
 
 ## Out of scope
 
