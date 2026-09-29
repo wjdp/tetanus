@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { interfaceLabel, sectorFormat } from "#shared/hardware";
+import { displayModel } from "#shared/model";
 import { displayName } from "./displayName";
 import type { DiskDetail } from "./types";
 
@@ -7,16 +9,26 @@ defineEmits<{ updated: [disk: DiskDetail] }>();
 
 const name = computed(() => displayName(props.disk));
 
-const protocolLabel = computed(() =>
-  [props.disk.protocol, props.disk.link]
-    .filter((part) => part && part !== "unknown")
-    .join(" / "),
+const interfaceText = computed(() =>
+  interfaceDetail(
+    interfaceLabel(props.disk.interface, props.disk.link),
+    props.disk.hardware,
+  ),
 );
+
+const linkSpeed = computed(() => linkSpeedDisplay(props.disk.hardware));
 
 const facts = computed(() => [
   { label: "Capacity", value: formatBytes(props.disk.capacityBytes) },
   { label: "Firmware", value: props.disk.firmware ?? "—", mono: true },
-  { label: "Protocol", value: protocolLabel.value || "—" },
+  { label: "Interface", value: interfaceText.value ?? "—", linkSpeed: linkSpeed.value },
+  { label: "Media", value: mediaSummary(props.disk) ?? "—" },
+  {
+    label: "Sectors",
+    value:
+      sectorFormat(props.disk.logicalBlockSize, props.disk.physicalBlockSize) ??
+      "—",
+  },
   { label: "Device", value: props.disk.lastDevicePath ?? "—", mono: true },
   { label: "First seen", value: formatDate(props.disk.firstSeenAt) },
   { label: "Last seen", value: formatDate(props.disk.lastSeenAt) },
@@ -40,7 +52,7 @@ const facts = computed(() => [
           {{ name ?? "unnamed" }}
         </h1>
         <p class="text-muted text-sm">
-          {{ disk.model ?? "Unknown model" }}
+          {{ displayModel(disk.model, disk.vendor) ?? "Unknown model" }}
           <span v-if="disk.serial" class="text-default font-mono">
             · {{ disk.serial }}
           </span>
@@ -74,6 +86,15 @@ const facts = computed(() => [
         <dt class="text-dimmed text-xs">{{ fact.label }}</dt>
         <dd class="tabular truncate" :class="{ 'font-mono text-xs leading-5': fact.mono }">
           {{ fact.value }}
+          <template v-if="fact.linkSpeed">
+            ·
+            <span
+              :class="{ 'text-error': fact.linkSpeed.belowMax }"
+              :title="fact.linkSpeed.title"
+            >
+              {{ fact.linkSpeed.text }}
+            </span>
+          </template>
         </dd>
       </div>
     </dl>

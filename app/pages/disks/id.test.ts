@@ -15,6 +15,7 @@ registerEndpoint("/api/disks/7", () => ({
   capacityBytes: 8_001_563_222_016,
   protocol: "ata",
   link: "sas",
+  vendor: "western-digital",
   media: "hdd",
   interface: "sata",
   recordingTech: "cmr",
@@ -238,6 +239,12 @@ describe("disk page", () => {
     const text = page.text();
 
     expect(text).toContain("K2");
+    expect(text).toMatch(/WD80EFAX\s+· VK0ABC/);
+    expect(text).not.toContain("WDC WD80EFAX");
+    expect(text).toMatch(/SATA 3\.1 via SAS\s+· 6\.0 Gb\/s/);
+    expect(text).toContain("HDD · 5400 rpm · CMR");
+    expect(text).toContain("512e");
+    expect(text).not.toContain("Protocol");
     expect(text).toContain("VK0ABC");
     expect(text).toContain("8.00 TB");
     expect(text).toContain("5.7 y old");
