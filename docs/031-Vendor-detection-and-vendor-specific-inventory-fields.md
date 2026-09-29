@@ -10,6 +10,15 @@ readable from any CLI, so it has to be typed in once and kept. It only makes sen
 Seagate disks, so tetanus first needs to know who made each disk. Once it does, other
 vendor-aware features fall out cheaply. Feeds [020 Warranty nudge](020-Warranty-nudge.md).
 
+Landed via [033](033-Media-interface-and-drive-specs.md) on 2026-09-29: `shared/vendor.ts`
+`detectVendor` (model prefix → WWN OUI → `model_family` → dataset `brand`), the `Disk.vendor`
+column set on observe (lsblk fills it as a hint), `displayModel` in `shared/model.ts`, the
+`vendors`/`media` visibility gate on `INVENTORY_FIELDS` (`isFieldVisible`), the vendor
+column and filter on the disks list, `shared/product-lines.ts` as `WARRANTY_YEARS_BY_LINE`
+keyed by dataset `line` with `warrantyDefault`, and the warranty hint with one-click apply
+on the inventory form. Remaining here: `vendorOverride`, BPID, warranty check links, SMART
+hints. Correction: the Intel OUI is `5cd2e4`, not `55cd2e` (033 findings, T4).
+
 Decided 2026-09-28: vendor is a stored `Disk.vendor` column derived on observe; vendor-specific
 fields extend the existing `inventory` JSON registry rather than adding columns. Override is
 an inventory field, not a column write. HGST stays its own vendor: the drives predate the
@@ -49,27 +58,18 @@ Revised 2026-09-29: [033](033-Media-interface-and-drive-specs.md) lands first an
 `specs.line` from the vendored drive dataset (plus `overrides.json`), so the table below
 becomes `Record<line, warrantyYears>` keyed by that string and the model regexes go.
 
-- `shared/product-lines.ts`: hand-maintained `as const` table keyed by vendor + model regex →
-  `{ line, warrantyYears }`. Code, not JSON: the keys are regexes, typecheck catches
-  mistakes, and there is no UI to edit it anyway. Seed with what mars owns plus the common NAS lines:
-  - Seagate: `ST\d+NM\d{3}J?` Exos 5 y; IronWolf Pro 5 y; IronWolf 3 y; BarraCuda 2 y.
-  - WD: Red Pro / Gold / Ultrastar 5 y; Red Plus 3 y; `WD\d+E[MD]AZ|EMFZ|EDBZ`
-    white-label shucked (no bare-drive warranty; enclosure 2–3 y); `WDS…` Blue SN 5 y.
-  - Toshiba: `MG\d\d` enterprise 5 y; N300 3 y.
-  - Samsung: 860/870 EVO 5 y; `MZ7KM` SM863a 5 y.
-  - Intel: `SSDSC2KG|BB` DC S4x00/S3x00 5 y.
-- `warrantyDefault(disk)`: purchaseDate + warrantyYears when `warrantyExpiry` is unset
-  and condition is not `shucked`. Shown as a hint on the warranty field ("5 y from
-  purchase → 2028-04-01, Exos default") with a one-click apply. Never written silently.
-- `Disk.productLine` is not stored; derived at read time from model. Cheap and the table
-  will change.
+- Done in 033: `shared/product-lines.ts` is `WARRANTY_YEARS_BY_LINE: Record<line, years>`
+  keyed by the dataset's `line` string, with `warrantyYearsFor` and `warrantyDefault`;
+  a test asserts every key exists in the snapshot or overrides. White-label WD lines and
+  lines with no confident term (SkyHawk AI, IronWolf 125/525, Enterprise Capacity V5) are
+  absent. The hint with one-click apply is on the inventory form. Product line lives on
+  `Disk.specs.line`, not its own column.
 
 ### Vendor-specific inventory fields
 
-- `INVENTORY_FIELDS` entries gain an optional `vendors: readonly Vendor[]`. Absent means
-  every disk. `inventorySchema` stays permissive on write (a field may be filled before
-  detection catches up); the form and table only render fields whose `vendors` include the
-  disk's effective vendor.
+- Done in 033: `INVENTORY_FIELDS` entries take optional `vendors` / `media` gates,
+  checked by `isFieldVisible`; `inventorySchema` stays permissive on write. Effective
+  vendor = `vendorOverride ?? Disk.vendor` once the override exists.
 - First field: `{ key: "seagateBpid", label: "BPID", type: "text", vendors: ["seagate"] }`.
   Validation: trim, uppercase, `[A-Z0-9]{1,16}`. Shown on the nameplate next to serial
   when set, and in the RMA sheet (020).
@@ -85,8 +85,8 @@ becomes `Record<line, warrantyYears>` keyed by that string and the model regexes
 
 ### Inventory table
 
-- Vendor column, filterable and groupable. Model column shows `displayModel`.
-- Optional line column from the product-line table.
+- Done in 033: vendor column and filter; model column shows `displayModel`. Grouping and a
+  line column (`specs.line`) still open.
 
 ### Vendor-specific SMART and log hints
 
@@ -114,3 +114,5 @@ Mostly pointers into Phase 3 knowledge, gated on vendor so they stop being noise
 
 1. Product-line table as code is a recommendation, not a decision. Revisit if a second
    user or a UI for editing it ever appears.
+2. Should `vendorOverride` also re-run `displayModel` stripping, or only gate fields and
+   warranty links?
