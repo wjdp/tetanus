@@ -331,6 +331,24 @@ missing columns as unknown. Bump collector to 0.3.0. Not required for anything a
 - `test/api/host.e2e.test.ts` "does not serve ../package.json" times out; unrelated,
   pre-existing in this tree.
 
+### T5a
+
+- Helpers in `app/utils/hardware.ts` (auto-imported): `mediaIcon`, `mediaLabel`,
+  `vendorLabel`, `recordingBadge`, `linkSpeedDisplay`, `interfaceDetail`, `mediaSummary`.
+  Icons: `i-lucide-hard-drive` (hdd), `i-lucide-memory-stick` (ssd).
+- Derived `sectorFormat` / `interfaceLabel` are computed in the UI from raw columns, not
+  read from `DiskSummary`.
+- List: Vendor, Media, Interface, Recording columns; Sectors uses UTable column
+  visibility, hidden by default, with no toggle yet (still sortable in the cards sort).
+  Filters media / interface / recording / vendor with `ALL_*` / `NO_*` sentinels;
+  interface filters on the raw `interface` (sata/sas/nvme/usb), not the "via SAS" label;
+  `unknown` counts as none.
+- Nameplate: `Interface` replaces `Protocol`, plus `Media` and `Sectors`. Version comes
+  from `sataVersion` / `nvmeVersion` / `scsiTransport` when it starts with the bus name.
+  Link speed red only in the below-max case; that case is unit-tested, not in the page test.
+- Rail: `TopologyDisk` gains `media`; glyph carries a `title`. Pool tiles untouched.
+- Specs panel and `specMismatch` note are not part of T5a.
+
 ## Decisions (2026-09-29)
 
 1. Columns for `media`, `interface`, `recordingTech`, block sizes, `trimSupported`; JSON
