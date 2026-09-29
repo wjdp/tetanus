@@ -54,6 +54,33 @@ registerEndpoint("/api/disks/7", () => ({
   ],
 }));
 
+function passedAttribute(
+  attrId: string,
+  name: string,
+  failureRate: number | null,
+) {
+  return {
+    attrId,
+    name,
+    value: 100,
+    worst: 100,
+    thresh: 0,
+    transformedValue: 0,
+    status: "passed",
+    displayStatus: "passed",
+    acceptance: null,
+    failureRate,
+    reason: null,
+    rawString: "0",
+    trend: "stable",
+    statusChanges: [],
+    statusSince: null,
+    valueSince: at,
+    firstNonZeroAt: null,
+    metadata: null,
+  };
+}
+
 registerEndpoint("/api/disks/7/smart", () => ({
   reading: {
     id: 1,
@@ -76,6 +103,10 @@ registerEndpoint("/api/disks/7/smart", () => ({
       reason: null,
       rawString: "34",
       trend: "stable",
+      statusChanges: [],
+      statusSince: null,
+      valueSince: "2026-08-30T12:00:00.000Z",
+      firstNonZeroAt: "2026-01-01T00:00:00.000Z",
       metadata: {
         displayName: "Temperature",
         ideal: "low",
@@ -98,6 +129,17 @@ registerEndpoint("/api/disks/7/smart", () => ({
       reason: "16 pending sectors",
       rawString: "16",
       trend: "worsening",
+      statusChanges: [
+        {
+          at: "2026-08-28T06:00:00.000Z",
+          from: "passed",
+          to: "warning",
+          value: 1,
+        },
+      ],
+      statusSince: "2026-08-28T06:00:00.000Z",
+      valueSince: "2026-08-31T12:00:00.000Z",
+      firstNonZeroAt: "2026-08-28T06:00:00.000Z",
       metadata: {
         displayName: "Current Pending Sector Count",
         ideal: "low",
@@ -124,8 +166,15 @@ registerEndpoint("/api/disks/7/smart", () => ({
       reason: "8 reallocated sectors",
       rawString: "8",
       trend: "stable",
+      statusChanges: [],
+      statusSince: null,
+      valueSince: "2026-09-01T12:00:00.000Z",
+      firstNonZeroAt: "2026-09-01T12:00:00.000Z",
       metadata: null,
     },
+    passedAttribute("9", "Power-On Hours", 0.02),
+    passedAttribute("198", "Offline Uncorrectable", null),
+    passedAttribute("1", "Raw Read Error Rate", null),
   ],
   history: { temperature: [], attributes: {} },
   selfTests: [
@@ -140,7 +189,18 @@ registerEndpoint("/api/disks/7/smart", () => ({
       seenAt: at,
     },
   ],
-  acceptances: [],
+  acceptances: [
+    {
+      id: 1,
+      diskId: 7,
+      attrId: "5",
+      acceptedValue: 8,
+      acceptedAt: "2026-09-20T09:00:00.000Z",
+      note: "Stable since RMA refused",
+      supersededAt: null,
+      clearedAt: null,
+    },
+  ],
 }));
 
 // UTooltip needs the provider UApp installs in app.vue; the page is mounted alone.
@@ -167,14 +227,39 @@ describe("disk page", () => {
     expect(text).toContain("1 warning attribute");
     expect(text).toContain("· 1 accepted");
 
-    const rows = page.findAll("tbody tr").map((row) => row.text());
+    const attributeRows = () =>
+      page
+        .findAll('[data-testid="attribute-table"] tbody tr')
+        .filter(
+          (row) => !row.find('[data-testid="attribute-detail"]').exists(),
+        );
+    const rows = attributeRows().map((row) => row.text());
+    expect(rows).toHaveLength(4);
     expect(rows[0]).toContain("Current Pending Sector Count");
     expect(rows[0]).toContain("12.0 %");
     expect(rows[0]).toContain("Accept");
     expect(rows[1]).toContain("accepted");
     expect(rows[1]).toContain("Clear");
-    expect(rows[2]).toContain("34 °C");
-    expect(rows[2]).not.toContain("Accept");
+    expect(rows[2]).toContain("Offline Uncorrectable");
+    expect(rows[3]).toContain("34 °C");
+    expect(rows[3]).not.toContain("Accept");
+
+    expect(page.get('[data-testid="attribute-visibility"]').text()).toBe(
+      "4 shown, 2 hidden",
+    );
+    const notedRows = attributeRows().map((row) =>
+      row.find('[data-testid="attribute-note"]').exists(),
+    );
+    expect(notedRows).toEqual([true, true, false, true]);
+
+    const details = page.findAll('[data-testid="attribute-detail"]');
+    expect(details).toHaveLength(1);
+    const detail = details[0]?.text() ?? "";
+    expect(detail).toContain("warning since 2026-08-28");
+    expect(detail).toContain("2026-08-28 · warning (was passed, value 1)");
+    expect(detail).toContain("16 since 2026-08-31 · first non-zero 2026-08-28");
+    expect(detail).toContain("No history in this range");
+    expect(detail).toContain("norm 200 / worst 200 / thresh 0 · raw 16");
 
     const contextRates = page.findAll('[data-testid="context-rate"]');
     expect(contextRates).toHaveLength(1);
@@ -190,5 +275,17 @@ describe("disk page", () => {
     expect(text).toContain("K2-part1");
     expect(page.find('a[href="/zfs/3"]').text()).toBe("tank");
     expect(text).toContain("warning (was passed)");
+
+    const toggle = page.get('[data-testid="attribute-visibility-toggle"]');
+    expect(toggle.text()).toBe("Show 2 more");
+    await toggle.trigger("click");
+    const allRows = attributeRows().map((row) => row.text());
+    expect(allRows).toHaveLength(6);
+    expect(allRows[4]).toContain("Raw Read Error Rate");
+    expect(allRows[5]).toContain("Power-On Hours");
+    expect(page.get('[data-testid="attribute-visibility"]').text()).toBe(
+      "6 shown",
+    );
+    expect(toggle.text()).toBe("Show fewer");
   });
 });

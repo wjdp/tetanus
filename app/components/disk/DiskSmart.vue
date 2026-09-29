@@ -4,7 +4,7 @@ import {
   SMART_HISTORY_RANGES,
   type SmartHistoryRange,
 } from "#shared/schemas/smart";
-import { countByStatus, defaultAttributeId } from "./attributeOrder";
+import { countByStatus } from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 const props = defineProps<{
@@ -83,24 +83,6 @@ const clearAcceptance = async () => {
   await refreshAfterChange();
 };
 
-const selectedAttribute = ref<string | null>(null);
-watch(
-  attributes,
-  (current) => {
-    const stillPresent = current.some(
-      (attribute) => attribute.attrId === selectedAttribute.value,
-    );
-    if (!stillPresent) {
-      selectedAttribute.value = defaultAttributeId(current, props.protocol);
-    }
-  },
-  { immediate: true },
-);
-
-const selectedMeta = computed(() =>
-  attributes.value.find((attribute) => attribute.attrId === selectedAttribute.value),
-);
-
 const temperatureSeries = computed(() => [
   {
     label: "Temperature",
@@ -110,17 +92,6 @@ const temperatureSeries = computed(() => [
     })),
   },
 ]);
-
-const attributeSeries = computed(() => {
-  const attribute = selectedMeta.value;
-  if (!attribute) return [];
-  return [
-    {
-      label: attribute.metadata?.displayName ?? attribute.name,
-      points: smart.value?.history.attributes[attribute.attrId] ?? [],
-    },
-  ];
-});
 </script>
 
 <template>
@@ -180,25 +151,13 @@ const attributeSeries = computed(() => {
       </div>
 
       <DiskAttributeTable
-        v-model:selected="selectedAttribute"
         :attributes="attributes"
         :history="smart.history.attributes"
+        :acceptances="smart.acceptances"
         :show-normalised="protocol === 'ata'"
         @accept="onAccept"
         @clear="onClear"
       />
-
-      <div v-if="selectedMeta" class="flex flex-col gap-2">
-        <h3 class="text-muted text-sm font-medium">
-          {{ selectedMeta.metadata?.displayName ?? selectedMeta.name }}
-          <span class="text-dimmed font-mono text-xs">{{ selectedMeta.attrId }}</span>
-        </h3>
-        <ChartsTimeSeriesChart
-          :series="attributeSeries"
-          :unit="selectedMeta.metadata?.transformValueUnit"
-          :height="160"
-        />
-      </div>
 
       <DiskSelfTests :self-tests="smart.selfTests" />
     </template>

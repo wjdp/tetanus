@@ -1,0 +1,94 @@
+import { attributeClass } from "#shared/smart/classification";
+import type { AttributeDisplayStatus } from "#shared/smart/status";
+
+interface RankedAttribute {
+  attrId: string;
+  displayStatus: AttributeDisplayStatus;
+  failureRate: number | null;
+}
+
+interface NotedAttribute extends RankedAttribute {
+  reason: string | null;
+  acceptance: { note: string } | null;
+}
+
+const NOTABLE_CONTEXT_RATE = 0.1;
+
+export const CONTEXT_RATE_NOTE =
+  "Backblaze fleet rate for this value. Context only: usage and environment attributes do not affect disk status.";
+
+export function isNotableContextRate(attribute: {
+  attrId: string;
+  failureRate: number | null;
+}): boolean {
+  return (
+    attributeClass(attribute.attrId) === "context" &&
+    attribute.failureRate !== null &&
+    attribute.failureRate >= NOTABLE_CONTEXT_RATE
+  );
+}
+
+const STATUS_GROUP: Record<
+  Exclude<AttributeDisplayStatus, "passed">,
+  number
+> = {
+  failed: 0,
+  warning: 1,
+  accepted: 2,
+};
+
+function importanceGroup(attribute: RankedAttribute): number {
+  if (attribute.displayStatus !== "passed") {
+    return STATUS_GROUP[attribute.displayStatus];
+  }
+  if (attributeClass(attribute.attrId) === "defect") return 3;
+  if (isNotableContextRate(attribute)) return 4;
+  return 5;
+}
+
+const numericId = (attrId: string) =>
+  /^\d+$/.test(attrId) ? Number(attrId) : null;
+
+function compareIds(a: string, b: string): number {
+  const first = numericId(a);
+  const second = numericId(b);
+  if (first !== null && second !== null) return first - second;
+  if (first !== null) return -1;
+  if (second !== null) return 1;
+  return 0;
+}
+
+export function orderAttributes<T extends RankedAttribute>(
+  attributes: T[],
+): T[] {
+  return [...attributes].sort(
+    (a, b) =>
+      importanceGroup(a) - importanceGroup(b) || compareIds(a.attrId, b.attrId),
+  );
+}
+
+export function isShownByDefault(attribute: RankedAttribute): boolean {
+  return (
+    attributeClass(attribute.attrId) === "defect" ||
+    attribute.displayStatus !== "passed" ||
+    isNotableContextRate(attribute)
+  );
+}
+
+export function attributeNote(attribute: NotedAttribute): string | null {
+  if (attribute.reason) return attribute.reason;
+  if (isNotableContextRate(attribute)) return CONTEXT_RATE_NOTE;
+  return attribute.acceptance?.note || null;
+}
+
+export function countByStatus(
+  attributes: { displayStatus: AttributeDisplayStatus }[],
+) {
+  const count = (status: AttributeDisplayStatus) =>
+    attributes.filter((attribute) => attribute.displayStatus === status).length;
+  return {
+    failed: count("failed"),
+    warning: count("warning"),
+    accepted: count("accepted"),
+  };
+}

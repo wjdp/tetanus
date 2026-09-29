@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
-import { isNotableContextRate, orderAttributes } from "./attributeOrder";
+import {
+  attributeNote,
+  isNotableContextRate,
+  isShownByDefault,
+  orderAttributes,
+} from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 const props = defineProps<{
   attributes: LatestAttribute[];
   history: SmartOverview["history"]["attributes"];
+  acceptances: SmartOverview["acceptances"];
   showNormalised: boolean;
 }>();
 
@@ -14,16 +20,67 @@ const emit = defineEmits<{
   clear: [attribute: LatestAttribute];
 }>();
 
-const selected = defineModel<string | null>("selected", { default: null });
+const SHOW_ALL_STORAGE_KEY = "tetanus:showAllAttributes";
+
+const showAll = ref(false);
+
+onMounted(() => {
+  try {
+    showAll.value = localStorage.getItem(SHOW_ALL_STORAGE_KEY) === "true";
+  } catch {
+    showAll.value = false;
+  }
+});
+
+const toggleShowAll = () => {
+  showAll.value = !showAll.value;
+  try {
+    localStorage.setItem(SHOW_ALL_STORAGE_KEY, String(showAll.value));
+  } catch {
+    // Private browsing or a full quota: the toggle just doesn't persist.
+  }
+};
+
+const ordered = computed(() => orderAttributes(props.attributes));
+const shownByDefault = computed(() => ordered.value.filter(isShownByDefault));
+const hiddenCount = computed(
+  () => ordered.value.length - shownByDefault.value.length,
+);
+const rows = computed(() => (showAll.value ? ordered.value : shownByDefault.value));
+
+const visibilitySummary = computed(() =>
+  hiddenCount.value && !showAll.value
+    ? `${shownByDefault.value.length} shown, ${hiddenCount.value} hidden`
+    : `${ordered.value.length} shown`,
+);
+
 const expanded = ref<Record<string, boolean>>({});
 
-const rows = computed(() => orderAttributes(props.attributes));
+watch(
+  ordered,
+  (current) => {
+    if (Object.values(expanded.value).some(Boolean)) return;
+    const firstFault = current.find(
+      (attribute) =>
+        attribute.displayStatus === "failed" || attribute.displayStatus === "warning",
+    );
+    expanded.value = firstFault ? { [firstFault.attrId]: true } : {};
+  },
+  { immediate: true },
+);
 
 const ATTRIBUTE_STATUS_COLOUR = {
   failed: "error",
   warning: "warning",
   accepted: "neutral",
   passed: "neutral",
+} as const;
+
+const ROW_TINT = {
+  failed: "bg-error/5",
+  warning: "bg-warning/5",
+  accepted: "bg-elevated/40",
+  passed: "",
 } as const;
 
 const isAcceptable = (attribute: LatestAttribute) =>
@@ -48,11 +105,13 @@ const formatNormalised = (attribute: LatestAttribute) =>
 const formatFailureRate = (rate: number | null) =>
   rate === null ? "—" : `${(rate * 100).toFixed(1)} %`;
 
-const CONTEXT_RATE_TOOLTIP =
-  "Backblaze fleet rate for this value. Context only: usage and environment attributes do not affect disk status.";
+const pointsFor = (attrId: string) => props.history[attrId] ?? [];
 
 const sparklineValues = (attrId: string) =>
-  (props.history[attrId] ?? []).map((point) => point.value);
+  pointsFor(attrId).map((point) => point.value);
+
+const acceptancesFor = (attrId: string) =>
+  props.acceptances.filter((acceptance) => acceptance.attrId === attrId);
 
 const mutedClass = { td: "text-dimmed tabular" };
 
@@ -71,124 +130,137 @@ const columns = computed<TableColumn<LatestAttribute>[]>(() => [
   { id: "actions", header: "", meta: { class: { td: "text-right" } } },
 ]);
 
-const onSelect = (
-  _event: Event,
-  row: { original: LatestAttribute; toggleExpanded: () => void },
-) => {
-  selected.value = row.original.attrId;
+const onSelect = (_event: Event, row: { toggleExpanded: () => void }) =>
   row.toggleExpanded();
-};
 
 const rowClass = (row: { original: LatestAttribute }) =>
-  row.original.attrId === selected.value ? "bg-elevated/60" : "";
+  ROW_TINT[row.original.displayStatus];
 </script>
 
 <template>
-  <UTable
-    v-model:expanded="expanded"
-    :data="rows"
-    :columns="columns"
-    :get-row-id="(row: LatestAttribute) => row.attrId"
-    :on-select="onSelect"
-    :meta="{ class: { tr: rowClass } }"
-    empty="No attributes in the latest reading."
-  >
-    <template #status-cell="{ row }">
-      <UTooltip
-        v-if="row.original.displayStatus === 'accepted'"
-        :text="acceptanceTooltip(row.original)"
-      >
+  <div class="flex flex-col gap-2" data-testid="attribute-table">
+    <p class="text-muted text-xs" data-testid="attribute-visibility">
+      {{ visibilitySummary }}
+    </p>
+    <UTable
+      v-model:expanded="expanded"
+      :data="rows"
+      :columns="columns"
+      :get-row-id="(row: LatestAttribute) => row.attrId"
+      :on-select="onSelect"
+      :meta="{ class: { tr: rowClass } }"
+      empty="No attributes in the latest reading."
+    >
+      <template #status-cell="{ row }">
+        <UTooltip
+          v-if="row.original.displayStatus === 'accepted'"
+          :text="acceptanceTooltip(row.original)"
+        >
+          <UBadge
+            color="neutral"
+            variant="outline"
+            size="sm"
+            label="accepted"
+            data-testid="accepted-badge"
+          />
+        </UTooltip>
         <UBadge
-          color="neutral"
-          variant="outline"
+          v-else
+          :color="ATTRIBUTE_STATUS_COLOUR[row.original.displayStatus]"
+          variant="subtle"
           size="sm"
-          label="accepted"
-          data-testid="accepted-badge"
+          :label="row.original.displayStatus"
         />
-      </UTooltip>
-      <UBadge
-        v-else
-        :color="ATTRIBUTE_STATUS_COLOUR[row.original.displayStatus]"
-        variant="subtle"
-        size="sm"
-        :label="row.original.displayStatus"
-      />
-    </template>
+      </template>
 
-    <template #name-cell="{ row }">
-      {{ row.original.metadata?.displayName ?? row.original.name }}
-    </template>
+      <template #name-cell="{ row }">
+        <span class="inline-flex items-center gap-1">
+          {{ row.original.metadata?.displayName ?? row.original.name }}
+          <UTooltip v-if="attributeNote(row.original)" :text="attributeNote(row.original) ?? ''">
+            <UIcon
+              name="i-lucide-info"
+              class="text-muted size-3.5"
+              data-testid="attribute-note"
+            />
+          </UTooltip>
+        </span>
+      </template>
 
-    <template #value-cell="{ row }">
-      {{ formatValue(row.original) }}
-    </template>
+      <template #value-cell="{ row }">
+        {{ formatValue(row.original) }}
+      </template>
 
-    <template #normalised-cell="{ row }">
-      {{ formatNormalised(row.original) }}
-    </template>
+      <template #normalised-cell="{ row }">
+        {{ formatNormalised(row.original) }}
+      </template>
 
-    <template #ideal-cell="{ row }">
-      {{ row.original.metadata?.ideal || "—" }}
-    </template>
+      <template #ideal-cell="{ row }">
+        {{ row.original.metadata?.ideal || "—" }}
+      </template>
 
-    <template #failureRate-cell="{ row }">
-      <UTooltip v-if="isNotableContextRate(row.original)" :text="CONTEXT_RATE_TOOLTIP">
-        <span class="text-info" data-testid="context-rate">
+      <template #failureRate-cell="{ row }">
+        <span
+          v-if="isNotableContextRate(row.original)"
+          class="text-info"
+          data-testid="context-rate"
+        >
           {{ formatFailureRate(row.original.failureRate) }}
         </span>
-      </UTooltip>
-      <span v-else :class="row.original.failureRate === null ? 'text-dimmed' : ''">
-        {{ formatFailureRate(row.original.failureRate) }}
-      </span>
-    </template>
+        <span v-else :class="row.original.failureRate === null ? 'text-dimmed' : ''">
+          {{ formatFailureRate(row.original.failureRate) }}
+        </span>
+      </template>
 
-    <template #trend-cell="{ row }">
-      <UBadge
-        :color="attributeTrendColour(row.original.trend)"
-        variant="soft"
-        size="sm"
-        :label="row.original.trend"
-      />
-    </template>
+      <template #trend-cell="{ row }">
+        <UBadge
+          :color="attributeTrendColour(row.original.trend)"
+          variant="soft"
+          size="sm"
+          :label="row.original.trend"
+        />
+      </template>
 
-    <template #history-cell="{ row }">
-      <ChartsSparkline :values="sparklineValues(row.original.attrId)" />
-    </template>
+      <template #history-cell="{ row }">
+        <ChartsSparkline :values="sparklineValues(row.original.attrId)" />
+      </template>
 
-    <template #actions-cell="{ row }">
+      <template #actions-cell="{ row }">
+        <UButton
+          v-if="isAcceptable(row.original)"
+          color="neutral"
+          variant="soft"
+          size="xs"
+          label="Accept"
+          @click.stop="emit('accept', row.original)"
+        />
+        <UButton
+          v-else-if="row.original.displayStatus === 'accepted'"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          label="Clear"
+          @click.stop="emit('clear', row.original)"
+        />
+      </template>
+
+      <template #expanded="{ row }">
+        <DiskAttributeDetail
+          :attribute="row.original"
+          :points="pointsFor(row.original.attrId)"
+          :acceptances="acceptancesFor(row.original.attrId)"
+        />
+      </template>
+    </UTable>
+    <div v-if="hiddenCount">
       <UButton
-        v-if="isAcceptable(row.original)"
-        color="neutral"
-        variant="soft"
-        size="xs"
-        label="Accept"
-        @click.stop="emit('accept', row.original)"
-      />
-      <UButton
-        v-else-if="row.original.displayStatus === 'accepted'"
         color="neutral"
         variant="ghost"
         size="xs"
-        label="Clear"
-        @click.stop="emit('clear', row.original)"
+        :label="showAll ? 'Show fewer' : `Show ${hiddenCount} more`"
+        :icon="showAll ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+        data-testid="attribute-visibility-toggle"
+        @click="toggleShowAll"
       />
-    </template>
-
-    <template #expanded="{ row }">
-      <div class="flex max-w-3xl flex-col gap-2 text-sm whitespace-normal">
-        <p v-if="row.original.reason" class="text-highlighted">
-          {{ row.original.reason }}
-        </p>
-        <p class="text-muted">
-          {{ row.original.metadata?.description || "No description for this attribute." }}
-        </p>
-        <p v-if="row.original.acceptance?.note" class="text-muted">
-          Accepted: {{ row.original.acceptance.note }}
-        </p>
-        <p v-if="row.original.rawString" class="text-dimmed font-mono text-xs">
-          raw {{ row.original.rawString }}
-        </p>
-      </div>
-    </template>
-  </UTable>
+    </div>
+  </div>
 </template>
