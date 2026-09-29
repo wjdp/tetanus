@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Intermittent hosts
@@ -147,3 +147,16 @@ lists them in a user-set order, not by name.
 - Per-host cadence overrides (a host that reports daily, not hourly). Different
   problem: it is on, just slow.
 - Muting a normal host for maintenance for a fixed window.
+
+## Outcome
+
+Done 2026-09-29.
+
+- Reference time comes from `intermittentSightingTimes()` in `server/services/hosts.ts`:
+  one aggregate query for the latest ok `lsblk` / `smartctl-scan` run per intermittent
+  host, not `lastRunsByHost` (that holds the latest run, ok or not).
+- `DiskSummary.present` also uses the reference time, so held disks read as present.
+- Offline chip lives in `app/components/HostFreshnessChips.vue`, shared by the host header
+  and hosts page.
+- Demo: new host `bench` ("Test bench", pool `burnin`, mirror B1/B2), last run 12 d
+  before the anchor; seed calls `reorderHosts` to keep fleet order.
