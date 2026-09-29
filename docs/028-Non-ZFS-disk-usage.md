@@ -134,6 +134,6 @@ Built 2026-09-29, commits da9afb8..e593280.
   the disk is a present vdev, so pool membership always wins.
 - `/boot/efi` alone does not make a disk `system`; only `/` and `/boot` do.
 - A disk holding only active swap counts as mounted and so `in-use`.
-- User actions outstanding: deploy collector 0.2.0 to hosts, re-capture the mars fixture
+- User actions outstanding: deploy collector 0.3.0 (0.2.0 plus [033](033-Media-interface-and-drive-specs.md)'s lsblk columns) to hosts, re-capture the mars fixture
   (`bin/capture-fixtures.sh`) so `nvme0n1` stops reading `unknown`, run `pnpm db:migrate`
   on the dev DB.

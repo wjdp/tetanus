@@ -210,9 +210,11 @@ here `media: ["hdd"]`). Override for the ~half of disks the dataset misses.
 
 ### Optional collector change (bundle with the outstanding 028 re-capture)
 
-Add `ZONED,LOG-SEC,PHY-SEC` to the lsblk column list: sector sizes for SCSI/NVMe when
-smartctl lacks `physical_block_size`, `ZONED` for host-managed SMR. Parser treats
-missing columns as unknown. Bump collector to 0.3.0. Not required for anything above.
+Done 2026-09-29: `ZONED,LOG-SEC,PHY-SEC` added to the lsblk column list, collector 0.3.0.
+Sector sizes arrive as lsblk hints (smartctl wins); `ZONED` `host-managed`/`host-aware`
+is stored on `hardware.zoned` and resolves `recordingTech: smr` above the dataset, below
+the override. Missing columns are unknown. User actions: deploy 0.3.0 (supersedes the
+0.2.0 deploy in 028) and re-capture the mars fixture so `nvme0n1` gains a sector format.
 
 ## Follow-ups (not this task)
 
