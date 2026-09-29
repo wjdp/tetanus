@@ -85,6 +85,8 @@ describe("/api/disks", () => {
       serial: "0UTY8HTE",
       state: "spare",
       hostName: "mars",
+      present: true,
+      tempThresholds: { warning: 45, error: 55 },
     });
     expect(disks[0].keys).toContainEqual({
       kind: "by-id",
@@ -127,6 +129,8 @@ describe("/api/disks", () => {
         source: "nasdisks",
         matchedModel: "ST12000NM000J",
       }),
+      modelShort: "Exos X18",
+      tempThresholds: { warning: 45, error: 55 },
     };
     const disks: DiskListing[] = await (await fetch("/api/disks")).json();
     expect(disks.find((row) => row.id === id)).toMatchObject(hardware);

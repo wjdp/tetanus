@@ -14,7 +14,12 @@ import {
 } from "#shared/hardware";
 import type { IngestMeta } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
+import { resolveModelShort } from "#shared/model";
 import type { DiskPatch } from "#shared/schemas/disks";
+import {
+  resolveTemperatureThresholds,
+  type TemperatureThresholds,
+} from "#shared/temperature";
 import {
   type DiskUsage,
   isMounted,
@@ -51,7 +56,7 @@ import {
   scrutinyUuid,
 } from "~~/server/services/identity";
 import { getSettings } from "~~/server/services/settings";
-import { inferUsage } from "~~/server/services/usage";
+import { inferUsage, resolvePurpose } from "~~/server/services/usage";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiskRow = typeof disk.$inferSelect;
@@ -115,6 +120,9 @@ export interface DiskSummary
   purposeInferred: boolean;
   sectorFormat: SectorFormat | null;
   interfaceLabel: string | null;
+  present: boolean;
+  modelShort: string | null;
+  tempThresholds: TemperatureThresholds;
 }
 
 export interface DiskDetail extends DiskSummary {
@@ -709,13 +717,7 @@ function inventoryDays(inventory: Partial<Inventory>, now: Date) {
 function resolveUsage(row: DiskRow, inPool: boolean) {
   const recorded = row.latestUsage ?? UNKNOWN_USAGE;
   const usage: DiskUsage = inPool ? { ...recorded, kind: "zfs" } : recorded;
-  const chosenPurpose = row.inventory.purpose ?? null;
-  const purposeInferred = chosenPurpose === null && usage.system;
-  return {
-    usage,
-    purpose: chosenPurpose ?? (usage.system ? ("system" as const) : null),
-    purposeInferred,
-  };
+  return { usage, ...resolvePurpose(row.inventory, usage) };
 }
 
 async function missingAfterDays() {
@@ -730,12 +732,16 @@ function summarise(
   const diskIds = rows.map((row) => row.id);
   const keys = keysOf(diskIds);
   const memberships = membershipsOf(diskIds);
-  const hostNames = new Map(
+  const hosts = new Map(
     db
-      .select({ id: host.id, name: host.name })
+      .select({
+        id: host.id,
+        name: host.name,
+        temperatureThresholds: host.temperatureThresholds,
+      })
       .from(host)
       .all()
-      .map((row) => [row.id, row.name]),
+      .map((row) => [row.id, row]),
   );
   return rows.map((row) => {
     const snapshot = resolveState(row);
@@ -746,6 +752,10 @@ function summarise(
       ...columns
     } = row;
     const membership = memberships.get(row.id) ?? null;
+    const lastHost =
+      row.lastSeenHostId === null
+        ? null
+        : (hosts.get(row.lastSeenHostId) ?? null);
     return {
       ...columns,
       lastState: snapshot.state,
@@ -753,13 +763,13 @@ function summarise(
       membership,
       ...snapshot,
       ...resolveUsage(row, membership !== null),
-      hostName:
-        row.lastSeenHostId === null
-          ? null
-          : (hostNames.get(row.lastSeenHostId) ?? null),
+      hostName: lastHost?.name ?? null,
       ...inventoryDays(row.inventory, now),
       sectorFormat: sectorFormat(row.logicalBlockSize, row.physicalBlockSize),
       interfaceLabel: interfaceLabel(row.interface, row.link),
+      present: isPresent(row, now),
+      modelShort: resolveModelShort(row.inventory, row.specs, row.model),
+      tempThresholds: resolveTemperatureThresholds(lastHost, row.media),
     };
   });
 }

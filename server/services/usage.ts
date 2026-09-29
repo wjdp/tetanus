@@ -1,4 +1,5 @@
-import type { DiskMount, DiskUsage, UsageKind } from "#shared/usage";
+import type { Inventory } from "#shared/inventory-fields";
+import type { DiskMount, DiskUsage, Purpose, UsageKind } from "#shared/usage";
 import type { LsblkChild, LsblkDisk } from "~~/server/ingest/lsblk";
 
 const SYSTEM_MOUNT_PATHS = new Set(["/", "/boot"]);
@@ -57,4 +58,20 @@ export function inferUsage(disk: LsblkDisk): DiskUsage {
     mounts,
     system: mounts.some((mount) => SYSTEM_MOUNT_PATHS.has(mount.path)),
   };
+}
+
+export interface ResolvedPurpose {
+  purpose: Purpose | null;
+  purposeInferred: boolean;
+}
+
+export function resolvePurpose(
+  inventory: Partial<Inventory>,
+  usage: Pick<DiskUsage, "system"> | null,
+): ResolvedPurpose {
+  const chosen = inventory.purpose ?? null;
+  if (chosen !== null) return { purpose: chosen, purposeInferred: false };
+  return usage?.system
+    ? { purpose: "system", purposeInferred: true }
+    : { purpose: null, purposeInferred: false };
 }

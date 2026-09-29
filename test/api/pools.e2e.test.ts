@@ -109,6 +109,21 @@ describe("/api/pools", () => {
     ]);
   });
 
+  it("gives each linked leaf its capacity, media, purpose, temperature and short model", async () => {
+    const pools = await (await fetch("/api/pools")).json();
+    const k1 = flatten(pools[0].vdevs).find(
+      (node) => node.disk?.alias === "K1",
+    )?.disk;
+    expect(k1).toMatchObject({
+      capacityBytes: expect.any(Number),
+      media: "hdd",
+      purpose: null,
+      latestTemp: null,
+      modelShort: expect.any(String),
+      tempThresholds: { warning: 45, error: 55 },
+    });
+  });
+
   it("gets one pool with readings, history and events", async () => {
     const pools = await (await fetch("/api/pools")).json();
     const detail = await (await fetch(`/api/pools/${pools[0].id}`)).json();

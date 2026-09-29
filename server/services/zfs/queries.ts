@@ -1,5 +1,13 @@
 import { and, asc, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import type { Media } from "#shared/hardware";
+import { resolveModelShort } from "#shared/model";
 import type { DeviceStatus } from "#shared/smart/status";
+import {
+  type HostTemperatureThresholds,
+  resolveTemperatureThresholds,
+  type TemperatureThresholds,
+} from "#shared/temperature";
+import type { Purpose } from "#shared/usage";
 import { db } from "~~/server/database/client";
 import {
   diaryEntry,
@@ -12,6 +20,7 @@ import {
   zfsEvent,
 } from "~~/server/database/schema";
 import type { DiaryEntryRow } from "~~/server/services/diary";
+import { resolvePurpose } from "~~/server/services/usage";
 import { notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
 import type { PoolRow, VdevRow } from "./topology";
@@ -26,6 +35,12 @@ export interface VdevDisk {
   alias: string | null;
   state: string | null;
   latestStatus: DeviceStatus;
+  capacityBytes: number | null;
+  media: Media | null;
+  purpose: Purpose | null;
+  latestTemp: number | null;
+  modelShort: string | null;
+  tempThresholds: TemperatureThresholds;
 }
 
 export interface VdevNode extends Omit<VdevRow, "poolId" | "diskId"> {
@@ -60,19 +75,56 @@ export interface PoolDetail extends PoolSummary {
 
 const byName = new Intl.Collator("en-GB", { numeric: true }).compare;
 
-function vdevDisks(diskIds: number[]) {
-  if (diskIds.length === 0) return new Map<number, VdevDisk>();
-  const rows = db
+type ThresholdHost = {
+  temperatureThresholds: HostTemperatureThresholds | null;
+};
+
+function vdevDiskRows(diskIds: number[]) {
+  if (diskIds.length === 0) return [];
+  return db
     .select({
       id: disk.id,
       alias: disk.alias,
       state: disk.lastState,
       latestStatus: disk.latestStatus,
+      capacityBytes: disk.capacityBytes,
+      media: disk.media,
+      latestTemp: disk.latestTemp,
+      model: disk.model,
+      specs: disk.specs,
+      inventory: disk.inventory,
+      latestUsage: disk.latestUsage,
     })
     .from(disk)
     .where(inArray(disk.id, diskIds))
     .all();
-  return new Map(rows.map((row) => [row.id, row]));
+}
+
+type VdevDiskRow = ReturnType<typeof vdevDiskRows>[number];
+
+function toVdevDisk(
+  { model, specs, inventory, latestUsage, ...columns }: VdevDiskRow,
+  poolHost: ThresholdHost | null,
+): VdevDisk {
+  return {
+    ...columns,
+    purpose: resolvePurpose(inventory, latestUsage).purpose,
+    modelShort: resolveModelShort(inventory, specs, model),
+    tempThresholds: resolveTemperatureThresholds(poolHost, columns.media),
+  };
+}
+
+function poolThresholdHosts(poolIds: number[]): Map<number, ThresholdHost> {
+  const rows = db
+    .select({
+      poolId: pool.id,
+      temperatureThresholds: host.temperatureThresholds,
+    })
+    .from(pool)
+    .innerJoin(host, eq(host.id, pool.hostId))
+    .where(inArray(pool.id, poolIds))
+    .all();
+  return new Map(rows.map(({ poolId, ...poolHost }) => [poolId, poolHost]));
 }
 
 function vdevTrees(poolIds: number[]): Map<number, VdevNode | null> {
@@ -84,14 +136,21 @@ function vdevTrees(poolIds: number[]): Map<number, VdevNode | null> {
           .from(vdev)
           .where(and(inArray(vdev.poolId, poolIds), eq(vdev.present, true)))
           .all();
-  const disks = vdevDisks(
-    rows.flatMap((row) => (row.diskId === null ? [] : [row.diskId])),
+  const diskRows = new Map(
+    vdevDiskRows(
+      rows.flatMap((row) => (row.diskId === null ? [] : [row.diskId])),
+    ).map((row) => [row.id, row]),
   );
+  const poolHosts = poolThresholdHosts(poolIds);
+  const vdevDisk = (diskId: number | null, poolId: number) => {
+    const diskRow = diskId === null ? undefined : diskRows.get(diskId);
+    return diskRow ? toVdevDisk(diskRow, poolHosts.get(poolId) ?? null) : null;
+  };
   const nodes = new Map<number, VdevNode & { poolId: number }>();
   for (const { diskId, ...row } of rows) {
     nodes.set(row.id, {
       ...row,
-      disk: diskId === null ? null : (disks.get(diskId) ?? null),
+      disk: vdevDisk(diskId, row.poolId),
       children: [],
     });
   }

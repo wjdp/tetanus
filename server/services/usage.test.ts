@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "~~/server/ingest/lsblk";
-import { inferUsage } from "~~/server/services/usage";
+import { inferUsage, resolvePurpose } from "~~/server/services/usage";
 import { readFixture } from "~~/test/fixtures";
 
 function usageByName(fixture: string) {
@@ -69,5 +69,32 @@ describe("inferUsage on mars", () => {
 
   it("is empty with no filesystem anywhere", () => {
     expect(usage.get("zram0")?.kind).toBe("empty");
+  });
+});
+
+describe("resolvePurpose", () => {
+  it("prefers the inventory purpose", () => {
+    expect(resolvePurpose({ purpose: "other" }, { system: true })).toEqual({
+      purpose: "other",
+      purposeInferred: false,
+    });
+  });
+
+  it("infers system from usage", () => {
+    expect(resolvePurpose({}, { system: true })).toEqual({
+      purpose: "system",
+      purposeInferred: true,
+    });
+  });
+
+  it("is null without a choice or system usage", () => {
+    expect(resolvePurpose({}, { system: false })).toEqual({
+      purpose: null,
+      purposeInferred: false,
+    });
+    expect(resolvePurpose({}, null)).toEqual({
+      purpose: null,
+      purposeInferred: false,
+    });
   });
 });

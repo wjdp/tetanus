@@ -25,7 +25,7 @@ import {
   updateDisk,
 } from "~~/server/services/disks";
 import { DRIVE_DB_SNAPSHOT } from "~~/server/services/drive-db/lookup";
-import { upsertHostByName } from "~~/server/services/hosts";
+import { updateHost, upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
@@ -413,6 +413,54 @@ describe("disk state, overrides and inventory", () => {
     });
     expect(sda.keys).toContainEqual({ kind: "wwn", value: "5000cca5f853b4e6" });
     expect(sda).not.toHaveProperty("latestRaw");
+  });
+
+  it("reports presence within the present window", async () => {
+    const soon = await listDisks(new Date("2026-09-01T11:00:00Z"));
+    expect(soon.find((row) => row.id === sdaId)?.present).toBe(true);
+    const later = await listDisks(new Date("2026-09-01T13:00:00Z"));
+    expect(later.every((row) => !row.present)).toBe(true);
+  });
+
+  it("resolves the short model from inventory, drive-db line, then model", async () => {
+    db.update(disk)
+      .set({ model: "WDC WD120EMAZ-11BLFA0", specs: null })
+      .where(eq(disk.id, sdaId))
+      .run();
+    expect((await getDisk(sdaId)).modelShort).toBe("WD120EMAZ");
+
+    const specs = (await getDisk(sdaId)).specs;
+    db.update(disk)
+      .set({ specs: { ...specs, line: "WD Red Plus" } as DiskRow["specs"] })
+      .where(eq(disk.id, sdaId))
+      .run();
+    expect((await getDisk(sdaId)).modelShort).toBe("WD Red Plus");
+
+    await updateDisk(sdaId, { inventory: { modelShort: "Shucked 12" } });
+    expect((await getDisk(sdaId)).modelShort).toBe("Shucked 12");
+  });
+
+  it("resolves temperature thresholds from the last host and media", async () => {
+    db.update(disk).set({ media: "hdd" }).where(eq(disk.id, sdaId)).run();
+    expect((await getDisk(sdaId)).tempThresholds).toEqual({
+      warning: 45,
+      error: 55,
+    });
+
+    const { lastSeenHostId } = await getDisk(sdaId);
+    updateHost(lastSeenHostId!, {
+      temperatureThresholds: { ssd: { warning: 65, error: 75 } },
+    });
+    expect((await getDisk(sdaId)).tempThresholds).toEqual({
+      warning: 45,
+      error: 55,
+    });
+
+    db.update(disk).set({ media: "ssd" }).where(eq(disk.id, sdaId)).run();
+    expect((await getDisk(sdaId)).tempThresholds).toEqual({
+      warning: 65,
+      error: 75,
+    });
   });
 
   it("records state transitions on read", async () => {
