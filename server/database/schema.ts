@@ -17,10 +17,18 @@ import type {
   DiskState,
   StateOverride,
 } from "../../shared/disk";
+import type { DriveSpec } from "../../shared/drive-spec";
+import type {
+  HardwareJson,
+  Interface,
+  Media,
+  RecordingTech,
+} from "../../shared/hardware";
 import type { Inventory } from "../../shared/inventory-fields";
 import type { SettingsConfig } from "../../shared/schemas/settings";
 import type { AttributeStatus, DeviceStatus } from "../../shared/smart/status";
 import type { DiskUsage } from "../../shared/usage";
+import type { Vendor } from "../../shared/vendor";
 import type { ZfsDatasetType } from "../ingest/zfs-list";
 import type { ZpoolStatusScan } from "../ingest/zpool-status";
 import { autoIncrementId, boolean, datetime, json } from "./columns";
@@ -106,8 +114,17 @@ export const disk = sqliteTable("Disk", {
   capacityBytes: integer(),
   rotationRate: integer(),
   protocol: text().$type<DiskProtocol>(),
-  transport: text(),
+  link: text(),
   formFactor: text(),
+  media: text().$type<Media>(),
+  interface: text().$type<Interface>(),
+  recordingTech: text().$type<RecordingTech>(),
+  logicalBlockSize: integer(),
+  physicalBlockSize: integer(),
+  trimSupported: boolean(),
+  hardware: json().$type<HardwareJson>(),
+  specs: json().$type<DriveSpec>(),
+  vendor: text().$type<Vendor>(),
   firstSeenAt: datetime(),
   lastSeenAt: datetime(),
   lastSeenHostId: integer().references(() => host.id, {

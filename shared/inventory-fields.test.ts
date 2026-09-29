@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { INVENTORY_FIELDS, inventorySchema } from "./inventory-fields";
+import {
+  type FieldVisibilityContext,
+  INVENTORY_FIELDS,
+  inventorySchema,
+  isFieldVisible,
+} from "./inventory-fields";
 
 describe("inventorySchema", () => {
   it("has a rule for every registry field", () => {
@@ -16,6 +21,7 @@ describe("inventorySchema", () => {
       purchaseCondition: "shucked",
       warrantyExpiry: "2026-04-01",
       pin33Taped: true,
+      recordingTech: "smr",
     };
     expect(inventorySchema.parse(inventory)).toEqual(inventory);
   });
@@ -41,8 +47,36 @@ describe("inventorySchema", () => {
     { purchasePrice: "189.99" },
     { purchaseCondition: "second-hand" },
     { pin33Taped: "yes" },
+    { recordingTech: "unknown" },
     { colour: "blue" },
   ])("rejects %o", (inventory) => {
     expect(inventorySchema.safeParse(inventory).success).toBe(false);
+  });
+});
+
+describe("isFieldVisible", () => {
+  const field = (key: string) => {
+    const found = INVENTORY_FIELDS.find((candidate) => candidate.key === key);
+    if (!found) throw new Error(`${key} field missing`);
+    return found;
+  };
+  const on = (
+    media: FieldVisibilityContext["media"],
+    vendor: FieldVisibilityContext["vendor"] = null,
+  ) => ({ media, vendor });
+
+  it("shows recording tech only on hdds", () => {
+    const recordingTech = field("recordingTech");
+    expect(isFieldVisible(recordingTech, on("hdd"))).toBe(true);
+    expect(isFieldVisible(recordingTech, on("hdd", "seagate"))).toBe(true);
+    expect(isFieldVisible(recordingTech, on("ssd"))).toBe(false);
+    expect(isFieldVisible(recordingTech, on("unknown"))).toBe(false);
+    expect(isFieldVisible(recordingTech, on(null))).toBe(false);
+  });
+
+  it("shows ungated fields on every disk", () => {
+    const supplier = field("supplier");
+    expect(isFieldVisible(supplier, on("ssd"))).toBe(true);
+    expect(isFieldVisible(supplier, on(null))).toBe(true);
   });
 });

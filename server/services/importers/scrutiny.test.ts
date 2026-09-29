@@ -150,7 +150,7 @@ describe("importScrutiny matching", () => {
       protocol: "ata",
       capacityBytes: 16000900661248,
       rotationRate: 7200,
-      transport: null,
+      link: null,
       firstSeenAt: new Date("2024-03-19T10:58:18.156Z"),
       lastSeenAt: new Date("2025-05-22T00:00:12.580Z"),
       lastSeenHostId: hostId,

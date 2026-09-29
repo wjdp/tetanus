@@ -18,7 +18,7 @@ describe("lsblk parser", () => {
       model: "WDC WD120EMAZ-11",
       serial: "0UTY8HTE",
       wwn: "5000cca5f853b4e6",
-      transport: "sas",
+      link: "sas",
       rotational: true,
       partitionTableType: "gpt",
     });

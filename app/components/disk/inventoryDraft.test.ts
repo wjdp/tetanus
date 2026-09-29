@@ -11,6 +11,7 @@ describe("inventory draft", () => {
       purchaseCondition: null,
       warrantyExpiry: null,
       pin33Taped: null,
+      recordingTech: null,
     });
   });
 
@@ -24,6 +25,7 @@ describe("inventory draft", () => {
         purchaseCondition: "shucked",
         warrantyExpiry: "2028-01-01",
         pin33Taped: false,
+        recordingTech: "cmr",
       }),
     ).toEqual({
       purpose: null,
@@ -33,6 +35,7 @@ describe("inventory draft", () => {
       purchaseCondition: "shucked",
       warrantyExpiry: "2028-01-01",
       pin33Taped: false,
+      recordingTech: "cmr",
     });
   });
 });

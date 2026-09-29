@@ -8,7 +8,7 @@ defineEmits<{ updated: [disk: DiskDetail] }>();
 const name = computed(() => displayName(props.disk));
 
 const protocolLabel = computed(() =>
-  [props.disk.protocol, props.disk.transport]
+  [props.disk.protocol, props.disk.link]
     .filter((part) => part && part !== "unknown")
     .join(" / "),
 );

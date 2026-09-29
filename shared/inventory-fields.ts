@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { type Media, RECORDING_TECH_OVERRIDES } from "./hardware";
 import { PURPOSES } from "./usage";
+import type { Vendor } from "./vendor";
 
 export const INVENTORY_FIELDS = [
   { key: "purpose", label: "Purpose", type: "enum", values: PURPOSES },
@@ -14,9 +16,43 @@ export const INVENTORY_FIELDS = [
   },
   { key: "warrantyExpiry", label: "Warranty", type: "date" },
   { key: "pin33Taped", label: "3.3 V pin", type: "boolean" },
+  {
+    key: "recordingTech",
+    label: "Recording",
+    type: "enum",
+    values: RECORDING_TECH_OVERRIDES,
+    media: ["hdd"],
+  },
 ] as const;
 
 type InventoryField = (typeof INVENTORY_FIELDS)[number];
+
+interface VisibilityGate {
+  media?: readonly Media[];
+  vendors?: readonly Vendor[];
+}
+
+type GatedField = InventoryField & VisibilityGate;
+
+export interface FieldVisibilityContext {
+  media: Media | null;
+  vendor: Vendor | null;
+}
+
+function passesGate(
+  allowed: readonly string[] | undefined,
+  value: string | null,
+): boolean {
+  return allowed === undefined || (value !== null && allowed.includes(value));
+}
+
+export function isFieldVisible(
+  field: InventoryField,
+  { media, vendor }: FieldVisibilityContext,
+): boolean {
+  const gate: GatedField = field;
+  return passesGate(gate.media, media) && passesGate(gate.vendors, vendor);
+}
 export type InventoryFieldType = InventoryField["type"];
 export type InventoryKey = InventoryField["key"];
 

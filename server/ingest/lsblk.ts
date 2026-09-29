@@ -29,7 +29,7 @@ export interface LsblkDisk {
   model: string | null;
   serial: string | null;
   wwn: string | null;
-  transport: string | null;
+  link: string | null;
   rotational: boolean;
   partitionTableType: string | null;
   fsType: string | null;
@@ -108,7 +108,7 @@ function toDisk(entry: Json): LsblkDisk {
     model: (entry.model as string | null) ?? null,
     serial: (entry.serial as string | null) ?? null,
     wwn: stripWwnPrefix(entry.wwn),
-    transport: (entry.tran as string | null) ?? null,
+    link: (entry.tran as string | null) ?? null,
     rotational: Boolean(entry.rota),
     partitionTableType: (entry.pttype as string | null) ?? null,
     fsType: (entry.fstype as string | null) ?? null,

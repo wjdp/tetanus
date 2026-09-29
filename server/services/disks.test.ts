@@ -161,7 +161,7 @@ describe("observing mars", () => {
     expect(disks).toHaveLength(20);
     expect(diskBySerial("0UTY8HTE")).toMatchObject({
       model: "WDC WD120EMAZ-11",
-      transport: "sas",
+      link: "sas",
       lastDevicePath: "/dev/sda",
       firstSeenAt: seenAt,
       lastSeenAt: seenAt,
@@ -655,3 +655,151 @@ function sdcPartition(): LsblkNode {
   );
   return sdc.children[0];
 }
+
+describe("hardware classification", () => {
+  beforeEach(() => {
+    flushDb();
+  });
+
+  const SMARTCTL_DIR = join(
+    import.meta.dirname,
+    "../../test/fixtures/mars/smartctl",
+  );
+  const marsSmartctlFixtures = readdirSync(SMARTCTL_DIR)
+    .filter((name) => name.endsWith("-auto.json") || name === "xall-nvme0.json")
+    .map((name) => name.replace(/\.json$/, ""));
+
+  function ingestMarsSmartctl() {
+    for (const name of marsSmartctlFixtures) {
+      const device = `/dev/${name.replace(/^xall-/, "").replace(/-auto$/, "")}`;
+      const outcome = recordIngest({
+        hostName: "mars",
+        source: "smartctl-xall",
+        meta: { device },
+        body: readFixture(`mars/smartctl/${name}.json`),
+        receivedAt: seenAt,
+      });
+      expect(outcome.ok).toBe(true);
+    }
+  }
+
+  function interfaceCounts() {
+    const counts: Record<string, number> = {};
+    for (const row of db.select().from(disk).all()) {
+      const key = `${row.interface}/${row.link}`;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  it("classifies every mars disk by interface and link", () => {
+    ingestLsblk();
+    ingestMarsSmartctl();
+    expect(interfaceCounts()).toEqual({
+      "sata/sas": 15,
+      "sata/sata": 4,
+      "nvme/nvme": 1,
+    });
+  });
+
+  it("classifies a SATA hdd behind the SAS HBA", () => {
+    ingestLsblk();
+    const mars = upsertHostByName("mars", seenAt);
+    observeSmartctl("xall-sda-auto", mars.id);
+    expect(diskBySerial("0UTY8HTE")).toMatchObject({
+      media: "hdd",
+      interface: "sata",
+      link: "sas",
+      recordingTech: "unknown",
+      logicalBlockSize: 512,
+      physicalBlockSize: 4096,
+      trimSupported: false,
+      hardware: {
+        sataVersion: "SATA 3.2",
+        ataVersion: "ACS-2, ATA8-ACS T13/1699-D revision 4",
+        deviceType: "sat",
+        linkSpeed: { maxBps: 6_000_000_000, currentBps: 6_000_000_000 },
+      },
+    });
+  });
+
+  it("reads CMR from the model family", () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const sdd = observeSmartctl("xall-sdd-auto", mars.id);
+    expect(sdd).toMatchObject({
+      modelFamily: "Western Digital Red (CMR)",
+      recordingTech: "cmr",
+    });
+    expect(sdd?.hardware?.recordingTechInferred).toBeUndefined();
+  });
+
+  it("classifies the NVMe drive as an ssd", () => {
+    ingestLsblk();
+    const mars = upsertHostByName("mars", seenAt);
+    const nvme = observeSmartctl("xall-nvme0", mars.id);
+    expect(nvme).toMatchObject({
+      media: "ssd",
+      interface: "nvme",
+      link: "nvme",
+      recordingTech: null,
+      hardware: { nvmeVersion: "1.3", deviceType: "nvme" },
+    });
+  });
+
+  it("classifies a SAS drive", () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const parsed = parseSmartctl(
+      readFixture("synthetic-smartctl/xall-sas.json"),
+      {},
+    ).data;
+    const sas = observeDiskFromSmartctl(mars.id, {}, parsed, seenAt);
+    expect(sas).toMatchObject({
+      protocol: "scsi",
+      media: "hdd",
+      interface: "sas",
+      hardware: { scsiTransport: "SAS (SPL-4)", deviceType: "scsi" },
+    });
+  });
+
+  it("classifies from lsblk before any SMART arrives", () => {
+    ingestLsblk();
+    expect(diskBySerial("0UTY8HTE")).toMatchObject({
+      media: "hdd",
+      interface: "unknown",
+      link: "sas",
+    });
+    expect(diskBySerial("M8FWOL2V199566H")).toMatchObject({
+      media: "ssd",
+      interface: "sata",
+      link: "sata",
+    });
+  });
+
+  it("recomputes recording tech when the inventory override changes", async () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const sda = observeSmartctl("xall-sda-auto", mars.id) as DiskRow;
+    expect(sda.recordingTech).toBe("unknown");
+
+    const overridden = await updateDisk(sda.id, {
+      inventory: { recordingTech: "smr" },
+    });
+    expect(overridden.recordingTech).toBe("smr");
+
+    const cleared = await updateDisk(sda.id, {
+      inventory: { recordingTech: null },
+    });
+    expect(cleared.recordingTech).toBe("unknown");
+  });
+
+  it("infers SMR from TRIM on an hdd and flags it inferred", () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const parsed = parseSmartctl(
+      readFixture("mars/smartctl/xall-sde-auto.json"),
+      {},
+    ).data;
+    parsed.identity.trimSupported = true;
+    const sde = observeDiskFromSmartctl(mars.id, {}, parsed, seenAt);
+    expect(sde).toMatchObject({ recordingTech: "smr", trimSupported: true });
+    expect(sde?.hardware?.recordingTechInferred).toBe(true);
+  });
+});

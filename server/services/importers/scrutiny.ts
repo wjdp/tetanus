@@ -1,5 +1,6 @@
 import { and, asc, eq, isNotNull } from "drizzle-orm";
 import type { DiskKey, DiskProtocol } from "#shared/disk";
+import { classifyMedia, type Media } from "#shared/hardware";
 import type {
   ScrutinyDeviceImport,
   ScrutinyImportResult,
@@ -189,6 +190,10 @@ function diskProtocol(protocol: string): DiskProtocol | null {
   return DISK_PROTOCOLS[protocol.toLowerCase()] ?? "unknown";
 }
 
+function knownMedia(media: Media): Media | null {
+  return media === "unknown" ? null : media;
+}
+
 function createInventoryDisk(device: ScrutinyDevice, hostId: number): number {
   const created = db
     .insert(disk)
@@ -199,7 +204,13 @@ function createInventoryDisk(device: ScrutinyDevice, hostId: number): number {
       capacityBytes: device.capacity || null,
       rotationRate: device.rotational_speed ?? null,
       protocol: diskProtocol(device.device_protocol),
-      transport: device.interface_type || null,
+      link: device.interface_type || null,
+      media: knownMedia(
+        classifyMedia({
+          rotationRate: device.rotational_speed,
+          protocol: device.device_protocol,
+        }),
+      ),
       formFactor: device.form_factor || null,
       scrutinyUuid: device.scrutiny_uuid || null,
       firstSeenAt: device.CreatedAt,

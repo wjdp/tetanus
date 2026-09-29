@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { INVENTORY_FIELDS, type InventoryKey } from "#shared/inventory-fields";
+import {
+  INVENTORY_FIELDS,
+  type InventoryKey,
+  isFieldVisible,
+} from "#shared/inventory-fields";
 import {
   draftFromInventory,
   type InventoryDraft,
@@ -25,6 +29,10 @@ const reset = (disk: DiskDetail) => {
 };
 
 watch(() => props.disk, reset, { immediate: true });
+
+const fields = computed(() =>
+  INVENTORY_FIELDS.filter((field) => isFieldVisible(field, props.disk)),
+);
 
 const unsetLabel = (key: InventoryKey) =>
   key === "purpose" && props.disk.purposeInferred && props.disk.purpose
@@ -101,7 +109,7 @@ const save = async () => {
       </UFormField>
 
       <UFormField
-        v-for="field in INVENTORY_FIELDS"
+        v-for="field in fields"
         :key="field.key"
         :label="field.label"
         :name="field.key"

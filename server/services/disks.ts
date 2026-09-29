@@ -29,6 +29,11 @@ import {
   listDiary,
 } from "~~/server/services/diary";
 import {
+  hardwareFromSmartctl,
+  hardwareHintsFromLsblk,
+  recordingTechChanges,
+} from "~~/server/services/hardware";
+import {
   extractKeys,
   isPartitionName,
   keysFromVdevTarget,
@@ -53,8 +58,15 @@ export type DiskIdentity = Partial<
     | "capacityBytes"
     | "rotationRate"
     | "protocol"
-    | "transport"
+    | "link"
     | "formFactor"
+    | "media"
+    | "interface"
+    | "logicalBlockSize"
+    | "physicalBlockSize"
+    | "trimSupported"
+    | "hardware"
+    | "vendor"
   >
 >;
 
@@ -347,7 +359,7 @@ export function observeDiskFromSmartctl(
   receivedAt: Date,
 ): DiskRow | null {
   const { identity, device } = parsed;
-  return observeDisk({
+  const observed = observeDisk({
     hostId,
     receivedAt,
     keys: extractKeys({ source: "smartctl-xall", identity }),
@@ -360,6 +372,7 @@ export function observeDiskFromSmartctl(
       rotationRate: identity.rotationRate,
       formFactor: identity.formFactor,
       protocol: toProtocol(device.protocol),
+      ...hardwareFromSmartctl(parsed),
       scrutinyUuid:
         identity.model && identity.serial
           ? scrutinyUuid(identity.model, identity.serial, identity.wwn)
@@ -368,6 +381,18 @@ export function observeDiskFromSmartctl(
     devicePath: device.name || meta.device,
     deviceType: meta.type ?? (device.type || undefined),
   });
+  return observed && refreshRecordingTech(observed);
+}
+
+function refreshRecordingTech(row: DiskRow): DiskRow {
+  const changes = recordingTechChanges(row);
+  if (!changes) return row;
+  return db
+    .update(disk)
+    .set(changes)
+    .where(eq(disk.id, row.id))
+    .returning()
+    .get();
 }
 
 export function observeLsblk(
@@ -380,8 +405,9 @@ export function observeLsblk(
       hostId,
       receivedAt,
       keys: extractKeys({ source: "lsblk", disk: lsblkDisk }),
-      identity: { transport: lsblkDisk.transport },
+      identity: { link: lsblkDisk.link },
       identityHints: {
+        ...hardwareHintsFromLsblk(lsblkDisk),
         model: lsblkDisk.model,
         serial: lsblkDisk.serial,
         capacityBytes: lsblkDisk.sizeBytes,
@@ -788,7 +814,13 @@ export async function updateDisk(
   }
 
   if (Object.keys(changes).length > 0) {
-    db.update(disk).set(changes).where(eq(disk.id, id)).run();
+    const updated = db
+      .update(disk)
+      .set(changes)
+      .where(eq(disk.id, id))
+      .returning()
+      .get();
+    if (changes.inventory) refreshRecordingTech(updated);
   }
   return getDisk(id, now);
 }
