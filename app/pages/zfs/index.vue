@@ -2,6 +2,7 @@
 import type { TableColumn } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
 import { isScanActive, scanEndedAt } from "~/components/pool/scan";
+import { capacityColour, zfsStateColour } from "~/utils/vocabulary";
 
 useSeoMeta({ title: getPageTitle("ZFS") });
 
@@ -79,7 +80,16 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
         <span class="tabular">{{ formatBytes(row.original.freeBytes) }}</span>
       </template>
       <template #cap-cell="{ row }">
-        <span class="tabular">{{ percent(row.original.cap) }}</span>
+        <div class="flex min-w-20 flex-col gap-1">
+          <span class="tabular">{{ percent(row.original.cap) }}</span>
+          <UProgress
+            v-if="row.original.cap !== null"
+            :model-value="row.original.cap"
+            :color="capacityColour(row.original.cap)"
+            size="2xs"
+            data-testid="pool-capacity-bar"
+          />
+        </div>
       </template>
       <template #frag-cell="{ row }">
         <span class="tabular">{{ percent(row.original.frag) }}</span>

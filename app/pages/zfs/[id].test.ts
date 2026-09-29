@@ -33,7 +33,7 @@ const vdev = (
   ...extra,
 });
 
-registerEndpoint("/api/pools/7", () => ({
+const tank = {
   id: 7,
   guid: "4620770592528249368",
   name: "tank",
@@ -88,7 +88,11 @@ registerEndpoint("/api/pools/7", () => ({
   events: [],
   datasetCount: 2,
   snapshotCount: 0,
-}));
+};
+
+registerEndpoint("/api/pools/7", () => tank);
+registerEndpoint("/api/pools/8", () => ({ ...tank, id: 8, cap: 92 }));
+registerEndpoint("/api/pools/8/datasets", () => ({ datasets: [] }));
 
 const datasetRequests: string[] = [];
 
@@ -145,6 +149,9 @@ describe("pool page", () => {
 
   it("colours ONLINE green and marks vdev types and SMART dots", async () => {
     const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    expect(page.get('[data-testid="pool-state"]').classes()).toContain(
+      "text-success",
+    );
     const tree = page.get('[data-testid="vdev-tree"]');
 
     for (const state of tree.findAll('[data-testid="vdev-state"]')) {
@@ -166,6 +173,16 @@ describe("pool page", () => {
       ["success", "filled"],
       ["neutral", "hollow"],
     ]);
+  });
+
+  it("colours the capacity bar by the capacity thresholds", async () => {
+    const indicator = async (route: string) =>
+      (await mountSuspended(PoolPage, { route }))
+        .get('[data-testid="pool-capacity-bar"] [data-slot="indicator"]')
+        .classes();
+
+    expect(await indicator("/zfs/7")).toContain("bg-inverted");
+    expect(await indicator("/zfs/8")).toContain("bg-error");
   });
 
   it("loads the dataset tree when its tab is first shown", async () => {
