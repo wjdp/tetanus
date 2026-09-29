@@ -64,6 +64,7 @@ registerEndpoint("/api/disks/7", () => ({
   hostName: "mars",
   latestStatus: "warning",
   latestTemp: 34,
+  tempThresholds: { warning: 45, error: 55 },
   latestPowerOnHours: 40_000,
   latestPowerCycles: 120,
   state: "in-use",

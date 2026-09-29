@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { interfaceLabel, sectorFormat } from "#shared/hardware";
 import { displayModel } from "#shared/model";
+import { temperatureColour } from "#shared/temperature";
+import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 import { displayName } from "./displayName";
 import type { DiskDetail } from "./types";
 
@@ -15,6 +17,18 @@ const interfaceText = computed(() =>
     props.disk.hardware,
   ),
 );
+
+const smartStatus = computed(
+  () => DEVICE_STATUS_VOCABULARY[props.disk.latestStatus],
+);
+
+const temperatureClass = computed(() => {
+  const colour = temperatureColour(
+    props.disk.latestTemp,
+    props.disk.tempThresholds,
+  );
+  return colour === "neutral" ? undefined : STATUS_TEXT_CLASS[colour];
+});
 
 const linkSpeed = computed(() => linkSpeedDisplay(props.disk.hardware));
 
@@ -37,7 +51,12 @@ const facts = computed(() => [
     label: "Power cycles",
     value: props.disk.latestPowerCycles?.toLocaleString("en-GB") ?? "—",
   },
-  { label: "Temperature", value: formatCelsius(props.disk.latestTemp) },
+  {
+    label: "Temperature",
+    value: formatCelsius(props.disk.latestTemp),
+    class: temperatureClass.value,
+    testId: "nameplate-temperature",
+  },
 ]);
 </script>
 
@@ -51,7 +70,8 @@ const facts = computed(() => [
         >
           {{ name ?? "unnamed" }}
         </h1>
-        <p class="text-muted text-sm">
+        <p class="text-muted flex items-center gap-1.5 text-sm">
+          <MediaGlyph :media="disk.media" :size="20" class="text-muted" />
           {{ displayModel(disk.model, disk.vendor) ?? "Unknown model" }}
           <span v-if="disk.serial" class="text-default font-mono">
             · {{ disk.serial }}
@@ -60,10 +80,18 @@ const facts = computed(() => [
       </div>
       <div class="flex flex-col items-end gap-2">
         <UBadge
-          :color="deviceStatusColour(disk.latestStatus)"
-          variant="subtle"
-          :label="`SMART ${disk.latestStatus}`"
-        />
+          color="neutral"
+          variant="outline"
+          :label="smartStatus.label"
+          data-testid="nameplate-smart-status"
+        >
+          <template #leading>
+            <TopologyStatusDot
+              :colour="smartStatus.colour"
+              :shape="smartStatus.shape"
+            />
+          </template>
+        </UBadge>
         <DiskStateControl :disk="disk" @updated="$emit('updated', $event)" />
       </div>
     </div>
@@ -84,7 +112,11 @@ const facts = computed(() => [
       </div>
       <div v-for="fact in facts" :key="fact.label" class="flex flex-col">
         <dt class="text-dimmed text-xs">{{ fact.label }}</dt>
-        <dd class="tabular truncate" :class="{ 'font-mono text-xs leading-5': fact.mono }">
+        <dd
+          class="tabular truncate"
+          :class="[fact.class, { 'font-mono text-xs leading-5': fact.mono }]"
+          :data-testid="fact.testId"
+        >
           {{ fact.value }}
           <template v-if="fact.linkSpeed">
             ·
