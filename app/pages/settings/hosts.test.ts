@@ -4,7 +4,16 @@ import { describe, expect, it } from "vitest";
 import { nextTick } from "vue";
 import HostsPage from "./hosts.vue";
 
-const host = (id: number, name: string, collectorVersion: string | null) => ({
+const HOUR_MS = 60 * 60 * 1000;
+const hoursAgo = (hours: number) =>
+  new Date(Date.now() - hours * HOUR_MS).toISOString();
+
+const host = (
+  id: number,
+  name: string,
+  collectorVersion: string | null,
+  lastRuns: Record<string, { receivedAt: string; ok: boolean }> = {},
+) => ({
   id,
   name,
   displayName: null,
@@ -20,11 +29,14 @@ const host = (id: number, name: string, collectorVersion: string | null) => ({
   temperatureThresholds: null,
   firstSeenAt: new Date().toISOString(),
   lastSeenAt: new Date().toISOString(),
-  lastRuns: {},
+  lastRuns,
 });
 
 registerEndpoint("/api/hosts", () => [
-  host(1, "mars", "0.3.1"),
+  host(1, "mars", "0.3.1", {
+    "zpool-status": { receivedAt: hoursAgo(0), ok: true },
+    "smartctl-xall": { receivedAt: hoursAgo(3), ok: true },
+  }),
   host(2, "pihost", "0.3.0"),
   host(3, "venus", "0.2.0"),
   host(4, "ceres", null),
@@ -48,6 +60,22 @@ describe("hosts page", () => {
     expect(rowText(page, "pihost")).toContain("0.3.1 available");
     expect(rowText(page, "venus")).toContain("needs 0.3.0+");
     expect(rowText(page, "ceres")).toContain("unknown");
+  });
+
+  it("colours freshness chips neutral, warning and error", async () => {
+    const page = await mountSuspended(HostsPage);
+
+    const mars = page
+      .findAll("tbody tr")
+      .find((row) => row.text().startsWith("mars"));
+    const chipClasses = (group: string) =>
+      mars
+        ?.findAll("span")
+        .find((chip) => chip.text().startsWith(`${group}:`))
+        ?.classes() ?? [];
+    expect(chipClasses("zfs")).toContain("text-default");
+    expect(chipClasses("smart")).toContain("text-warning");
+    expect(chipClasses("snapshots")).toContain("text-error");
   });
 
   it("shortens tool versions", async () => {
