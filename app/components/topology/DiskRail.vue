@@ -29,6 +29,12 @@ defineProps<{
             class="hover:bg-elevated flex items-center gap-2 rounded-md px-2 py-1 text-sm"
           >
             <TopologyStatusDot :colour="railColour(disk)" />
+            <UIcon
+              v-if="mediaIcon(disk.media)"
+              :name="mediaIcon(disk.media) ?? ''"
+              class="text-muted size-4 shrink-0"
+              :title="disk.media ?? undefined"
+            />
             <span class="text-highlighted font-semibold">
               {{ disk.alias ?? disk.serial ?? `#${disk.id}` }}
             </span>

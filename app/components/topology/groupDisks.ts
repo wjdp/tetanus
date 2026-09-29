@@ -1,4 +1,5 @@
 import type { EffectiveDiskState } from "#shared/disk";
+import type { Media } from "#shared/hardware";
 import type { DeviceStatus } from "#shared/smart/status";
 import type { Purpose } from "#shared/usage";
 import {
@@ -38,6 +39,7 @@ export interface TopologyDisk {
   serial: string | null;
   state: EffectiveDiskState;
   purpose: Purpose | null;
+  media: Media | null;
   latestStatus: DeviceStatus;
 }
 

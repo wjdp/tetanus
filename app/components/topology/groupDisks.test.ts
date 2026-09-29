@@ -52,6 +52,7 @@ function disk(id: number, overrides: Partial<TopologyDisk> = {}): TopologyDisk {
     serial: null,
     state: "in-use",
     purpose: null,
+    media: null,
     latestStatus: "passed",
     ...overrides,
   };

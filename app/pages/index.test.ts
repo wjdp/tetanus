@@ -125,6 +125,7 @@ function disk(id: number, alias: string, state: string) {
     serial: `S${id}`,
     state,
     latestStatus: "passed",
+    media: id === 4 ? "ssd" : "hdd",
     hostName: "mars",
   };
 }
@@ -185,6 +186,9 @@ describe("index page", () => {
     const rail = page.get('[data-testid="disk-rail"]').text();
     expect(rail).toContain("Spare");
     expect(rail).toContain("Z9");
+    expect(page.find('[data-testid="disk-rail"] [title="ssd"]').exists()).toBe(
+      true,
+    );
     expect(rail).toContain("Missing");
     expect(rail).toContain("OLD1");
     expect(rail).not.toContain("K1");
