@@ -1,5 +1,6 @@
 import type { EffectiveDiskState } from "#shared/disk";
 import type { DeviceStatus } from "#shared/smart/status";
+import type { Purpose } from "#shared/usage";
 import {
   deviceStatusColour,
   diskStateColour,
@@ -36,6 +37,7 @@ export interface TopologyDisk {
   model: string | null;
   serial: string | null;
   state: EffectiveDiskState;
+  purpose: Purpose | null;
   latestStatus: DeviceStatus;
 }
 
@@ -59,7 +61,7 @@ export interface VdevGroup {
 }
 
 export interface RailGroup<Disk extends TopologyDisk = TopologyDisk> {
-  state: EffectiveDiskState;
+  key: string;
   label: string;
   disks: Disk[];
 }
@@ -128,15 +130,34 @@ export function linkedDiskIds(roots: (TopologyVdev | null)[]): Set<number> {
   return ids;
 }
 
-const RAIL_ORDER: { state: EffectiveDiskState; label: string }[] = [
-  { state: "spare", label: "Spare" },
-  { state: "missing", label: "Missing" },
-  { state: "removed", label: "Removed" },
-  { state: "unseen", label: "Unseen" },
-  { state: "in-use", label: "In use, not in a pool" },
-  { state: "dead", label: "Dead" },
-  { state: "retired", label: "Retired" },
-  { state: "sold", label: "Sold" },
+interface RailSpec {
+  key: string;
+  label: string;
+  matches: (disk: TopologyDisk) => boolean;
+}
+
+function byState(state: EffectiveDiskState, label: string): RailSpec {
+  return {
+    key: state,
+    label,
+    matches: (disk) => disk.state === state && disk.purpose !== "system",
+  };
+}
+
+const RAIL_ORDER: RailSpec[] = [
+  {
+    key: "system",
+    label: "System",
+    matches: (disk) => disk.purpose === "system",
+  },
+  byState("spare", "Spare"),
+  byState("missing", "Missing"),
+  byState("removed", "Removed"),
+  byState("unseen", "Unseen"),
+  byState("in-use", "In use, not in a pool"),
+  byState("dead", "Dead"),
+  byState("retired", "Retired"),
+  byState("sold", "Sold"),
 ];
 
 export function railGroups<Disk extends TopologyDisk>(
@@ -144,10 +165,10 @@ export function railGroups<Disk extends TopologyDisk>(
   inPool: Set<number>,
 ): RailGroup<Disk>[] {
   const outside = disks.filter((disk) => !inPool.has(disk.id));
-  return RAIL_ORDER.map(({ state, label }) => ({
-    state,
+  return RAIL_ORDER.map(({ key, label, matches }) => ({
+    key,
     label,
-    disks: outside.filter((disk) => disk.state === state),
+    disks: outside.filter(matches),
   })).filter((group) => group.disks.length > 0);
 }
 

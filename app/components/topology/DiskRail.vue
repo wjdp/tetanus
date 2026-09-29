@@ -13,7 +13,7 @@ defineProps<{
     </p>
     <section
       v-for="group in groups"
-      :key="group.state"
+      :key="group.key"
       class="flex flex-col gap-1"
     >
       <h3 class="text-toned text-sm font-semibold">
@@ -32,6 +32,13 @@ defineProps<{
             <span class="text-highlighted font-semibold">
               {{ disk.alias ?? disk.serial ?? `#${disk.id}` }}
             </span>
+            <UBadge
+              v-if="disk.purpose === 'other'"
+              size="xs"
+              variant="subtle"
+              color="neutral"
+              label="other"
+            />
             <span class="text-muted min-w-0 flex-1 truncate">
               {{ disk.model ?? "" }}
             </span>

@@ -51,6 +51,7 @@ function disk(id: number, overrides: Partial<TopologyDisk> = {}): TopologyDisk {
     model: null,
     serial: null,
     state: "in-use",
+    purpose: null,
     latestStatus: "passed",
     ...overrides,
   };
@@ -122,7 +123,7 @@ describe("railGroups", () => {
 
     expect(
       railGroups(disks, inPool).map((group) => [
-        group.state,
+        group.key,
         group.disks.map((row) => row.id),
       ]),
     ).toEqual([
@@ -130,6 +131,39 @@ describe("railGroups", () => {
       ["missing", [10]],
       ["unseen", [11]],
       ["sold", [12]],
+    ]);
+  });
+});
+
+describe("railGroups purpose", () => {
+  const groups = (disks: TopologyDisk[]) =>
+    railGroups(disks, new Set()).map((group) => [
+      group.key,
+      group.disks.map((row) => row.id),
+    ]);
+
+  it("puts system disks under System regardless of state, first", () => {
+    expect(
+      groups([
+        disk(1, { state: "spare" }),
+        disk(2, { state: "spare", purpose: "system" }),
+        disk(3, { state: "in-use", purpose: "system" }),
+      ]),
+    ).toEqual([
+      ["system", [2, 3]],
+      ["spare", [1]],
+    ]);
+  });
+
+  it("keeps non-system disks by state", () => {
+    expect(
+      groups([
+        disk(1, { purpose: "other" }),
+        disk(2, { state: "missing", purpose: "other" }),
+      ]),
+    ).toEqual([
+      ["missing", [2]],
+      ["in-use", [1]],
     ]);
   });
 });
