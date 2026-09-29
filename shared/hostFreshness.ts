@@ -140,6 +140,26 @@ export function allGroupFreshness(
   );
 }
 
+export function isEveryGroupSilent(
+  groups: readonly Pick<GroupFreshness, "status">[],
+): boolean {
+  return groups.every((group) => group.status !== "ok");
+}
+
+export function isHostOffline(
+  host: {
+    intermittent: boolean;
+    lastRuns: Record<string, RunLike | undefined>;
+  },
+  now: number,
+  cadences: CadenceOverrides = {},
+): boolean {
+  return (
+    host.intermittent &&
+    isEveryGroupSilent(allGroupFreshness(host.lastRuns, now, cadences))
+  );
+}
+
 export function formatDuration(ms: number): string {
   const minutes = Math.max(1, Math.round(ms / 60_000));
   if (minutes < 60) return `${minutes} min`;

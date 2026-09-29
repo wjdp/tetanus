@@ -3,6 +3,7 @@ import {
   allGroupFreshness,
   DEMO_CADENCES,
   formatDuration,
+  isHostOffline,
   MONITORED_SOURCES,
   sourceFreshness,
 } from "./hostFreshness";
@@ -44,6 +45,40 @@ describe("allGroupFreshness", () => {
 describe("MONITORED_SOURCES", () => {
   it("excludes the event-driven zed-event source", () => {
     expect(MONITORED_SOURCES).not.toContain("zed-event");
+  });
+});
+
+describe("isHostOffline", () => {
+  const now = Date.parse("2026-09-29T12:00:00Z");
+  const hoursAgo = (hours: number) => ({
+    receivedAt: new Date(now - hours * 60 * 60_000),
+    ok: true,
+  });
+  const staleRuns = {
+    versions: hoursAgo(24),
+    lsblk: hoursAgo(24),
+    "zfs-snapshots": hoursAgo(24),
+  };
+
+  it("is offline when intermittent and every group is stale", () => {
+    expect(
+      isHostOffline({ intermittent: true, lastRuns: staleRuns }, now),
+    ).toBe(true);
+  });
+
+  it("is offline when intermittent and never seen", () => {
+    expect(isHostOffline({ intermittent: true, lastRuns: {} }, now)).toBe(true);
+  });
+
+  it("is online when any group is fresh", () => {
+    const lastRuns = { ...staleRuns, versions: hoursAgo(0) };
+    expect(isHostOffline({ intermittent: true, lastRuns }, now)).toBe(false);
+  });
+
+  it("is never offline when not intermittent", () => {
+    expect(
+      isHostOffline({ intermittent: false, lastRuns: staleRuns }, now),
+    ).toBe(false);
   });
 });
 

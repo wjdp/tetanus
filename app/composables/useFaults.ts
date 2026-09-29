@@ -53,9 +53,9 @@ export function useFaults() {
         });
       }
 
+      if (isHostOffline(host, now, cadences)) continue;
       const groups = allGroupFreshness(host.lastRuns, now, cadences);
-      const allSilent = groups.every((group) => group.status !== "ok");
-      if (!allSilent) continue;
+      if (!isEveryGroupSilent(groups)) continue;
 
       const id = `collector-silent:${host.name}`;
       if (dismissed.value.has(id)) continue;

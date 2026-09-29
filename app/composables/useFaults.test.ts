@@ -17,6 +17,7 @@ const run = (ageMs: number) => ({
 const host = (
   lastRuns: Record<string, ReturnType<typeof run>>,
   collectorVersion: string | null = "0.3.1",
+  intermittent = false,
 ) => ({
   id: 1,
   name: "mars",
@@ -25,6 +26,8 @@ const host = (
   collectorVersion,
   collectorStatus: "current",
   healthchecksUrl: null,
+  intermittent,
+  position: 0,
   notes: "",
   firstSeenAt: new Date(now - 10 * 24 * 60 * 60_000).toISOString(),
   lastSeenAt: new Date(now - 5 * 60 * 60_000).toISOString(),
@@ -59,6 +62,25 @@ describe("useFaults", () => {
     expect(component.text()).toContain("collector-silent:mars");
     expect(component.text()).toContain('"host":"mars"');
     expect(component.text()).toContain("No data for");
+  });
+
+  it("raises no silent fault for an offline intermittent host", async () => {
+    hosts = [host({ versions: run(5 * 60 * 60_000) }, "0.3.1", true)];
+
+    const component = await mountSuspended(FaultsProbe);
+    await flushPromises();
+
+    expect(component.text()).toBe("[]");
+  });
+
+  it("still raises an incompatible fault for an offline host", async () => {
+    hosts = [host({ versions: run(5 * 60 * 60_000) }, "0.2.0", true)];
+
+    const component = await mountSuspended(FaultsProbe);
+    await flushPromises();
+
+    expect(component.text()).toContain("collector-incompatible:mars:0.2.0");
+    expect(component.text()).not.toContain("collector-silent");
   });
 
   it("raises no fault when a group is fresh", async () => {
