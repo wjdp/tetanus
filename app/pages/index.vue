@@ -44,12 +44,23 @@ const poolsByHost = computed(() => {
   return byHost;
 });
 
-const rail = computed(() =>
-  railGroups(
-    disks.value ?? [],
-    linkedDiskIds((pools.value ?? []).map((pool) => pool.vdevs)),
-  ),
+const inPool = computed(() =>
+  linkedDiskIds((pools.value ?? []).map((pool) => pool.vdevs)),
 );
+
+const disksByHost = computed(() => {
+  const byHost = new Map<number, NonNullable<typeof disks.value>>();
+  for (const disk of disks.value ?? []) {
+    if (disk.lastSeenHostId === null) continue;
+    byHost.set(disk.lastSeenHostId, [
+      ...(byHost.get(disk.lastSeenHostId) ?? []),
+      disk,
+    ]);
+  }
+  return byHost;
+});
+
+const rail = computed(() => railGroups(disks.value ?? [], inPool.value));
 </script>
 
 <template>
@@ -96,6 +107,8 @@ const rail = computed(() =>
           :key="host.id"
           :host="host"
           :pools="poolsByHost.get(host.id) ?? []"
+          :disks="disksByHost.get(host.id) ?? []"
+          :in-pool="inPool"
           :now="now"
         />
       </div>

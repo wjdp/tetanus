@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { RunLike } from "~/utils/hostFreshness";
-import { isScanActive, scanProgress } from "../pool/scan";
-import type { TopologyPool } from "./groupDisks";
+import { activeScan } from "./activeScan";
+import {
+  hostDiskGroups,
+  hostDiskSummary,
+  type TopologyDisk,
+  type TopologyPool,
+} from "./groupDisks";
 
 const props = defineProps<{
   host: {
@@ -11,6 +16,8 @@ const props = defineProps<{
     lastRuns: Record<string, RunLike>;
   };
   pools: TopologyPool[];
+  disks: TopologyDisk[];
+  inPool: Set<number>;
   now: number;
 }>();
 
@@ -25,25 +32,32 @@ const chipColor = (
 
 const activeScans = computed(() =>
   props.pools.flatMap((pool) => {
-    if (!pool.scan || !isScanActive(pool.scan)) return [];
-    const progress = scanProgress(pool.scan, props.now);
-    const left =
-      progress.msLeft === null
-        ? ""
-        : ` · ${formatDuration(progress.msLeft)} left`;
-    return [
-      {
-        pool: pool.name,
-        text: `${progress.verb} ${progress.percent} %${left}`,
-      },
-    ];
+    const scan = activeScan(pool.scan, props.now);
+    return scan ? [{ pool: pool.name, text: scan.text }] : [];
   }),
+);
+
+const summary = computed(() => {
+  const { count, hdd, ssd, rawBytes } = hostDiskSummary(props.disks);
+  if (count === 0) return null;
+  return [
+    `${count} ${count === 1 ? "disk" : "disks"}`,
+    hdd > 0 ? `${hdd} HDD` : null,
+    ssd > 0 ? `${ssd} SSD` : null,
+    rawBytes === null ? null : `${formatBytes(rawBytes)} raw`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+});
+
+const otherDisks = computed(() =>
+  hostDiskGroups(props.disks, props.host.id, props.inPool),
 );
 </script>
 
 <template>
   <section class="flex flex-col gap-4" data-testid="host-section">
-    <header class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <header class="flex flex-col gap-1">
       <h2 class="text-highlighted text-lg font-semibold">
         {{ host.displayName || host.name }}
         <span
@@ -53,30 +67,42 @@ const activeScans = computed(() =>
           {{ host.name }}
         </span>
       </h2>
-      <div class="flex flex-wrap gap-1">
-        <UBadge
-          v-for="group in allGroupFreshness(host.lastRuns, now, cadences)"
-          :key="group.name"
-          :color="chipColor(group.status)"
-          variant="subtle"
-          size="sm"
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <p
+          v-if="summary"
+          class="text-dimmed tabular text-sm"
+          data-testid="host-summary"
         >
-          {{ group.name }}: {{ relativeTime(group.lastSeenAt) }}
-        </UBadge>
+          {{ summary }}
+        </p>
+        <div class="ml-auto flex flex-wrap items-center gap-1">
+          <UBadge
+            v-for="group in allGroupFreshness(host.lastRuns, now, cadences)"
+            :key="group.name"
+            :color="chipColor(group.status)"
+            variant="subtle"
+            size="sm"
+          >
+            {{ group.name }}: {{ relativeTime(group.lastSeenAt) }}
+          </UBadge>
+          <UBadge
+            v-for="scan in activeScans"
+            :key="scan.pool"
+            color="info"
+            variant="subtle"
+            size="sm"
+            icon="i-lucide-loader"
+          >
+            {{ scan.pool }}: {{ scan.text }}
+          </UBadge>
+        </div>
       </div>
-      <UBadge
-        v-for="scan in activeScans"
-        :key="scan.pool"
-        color="info"
-        variant="subtle"
-        size="sm"
-        icon="i-lucide-loader"
-      >
-        {{ scan.pool }}: {{ scan.text }}
-      </UBadge>
     </header>
 
-    <p v-if="pools.length === 0" class="text-muted text-sm">
+    <p
+      v-if="pools.length === 0 && otherDisks.length === 0"
+      class="text-muted text-sm"
+    >
       No pools reported yet.
     </p>
 
@@ -86,5 +112,28 @@ const activeScans = computed(() =>
       :pool="pool"
       :now="now"
     />
+
+    <article
+      v-if="otherDisks.length > 0"
+      class="border-default flex flex-col gap-4 rounded-lg border p-4"
+      data-testid="other-disks-card"
+    >
+      <h3 class="text-highlighted text-lg font-semibold">Other disks</h3>
+      <div class="flex flex-col gap-3">
+        <TopologyVdevRow
+          v-for="group in otherDisks"
+          :key="group.key"
+          :icon="group.icon"
+          :label="group.label"
+          data-testid="host-disk-group"
+        >
+          <TopologyDiskTile
+            v-for="disk in group.disks"
+            :key="disk.id"
+            :disk="disk"
+          />
+        </TopologyVdevRow>
+      </div>
+    </article>
   </section>
 </template>

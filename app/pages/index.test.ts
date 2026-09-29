@@ -59,7 +59,20 @@ function leaf(alias: string, id: number, overrides: object = {}) {
     checksumErrors: 0,
     slowIos: 0,
     path: `/dev/disk/by-vdev/${alias}-part1`,
-    disk: { id, alias, state: "in-use", latestStatus: "passed" },
+    sizeBytes: null,
+    allocBytes: null,
+    disk: {
+      id,
+      alias,
+      state: "in-use",
+      latestStatus: "passed",
+      capacityBytes: 12e12,
+      media: "hdd",
+      purpose: null,
+      latestTemp: 36,
+      modelShort: "Ultrastar HC520",
+      tempThresholds: { warning: 45, error: 55 },
+    },
     children: [],
     ...overrides,
   };
@@ -93,6 +106,8 @@ const tank = {
     checksumErrors: 0,
     slowIos: null,
     path: null,
+    sizeBytes: 36e12,
+    allocBytes: 18e12,
     disk: null,
     children: [
       {
@@ -106,6 +121,8 @@ const tank = {
         checksumErrors: 0,
         slowIos: 0,
         path: null,
+        sizeBytes: 36e12,
+        allocBytes: 18e12,
         disk: null,
         children: [
           leaf("K1", 1),
@@ -117,18 +134,35 @@ const tank = {
   },
 };
 
-function disk(id: number, alias: string, state: string) {
+function disk(
+  id: number,
+  alias: string,
+  state: string,
+  overrides: object = {},
+) {
   return {
     id,
     alias,
     model: "WDC WUH721212AL",
+    modelShort: "Ultrastar HC520",
     serial: `S${id}`,
+    interfaceLabel: "SATA 6 Gb/s",
     state,
+    stateOverride: null,
     latestStatus: "passed",
+    latestTemp: 36,
+    capacityBytes: 12e12,
     media: id === 4 ? "ssd" : "hdd",
+    purpose: null,
+    tempThresholds: { warning: 45, error: 55 },
+    present: true,
+    lastSeenHostId: 1,
     hostName: "mars",
+    ...overrides,
   };
 }
+
+const boxy = { ...mars, id: 2, name: "boxy" };
 
 beforeEach(() => {
   clearNuxtData();
@@ -157,14 +191,14 @@ describe("index page", () => {
     expect(page.text()).toContain("No pools reported yet.");
   });
 
-  it("lays out pools as vdev rows of disk tiles with a rail of spares", async () => {
+  it("lays out pools as vdev rows of disk tiles with host disks and a rail", async () => {
     hosts = [mars];
     pools = [tank];
     disks = [
       disk(1, "K1", "in-use"),
       disk(2, "K2", "in-use"),
       disk(4, "Z9", "spare"),
-      disk(5, "OLD1", "missing"),
+      disk(5, "OLD1", "missing", { present: false }),
     ];
 
     const page = await mountPage();
@@ -172,25 +206,57 @@ describe("index page", () => {
     const header = page.get('[data-testid="host-section"] header').text();
     expect(header).toContain("zfs:");
     expect(header).toContain("tank: scrub 50 %");
+    expect(page.get('[data-testid="host-summary"]').text()).toBe(
+      "4 disks · 3 HDD · 1 SSD · 48.0 TB raw",
+    );
+    expect(page.get('[data-testid="scan-progress"]').exists()).toBe(true);
 
     const group = page.get('[data-testid="vdev-group"]');
     expect(group.text()).toContain("raidz1-0");
+    expect(group.get('[data-testid="vdev-usage"]').text()).toBe(
+      "18.0 TB of 36.0 TB · 50 %",
+    );
     const tiles = group.findAll('[data-testid="disk-tile"]');
     expect(
       tiles.map((tile) => tile.get('[data-testid="disk-tile-label"]').text()),
     ).toEqual(["K1", "K2", "K3"]);
     expect(tiles[0]?.attributes("href")).toBe("/disks/1");
+    expect(tiles[0]?.text()).toContain("Ultrastar HC520");
     expect(tiles[1]?.text()).toContain("C4");
     expect(tiles[2]?.attributes("href")).toBeUndefined();
 
+    const other = page.get('[data-testid="other-disks-card"]');
+    expect(other.text()).toContain("Spare");
+    expect(other.text()).toContain("Z9");
+    expect(other.find('[data-media="ssd"]').exists()).toBe(true);
+
     const rail = page.get('[data-testid="disk-rail"]').text();
-    expect(rail).toContain("Spare");
-    expect(rail).toContain("Z9");
-    expect(page.find('[data-testid="disk-rail"] [title="ssd"]').exists()).toBe(
-      true,
-    );
     expect(rail).toContain("Missing");
     expect(rail).toContain("OLD1");
+    expect(rail).not.toContain("Z9");
     expect(rail).not.toContain("K1");
+  });
+
+  it("shows a dead disk plugged into boxy under boxy, not in the rail", async () => {
+    hosts = [mars, boxy];
+    disks = [
+      disk(8, "RMA1", "dead", {
+        stateOverride: "dead",
+        lastSeenHostId: 2,
+        hostName: "boxy",
+      }),
+    ];
+
+    const page = await mountPage();
+
+    const [marsSection, boxySection] = page.findAll(
+      '[data-testid="host-section"]',
+    );
+    expect(marsSection?.text()).toContain("No pools reported yet.");
+    expect(boxySection?.text()).not.toContain("No pools reported yet.");
+    expect(
+      boxySection?.get('[data-testid="other-disks-card"]').text(),
+    ).toContain("RMA1");
+    expect(page.get('[data-testid="disk-rail"]').text()).not.toContain("RMA1");
   });
 });
