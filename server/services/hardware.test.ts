@@ -3,10 +3,12 @@ import type { DriveSpec } from "#shared/drive-spec";
 import { lookupSpec } from "~~/server/services/drive-db/lookup";
 import {
   deriveHardware,
+  hardwareHintsFromLsblk,
   normaliseFormFactor,
   type PreviousHardware,
   reconcileWithSpec,
   specInterface,
+  zonedChanges,
 } from "~~/server/services/hardware";
 
 const exos = lookupSpec("ST12000NM000J-2TY103") as DriveSpec;
@@ -105,6 +107,48 @@ describe("reconcileWithSpec", () => {
   });
 });
 
+describe("hardwareHintsFromLsblk", () => {
+  it("passes sector sizes through as hints", () => {
+    expect(
+      hardwareHintsFromLsblk({
+        rotational: true,
+        link: "sata",
+        logicalBlockSize: 512,
+        physicalBlockSize: 4096,
+      }),
+    ).toEqual({
+      media: "hdd",
+      interface: "sata",
+      logicalBlockSize: 512,
+      physicalBlockSize: 4096,
+    });
+    expect(
+      hardwareHintsFromLsblk({
+        rotational: false,
+        link: "nvme",
+        logicalBlockSize: null,
+        physicalBlockSize: null,
+      }),
+    ).toEqual({ media: "ssd", interface: "nvme" });
+  });
+});
+
+describe("zonedChanges", () => {
+  it("stores a zoned model, drops it when gone, ignores none", () => {
+    expect(zonedChanges({ hardware: null }, "host-managed")).toEqual({
+      hardware: { zoned: "host-managed" },
+    });
+    expect(
+      zonedChanges({ hardware: { zoned: "host-managed" } }, "none"),
+    ).toEqual({ hardware: {} });
+    expect(zonedChanges({ hardware: null }, "none")).toBeNull();
+    expect(zonedChanges({ hardware: null }, null)).toBeNull();
+    expect(
+      zonedChanges({ hardware: { zoned: "host-aware" } }, "host-aware"),
+    ).toBeNull();
+  });
+});
+
 describe("deriveHardware", () => {
   const previous: PreviousHardware = {
     model: "ST12000NM000J-2TY103",
@@ -137,6 +181,21 @@ describe("deriveHardware", () => {
     expect(deriveHardware(previous, {}).hardware).toEqual({
       sataVersion: "SATA 3.3",
     });
+  });
+
+  it("carries the lsblk zoned model through a smartctl observation", () => {
+    const zoned = {
+      ...previous,
+      hardware: { ...previous.hardware, zoned: "host-managed" },
+    };
+    const derived = deriveHardware(zoned, {
+      hardware: { sataVersion: "SATA 3.2" },
+    });
+    expect(derived.hardware).toEqual({
+      sataVersion: "SATA 3.2",
+      zoned: "host-managed",
+    });
+    expect(derived.recordingTech).toBe("smr");
   });
 
   it("detects the vendor from WWN, then keeps the previous one", () => {

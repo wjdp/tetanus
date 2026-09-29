@@ -4,6 +4,7 @@ import {
   classifyMedia,
   type HardwareJson,
   type Interface,
+  isZonedSmr,
   type Media,
   resolveRecordingTech,
 } from "#shared/hardware";
@@ -72,13 +73,32 @@ export function hardwareFromSmartctl({
 }
 
 export function hardwareHintsFromLsblk(
-  lsblkDisk: Pick<LsblkDisk, "rotational" | "link">,
-): Pick<ObservedHardware, "media" | "interface"> {
+  lsblkDisk: Pick<
+    LsblkDisk,
+    "rotational" | "link" | "logicalBlockSize" | "physicalBlockSize"
+  >,
+): Pick<
+  ObservedHardware,
+  "media" | "interface" | "logicalBlockSize" | "physicalBlockSize"
+> {
   const input = { rotational: lsblkDisk.rotational, link: lsblkDisk.link };
   return {
     media: classifyMedia(input),
     interface: classifyInterface(input),
+    logicalBlockSize: lsblkDisk.logicalBlockSize ?? undefined,
+    physicalBlockSize: lsblkDisk.physicalBlockSize ?? undefined,
   };
+}
+
+export function zonedChanges(
+  row: Pick<DiskRow, "hardware">,
+  zoned: string | null,
+): Pick<DiskRow, "hardware"> | null {
+  const stored = row.hardware?.zoned;
+  const observed = isZonedSmr(zoned) ? (zoned ?? undefined) : undefined;
+  if (stored === observed) return null;
+  const { zoned: _previous, ...rest } = row.hardware ?? {};
+  return { hardware: { ...rest, ...(observed ? { zoned: observed } : {}) } };
 }
 
 export function recordingTechChanges(
@@ -99,6 +119,7 @@ export function recordingTechChanges(
     datasetRecordingTech: row.specs?.recordingTech ?? null,
     modelFamily: row.modelFamily,
     trimSupported: row.trimSupported,
+    zoned: row.hardware?.zoned,
   });
   const { recordingTechInferred: _previous, ...rest } = row.hardware ?? {};
   const hardware: HardwareJson | null =
@@ -250,6 +271,7 @@ function observedHardwareOf(hardware: HardwareJson | null | undefined) {
   const {
     recordingTechInferred: _inferred,
     specMismatch: _mismatch,
+    zoned: _zoned,
     ...observed
   } = hardware ?? {};
   return observed;
@@ -257,11 +279,13 @@ function observedHardwareOf(hardware: HardwareJson | null | undefined) {
 
 function composeHardware(
   observed: HardwareJson,
+  zoned: string | undefined,
   recordingTechInferred: boolean,
   specMismatch: string[],
 ): HardwareJson | null {
   const hardware: HardwareJson = {
     ...observed,
+    ...(zoned ? { zoned } : {}),
     ...(recordingTechInferred ? { recordingTechInferred } : {}),
     ...(specMismatch.length > 0 ? { specMismatch } : {}),
   };
@@ -294,6 +318,7 @@ export function deriveHardware(
     datasetRecordingTech: specs?.recordingTech ?? null,
     modelFamily,
     trimSupported: observation.trimSupported ?? previous?.trimSupported,
+    zoned: previous?.hardware?.zoned,
   });
   const vendor =
     detectVendor({
@@ -311,6 +336,7 @@ export function deriveHardware(
     recordingTech,
     hardware: composeHardware(
       observation.hardware ?? observedHardwareOf(previous?.hardware),
+      previous?.hardware?.zoned,
       inferred,
       specMismatch,
     ),

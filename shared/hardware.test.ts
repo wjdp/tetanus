@@ -130,6 +130,30 @@ describe("resolveRecordingTech", () => {
     ).toEqual({ recordingTech: tech, inferred: false });
   });
 
+  it("takes a zoned block device as SMR, below the override only", () => {
+    expect(
+      resolveRecordingTech({
+        media: "hdd",
+        zoned: "host-managed",
+        datasetRecordingTech: "cmr",
+      }),
+    ).toEqual({ recordingTech: "smr", inferred: false });
+    expect(
+      resolveRecordingTech({
+        media: "hdd",
+        zoned: "host-aware",
+        override: "cmr",
+      }),
+    ).toEqual({ recordingTech: "cmr", inferred: false });
+    expect(
+      resolveRecordingTech({
+        media: "hdd",
+        zoned: "none",
+        datasetRecordingTech: "cmr",
+      }),
+    ).toEqual({ recordingTech: "cmr", inferred: false });
+  });
+
   it("infers SMR from TRIM on an hdd", () => {
     expect(
       resolveRecordingTech({

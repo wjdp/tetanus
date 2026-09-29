@@ -40,6 +40,7 @@ import {
   hardwareFromSmartctl,
   hardwareHintsFromLsblk,
   recordingTechChanges,
+  zonedChanges,
 } from "~~/server/services/hardware";
 import {
   extractKeys,
@@ -412,6 +413,18 @@ function refreshRecordingTech(row: DiskRow): DiskRow {
     .get();
 }
 
+function recordZoned(row: DiskRow, zoned: string | null): DiskRow {
+  const changes = zonedChanges(row, zoned);
+  if (!changes) return refreshRecordingTech(row);
+  const updated = db
+    .update(disk)
+    .set(changes)
+    .where(eq(disk.id, row.id))
+    .returning()
+    .get();
+  return refreshRecordingTech(updated);
+}
+
 export function observeLsblk(
   hostId: number,
   data: LsblkResult,
@@ -433,7 +446,8 @@ export function observeLsblk(
       devicePath: lsblkDisk.path,
     });
     if (!observed) return [];
-    return [recordUsage(observed, inferUsage(lsblkDisk), receivedAt)];
+    const zoned = recordZoned(observed, lsblkDisk.zoned);
+    return [recordUsage(zoned, inferUsage(lsblkDisk), receivedAt)];
   });
 }
 

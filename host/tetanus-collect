@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-readonly version=0.2.0
+readonly version=0.3.0
 readonly default_config=/etc/tetanus/collect.env
 readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
 readonly sources=(
@@ -268,7 +268,7 @@ collect_vdev_id_conf() {
 
 ensure_lsblk() {
   [[ -e $workdir/lsblk.out ]] && return 0
-  local columns=NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE
+  local columns=NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE,ZONED,LOG-SEC,PHY-SEC
   lsblk -J -b -o "$columns,MOUNTPOINTS" >"$workdir/lsblk.out" </dev/null
   lsblk_status=$?
   if ((lsblk_status != 0)); then

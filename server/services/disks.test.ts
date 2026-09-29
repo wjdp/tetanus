@@ -886,6 +886,41 @@ describe("hardware classification", () => {
     });
   });
 
+  it("fills sector sizes from lsblk and lets smartctl overwrite them", () => {
+    ingest(
+      "lsblk",
+      syntheticLsblk({ sda: { "log-sec": 512, "phy-sec": 512 } }),
+    );
+    expect(diskBySerial("WD-WCC7K1234567")).toMatchObject({
+      logicalBlockSize: 512,
+      physicalBlockSize: 512,
+    });
+    const mars = upsertHostByName("mars", seenAt);
+    observeSmartctl("xall-sda-auto", mars.id);
+    ingest(
+      "lsblk",
+      syntheticLsblk({
+        sda: { serial: "0UTY8HTE", "log-sec": 512, "phy-sec": 512 },
+      }),
+      undefined,
+      "mars",
+      new Date("2026-09-01T11:00:00Z"),
+    );
+    expect(diskBySerial("0UTY8HTE")).toMatchObject({
+      logicalBlockSize: 512,
+      physicalBlockSize: 4096,
+    });
+  });
+
+  it("marks a zoned block device as SMR from lsblk alone", () => {
+    ingest("lsblk", syntheticLsblk({ sda: { zoned: "host-managed" } }));
+    expect(diskBySerial("WD-WCC7K1234567")).toMatchObject({
+      media: "hdd",
+      recordingTech: "smr",
+      hardware: { zoned: "host-managed" },
+    });
+  });
+
   it("recomputes recording tech when the inventory override changes", async () => {
     const mars = upsertHostByName("mars", seenAt);
     const sda = observeSmartctl("xall-sda-auto", mars.id) as DiskRow;

@@ -20,6 +20,9 @@ describe("lsblk parser", () => {
       wwn: "5000cca5f853b4e6",
       link: "sas",
       rotational: true,
+      zoned: null,
+      logicalBlockSize: null,
+      physicalBlockSize: null,
       partitionTableType: "gpt",
     });
     expect(sda?.partitions).toEqual([
@@ -180,6 +183,41 @@ describe("lsblk parser", () => {
         fsType: "ext4",
         mountPoints: null,
       });
+    });
+  });
+
+  it("reads zoned model and sector sizes, missing columns as unknown", () => {
+    const body = JSON.stringify({
+      blockdevices: [
+        {
+          name: "sda",
+          type: "disk",
+          size: 1,
+          "maj:min": "8:0",
+          path: "/dev/sda",
+          zoned: "host-managed",
+          "log-sec": 512,
+          "phy-sec": 4096,
+        },
+        {
+          name: "sdb",
+          type: "disk",
+          size: 1,
+          "maj:min": "8:16",
+          path: "/dev/sdb",
+        },
+      ],
+    });
+    const { data } = parse(body, {});
+    expect(data.disks[0]).toMatchObject({
+      zoned: "host-managed",
+      logicalBlockSize: 512,
+      physicalBlockSize: 4096,
+    });
+    expect(data.disks[1]).toMatchObject({
+      zoned: null,
+      logicalBlockSize: null,
+      physicalBlockSize: null,
     });
   });
 

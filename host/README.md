@@ -60,7 +60,9 @@ Each source is one command whose stdout is POSTed to `/api/ingest/<source>`:
   and `lsb_release -ds`
 
 `lsblk` requests `MOUNTPOINTS`, which needs util-linux 2.37+ (Debian 12, Ubuntu 22.04);
-older hosts fall back to `MOUNTPOINT`.
+older hosts fall back to `MOUNTPOINT`. It also requests `ZONED,LOG-SEC,PHY-SEC` (util-linux
+2.29+): sector sizes for disks whose SMART output lacks them, and the zoned model for
+host-managed SMR. The server treats missing columns as unknown.
 
 It never writes to the host: the service runs with a read-only file system
 (`ProtectSystem=strict`) and a private `/tmp`. It runs as root because `zpool` needs

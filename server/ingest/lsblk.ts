@@ -31,6 +31,9 @@ export interface LsblkDisk {
   wwn: string | null;
   link: string | null;
   rotational: boolean;
+  zoned: string | null;
+  logicalBlockSize: number | null;
+  physicalBlockSize: number | null;
   partitionTableType: string | null;
   fsType: string | null;
   mountPoints: string[] | null;
@@ -47,6 +50,13 @@ type Json = Record<string, unknown>;
 function stripWwnPrefix(wwn: unknown): string | null {
   if (typeof wwn !== "string") return null;
   return wwn.replace(/^0x/i, "").toLowerCase();
+}
+
+function blockSizeOf(value: unknown): number | null {
+  const size = typeof value === "string" ? Number(value) : value;
+  return typeof size === "number" && Number.isInteger(size) && size > 0
+    ? size
+    : null;
 }
 
 function mountPointsOf(entry: Json): string[] | null {
@@ -110,6 +120,9 @@ function toDisk(entry: Json): LsblkDisk {
     wwn: stripWwnPrefix(entry.wwn),
     link: (entry.tran as string | null) ?? null,
     rotational: Boolean(entry.rota),
+    zoned: (entry.zoned as string | null) ?? null,
+    logicalBlockSize: blockSizeOf(entry["log-sec"]),
+    physicalBlockSize: blockSizeOf(entry["phy-sec"]),
     partitionTableType: (entry.pttype as string | null) ?? null,
     fsType: (entry.fstype as string | null) ?? null,
     mountPoints: mountPointsOf(entry),

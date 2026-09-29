@@ -24,6 +24,7 @@ export interface HardwareJson {
   scsiTransport?: string;
   deviceType?: string;
   linkSpeed?: LinkSpeed;
+  zoned?: string;
   recordingTechInferred?: boolean;
   specMismatch?: string[];
 }
@@ -110,6 +111,7 @@ export interface RecordingTechInput {
   datasetRecordingTech?: string | null;
   modelFamily?: string | null;
   trimSupported?: boolean | null;
+  zoned?: string | null;
 }
 
 export interface RecordingTechResolution {
@@ -118,6 +120,12 @@ export interface RecordingTechResolution {
 }
 
 const FAMILY_RECORDING_SUFFIX = /\((CMR|SMR)(?:\+[^)]*)?\)/i;
+
+const ZONED_SMR_MODELS = new Set(["host-managed", "host-aware"]);
+
+export function isZonedSmr(zoned: string | null | undefined): boolean {
+  return ZONED_SMR_MODELS.has(lower(zoned) ?? "");
+}
 
 function asRecordingTech(value: string | null | undefined) {
   const normalised = lower(value);
@@ -130,6 +138,7 @@ export function resolveRecordingTech(
   if (input.media !== "hdd") return { recordingTech: null, inferred: false };
   const stated =
     asRecordingTech(input.override) ??
+    (isZonedSmr(input.zoned) ? "smr" : null) ??
     asRecordingTech(input.datasetRecordingTech) ??
     asRecordingTech(input.modelFamily?.match(FAMILY_RECORDING_SUFFIX)?.[1]);
   if (stated) return { recordingTech: stated, inferred: false };
