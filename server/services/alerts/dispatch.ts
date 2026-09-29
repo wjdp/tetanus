@@ -21,6 +21,7 @@ import {
   type Alert,
   type AlertContext,
   type AlertDisk,
+  type AlertHost,
   type AlertPool,
   deriveAlert,
   deriveAlerts,
@@ -73,6 +74,9 @@ export function alertContext(): AlertContext {
         .leftJoin(host, eq(host.id, pool.hostId))
         .where(eq(pool.id, id))
         .get(),
+    ),
+    host: memoise((id): AlertHost | undefined =>
+      db.select({ name: host.name }).from(host).where(eq(host.id, id)).get(),
     ),
     isAccepted: (() => {
       const accepted = memoise(activeAcceptances);

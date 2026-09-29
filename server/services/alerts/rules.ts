@@ -18,9 +18,14 @@ export interface AlertPool {
   hostName: string | null;
 }
 
+export interface AlertHost {
+  name: string;
+}
+
 export interface AlertContext {
   disk(id: number): AlertDisk | undefined;
   pool(id: number): AlertPool | undefined;
+  host(id: number): AlertHost | undefined;
   isAccepted(diskId: number, attrId: string): boolean;
 }
 
@@ -148,6 +153,26 @@ function matchPoolEntry(entry: DiaryEntryRow, data: Data): Match | null {
   }
 }
 
+function matchHostEntry(entry: DiaryEntryRow, data: Data): Match | null {
+  if (entry.eventType !== "collector-status-changed") return null;
+  const { from, to, version, minVersion } = data;
+  if (to === "incompatible") {
+    return {
+      rule: "collector-incompatible",
+      value: text(version),
+      detail: `${text(version)} is too old; tetanus needs ${text(minVersion)} or later`,
+    };
+  }
+  if (from === "incompatible") {
+    return {
+      rule: "collector-compatible",
+      value: text(version),
+      detail: `${text(version)} (was incompatible)`,
+    };
+  }
+  return null;
+}
+
 function withHost(hostName: string | null, label: string) {
   return hostName ? `${hostName} · ${label}` : label;
 }
@@ -163,6 +188,10 @@ function describeSubject(
   subjectId: number,
   context: AlertContext,
 ) {
+  if (entry.subjectType === "host") {
+    const hostName = context.host(subjectId)?.name ?? `host ${subjectId}`;
+    return { host: hostName, subject: withHost(hostName, "collector") };
+  }
   if (entry.subjectType === "pool") {
     const found = context.pool(subjectId);
     const hostName = found?.hostName ?? null;
@@ -188,6 +217,7 @@ function matchEntry(
     return matchDiskEntry(entry, subjectId, entry.data, context);
   }
   if (entry.subjectType === "pool") return matchPoolEntry(entry, entry.data);
+  if (entry.subjectType === "host") return matchHostEntry(entry, entry.data);
   return null;
 }
 

@@ -30,12 +30,20 @@ function entry(
 const poolEntry = (eventType: string, data: Record<string, unknown>) =>
   entry(eventType, data, { subjectType: "pool", subjectId: 5 });
 
+const hostEntry = (from: string, to: string, version = "0.2.0") =>
+  entry(
+    "collector-status-changed",
+    { from, to, version, minVersion: "0.3.0" },
+    { subjectType: "host", subjectId: 1 },
+  );
+
 const context: AlertContext = {
   disk: (id) =>
     id === 3
       ? { alias: "K2", model: "WDC WD80", serial: "ABC", hostName: "mars" }
       : undefined,
   pool: (id) => (id === 5 ? { name: "tank", hostName: "mars" } : undefined),
+  host: (id) => (id === 1 ? { name: "mars" } : undefined),
   isAccepted: (diskId, attrId) => diskId === 3 && attrId === "5",
 };
 
@@ -120,6 +128,18 @@ describe("deriveAlert", () => {
       "identity-conflict",
       "3,9",
     ],
+    [
+      "collector incompatible",
+      hostEntry("current", "incompatible"),
+      "collector-incompatible",
+      "0.2.0",
+    ],
+    [
+      "collector compatible again",
+      hostEntry("incompatible", "outdated", "0.3.0"),
+      "collector-compatible",
+      "0.3.0",
+    ],
   ])("maps %s", (_, diaryEntry, rule, value) => {
     const alert = deriveAlert(diaryEntry, context);
     expect(alert?.rule).toBe(rule);
@@ -150,6 +170,8 @@ describe("deriveAlert", () => {
       "a clean scrub",
       poolEntry("scrub-finished", { function: "SCRUB", errors: 0 }),
     ],
+    ["a collector going out of date", hostEntry("current", "outdated")],
+    ["a collector upgraded to current", hostEntry("outdated", "current")],
     ["an unrelated event", entry("disk-appeared", {})],
     ["a manual entry", { ...failedPending, kind: "manual" as const }],
     ["a subjectless entry", { ...failedPending, subjectId: null }],
@@ -184,6 +206,19 @@ describe("deriveAlert", () => {
       }),
     };
     expect(deriveAlert(failedPending, unaliased)?.subject).toBe("WDC WD80 ABC");
+  });
+
+  it("describes an incompatible collector with its host", () => {
+    expect(
+      deriveAlert(hostEntry("current", "incompatible"), context),
+    ).toMatchObject({
+      severity: "alert",
+      host: "mars",
+      subject: "mars · collector",
+      title: "Collector incompatible",
+      message:
+        "mars · collector: 0.2.0 is too old; tetanus needs 0.3.0 or later",
+    });
   });
 
   it("describes a pool with its host", () => {

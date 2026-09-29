@@ -15,6 +15,14 @@ export const ALERT_RULES = {
   "pool-recovered": { label: "Pool recovered", severity: "recovery" },
   "scan-errors": { label: "Scan found errors", severity: "alert" },
   "identity-conflict": { label: "Disk identity conflict", severity: "alert" },
+  "collector-incompatible": {
+    label: "Collector incompatible",
+    severity: "alert",
+  },
+  "collector-compatible": {
+    label: "Collector compatible again",
+    severity: "recovery",
+  },
 } as const satisfies Record<string, { label: string; severity: AlertSeverity }>;
 
 export type AlertRule = keyof typeof ALERT_RULES;
