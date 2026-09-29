@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Collector version tracking
@@ -130,3 +130,14 @@ message `mars · collector: 0.2.0 is too old; tetanus needs 0.3.0 or later`.
   `/usr/local/bin`), and CI-signed releases (minisign) verified against a key pinned at
   install time. Signing on the server adds nothing.
 - Advertising the latest version in the ingest response so the collector logs it.
+
+## Implementation notes
+
+- The hosts page and the fault compute status live from `collectorVersion` with
+  `collectorStatus()`, so a server upgrade re-badges hosts at once. The stored
+  `Host.collectorStatus` only drives the diary transition.
+- `CommandBlock.vue` is the copyable block; `InstallCommand.vue` wraps it. The upgrade
+  section lists the hosts to run it on and is hidden in demo mode, like the install one.
+- Tool versions on the hosts page are shortened to the version token, one tool per line
+  (`zfs 2.4.1-1ubuntu5.1`, `smartctl 7.5`): the full `smartctl --version` line pushed the
+  table into horizontal scroll.

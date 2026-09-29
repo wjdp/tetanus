@@ -27,7 +27,8 @@ sudo tetanus/host/install.sh --url https://tetanus.example --token <enrol token>
 
 `--host <name>` overrides the host name reported to the server (default `hostname -s`).
 The installer is idempotent; re-running it updates the script and units and leaves an
-existing config alone. It installs:
+existing config alone. To upgrade a host, the hosts settings page flags outdated
+collectors and shows `curl -fsSL https://tetanus.example/host/install.sh | sudo bash`. It installs:
 
 | file | purpose |
 | --- | --- |
