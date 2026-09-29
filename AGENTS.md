@@ -8,7 +8,7 @@ Read `docs/001-Product-goals.md` for the vision, `docs/003-Architecture-and-data
 
 ## Stack
 
-Nuxt 4 (Vue, Nuxt UI 4, Tailwind 4) with a Nitro server, Drizzle ORM on better-sqlite3, zod, Biome for lint/format, Vitest for tests, lefthook for the pre-commit hook. Node 24 + pnpm 10.
+Nuxt 4 (Vue, Nuxt UI 4, Tailwind 4) with a Nitro server, Drizzle ORM on better-sqlite3, zod, Biome for lint/format, Vitest for tests, lefthook for the pre-commit hook. Node 24 + pnpm 12.
 
 - `app/` — Nuxt frontend (layout, pages, components, composables)
 - `server/` — Nitro API routes, task queue, SSE

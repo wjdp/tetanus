@@ -1,12 +1,19 @@
-onlyBuiltDependencies:
-  - esbuild
-  - lefthook
-  - vue-demi
+packages:
+  - .
 
-ignoredBuiltDependencies:
+minimumReleaseAge: 4320
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # 6.x backport published without provenance after provenance-signed 7.x releases
+  - semver@6.3.1
+
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  vue-demi: true
   # Ships N-API prebuilds; pnpm still runs an implicit node-gyp rebuild because binding.gyp exists
-  - better-sqlite3
+  better-sqlite3: false
   # Pulled in transitively via drizzle-orm's optional peer @prisma/client
-  - "@prisma/client"
-  - "@prisma/engines"
-  - prisma
+  "@prisma/client": false
+  "@prisma/engines": false
+  prisma: false
