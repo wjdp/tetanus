@@ -2,8 +2,15 @@
 // its own copy of any module they share. State that must cross between the
 // two bundles lives on globalThis under these registry keys.
 
+export interface SeedStep {
+  done: number;
+  total: number;
+  finished: boolean;
+}
+
 export interface DemoOperations {
-  bootstrap(now: Date): Promise<void>;
+  prepare(now: Date): Promise<{ seeded: boolean }>;
+  seedStep(startedAt: Date): Promise<SeedStep>;
   tick(now: Date): Promise<void>;
 }
 

@@ -47,16 +47,22 @@ export interface DatasetIngestSummary {
   skipped: number;
 }
 
-const UPSERT_CHUNK_SIZE = 500;
+// Durable Object SQLite allows only 100 bound parameters per statement.
+const MAX_BOUND_PARAMETERS = 100;
 const READING_RETENTION_MS = 400 * 24 * 60 * 60 * 1000;
 const READING_CHANGE_THRESHOLD = 0.01;
 
-function chunked<T>(items: T[], size = UPSERT_CHUNK_SIZE): T[][] {
+function chunked<T>(items: T[], size = MAX_BOUND_PARAMETERS): T[][] {
   const chunks: T[][] = [];
   for (let start = 0; start < items.length; start += size) {
     chunks.push(items.slice(start, start + size));
   }
   return chunks;
+}
+
+function rowChunks<T>(table: SQLiteTable, rows: T[]): T[][] {
+  const columns = Object.keys(getTableColumns(table)).length;
+  return chunked(rows, Math.floor(MAX_BOUND_PARAMETERS / columns));
 }
 
 function excludedColumns<T extends SQLiteTable>(
@@ -161,7 +167,7 @@ function upsertDatasets(
     firstSeenAt: receivedAt,
     lastSeenAt: receivedAt,
   }));
-  for (const chunk of chunked(values)) {
+  for (const chunk of rowChunks(dataset, values)) {
     db.insert(dataset)
       .values(chunk)
       .onConflictDoUpdate({
@@ -250,7 +256,7 @@ function recordReadings(poolRow: PoolRow, receivedAt: Date) {
       available: row.available,
       usedBySnapshots: row.usedBySnapshots,
     }));
-  for (const chunk of chunked(due)) {
+  for (const chunk of rowChunks(datasetReading, due)) {
     db.insert(datasetReading).values(chunk).run();
   }
   db.delete(datasetReading)
@@ -460,7 +466,7 @@ export function observeZfsSnapshots(
       values.map((row) => snapshotKey(row.datasetId, row.name)),
     );
 
-    for (const chunk of chunked(values)) {
+    for (const chunk of rowChunks(snapshot, values)) {
       db.insert(snapshot)
         .values(chunk)
         .onConflictDoUpdate({
