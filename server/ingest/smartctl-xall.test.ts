@@ -88,6 +88,82 @@ describe("smartctl-xall parser", () => {
     });
   });
 
+  describe("hardware identity", () => {
+    const identityOf = (relativePath: string) => {
+      let exitStatus: number | undefined;
+      try {
+        exitStatus = readFixtureExit(relativePath);
+      } catch {
+        exitStatus = undefined;
+      }
+      return parse(readFixture(relativePath), { exitStatus }).data.identity;
+    };
+
+    it("reads SATA version, link speed and sector sizes from an HDD", () => {
+      expect(identityOf("mars/smartctl/xall-sda-auto.json")).toMatchObject({
+        deviceType: "sat",
+        sataVersion: "SATA 3.2",
+        ataVersion: "ACS-2, ATA8-ACS T13/1699-D revision 4",
+        linkSpeedMaxBps: 6_000_000_000,
+        linkSpeedCurrentBps: 6_000_000_000,
+        trimSupported: false,
+        logicalBlockSize: 512,
+        physicalBlockSize: 4096,
+        rotationRate: 5400,
+      });
+    });
+
+    it("reads TRIM and 512n sectors from a SATA SSD", () => {
+      const identity = identityOf("mars/smartctl/xall-sdr-auto.json");
+      expect(identity).toMatchObject({
+        deviceType: "sat",
+        sataVersion: "SATA 3.3",
+        trimSupported: true,
+        logicalBlockSize: 512,
+        physicalBlockSize: 512,
+        rotationRate: 0,
+      });
+      expect(identity.scsiTransport).toBeUndefined();
+    });
+
+    it("reads the NVMe version and has no SATA fields", () => {
+      const identity = identityOf("mars/smartctl/xall-nvme0.json");
+      expect(identity).toMatchObject({
+        deviceType: "nvme",
+        nvmeVersion: "1.3",
+        logicalBlockSize: 512,
+      });
+      expect(identity.sataVersion).toBeUndefined();
+      expect(identity.physicalBlockSize).toBeUndefined();
+      expect(identity.trimSupported).toBeUndefined();
+      expect(identity.linkSpeedMaxBps).toBeUndefined();
+    });
+
+    it("reads a SCSI drive without a transport protocol", () => {
+      const identity = identityOf("scrutiny/smart-scsi.json");
+      expect(identity).toMatchObject({
+        deviceType: "scsi",
+        rotationRate: 7200,
+        logicalBlockSize: 512,
+      });
+      expect(identity.scsiTransport).toBeUndefined();
+    });
+
+    it("reads the SCSI transport protocol of a SAS drive", () => {
+      expect(identityOf("synthetic-smartctl/xall-sas.json")).toMatchObject({
+        deviceType: "scsi",
+        scsiTransport: "SAS (SPL-4)",
+      });
+    });
+
+    it("reads the transport a forced -d scsi run reports on a SATA drive", () => {
+      expect(identityOf("mars/smartctl/xall-sda.json")).toMatchObject({
+        deviceType: "scsi",
+        scsiTransport: "SAS (SPL-4)",
+      });
+    });
+  });
+
   it("decodes a deviceOpenFailed exit with no data as standby", () => {
     const body = readFixture("scrutiny/smart-fail.json");
     const { data, summary } = parse(body, {});

@@ -231,6 +231,53 @@ function extractSctTemperatureHistory(
   };
 }
 
+function stringField(raw: unknown): string | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const value = (raw as Json).string;
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+function nameField(raw: unknown): string | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const value = (raw as Json).name;
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+function bitsPerSecond(raw: unknown): number | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const { units_per_second: units, bits_per_unit: bits } = raw as Json;
+  return typeof units === "number" && typeof bits === "number"
+    ? units * bits
+    : undefined;
+}
+
+function numberField(raw: unknown): number | undefined {
+  return typeof raw === "number" ? raw : undefined;
+}
+
+function withoutUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
+function extractHardware(json: Json): Partial<SmartctlXallIdentity> {
+  const interfaceSpeed = json.interface_speed as Json | undefined;
+  const trim = json.trim as Json | undefined;
+  return withoutUndefined({
+    sataVersion: stringField(json.sata_version),
+    ataVersion: stringField(json.ata_version),
+    linkSpeedMaxBps: bitsPerSecond(interfaceSpeed?.max),
+    linkSpeedCurrentBps: bitsPerSecond(interfaceSpeed?.current),
+    trimSupported:
+      typeof trim?.supported === "boolean" ? trim.supported : undefined,
+    logicalBlockSize: numberField(json.logical_block_size),
+    physicalBlockSize: numberField(json.physical_block_size),
+    scsiTransport: nameField(json.scsi_transport_protocol),
+    nvmeVersion: stringField(json.nvme_version),
+  });
+}
+
 export const parse: Parser<SmartctlXallResult> = (body, meta) => {
   const json = parseJson(body);
   const exitStatusRaw = resolveExitStatus(json, meta);
@@ -275,7 +322,8 @@ export const parse: Parser<SmartctlXallResult> = (body, meta) => {
   if (typeof formFactor?.name === "string") {
     identity.formFactor = formFactor.name;
   }
-  if (device.protocol) identity.transport = device.protocol;
+  if (device.type) identity.deviceType = device.type;
+  Object.assign(identity, extractHardware(json));
 
   const smartSupport = parseSmartSupport(json.smart_support);
   const smartStatus = json.smart_status as Json | undefined;

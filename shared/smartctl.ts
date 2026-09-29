@@ -79,7 +79,16 @@ export interface SmartctlXallIdentity {
   capacityBytes?: number;
   rotationRate?: number;
   formFactor?: string;
-  transport?: string;
+  deviceType?: string;
+  sataVersion?: string;
+  ataVersion?: string;
+  linkSpeedMaxBps?: number;
+  linkSpeedCurrentBps?: number;
+  trimSupported?: boolean;
+  logicalBlockSize?: number;
+  physicalBlockSize?: number;
+  scsiTransport?: string;
+  nvmeVersion?: string;
 }
 
 export interface SmartctlXallResult {
