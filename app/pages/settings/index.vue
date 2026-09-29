@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { data: settings } = await useFetch("/api/settings");
 
+const demo = useRuntimeConfig().public.demo;
 const toast = useToast();
 
 const copyEnrolToken = async () => {
@@ -19,6 +20,7 @@ const copyEnrolToken = async () => {
     <h2 class="text-highlighted text-lg font-semibold">Collectors</h2>
 
     <UFormField
+      v-if="!demo"
       label="Enrol token"
       name="enrolToken"
       description="Host collectors send this token when posting to the ingest API."
@@ -41,5 +43,8 @@ const copyEnrolToken = async () => {
         </template>
       </UInput>
     </UFormField>
+    <p v-else class="text-muted text-sm" data-testid="demo-collectors-note">
+      Collectors are disabled in the demo.
+    </p>
   </section>
 </template>

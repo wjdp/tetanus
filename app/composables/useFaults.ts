@@ -21,6 +21,7 @@ function writeDismissed(ids: Set<string>) {
 
 export function useFaults() {
   const { data: hosts } = useFetch("/api/hosts", { default: () => [] });
+  const cadences = useRuntimeConfig().public.demo ? DEMO_CADENCES : undefined;
   const dismissed = useState<Set<string>>("faults-dismissed", () => new Set());
 
   onMounted(() => {
@@ -31,7 +32,7 @@ export function useFaults() {
     const now = Date.now();
     const result: Fault[] = [];
     for (const host of hosts.value ?? []) {
-      const groups = allGroupFreshness(host.lastRuns, now);
+      const groups = allGroupFreshness(host.lastRuns, now, cadences);
       const allSilent = groups.every((group) => group.status !== "ok");
       if (!allSilent) continue;
 

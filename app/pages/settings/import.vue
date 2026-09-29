@@ -18,6 +18,8 @@ const MATCH_LABELS: Record<ScrutinyMatch, string> = {
   created: "New disk",
 };
 
+const demo = useRuntimeConfig().public.demo;
+
 const { data: hosts } = await useFetch("/api/hosts", { default: () => [] });
 
 const hostItems = computed(() =>
@@ -137,7 +139,15 @@ const totals = computed(() =>
   <section class="flex flex-col gap-6">
     <h2 class="text-highlighted text-lg font-semibold">Import</h2>
 
-    <UCard data-testid="scrutiny-import">
+    <UAlert
+      v-if="demo"
+      color="neutral"
+      variant="subtle"
+      icon="i-lucide-import"
+      title="Importing is disabled in the demo."
+      data-testid="demo-disabled-note"
+    />
+    <UCard v-else data-testid="scrutiny-import">
       <template #header>
         <h3 class="text-highlighted font-semibold">Scrutiny</h3>
         <p class="text-muted text-sm">

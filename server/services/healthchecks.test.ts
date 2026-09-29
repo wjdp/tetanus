@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~~/server/database/client";
 import { collectorRun } from "~~/server/database/schema";
 import { pingHealthchecks } from "~~/server/services/healthchecks";
@@ -86,6 +86,27 @@ describe("pingHealthchecks", () => {
 
   it("skips hosts with no healthchecks URL", async () => {
     upsertHostByName("mars", now);
+
+    const fetchImpl = vi.fn();
+    await pingHealthchecks(now, fetchImpl);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe("pingHealthchecks in the demo", () => {
+  beforeEach(() => {
+    flushDb();
+    useRuntimeConfig().public.demo = true;
+  });
+
+  afterEach(() => {
+    useRuntimeConfig().public.demo = false;
+  });
+
+  it("makes no outbound request", async () => {
+    const mars = upsertHostByName("mars", now);
+    withHealthchecksUrl(mars.id, "https://hc-ping.com/mars");
 
     const fetchImpl = vi.fn();
     await pingHealthchecks(now, fetchImpl);

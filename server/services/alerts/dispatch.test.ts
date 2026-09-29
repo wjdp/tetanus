@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~~/server/database/client";
 import { disk, faultAcceptance, notification } from "~~/server/database/schema";
 import type { Fetch } from "~~/server/services/alerts/channels";
@@ -268,5 +268,44 @@ describe("sendTestNotification", () => {
       ok: false,
       error: "pushover is not configured",
     });
+  });
+});
+
+describe("in the demo", () => {
+  beforeEach(() => {
+    useRuntimeConfig().public.demo = true;
+  });
+
+  afterEach(() => {
+    useRuntimeConfig().public.demo = false;
+  });
+
+  it("sends nothing, records no notifications, and still advances the cursor", async () => {
+    await configure();
+    failAttribute();
+    const fetchImpl = respondWith();
+
+    const summary = await runAlertsPass(later, fetchImpl);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(summary).toMatchObject({
+      alerts: 0,
+      sent: 0,
+      failed: 0,
+      retried: 0,
+    });
+    expect(listNotifications()).toEqual([]);
+    expect((await getSettings()).config.alertCursor).toBeGreaterThan(0);
+  });
+
+  it("refuses test notifications without an outbound request", async () => {
+    await configure();
+    const fetchImpl = respondWith();
+
+    expect(await sendTestNotification("webhook", later, fetchImpl)).toEqual({
+      ok: false,
+      error: "Disabled in the demo",
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

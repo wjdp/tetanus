@@ -30,7 +30,10 @@ export default defineNuxtConfig({
   // Helper modules live beside their components; only .vue files are components.
   components: [{ path: "~/components", extensions: ["vue"] }],
   runtimeConfig: {
-    public: { version: version + (process.env.VERSION_SUFFIX ?? "") },
+    public: {
+      version: version + (process.env.VERSION_SUFFIX ?? ""),
+      demo: false,
+    },
   },
   fonts: {
     families: [

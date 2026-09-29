@@ -2,7 +2,7 @@
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { flushPromises } from "@vue/test-utils";
 import { readBody } from "h3";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScrutinyImportResult } from "#shared/schemas/import";
 import { emitTask, FakeEventSource } from "~~/test/fakeEventSource";
 import ImportPage from "./import.vue";
@@ -159,5 +159,21 @@ describe("import settings page", () => {
       expect(page.get(devices).text()).toContain("Imported 26 SMART points");
     });
     expect(page.get(devices).find('a[href="/disks/12"]').exists()).toBe(true);
+  });
+});
+
+describe("import page in the demo", () => {
+  beforeEach(() => {
+    useRuntimeConfig().public.demo = true;
+  });
+
+  afterEach(() => {
+    useRuntimeConfig().public.demo = false;
+  });
+
+  it("shows a disabled note instead of the form", async () => {
+    const page = await mountSuspended(ImportPage);
+    expect(page.find('[data-testid="demo-disabled-note"]').exists()).toBe(true);
+    expect(page.find('[data-testid="scrutiny-import"]').exists()).toBe(false);
   });
 });

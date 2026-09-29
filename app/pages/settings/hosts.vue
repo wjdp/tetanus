@@ -5,6 +5,9 @@ const { data: hosts, refresh } = await useFetch("/api/hosts");
 
 type Host = NonNullable<typeof hosts.value>[number];
 
+const demo = useRuntimeConfig().public.demo;
+const cadences = demo ? DEMO_CADENCES : undefined;
+
 const now = ref(Date.now());
 let pollHandle: ReturnType<typeof setInterval> | undefined;
 
@@ -110,7 +113,7 @@ const { data: settings } = await useFetch("/api/settings");
       <template #freshness-cell="{ row }">
         <div class="flex flex-wrap gap-1">
           <UBadge
-            v-for="group in allGroupFreshness(row.original.lastRuns, now)"
+            v-for="group in allGroupFreshness(row.original.lastRuns, now, cadences)"
             :key="group.name"
             :color="chipColor(group.status)"
             variant="subtle"
@@ -126,7 +129,7 @@ const { data: settings } = await useFetch("/api/settings");
       </template>
     </UTable>
 
-    <section class="flex flex-col gap-3">
+    <section v-if="!demo" class="flex flex-col gap-3">
       <h3 class="text-highlighted font-semibold">Add a host</h3>
       <p class="text-muted text-sm">
         Run this on the NAS host with the enrol token below.

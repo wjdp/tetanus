@@ -14,6 +14,8 @@ const props = defineProps<{
   now: number;
 }>();
 
+const cadences = useRuntimeConfig().public.demo ? DEMO_CADENCES : undefined;
+
 const relativeTime = (date: Date | null) =>
   date ? `${formatDuration(props.now - date.getTime())} ago` : "never";
 
@@ -53,7 +55,7 @@ const activeScans = computed(() =>
       </h2>
       <div class="flex flex-wrap gap-1">
         <UBadge
-          v-for="group in allGroupFreshness(host.lastRuns, now)"
+          v-for="group in allGroupFreshness(host.lastRuns, now, cadences)"
           :key="group.name"
           :color="chipColor(group.status)"
           variant="subtle"

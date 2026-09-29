@@ -2,7 +2,7 @@
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { flushPromises, type VueWrapper } from "@vue/test-utils";
 import { readBody } from "h3";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AlertsPage from "./alerts.vue";
 
 const notifications = {
@@ -166,5 +166,22 @@ describe("alerts settings page", () => {
       expect(result.text()).toBe("Webhook is not configured");
       expect(result.classes()).toContain("text-error");
     });
+  });
+});
+
+describe("alerts page in the demo", () => {
+  beforeEach(() => {
+    useRuntimeConfig().public.demo = true;
+  });
+
+  afterEach(() => {
+    useRuntimeConfig().public.demo = false;
+  });
+
+  it("shows a disabled note instead of the channel forms", async () => {
+    const page = await mountSuspended(AlertsPage);
+    expect(page.find('[data-testid="demo-disabled-note"]').exists()).toBe(true);
+    expect(page.find("form").exists()).toBe(false);
+    expect(page.text()).not.toContain("Create a Pushover application");
   });
 });

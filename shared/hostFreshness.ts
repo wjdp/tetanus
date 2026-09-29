@@ -46,6 +46,17 @@ export function groupFor(source: string): SourceGroup | undefined {
   );
 }
 
+export type CadenceOverrides = Partial<Record<SourceGroupName, number>>;
+
+export const DEMO_CADENCES: CadenceOverrides = {
+  zfs: 60 * 60 * 1000,
+  smart: 60 * 60 * 1000,
+  snapshots: 6 * 60 * 60 * 1000,
+};
+
+const cadenceOf = (group: SourceGroup, cadences: CadenceOverrides) =>
+  cadences[group.name] ?? group.cadenceMs;
+
 export type FreshnessStatus = "ok" | "warning" | "error";
 
 export interface RunLike {
@@ -64,6 +75,7 @@ export function sourceFreshness(
   source: string,
   run: RunLike | undefined,
   now: number,
+  cadences: CadenceOverrides = {},
 ): SourceFreshness {
   if (!run?.ok) {
     return {
@@ -77,7 +89,7 @@ export function sourceFreshness(
   const ageMs = now - lastSeenAt.getTime();
   const group = groupFor(source);
   const status: FreshnessStatus =
-    group && ageMs > group.cadenceMs * 2 ? "warning" : "ok";
+    group && ageMs > cadenceOf(group, cadences) * 2 ? "warning" : "ok";
   return { source, status, ageMs, lastSeenAt };
 }
 
@@ -95,6 +107,7 @@ export function groupFreshness(
   group: SourceGroup,
   lastRuns: Record<string, RunLike | undefined>,
   now: number,
+  cadences: CadenceOverrides = {},
 ): GroupFreshness {
   let best: { lastSeenAt: Date; ageMs: number } | null = null;
   for (const source of group.sources) {
@@ -108,7 +121,7 @@ export function groupFreshness(
     return { name: group.name, status: "error", ageMs: null, lastSeenAt: null };
   }
   const status: FreshnessStatus =
-    best.ageMs > group.cadenceMs * 2 ? "warning" : "ok";
+    best.ageMs > cadenceOf(group, cadences) * 2 ? "warning" : "ok";
   return {
     name: group.name,
     status,
@@ -120,8 +133,11 @@ export function groupFreshness(
 export function allGroupFreshness(
   lastRuns: Record<string, RunLike | undefined>,
   now: number,
+  cadences: CadenceOverrides = {},
 ): GroupFreshness[] {
-  return SOURCE_GROUPS.map((group) => groupFreshness(group, lastRuns, now));
+  return SOURCE_GROUPS.map((group) =>
+    groupFreshness(group, lastRuns, now, cadences),
+  );
 }
 
 export function formatDuration(ms: number): string {

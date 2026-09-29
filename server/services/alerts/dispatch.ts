@@ -27,10 +27,12 @@ import {
 } from "~~/server/services/alerts/rules";
 import { listDisks } from "~~/server/services/disks";
 import { getSettings, setAlertCursor } from "~~/server/services/settings";
+import { isDemo } from "~~/server/utils/demo";
 
 export type NotificationRow = typeof notification.$inferSelect;
 
 export const DEFAULT_NOTIFICATION_LIMIT = 50;
+const DEMO_SEND_ERROR = "Disabled in the demo";
 export const RETRY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface AlertsPassSummary {
@@ -191,6 +193,7 @@ export async function runAlertsPass(
   if (lastEntry) setAlertCursor(lastEntry.id);
 
   const summary = { entries: entries.length, alerts: 0, sent: 0, failed: 0 };
+  if (isDemo()) return { ...summary, retried: 0 };
   const channels = configuredChannels(config.notifications);
   if (channels.length === 0) return { ...summary, retried: 0 };
 
@@ -226,6 +229,7 @@ export async function sendTestNotification(
   now = new Date(),
   fetchImpl: Fetch = fetch,
 ): Promise<SendResult> {
+  if (isDemo()) return { ok: false, error: DEMO_SEND_ERROR };
   const { config } = await getSettings();
   return sendToChannel(
     channel,

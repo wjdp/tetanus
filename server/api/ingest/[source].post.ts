@@ -8,6 +8,7 @@ import {
 } from "#shared/ingest";
 import { recordIngest } from "~~/server/services/ingest";
 import { getSettings } from "~~/server/services/settings";
+import { demoForbidden, isDemo } from "~~/server/utils/demo";
 import { respondWithServiceErrors } from "~~/server/utils/respondWithServiceErrors";
 
 const BEARER_PREFIX = "Bearer ";
@@ -63,6 +64,7 @@ async function readLimitedBody(event: H3Event) {
 }
 
 export default defineEventHandler(async (event) => {
+  if (isDemo()) demoForbidden("Ingest is disabled in the demo");
   await requireEnrolToken(event);
   const hostName = requireHostName(event);
   const meta = await getValidatedQuery(event, ingestMetaSchema.parse);

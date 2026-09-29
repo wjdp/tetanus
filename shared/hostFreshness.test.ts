@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   allGroupFreshness,
+  DEMO_CADENCES,
   formatDuration,
   MONITORED_SOURCES,
   sourceFreshness,
@@ -51,5 +52,48 @@ describe("formatDuration", () => {
     expect(formatDuration(90_000)).toBe("2 min");
     expect(formatDuration(3 * 60 * 60_000)).toBe("3 h");
     expect(formatDuration(50 * 60 * 60_000)).toBe("2 d");
+  });
+});
+
+describe("cadence overrides", () => {
+  const now = Date.now();
+  const twentyFiveMinutesAgo = {
+    receivedAt: new Date(now - 25 * 60_000),
+    ok: true,
+  };
+
+  it("sourceFreshness uses the override instead of the default cadence", () => {
+    expect(
+      sourceFreshness("versions", twentyFiveMinutesAgo, now, DEMO_CADENCES)
+        .status,
+    ).toBe("ok");
+    expect(
+      sourceFreshness("versions", twentyFiveMinutesAgo, now, { zfs: 60_000 })
+        .status,
+    ).toBe("warning");
+  });
+
+  it("falls back to the default cadence for groups not overridden", () => {
+    const run = { receivedAt: new Date(now - 25 * 60_000), ok: true };
+    expect(sourceFreshness("versions", run, now, { smart: 1 }).status).toBe(
+      "warning",
+    );
+  });
+
+  it("allGroupFreshness applies the demo cadences per group", () => {
+    const at = (ms: number) => ({ receivedAt: new Date(now - ms), ok: true });
+    const lastRuns = {
+      "zpool-status": at(90 * 60_000),
+      lsblk: at(90 * 60_000),
+      "zfs-snapshots": at(5 * 60 * 60_000),
+    };
+    expect(
+      allGroupFreshness(lastRuns, now).map((group) => group.status),
+    ).toEqual(["warning", "ok", "ok"]);
+    expect(
+      allGroupFreshness(lastRuns, now, DEMO_CADENCES).map(
+        (group) => group.status,
+      ),
+    ).toEqual(["ok", "ok", "ok"]);
   });
 });

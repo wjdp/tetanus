@@ -1,5 +1,6 @@
 import { allGroupFreshness, formatDuration } from "#shared/hostFreshness";
 import { listHosts } from "~~/server/services/hosts";
+import { isDemo } from "~~/server/utils/demo";
 
 function staleGroupsBody(groups: ReturnType<typeof allGroupFreshness>) {
   return groups
@@ -15,6 +16,7 @@ export async function pingHealthchecks(
   now = new Date(),
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
+  if (isDemo()) return;
   const hosts = listHosts().filter((host) => host.healthchecksUrl);
   for (const host of hosts) {
     const url = host.healthchecksUrl as string;

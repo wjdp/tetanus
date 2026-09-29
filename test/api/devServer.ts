@@ -39,7 +39,10 @@ async function waitForServer(host: string, timeoutMs: number) {
   throw new Error(`Nuxt dev server did not start within ${timeoutMs}ms`);
 }
 
-export async function startNuxtServer(databaseFile: string) {
+export async function startNuxtServer(
+  databaseFile: string,
+  extraEnv: Record<string, string> = {},
+) {
   const port = await findFreePort();
   const child = spawn(
     process.execPath,
@@ -55,6 +58,7 @@ export async function startNuxtServer(databaseFile: string) {
         NODE_ENV: "development",
         NUXT_TELEMETRY_DISABLED: "1",
         NUXT_IGNORE_LOCK: "1",
+        ...extraEnv,
       },
     },
   );

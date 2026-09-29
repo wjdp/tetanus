@@ -1,3 +1,5 @@
+import { isDemo } from "~~/server/utils/demo";
+
 const collectorFiles = new Set([
   "install.sh",
   "tetanus-collect",
@@ -10,7 +12,7 @@ const collectorFiles = new Set([
 
 export default defineEventHandler(async (event) => {
   const path = getRouterParam(event, "path") ?? "";
-  if (!collectorFiles.has(path)) {
+  if (isDemo() || !collectorFiles.has(path)) {
     throw createError({ statusCode: 404, statusMessage: "Not found" });
   }
 

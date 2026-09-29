@@ -9,6 +9,8 @@ import {
   isChannelDirty,
 } from "~/components/alerts/channelForms";
 
+const demo = useRuntimeConfig().public.demo;
+
 const NOTIFICATIONS_LIMIT = 100;
 const POLL_INTERVAL_MS = 60_000;
 const UNCONFIGURED: NotificationsConfig = { pushover: null, webhook: null };
@@ -64,7 +66,15 @@ const saveChannel = async (channel: AlertChannel) => {
   <section class="flex flex-col gap-6">
     <h2 class="text-highlighted text-lg font-semibold">Alerts</h2>
 
-    <div class="flex flex-col gap-4">
+    <UAlert
+      v-if="demo"
+      color="neutral"
+      variant="subtle"
+      icon="i-lucide-bell-off"
+      title="Notification channels are disabled in the demo."
+      data-testid="demo-disabled-note"
+    />
+    <div v-else class="flex flex-col gap-4">
       <AlertsChannelCard
         v-model:enabled="forms.pushover.enabled"
         channel="pushover"
