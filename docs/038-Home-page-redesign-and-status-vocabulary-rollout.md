@@ -41,6 +41,8 @@ mars   14 disks · 12 HDD · 2 SSD · 176 TB raw          zfs 3 min · smart 30 
 - Scan running: thin `info` bar under the capacity bar with `scrub 41 % · 3 h left`.
   Replaces the text-only header note.
 - Capacity bar colours per 037 (80 % warning, 90 % error).
+- Vdev order: data vdevs first in name order, then the class vdevs (`special`, `log`,
+  `cache`, `dedup`, `spares`) after a subtle divider, so they read as the pool's footer.
 
 ### Vdev row
 
