@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import {
+  COLLECTOR_VERSION,
+  type CollectorStatus,
+  collectorStatus,
+  MIN_COLLECTOR_VERSION,
+  upgradeCommand,
+} from "#shared/collector";
 
 const { data: hosts, refresh } = await useFetch("/api/hosts");
 
@@ -22,11 +29,37 @@ onUnmounted(() => {
   if (pollHandle) clearInterval(pollHandle);
 });
 
-const toolVersionsSummary = (toolVersions: Record<string, string>) =>
-  ["zfs", "smartctl"]
-    .filter((key) => toolVersions[key])
-    .map((key) => `${key} ${toolVersions[key]}`)
-    .join(" · ") || "—";
+const SUMMARISED_TOOLS = ["zfs", "smartctl"];
+
+const shortToolVersion = (tool: string, version: string) =>
+  version.replace(new RegExp(`^${tool}[- ]`), "").split(/\s+/)[0];
+
+const toolVersionLines = (toolVersions: Record<string, string>) =>
+  SUMMARISED_TOOLS.filter((tool) => toolVersions[tool]).map(
+    (tool) => `${tool} ${shortToolVersion(tool, toolVersions[tool])}`,
+  );
+
+const COLLECTOR_BADGES: Record<
+  Exclude<CollectorStatus, "current">,
+  { label: string; color: "warning" | "error" | "neutral" }
+> = {
+  outdated: { label: `${COLLECTOR_VERSION} available`, color: "warning" },
+  incompatible: {
+    label: `needs ${MIN_COLLECTOR_VERSION}+`,
+    color: "error",
+  },
+  unknown: { label: "unknown", color: "neutral" },
+};
+
+const collectorBadge = (version: string | null) => {
+  const status = collectorStatus(version);
+  return status === "current" ? null : COLLECTOR_BADGES[status];
+};
+
+const needsUpgrade = (host: Host) =>
+  ["outdated", "incompatible"].includes(collectorStatus(host.collectorVersion));
+
+const hostsToUpgrade = computed(() => (hosts.value ?? []).filter(needsUpgrade));
 
 const relativeTime = (date: Date | null) => {
   if (!date) return "never";
@@ -39,6 +72,7 @@ const chipColor = (status: ReturnType<typeof allGroupFreshness>[number]["status"
 const columns: TableColumn<Host>[] = [
   { accessorKey: "name", header: "Host" },
   { accessorKey: "displayName", header: "Display name" },
+  { id: "collector", header: "Collector" },
   { id: "versions", header: "Tool versions" },
   { id: "freshness", header: "Sources" },
   { id: "lastSeen", header: "Last seen" },
@@ -104,10 +138,35 @@ const { data: settings } = await useFetch("/api/settings");
         {{ row.original.displayName ?? "—" }}
       </template>
 
+      <template #collector-cell="{ row }">
+        <div class="flex flex-wrap items-center gap-1">
+          <span class="font-mono text-xs">
+            {{ row.original.collectorVersion ?? "—" }}
+          </span>
+          <UBadge
+            v-if="collectorBadge(row.original.collectorVersion)"
+            :color="collectorBadge(row.original.collectorVersion)?.color"
+            variant="subtle"
+            size="sm"
+          >
+            {{ collectorBadge(row.original.collectorVersion)?.label }}
+          </UBadge>
+        </div>
+      </template>
+
       <template #versions-cell="{ row }">
-        <span class="text-dimmed font-mono text-xs">
-          {{ toolVersionsSummary(row.original.toolVersions) }}
-        </span>
+        <div
+          v-if="toolVersionLines(row.original.toolVersions).length"
+          class="text-dimmed flex flex-col font-mono text-xs"
+        >
+          <span
+            v-for="line in toolVersionLines(row.original.toolVersions)"
+            :key="line"
+          >
+            {{ line }}
+          </span>
+        </div>
+        <span v-else class="text-dimmed">—</span>
       </template>
 
       <template #freshness-cell="{ row }">
@@ -128,6 +187,19 @@ const { data: settings } = await useFetch("/api/settings");
         {{ relativeTime(new Date(row.original.lastSeenAt)) }}
       </template>
     </UTable>
+
+    <section v-if="!demo && hostsToUpgrade.length" class="flex flex-col gap-3">
+      <h3 class="text-highlighted font-semibold">Upgrade the collector</h3>
+      <p class="text-muted text-sm">
+        Run this on
+        {{ hostsToUpgrade.map((host) => host.name).join(", ") }}. It keeps the
+        existing config.
+      </p>
+      <CommandBlock
+        :command="upgradeCommand(requestUrl.origin)"
+        label="Upgrade command"
+      />
+    </section>
 
     <section v-if="!demo" class="flex flex-col gap-3">
       <h3 class="text-highlighted font-semibold">Add a host</h3>

@@ -142,7 +142,7 @@ describe("index page", () => {
     const page = await mountPage();
 
     expect(page.text()).toContain("No hosts have reported yet.");
-    expect(page.get('[data-testid="install-command"]').text()).toContain(
+    expect(page.get('[data-testid="command"]').text()).toContain(
       "ab".repeat(32),
     );
   });

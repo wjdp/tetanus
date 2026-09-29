@@ -14,11 +14,16 @@ const run = (ageMs: number) => ({
   device: null,
 });
 
-const host = (lastRuns: Record<string, ReturnType<typeof run>>) => ({
+const host = (
+  lastRuns: Record<string, ReturnType<typeof run>>,
+  collectorVersion: string | null = "0.3.1",
+) => ({
   id: 1,
   name: "mars",
   displayName: null,
   toolVersions: {},
+  collectorVersion,
+  collectorStatus: "current",
   healthchecksUrl: null,
   notes: "",
   firstSeenAt: new Date(now - 10 * 24 * 60 * 60_000).toISOString(),
@@ -63,4 +68,29 @@ describe("useFaults", () => {
 
     expect(component.text()).toBe("[]");
   });
+
+  it("raises a fault for an incompatible collector", async () => {
+    hosts = [host({ versions: run(60_000) }, "0.2.0")];
+
+    const component = await mountSuspended(FaultsProbe);
+    await flushPromises();
+
+    expect(component.text()).toContain("collector-incompatible:mars:0.2.0");
+    expect(component.text()).toContain(
+      "mars collector 0.2.0 is too old; tetanus needs 0.3.0 or later",
+    );
+    expect(component.text()).toContain("/host/install.sh | sudo bash");
+  });
+
+  it.each(["0.3.0", null])(
+    "raises no fault for collector %s",
+    async (version) => {
+      hosts = [host({ versions: run(60_000) }, version)];
+
+      const component = await mountSuspended(FaultsProbe);
+      await flushPromises();
+
+      expect(component.text()).toBe("[]");
+    },
+  );
 });

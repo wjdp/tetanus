@@ -1,3 +1,8 @@
+import {
+  collectorStatus,
+  MIN_COLLECTOR_VERSION,
+  upgradeCommand,
+} from "#shared/collector";
 import type { Fault } from "#shared/faults";
 
 const DISMISSED_STORAGE_KEY = "tetanus:dismissedFaults";
@@ -23,6 +28,7 @@ export function useFaults() {
   const { data: hosts } = useFetch("/api/hosts", { default: () => [] });
   const cadences = useRuntimeConfig().public.demo ? DEMO_CADENCES : undefined;
   const dismissed = useState<Set<string>>("faults-dismissed", () => new Set());
+  const serverUrl = useRequestURL().origin;
 
   onMounted(() => {
     dismissed.value = readDismissed();
@@ -32,6 +38,20 @@ export function useFaults() {
     const now = Date.now();
     const result: Fault[] = [];
     for (const host of hosts.value ?? []) {
+      const version = host.collectorVersion;
+      const incompatibleId = `collector-incompatible:${host.name}:${version}`;
+      if (
+        version &&
+        collectorStatus(version) === "incompatible" &&
+        !dismissed.value.has(incompatibleId)
+      ) {
+        result.push({
+          id: incompatibleId,
+          title: `${host.name} collector ${version} is too old; tetanus needs ${MIN_COLLECTOR_VERSION} or later`,
+          description: `Upgrade it on ${host.name}: ${upgradeCommand(serverUrl)}`,
+        });
+      }
+
       const groups = allGroupFreshness(host.lastRuns, now, cadences);
       const allSilent = groups.every((group) => group.status !== "ok");
       if (!allSilent) continue;

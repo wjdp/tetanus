@@ -9,7 +9,7 @@ describe("InstallCommand", () => {
       props: { url: "https://tetanus.example", token: "ab".repeat(32) },
     });
 
-    const text = component.get('[data-testid="install-command"]').text();
+    const text = component.get('[data-testid="command"]').text();
     expect(text).toContain(
       "curl -fsSL https://tetanus.example/host/install.sh",
     );
