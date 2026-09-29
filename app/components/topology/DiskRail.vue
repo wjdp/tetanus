@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { type RailGroup, railColour, type TopologyDisk } from "./groupDisks";
+import { type DiskGroup, diskDot, type TopologyDisk } from "./groupDisks";
 
 defineProps<{
-  groups: RailGroup<TopologyDisk & { hostName: string | null }>[];
+  groups: DiskGroup<TopologyDisk & { hostName: string | null }>[];
 }>();
 </script>
 
@@ -28,7 +28,7 @@ defineProps<{
             :to="`/disks/${disk.id}`"
             class="hover:bg-elevated flex items-center gap-2 rounded-md px-2 py-1 text-sm"
           >
-            <TopologyStatusDot :colour="railColour(disk)" />
+            <TopologyStatusDot v-bind="diskDot(disk)" />
             <UIcon
               v-if="mediaIcon(disk.media)"
               :name="mediaIcon(disk.media) ?? ''"

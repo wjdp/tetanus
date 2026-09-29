@@ -1,20 +1,32 @@
-import type { EffectiveDiskState } from "#shared/disk";
+import type { EffectiveDiskState, StateOverride } from "#shared/disk";
 import type { Media } from "#shared/hardware";
 import type { DeviceStatus } from "#shared/smart/status";
+import type { TemperatureThresholds } from "#shared/temperature";
 import type { Purpose } from "#shared/usage";
 import {
-  deviceStatusColour,
-  diskStateColour,
+  DEVICE_STATUS_VOCABULARY,
+  type DotShape,
+  LIFECYCLE_VOCABULARY,
   type StatusColour,
+  worstColour,
   zfsStateColour,
-} from "~/utils/statusColour";
+} from "~/utils/vocabulary";
 import type { PoolScan } from "../pool/scan";
 
-export interface TopologyVdevDisk {
+export interface TopologyDiskFacts {
   id: number;
   alias: string | null;
-  state: string | null;
   latestStatus: DeviceStatus;
+  capacityBytes: number | null;
+  media: Media | null;
+  purpose: Purpose | null;
+  latestTemp: number | null;
+  modelShort: string | null;
+  tempThresholds: TemperatureThresholds;
+}
+
+export interface TopologyVdevDisk extends TopologyDiskFacts {
+  state: string | null;
 }
 
 export interface TopologyVdev {
@@ -28,19 +40,20 @@ export interface TopologyVdev {
   checksumErrors: number;
   slowIos: number | null;
   path: string | null;
+  sizeBytes: number | null;
+  allocBytes: number | null;
   disk: TopologyVdevDisk | null;
   children: TopologyVdev[];
 }
 
-export interface TopologyDisk {
-  id: number;
-  alias: string | null;
+export interface TopologyDisk extends TopologyDiskFacts {
   model: string | null;
   serial: string | null;
+  interfaceLabel: string | null;
   state: EffectiveDiskState;
-  purpose: Purpose | null;
-  media: Media | null;
-  latestStatus: DeviceStatus;
+  stateOverride: StateOverride | null;
+  present: boolean;
+  lastSeenHostId: number | null;
 }
 
 export interface TopologyPool {
@@ -57,15 +70,25 @@ export interface TopologyPool {
 
 export interface VdevGroup {
   key: string;
+  type: string;
   label: string;
   state: string | null;
+  sizeBytes: number | null;
+  allocBytes: number | null;
   leaves: TopologyVdev[];
 }
 
-export interface RailGroup<Disk extends TopologyDisk = TopologyDisk> {
+export interface DiskGroup<Disk extends TopologyDisk = TopologyDisk> {
   key: string;
+  state: EffectiveDiskState | null;
   label: string;
+  icon: string;
   disks: Disk[];
+}
+
+export interface Dot {
+  colour: StatusColour;
+  shape: DotShape;
 }
 
 const CLASS_TYPES = new Set(["log", "cache", "special", "dedup", "spare"]);
@@ -89,6 +112,13 @@ function groupLabel(node: TopologyVdev) {
   return CLASS_TYPES.has(node.type) ? `${node.type} · ${node.name}` : node.name;
 }
 
+function sumKnown(values: (number | null)[]): number | null {
+  if (values.length === 0 || values.some((value) => value === null)) {
+    return null;
+  }
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0);
+}
+
 export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
   if (!root) return [];
   const groups: VdevGroup[] = [];
@@ -97,8 +127,11 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
     if (child.children.length > 0) {
       groups.push({
         key: child.guid,
+        type: child.type,
         label: groupLabel(child),
         state: child.state,
+        sizeBytes: child.sizeBytes,
+        allocBytes: child.allocBytes,
         leaves: leafVdevs(child),
       });
       continue;
@@ -108,15 +141,22 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
     if (existing) {
       existing.leaves.push(child);
     } else {
-      const group = {
+      const group: VdevGroup = {
         key: `single-${label}`,
+        type: child.type,
         label,
         state: null,
+        sizeBytes: null,
+        allocBytes: null,
         leaves: [child],
       };
       singles.set(label, group);
       groups.push(group);
     }
+  }
+  for (const group of singles.values()) {
+    group.sizeBytes = sumKnown(group.leaves.map((leaf) => leaf.sizeBytes));
+    group.allocBytes = sumKnown(group.leaves.map((leaf) => leaf.allocBytes));
   }
   return groups;
 }
@@ -132,87 +172,149 @@ export function linkedDiskIds(roots: (TopologyVdev | null)[]): Set<number> {
   return ids;
 }
 
-interface RailSpec {
+interface GroupSpec {
   key: string;
+  state: EffectiveDiskState | null;
   label: string;
+  icon: string;
   matches: (disk: TopologyDisk) => boolean;
 }
 
-function byState(state: EffectiveDiskState, label: string): RailSpec {
+function byState(state: EffectiveDiskState, label?: string): GroupSpec {
+  const vocabulary = LIFECYCLE_VOCABULARY[state];
   return {
     key: state,
-    label,
-    matches: (disk) => disk.state === state && disk.purpose !== "system",
+    state,
+    label: label ?? vocabulary.label,
+    icon: vocabulary.icon,
+    matches: (disk) => disk.state === state,
   };
 }
 
-const RAIL_ORDER: RailSpec[] = [
+const HOST_GROUPS: GroupSpec[] = [
   {
     key: "system",
-    label: "System",
+    state: null,
+    label: "system",
+    icon: "i-lucide-cpu",
     matches: (disk) => disk.purpose === "system",
   },
-  byState("spare", "Spare"),
-  byState("missing", "Missing"),
-  byState("removed", "Removed"),
-  byState("unseen", "Unseen"),
-  byState("in-use", "In use, not in a pool"),
-  byState("dead", "Dead"),
-  byState("retired", "Retired"),
-  byState("sold", "Sold"),
+  ...[
+    byState("spare"),
+    byState("in-use", "in use, not in a pool"),
+    byState("removed"),
+    byState("dead"),
+    byState("retired"),
+    byState("sold"),
+  ].map((spec) => ({
+    ...spec,
+    matches: (disk: TopologyDisk) =>
+      disk.purpose !== "system" && spec.matches(disk),
+  })),
 ];
+
+const HISTORY_STATES = new Set<EffectiveDiskState>(["dead", "retired", "sold"]);
+
+export const HISTORY_KEY = "history";
+
+const RAIL_GROUPS: GroupSpec[] = [
+  byState("missing"),
+  byState("removed"),
+  byState("unseen"),
+  byState("spare"),
+  byState("in-use", "In use, not in a pool"),
+  {
+    key: HISTORY_KEY,
+    state: null,
+    label: "History",
+    icon: "i-lucide-history",
+    matches: (disk) => HISTORY_STATES.has(disk.state),
+  },
+];
+
+function groupBy<Disk extends TopologyDisk>(
+  specs: GroupSpec[],
+  disks: Disk[],
+): DiskGroup<Disk>[] {
+  return specs
+    .map(({ key, state, label, icon, matches }) => ({
+      key,
+      state,
+      label,
+      icon,
+      disks: disks.filter(matches),
+    }))
+    .filter((group) => group.disks.length > 0);
+}
+
+export function hostDiskGroups<Disk extends TopologyDisk>(
+  disks: Disk[],
+  hostId: number,
+  inPool: Set<number>,
+): DiskGroup<Disk>[] {
+  return groupBy(
+    HOST_GROUPS,
+    disks.filter(
+      (disk) =>
+        disk.present && disk.lastSeenHostId === hostId && !inPool.has(disk.id),
+    ),
+  );
+}
 
 export function railGroups<Disk extends TopologyDisk>(
   disks: Disk[],
   inPool: Set<number>,
-): RailGroup<Disk>[] {
-  const outside = disks.filter((disk) => !inPool.has(disk.id));
-  return RAIL_ORDER.map(({ key, label, matches }) => ({
-    key,
-    label,
-    disks: outside.filter(matches),
-  })).filter((group) => group.disks.length > 0);
-}
-
-const COLOUR_SEVERITY: Record<StatusColour, number> = {
-  neutral: 0,
-  success: 1,
-  info: 2,
-  warning: 3,
-  error: 4,
-};
-
-export function worstColour(...colours: StatusColour[]): StatusColour {
-  return colours.reduce<StatusColour>(
-    (worst, colour) =>
-      COLOUR_SEVERITY[colour] > COLOUR_SEVERITY[worst] ? colour : worst,
-    "neutral",
+): DiskGroup<Disk>[] {
+  return groupBy(
+    RAIL_GROUPS,
+    disks.filter((disk) => !disk.present && !inPool.has(disk.id)),
   );
 }
 
-export function tileColour(leaf: TopologyVdev): StatusColour {
-  const status = leaf.disk?.latestStatus ?? "unknown";
-  const worst = worstColour(
-    deviceStatusColour(status),
-    zfsStateColour(leaf.state),
-  );
-  if (worst === "neutral" && status === "passed") return "success";
-  return worst;
+export interface HostDiskSummary {
+  count: number;
+  hdd: number;
+  ssd: number;
+  rawBytes: number | null;
 }
 
-export function railColour(disk: TopologyDisk): StatusColour {
-  const worst = worstColour(
-    deviceStatusColour(disk.latestStatus),
-    diskStateColour(disk.state),
-  );
-  if (worst === "neutral" && disk.latestStatus === "passed") return "success";
-  return worst;
+export function hostDiskSummary(disks: TopologyDisk[]): HostDiskSummary {
+  const capacities = disks
+    .map((disk) => disk.capacityBytes)
+    .filter((bytes): bytes is number => bytes !== null);
+  return {
+    count: disks.length,
+    hdd: disks.filter((disk) => disk.media === "hdd").length,
+    ssd: disks.filter((disk) => disk.media === "ssd").length,
+    rawBytes:
+      capacities.length > 0
+        ? capacities.reduce((total, bytes) => total + bytes, 0)
+        : null,
+  };
+}
+
+function smartDot(status: DeviceStatus, ...others: StatusColour[]): Dot {
+  const smart = DEVICE_STATUS_VOCABULARY[status];
+  return { colour: worstColour(smart.colour, ...others), shape: smart.shape };
+}
+
+export function tileColour(leaf: TopologyVdev): Dot {
+  if (!leaf.disk) return { colour: "neutral", shape: "hollow" };
+  return smartDot(leaf.disk.latestStatus, zfsStateColour(leaf.state));
+}
+
+export function diskDot(disk: TopologyDisk): Dot {
+  return smartDot(disk.latestStatus, LIFECYCLE_VOCABULARY[disk.state].colour);
 }
 
 export function leafLabel(leaf: TopologyVdev): string {
   if (leaf.disk?.alias) return leaf.disk.alias;
   const basename = leaf.name.split("/").pop() ?? leaf.name;
   return basename.replace(/-part\d+$/, "");
+}
+
+export function diskLabel(disk: TopologyDisk): string {
+  return disk.alias ?? disk.serial ?? `#${disk.id}`;
 }
 
 export function hasErrors(leaf: TopologyVdev): boolean {

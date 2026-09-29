@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { TEMPERATURE_DEFAULTS } from "#shared/temperature";
 import {
+  diskDot,
+  hostDiskGroups,
+  hostDiskSummary,
   leafLabel,
   linkedDiskIds,
-  railColour,
   railGroups,
   type TopologyDisk,
   type TopologyVdev,
+  type TopologyVdevDisk,
   tileColour,
   vdevGroups,
 } from "./groupDisks";
@@ -25,8 +29,30 @@ function vdev(overrides: Partial<TopologyVdev>): TopologyVdev {
     checksumErrors: 0,
     slowIos: 0,
     path: null,
+    sizeBytes: null,
+    allocBytes: null,
     disk: null,
     children: [],
+    ...overrides,
+  };
+}
+
+function vdevDisk(
+  id: number,
+  alias: string,
+  overrides: Partial<TopologyVdevDisk> = {},
+): TopologyVdevDisk {
+  return {
+    id,
+    alias,
+    state: "in-use",
+    latestStatus: "passed",
+    capacityBytes: null,
+    media: "hdd",
+    purpose: null,
+    latestTemp: null,
+    modelShort: null,
+    tempThresholds: TEMPERATURE_DEFAULTS.hdd,
     ...overrides,
   };
 }
@@ -39,7 +65,7 @@ function leaf(
   return vdev({
     name: `/dev/disk/by-vdev/${alias}-part1`,
     path: `/dev/disk/by-vdev/${alias}-part1`,
-    disk: { id: diskId, alias, state: "in-use", latestStatus: "passed" },
+    disk: vdevDisk(diskId, alias),
     ...overrides,
   });
 }
@@ -50,10 +76,18 @@ function disk(id: number, overrides: Partial<TopologyDisk> = {}): TopologyDisk {
     alias: `D${id}`,
     model: null,
     serial: null,
+    interfaceLabel: null,
     state: "in-use",
+    stateOverride: null,
     purpose: null,
     media: null,
     latestStatus: "passed",
+    capacityBytes: null,
+    latestTemp: null,
+    modelShort: null,
+    tempThresholds: TEMPERATURE_DEFAULTS.hdd,
+    present: false,
+    lastSeenHostId: null,
     ...overrides,
   };
 }
@@ -65,6 +99,8 @@ const tree = vdev({
     vdev({
       name: "raidz1-0",
       type: "raidz1",
+      sizeBytes: 54e12,
+      allocBytes: 11e12,
       children: [leaf("K1", 1), leaf("K2", 2), leaf("K3", 3)],
     }),
     vdev({
@@ -80,8 +116,8 @@ const tree = vdev({
         }),
       ],
     }),
-    leaf("C1", 7, { type: "cache" }),
-    leaf("C2", 8, { type: "cache" }),
+    leaf("C1", 7, { type: "cache", sizeBytes: 1e12, allocBytes: 2e11 }),
+    leaf("C2", 8, { type: "cache", sizeBytes: 1e12, allocBytes: 3e11 }),
     vdev({ name: "/dev/sdz1", type: "disk", path: "/dev/sdz1" }),
   ],
 });
@@ -91,15 +127,27 @@ describe("vdevGroups", () => {
     const groups = vdevGroups(tree);
     expect(
       groups.map((group) => [
+        group.type,
         group.label,
         group.state,
         group.leaves.map(leafLabel),
       ]),
     ).toEqual([
-      ["raidz1-0", "ONLINE", ["K1", "K2", "K3"]],
-      ["special · mirror-1", "DEGRADED", ["S1", "S2", "S3"]],
-      ["cache", null, ["C1", "C2"]],
-      ["stripe", null, ["sdz1"]],
+      ["raidz1", "raidz1-0", "ONLINE", ["K1", "K2", "K3"]],
+      ["special", "special · mirror-1", "DEGRADED", ["S1", "S2", "S3"]],
+      ["cache", "cache", null, ["C1", "C2"]],
+      ["disk", "stripe", null, ["sdz1"]],
+    ]);
+  });
+
+  it("takes usage from the vdev and sums it for single-device groups", () => {
+    expect(
+      vdevGroups(tree).map((group) => [group.sizeBytes, group.allocBytes]),
+    ).toEqual([
+      [54e12, 11e12],
+      [null, null],
+      [2e12, 5e11],
+      [null, null],
     ]);
   });
 
@@ -108,96 +156,148 @@ describe("vdevGroups", () => {
   });
 });
 
+const keysAndIds = (groups: { key: string; disks: TopologyDisk[] }[]) =>
+  groups.map((group) => [group.key, group.disks.map((row) => row.id)]);
+
 describe("railGroups", () => {
-  it("lists disks outside every pool by state, hiding empty groups", () => {
+  it("lists absent disks outside every pool, folding the past into History", () => {
     const inPool = linkedDiskIds([tree, null]);
     expect([...inPool].sort()).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
 
     const disks = [
-      disk(1),
-      disk(9, { state: "spare" }),
+      disk(1, { state: "missing" }),
+      disk(9, { state: "spare", present: true, lastSeenHostId: 1 }),
       disk(10, { state: "missing" }),
       disk(11, { state: "unseen" }),
       disk(12, { state: "sold" }),
-      disk(13, { state: "spare" }),
+      disk(13, { state: "dead" }),
+      disk(14, { state: "retired", purpose: "system" }),
+      disk(15, { state: "removed" }),
     ];
 
-    expect(
-      railGroups(disks, inPool).map((group) => [
-        group.key,
-        group.disks.map((row) => row.id),
-      ]),
-    ).toEqual([
-      ["spare", [9, 13]],
+    expect(keysAndIds(railGroups(disks, inPool))).toEqual([
       ["missing", [10]],
+      ["removed", [15]],
       ["unseen", [11]],
-      ["sold", [12]],
+      ["history", [12, 13, 14]],
+    ]);
+  });
+
+  it("leaves a dead disk plugged into a host to that host", () => {
+    const dead = disk(1, { state: "dead", present: true, lastSeenHostId: 2 });
+    expect(railGroups([dead], new Set())).toEqual([]);
+    expect(keysAndIds(hostDiskGroups([dead], 2, new Set()))).toEqual([
+      ["dead", [1]],
     ]);
   });
 });
 
-describe("railGroups purpose", () => {
-  const groups = (disks: TopologyDisk[]) =>
-    railGroups(disks, new Set()).map((group) => [
-      group.key,
-      group.disks.map((row) => row.id),
-    ]);
+describe("hostDiskGroups", () => {
+  it("groups the host's present disks outside pools, system first", () => {
+    const live = { present: true, lastSeenHostId: 1 };
+    const disks = [
+      disk(1, { ...live, state: "sold" }),
+      disk(2, { ...live, state: "dead" }),
+      disk(3, { ...live, state: "in-use" }),
+      disk(4, { ...live, state: "spare" }),
+      disk(5, { ...live, state: "in-use", purpose: "system" }),
+      disk(6, { ...live, state: "retired" }),
+      disk(7, { ...live, state: "spare", lastSeenHostId: 2 }),
+      disk(8, { state: "spare", lastSeenHostId: 1 }),
+      disk(9, { ...live, state: "in-use" }),
+    ];
 
-  it("puts system disks under System regardless of state, first", () => {
-    expect(
-      groups([
-        disk(1, { state: "spare" }),
-        disk(2, { state: "spare", purpose: "system" }),
-        disk(3, { state: "in-use", purpose: "system" }),
-      ]),
-    ).toEqual([
-      ["system", [2, 3]],
-      ["spare", [1]],
+    const groups = hostDiskGroups(disks, 1, new Set([9]));
+    expect(keysAndIds(groups)).toEqual([
+      ["system", [5]],
+      ["spare", [4]],
+      ["in-use", [3]],
+      ["dead", [2]],
+      ["retired", [6]],
+      ["sold", [1]],
+    ]);
+    expect(groups.map((group) => group.label).slice(0, 4)).toEqual([
+      "system",
+      "Spare",
+      "in use, not in a pool",
+      "Dead",
     ]);
   });
+});
 
-  it("keeps non-system disks by state", () => {
+describe("hostDiskSummary", () => {
+  it("counts disks by media and sums known capacities", () => {
     expect(
-      groups([
-        disk(1, { purpose: "other" }),
-        disk(2, { state: "missing", purpose: "other" }),
+      hostDiskSummary([
+        disk(1, { media: "hdd", capacityBytes: 18e12 }),
+        disk(2, { media: "hdd", capacityBytes: 18e12 }),
+        disk(3, { media: "ssd", capacityBytes: null }),
+        disk(4, { media: null }),
       ]),
-    ).toEqual([
-      ["missing", [2]],
-      ["in-use", [1]],
-    ]);
+    ).toEqual({ count: 4, hdd: 2, ssd: 1, rawBytes: 36e12 });
+  });
+
+  it("has no raw capacity when none is known", () => {
+    expect(hostDiskSummary([disk(1)]).rawBytes).toBeNull();
   });
 });
 
 describe("tileColour", () => {
-  it("shows a quiet success mark for a healthy disk", () => {
-    expect(tileColour(leaf("K1", 1))).toBe("success");
+  it("shows one filled success dot for an ONLINE leaf on a passed disk", () => {
+    expect(tileColour(leaf("K1", 1))).toEqual({
+      colour: "success",
+      shape: "filled",
+    });
   });
 
   it("takes the worst of SMART status and vdev state", () => {
-    expect(tileColour(leaf("K1", 1, { state: "DEGRADED" }))).toBe("warning");
+    expect(tileColour(leaf("K1", 1, { state: "DEGRADED" })).colour).toBe(
+      "warning",
+    );
     expect(
       tileColour(
         leaf("K1", 1, {
           state: "DEGRADED",
-          disk: { id: 1, alias: "K1", state: "in-use", latestStatus: "failed" },
+          disk: vdevDisk(1, "K1", { latestStatus: "failed" }),
         }),
-      ),
+      ).colour,
     ).toBe("error");
-    expect(tileColour(leaf("K1", 1, { state: "FAULTED" }))).toBe("error");
+    expect(tileColour(leaf("K1", 1, { state: "FAULTED" })).colour).toBe(
+      "error",
+    );
   });
 
-  it("takes the ONLINE green for an unlinked leaf with unknown status", () => {
-    expect(tileColour(vdev({ name: "/dev/sdz1" }))).toBe("success");
+  it("is hollow when SMART status is unknown", () => {
+    expect(
+      tileColour(
+        leaf("K1", 1, { disk: vdevDisk(1, "K1", { latestStatus: "unknown" }) }),
+      ),
+    ).toEqual({ colour: "success", shape: "hollow" });
+  });
+
+  it("is a neutral ring for an unlinked leaf", () => {
+    expect(tileColour(vdev({ name: "/dev/sdz1" }))).toEqual({
+      colour: "neutral",
+      shape: "hollow",
+    });
   });
 });
 
-describe("railColour", () => {
+describe("diskDot", () => {
   it("flags missing disks and quietly marks passed spares", () => {
-    expect(railColour(disk(1, { state: "missing" }))).toBe("error");
-    expect(railColour(disk(1, { state: "spare" }))).toBe("success");
+    expect(diskDot(disk(1, { state: "missing" }))).toEqual({
+      colour: "error",
+      shape: "filled",
+    });
+    expect(diskDot(disk(1, { state: "spare" })).colour).toBe("success");
     expect(
-      railColour(disk(1, { state: "unseen", latestStatus: "unknown" })),
+      diskDot(disk(1, { state: "unseen", latestStatus: "unknown" })),
+    ).toEqual({ colour: "neutral", shape: "hollow" });
+  });
+
+  it("keeps a dead disk neutral apart from its SMART reading", () => {
+    expect(
+      diskDot(disk(1, { state: "dead", latestStatus: "unknown" })).colour,
     ).toBe("neutral");
   });
 });

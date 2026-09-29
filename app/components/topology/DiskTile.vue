@@ -10,7 +10,7 @@ import {
 const props = defineProps<{ leaf: TopologyVdev }>();
 
 const label = computed(() => leafLabel(props.leaf));
-const colour = computed(() => tileColour(props.leaf));
+const dot = computed(() => tileColour(props.leaf));
 const counters = computed(() =>
   (
     [
@@ -46,7 +46,7 @@ const nonOnlineState = computed(() =>
         >
           {{ label }}
         </span>
-        <TopologyStatusDot :colour="colour" />
+        <TopologyStatusDot :colour="dot.colour" :shape="dot.shape" />
       </span>
       <span v-if="hasErrors(leaf)" class="text-error tabular font-mono text-xs">
         <span v-for="[name, count] in counters" :key="name" class="mr-1">
