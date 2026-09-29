@@ -30,6 +30,8 @@ describe("lsblk parser", () => {
         sizeBytes: 12000128139264,
         partUuid: "5e2557d0-93da-b346-903f-a913c8e11433",
         fsType: "zfs_member",
+        mountPoints: null,
+        children: [],
       },
       {
         name: "sda9",
@@ -38,6 +40,39 @@ describe("lsblk parser", () => {
         sizeBytes: 8388608,
         partUuid: "d05172ff-1d51-ccc5-9229-926ce1150377",
         fsType: null,
+        mountPoints: null,
+        children: [],
+      },
+    ]);
+  });
+
+  it("reports mount points as unknown and keeps LVM children for an old collector", () => {
+    const { data } = parse(readFixture("mars/lsblk.json"), {});
+    const nvme = data.disks.find((disk) => disk.name === "nvme0n1");
+    expect(nvme).toMatchObject({
+      fsType: null,
+      mountPoints: null,
+      children: [],
+    });
+    const p3 = nvme?.partitions.find((part) => part.name === "nvme0n1p3");
+    expect(p3?.fsType).toBe("LVM2_member");
+    expect(p3?.mountPoints).toBeNull();
+    expect(p3?.children).toEqual([
+      {
+        name: "ubuntu--vg-ubuntu--lv",
+        path: "/dev/mapper/ubuntu--vg-ubuntu--lv",
+        type: "lvm",
+        fsType: "ext4",
+        mountPoints: null,
+        children: [],
+      },
+      {
+        name: "ubuntu--vg-ubuntu--swap",
+        path: "/dev/mapper/ubuntu--vg-ubuntu--swap",
+        type: "lvm",
+        fsType: "swap",
+        mountPoints: null,
+        children: [],
       },
     ]);
   });
@@ -46,6 +81,106 @@ describe("lsblk parser", () => {
     const body = readFixture("mars/lsblk.json");
     const { data } = parse(body, {});
     expect(data.disks.some((disk) => disk.name.startsWith("loop"))).toBe(false);
+  });
+
+  describe("synthetic lvm-on-luks fixture", () => {
+    const { data, summary } = parse(
+      readFixture("synthetic-lsblk/lvm-on-luks.json"),
+      {},
+    );
+    const diskNamed = (name: string) =>
+      data.disks.find((disk) => disk.name === name);
+
+    it("excludes loop devices", () => {
+      expect(data.disks.map((disk) => disk.name)).toEqual([
+        "nvme0n1",
+        "sda",
+        "sdb",
+        "sdc",
+      ]);
+      expect(summary).toEqual({ disks: 4, partitions: 5 });
+    });
+
+    it("reads mounted partitions and drops null mountpoints", () => {
+      const nvme = diskNamed("nvme0n1");
+      expect(nvme).toMatchObject({
+        fsType: null,
+        mountPoints: [],
+        children: [],
+      });
+      expect(
+        nvme?.partitions.map(({ name, fsType, mountPoints }) => ({
+          name,
+          fsType,
+          mountPoints,
+        })),
+      ).toEqual([
+        { name: "nvme0n1p1", fsType: "vfat", mountPoints: ["/boot/efi"] },
+        { name: "nvme0n1p2", fsType: "ext4", mountPoints: ["/boot"] },
+        { name: "nvme0n1p3", fsType: "crypto_LUKS", mountPoints: [] },
+      ]);
+    });
+
+    it("follows the LUKS then LVM chain recursively", () => {
+      const p3 = diskNamed("nvme0n1")?.partitions.find(
+        (part) => part.name === "nvme0n1p3",
+      );
+      expect(p3?.children).toEqual([
+        {
+          name: "luks-3a7f2c1e-9b8d-4e6f-a5c4-b3d2e1f0a9b8",
+          path: "/dev/mapper/luks-3a7f2c1e-9b8d-4e6f-a5c4-b3d2e1f0a9b8",
+          type: "crypt",
+          fsType: "LVM2_member",
+          mountPoints: [],
+          children: [
+            {
+              name: "vg0-root",
+              path: "/dev/mapper/vg0-root",
+              type: "lvm",
+              fsType: "ext4",
+              mountPoints: ["/"],
+              children: [],
+            },
+            {
+              name: "vg0-swap",
+              path: "/dev/mapper/vg0-swap",
+              type: "lvm",
+              fsType: "swap",
+              mountPoints: ["[SWAP]"],
+              children: [],
+            },
+          ],
+        },
+      ]);
+    });
+
+    it("records a whole-disk filesystem on the disk itself", () => {
+      expect(diskNamed("sda")).toMatchObject({
+        partitionTableType: null,
+        fsType: "ext4",
+        mountPoints: ["/srv"],
+        children: [],
+        partitions: [],
+      });
+    });
+
+    it("falls back to the singular mountpoint column", () => {
+      const sdb = diskNamed("sdb");
+      expect(sdb?.mountPoints).toEqual([]);
+      expect(sdb?.partitions[0]).toMatchObject({
+        fsType: "xfs",
+        mountPoints: ["/mnt/scratch"],
+      });
+    });
+
+    it("reports mount points as unknown when neither column is present", () => {
+      const sdc = diskNamed("sdc");
+      expect(sdc?.mountPoints).toBeNull();
+      expect(sdc?.partitions[0]).toMatchObject({
+        fsType: "ext4",
+        mountPoints: null,
+      });
+    });
   });
 
   it("rejects an empty body", () => {

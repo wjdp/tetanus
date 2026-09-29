@@ -1,6 +1,15 @@
 import type { Parser } from "#shared/ingest";
 import { ParseError } from "./parseError";
 
+export interface LsblkChild {
+  name: string;
+  path: string;
+  type: string;
+  fsType: string | null;
+  mountPoints: string[] | null;
+  children: LsblkChild[];
+}
+
 export interface LsblkPartition {
   name: string;
   path: string;
@@ -8,6 +17,8 @@ export interface LsblkPartition {
   sizeBytes: number;
   partUuid: string | null;
   fsType: string | null;
+  mountPoints: string[] | null;
+  children: LsblkChild[];
 }
 
 export interface LsblkDisk {
@@ -21,6 +32,9 @@ export interface LsblkDisk {
   transport: string | null;
   rotational: boolean;
   partitionTableType: string | null;
+  fsType: string | null;
+  mountPoints: string[] | null;
+  children: LsblkChild[];
   partitions: LsblkPartition[];
 }
 
@@ -35,6 +49,39 @@ function stripWwnPrefix(wwn: unknown): string | null {
   return wwn.replace(/^0x/i, "").toLowerCase();
 }
 
+function mountPointsOf(entry: Json): string[] | null {
+  if (Array.isArray(entry.mountpoints)) {
+    return (entry.mountpoints as unknown[]).filter(
+      (mountPoint): mountPoint is string => typeof mountPoint === "string",
+    );
+  }
+  if ("mountpoint" in entry) {
+    return typeof entry.mountpoint === "string" ? [entry.mountpoint] : [];
+  }
+  return null;
+}
+
+function rawChildrenOf(entry: Json): Json[] {
+  return Array.isArray(entry.children) ? (entry.children as Json[]) : [];
+}
+
+function mapperChildrenOf(entry: Json): LsblkChild[] {
+  return rawChildrenOf(entry)
+    .filter((child) => child.type !== "part")
+    .map(toChild);
+}
+
+function toChild(entry: Json): LsblkChild {
+  return {
+    name: entry.name as string,
+    path: entry.path as string,
+    type: entry.type as string,
+    fsType: (entry.fstype as string | null) ?? null,
+    mountPoints: mountPointsOf(entry),
+    children: mapperChildrenOf(entry),
+  };
+}
+
 function toPartition(entry: Json): LsblkPartition {
   return {
     name: entry.name as string,
@@ -43,12 +90,13 @@ function toPartition(entry: Json): LsblkPartition {
     sizeBytes: entry.size as number,
     partUuid: (entry.partuuid as string | null) ?? null,
     fsType: (entry.fstype as string | null) ?? null,
+    mountPoints: mountPointsOf(entry),
+    children: mapperChildrenOf(entry),
   };
 }
 
 function toDisk(entry: Json): LsblkDisk {
-  const children = Array.isArray(entry.children) ? entry.children : [];
-  const partitions = (children as Json[])
+  const partitions = rawChildrenOf(entry)
     .filter((child) => child.type === "part")
     .map(toPartition);
 
@@ -63,6 +111,9 @@ function toDisk(entry: Json): LsblkDisk {
     transport: (entry.tran as string | null) ?? null,
     rotational: Boolean(entry.rota),
     partitionTableType: (entry.pttype as string | null) ?? null,
+    fsType: (entry.fstype as string | null) ?? null,
+    mountPoints: mountPointsOf(entry),
+    children: mapperChildrenOf(entry),
     partitions,
   };
 }

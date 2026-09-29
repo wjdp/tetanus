@@ -1,0 +1,213 @@
+{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "type": "loop",
+         "size": 77586432,
+         "model": null,
+         "serial": null,
+         "wwn": null,
+         "tran": null,
+         "rota": false,
+         "maj:min": "7:0",
+         "path": "/dev/loop0",
+         "pttype": null,
+         "partuuid": null,
+         "fstype": "squashfs",
+         "mountpoints": ["/snap/core20/2105"]
+      },{
+         "name": "nvme0n1",
+         "type": "disk",
+         "size": 512110190592,
+         "model": "Samsung SSD 970 EVO Plus 500GB",
+         "serial": "S4EVNX0R123456A",
+         "wwn": "eui.002538b411b2c3d4",
+         "tran": "nvme",
+         "rota": false,
+         "maj:min": "259:0",
+         "path": "/dev/nvme0n1",
+         "pttype": "gpt",
+         "partuuid": null,
+         "fstype": null,
+         "mountpoints": [null],
+         "children": [
+            {
+               "name": "nvme0n1p1",
+               "type": "part",
+               "size": 1073741824,
+               "model": null,
+               "serial": null,
+               "wwn": "eui.002538b411b2c3d4",
+               "tran": "nvme",
+               "rota": false,
+               "maj:min": "259:1",
+               "path": "/dev/nvme0n1p1",
+               "pttype": "gpt",
+               "partuuid": "0b7a3c52-6f1e-4d2a-9c3b-1e2f3a4b5c6d",
+               "fstype": "vfat",
+               "mountpoints": ["/boot/efi"]
+            },{
+               "name": "nvme0n1p2",
+               "type": "part",
+               "size": 2147483648,
+               "model": null,
+               "serial": null,
+               "wwn": "eui.002538b411b2c3d4",
+               "tran": "nvme",
+               "rota": false,
+               "maj:min": "259:2",
+               "path": "/dev/nvme0n1p2",
+               "pttype": "gpt",
+               "partuuid": "4c8d9e0f-1a2b-4c3d-8e4f-5a6b7c8d9e0f",
+               "fstype": "ext4",
+               "mountpoints": ["/boot"]
+            },{
+               "name": "nvme0n1p3",
+               "type": "part",
+               "size": 508887916544,
+               "model": null,
+               "serial": null,
+               "wwn": "eui.002538b411b2c3d4",
+               "tran": "nvme",
+               "rota": false,
+               "maj:min": "259:3",
+               "path": "/dev/nvme0n1p3",
+               "pttype": "gpt",
+               "partuuid": "9f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0",
+               "fstype": "crypto_LUKS",
+               "mountpoints": [null],
+               "children": [
+                  {
+                     "name": "luks-3a7f2c1e-9b8d-4e6f-a5c4-b3d2e1f0a9b8",
+                     "type": "crypt",
+                     "size": 508871139328,
+                     "model": null,
+                     "serial": null,
+                     "wwn": null,
+                     "tran": null,
+                     "rota": false,
+                     "maj:min": "252:0",
+                     "path": "/dev/mapper/luks-3a7f2c1e-9b8d-4e6f-a5c4-b3d2e1f0a9b8",
+                     "pttype": null,
+                     "partuuid": null,
+                     "fstype": "LVM2_member",
+                     "mountpoints": [null],
+                     "children": [
+                        {
+                           "name": "vg0-root",
+                           "type": "lvm",
+                           "size": 491691270144,
+                           "model": null,
+                           "serial": null,
+                           "wwn": null,
+                           "tran": null,
+                           "rota": false,
+                           "maj:min": "252:1",
+                           "path": "/dev/mapper/vg0-root",
+                           "pttype": null,
+                           "partuuid": null,
+                           "fstype": "ext4",
+                           "mountpoints": ["/"]
+                        },{
+                           "name": "vg0-swap",
+                           "type": "lvm",
+                           "size": 17179869184,
+                           "model": null,
+                           "serial": null,
+                           "wwn": null,
+                           "tran": null,
+                           "rota": false,
+                           "maj:min": "252:2",
+                           "path": "/dev/mapper/vg0-swap",
+                           "pttype": null,
+                           "partuuid": null,
+                           "fstype": "swap",
+                           "mountpoints": ["[SWAP]"]
+                        }
+                     ]
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "sda",
+         "type": "disk",
+         "size": 4000787030016,
+         "model": "WDC WD40EFRX-68N",
+         "serial": "WD-WCC7K1234567",
+         "wwn": "0x50014ee2b5a1c3d4",
+         "tran": "sata",
+         "rota": true,
+         "maj:min": "8:0",
+         "path": "/dev/sda",
+         "pttype": null,
+         "partuuid": null,
+         "fstype": "ext4",
+         "mountpoints": ["/srv"]
+      },{
+         "name": "sdb",
+         "type": "disk",
+         "size": 2000398934016,
+         "model": "ST2000DM008-2FR1",
+         "serial": "ZFL1ABCD",
+         "wwn": "0x5000c500c1d2e3f4",
+         "tran": "sata",
+         "rota": true,
+         "maj:min": "8:16",
+         "path": "/dev/sdb",
+         "pttype": "gpt",
+         "partuuid": null,
+         "fstype": null,
+         "mountpoint": null,
+         "children": [
+            {
+               "name": "sdb1",
+               "type": "part",
+               "size": 2000397868544,
+               "model": null,
+               "serial": null,
+               "wwn": "0x5000c500c1d2e3f4",
+               "tran": "sata",
+               "rota": true,
+               "maj:min": "8:17",
+               "path": "/dev/sdb1",
+               "pttype": "gpt",
+               "partuuid": "7e6d5c4b-3a29-4817-9605-f4e3d2c1b0a9",
+               "fstype": "xfs",
+               "mountpoint": "/mnt/scratch"
+            }
+         ]
+      },{
+         "name": "sdc",
+         "type": "disk",
+         "size": 1000204886016,
+         "model": "ST1000LM035-1RK1",
+         "serial": "WL1ABCDE",
+         "wwn": "0x5000c500a1b2c3d4",
+         "tran": "usb",
+         "rota": true,
+         "maj:min": "8:32",
+         "path": "/dev/sdc",
+         "pttype": "dos",
+         "partuuid": null,
+         "fstype": null,
+         "children": [
+            {
+               "name": "sdc1",
+               "type": "part",
+               "size": 1000203837440,
+               "model": null,
+               "serial": null,
+               "wwn": "0x5000c500a1b2c3d4",
+               "tran": "usb",
+               "rota": true,
+               "maj:min": "8:33",
+               "path": "/dev/sdc1",
+               "pttype": "dos",
+               "partuuid": "1a2b3c4d-01",
+               "fstype": "ext4"
+            }
+         ]
+      }
+   ]
+}
