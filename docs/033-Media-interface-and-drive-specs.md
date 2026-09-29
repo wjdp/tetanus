@@ -281,6 +281,26 @@ missing columns as unknown. Bump collector to 0.3.0. Not required for anything a
 | sdq | Samsung SSD 850 EVO 500GB | 850 EVO | local |
 | sdr, sds | Samsung SSD 870 EVO 2TB | 870 EVO | local |
 
+### T4 (031 vendor detection folded in)
+
+- `shared/vendor.ts`: `detectVendor({ model, wwn, modelFamily, brand })`; priority model
+  prefix, WWN OUI, family, dataset brand (unknown brand is `other`, null when no
+  evidence). Short prefixes are anchored with a following digit (`ST\d`, `CT\d`, `WDS?\d`),
+  `MZ` needs an uppercase/digit/hyphen next.
+- 031 typo: Intel OUI `55cd2e` is NAA nibble + 5 digits. Real 24-bit OUI is `5cd2e4`
+  (mars Intel oui 6083300), which is what the table uses.
+- mars WD white-label He12 disks have WWN OUI `000cca` (HGST, the maker). WWN-only
+  detection says `hgst`; model prefix `WDC ` wins when present, giving `western-digital`.
+- Fixtures: every `-auto.json` has a model. The K6 null-model case is the failed
+  non-auto scan; tested by dropping the model and using the WWN.
+- `shared/model.ts`: one prefix table (now vendor-tagged) shared by `bareModel`,
+  `modelWithoutVendor` and new `displayModel(model, vendor?)`. A given vendor only strips
+  its own prefixes.
+- `shared/product-lines.ts`: `WARRANTY_YEARS_BY_LINE`, `warrantyYearsFor`, `warrantyDefault`.
+  A test asserts every key exists as a `line` in snapshot or overrides. Left out for lack
+  of a confident term: `SkyHawk AI`, `IronWolf 125/525`, `Enterprise Capacity V5`, WD
+  white-label lines. `warrantyDefault` clamps 29 Feb to 28 Feb.
+
 ## Decisions (2026-09-29)
 
 1. Columns for `media`, `interface`, `recordingTech`, block sizes, `trimSupported`; JSON
