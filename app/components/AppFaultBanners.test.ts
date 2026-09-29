@@ -38,6 +38,17 @@ describe("AppFaultBanners", () => {
     );
   });
 
+  it("marks each fault with a 3 px error gutter", async () => {
+    faults.value = [
+      { id: "zfs-silent", host: "mars", title: "No data for 3 h" },
+    ];
+    const component = await mountSuspended(AppFaultBanners);
+    const row = component.get("section > div");
+    expect(row.classes()).toEqual(
+      expect.arrayContaining(["border-s-[3px]", "border-s-error"]),
+    );
+  });
+
   it("dismisses a fault via its close button", async () => {
     faults.value = [
       { id: "zfs-silent", host: "mars", title: "No data for 3 h" },
