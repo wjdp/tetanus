@@ -141,15 +141,32 @@ channel being configured.
 - `AppFaultBanners.test.ts`: cap and overflow row.
 - Nav badge: renders count, hidden at zero.
 
+## Future kinds
+
+The page is meant to grow into the one list of things that need looking at. Each of
+these planned tasks adds a kind to `listFaults` when it lands; this task builds the
+seam (`kind`, `severity`, `subject`, `since`, dismissal by id) so they need no page
+changes:
+
+| task | kind | severity |
+| --- | --- | --- |
+| [015 Replication health](015-Replication-health.md) | `replication-delayed` per dataset pair | error past the pair's tolerance |
+| [016 Snapshot staleness](016-Snapshot-staleness.md) | `snapshot-stale` per dataset | warning |
+| [017 Scrub and self-test overdue](017-Scrub-and-self-test-overdue.md) | `scrub-overdue` per pool, `self-test-overdue` per disk | warning |
+| [018 Capacity forecast](018-Capacity-forecast.md) | `pool-filling` when full within the forecast horizon | warning |
+| [019 SSD endurance](019-SSD-endurance.md) | `ssd-endurance-low` per disk | warning, error near the vendor limit |
+| [020 Warranty nudge](020-Warranty-nudge.md) | `warranty-ending` per disk | warning |
+| [031 Vendor detection](031-Vendor-detection-and-vendor-specific-inventory-fields.md) | `inventory-incomplete` when a disk lacks purchase or warranty data | warning |
+
+Subject links land on the dataset, pool or disk page. The `since` rule holds:
+the diary entry that opened the condition where one exists, else the first ingest
+that derived it.
+
 ## Out of scope
 
 - Per-fault snooze until a date. Dismiss is permanent for that id; the id changes
   when the condition does.
 - Sending a notification on dismissal.
-- Fault kinds needing new ingest (replication lag [015](015-Replication-health.md),
-  snapshot staleness [016](016-Snapshot-staleness.md), scrub overdue
-  [017](017-Scrub-and-self-test-overdue.md)). Each of those tasks adds its kind to
-  `listFaults` when it lands; this task leaves the seam.
 
 ## Open questions
 
