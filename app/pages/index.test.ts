@@ -209,7 +209,7 @@ describe("index page", () => {
     expect(page.get('[data-testid="host-summary"]').text()).toBe(
       "4 disks · 3 HDD · 1 SSD · 48.0 TB raw",
     );
-    expect(page.get('[data-testid="scan-progress"]').exists()).toBe(true);
+    expect(page.find('[data-testid="scan-progress"]').exists()).toBe(true);
 
     const group = page.get('[data-testid="vdev-group"]');
     expect(group.text()).toContain("raidz1-0");
