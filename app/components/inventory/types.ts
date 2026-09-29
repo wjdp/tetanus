@@ -1,7 +1,14 @@
 import type { EffectiveDiskState, StateOverride } from "#shared/disk";
+import type {
+  HardwareJson,
+  Interface,
+  Media,
+  RecordingTech,
+} from "#shared/hardware";
 import type { Inventory } from "#shared/inventory-fields";
 import type { DeviceStatus } from "#shared/smart/status";
 import type { DiskUsage, Purpose } from "#shared/usage";
+import type { Vendor } from "#shared/vendor";
 import { formatDays } from "~/utils/format";
 
 export interface InventoryDisk {
@@ -23,6 +30,15 @@ export interface InventoryDisk {
   usage: DiskUsage;
   purpose: Purpose | null;
   purposeInferred: boolean;
+  vendor: Vendor | null;
+  media: Media | null;
+  rotationRate: number | null;
+  interface: Interface | null;
+  link: string | null;
+  recordingTech: RecordingTech | null;
+  logicalBlockSize: number | null;
+  physicalBlockSize: number | null;
+  hardware: HardwareJson | null;
 }
 
 export type SortingState = { id: string; desc: boolean }[];

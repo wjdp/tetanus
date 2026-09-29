@@ -3,6 +3,9 @@ import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import type { VueWrapper } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { clearNuxtData } from "#app";
+import InventoryFilters, {
+  CLEARED_FILTERS,
+} from "~/components/inventory/InventoryFilters.vue";
 import DisksPage from "./index.vue";
 
 const disk = (overrides: Record<string, unknown>) => ({
@@ -25,6 +28,15 @@ const disk = (overrides: Record<string, unknown>) => ({
   usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
   purpose: null,
   purposeInferred: false,
+  vendor: null,
+  media: null,
+  rotationRate: null,
+  interface: null,
+  link: null,
+  recordingTech: null,
+  logicalBlockSize: null,
+  physicalBlockSize: null,
+  hardware: null,
   ...overrides,
 });
 
@@ -107,5 +119,95 @@ describe("disks inventory page", () => {
     );
     expect(page.findAll("tbody tr")[2].text()).toContain("—");
     expect(page.find('[aria-label="Filter by pool"]').exists()).toBe(true);
+  });
+
+  describe("hardware columns and filters", () => {
+    const sataHdd = {
+      media: "hdd",
+      rotationRate: 7200,
+      interface: "sata",
+      link: "sas",
+      recordingTech: "smr",
+      vendor: "western-digital",
+      model: "WDC WD80EFAX",
+      logicalBlockSize: 512,
+      physicalBlockSize: 4096,
+    };
+    const nvmeSsd = {
+      media: "ssd",
+      rotationRate: 0,
+      interface: "nvme",
+      link: "nvme",
+      recordingTech: null,
+      vendor: "samsung",
+      model: "Samsung SSD 990 PRO",
+    };
+    const rowTexts = (page: VueWrapper) =>
+      page.findAll("tbody tr").map((row) => row.text());
+
+    it("shows media, interface and recording, and the display model", async () => {
+      disks = [
+        disk({
+          id: 1,
+          alias: "K1",
+          ...sataHdd,
+          membership: { poolId: 1, poolName: "tank" },
+        }),
+        disk({ id: 2, alias: "K2", ...nvmeSsd }),
+      ];
+      const page = await mountSuspended(DisksPage);
+      const [hdd, ssd] = rowTexts(page);
+
+      expect(hdd).toContain("HDD 7200");
+      expect(hdd).toContain("SATA via SAS");
+      expect(hdd).toContain("SMR");
+      expect(hdd).toContain("WD");
+      expect(hdd).toContain("WD80EFAX");
+      expect(hdd).not.toContain("WDC");
+      expect(ssd).toContain("SSD");
+      expect(ssd).toContain("NVMe");
+      expect(ssd).toContain("990 PRO");
+    });
+
+    it("hides the sector column by default", async () => {
+      disks = [disk({ id: 1, alias: "K1", ...sataHdd })];
+      const page = await mountSuspended(DisksPage);
+
+      expect(page.findAll("thead th").map((th) => th.text())).not.toContain(
+        "Sectors",
+      );
+      expect(page.text()).not.toContain("512e");
+    });
+
+    it("filters by media, interface, recording and vendor", async () => {
+      disks = [
+        disk({ id: 1, alias: "K1", ...sataHdd }),
+        disk({ id: 2, alias: "K2", ...nvmeSsd }),
+        disk({ id: 3, alias: "K3" }),
+      ];
+      const page = await mountSuspended(DisksPage);
+      const filter = async (label: string, value: string) => {
+        const key = label.replace("Filter by ", "");
+        await page
+          .getComponent(InventoryFilters)
+          .vm.$emit("update:modelValue", { ...CLEARED_FILTERS, [key]: value });
+      };
+
+      await filter("Filter by media", "ssd");
+      expect(aliasColumn(page)).toEqual(["K2"]);
+
+      await filter("Filter by interface", "sata");
+      expect(aliasColumn(page)).toEqual(["K1"]);
+      await filter("Filter by interface", "-");
+      expect(aliasColumn(page)).toEqual(["K3"]);
+
+      await filter("Filter by recording", "smr");
+      expect(aliasColumn(page)).toEqual(["K1"]);
+
+      await filter("Filter by vendor", "samsung");
+      expect(aliasColumn(page)).toEqual(["K2"]);
+      await filter("Filter by vendor", "-");
+      expect(aliasColumn(page)).toEqual(["K3"]);
+    });
   });
 });

@@ -2,14 +2,22 @@
 import { getPageTitle } from "#shared/app";
 import {
   ALL_HOSTS,
+  ALL_INTERFACES,
+  ALL_MEDIA,
   ALL_POOLS,
   ALL_PURPOSES,
+  ALL_RECORDING,
   ALL_USAGE,
+  ALL_VENDORS,
   CLEARED_FILTERS,
   type InventoryFilterState,
   NO_HOST,
+  NO_INTERFACE,
+  NO_MEDIA,
   NO_POOL,
   NO_PURPOSE,
+  NO_RECORDING,
+  NO_VENDOR,
 } from "~/components/inventory/InventoryFilters.vue";
 import type { SortingState } from "~/components/inventory/types";
 
@@ -55,12 +63,26 @@ const states = computed(() =>
   [...new Set(allDisks.value.map((row) => row.state))].sort(),
 );
 
+const knownOrNull = <Value extends string>(value: Value | null) =>
+  value === "unknown" ? null : value;
+
+const matches = (
+  selected: string,
+  all: string,
+  none: string,
+  value: string | null,
+) => selected === all || (selected === none ? value === null : value === selected);
+
 const visibleDisks = computed(() => {
   const {
     host,
     pool,
     usage,
     purpose,
+    media,
+    interface: driveInterface,
+    recording,
+    vendor,
     states: wantedStates,
     search,
   } = filters.value;
@@ -78,6 +100,25 @@ const visibleDisks = computed(() => {
     }
     if (usage !== ALL_USAGE && row.usage.kind !== usage) return false;
     if (purpose !== ALL_PURPOSES && row.purpose !== wantedPurpose) return false;
+    if (!matches(media, ALL_MEDIA, NO_MEDIA, knownOrNull(row.media))) {
+      return false;
+    }
+    if (
+      !matches(
+        driveInterface,
+        ALL_INTERFACES,
+        NO_INTERFACE,
+        knownOrNull(row.interface),
+      )
+    ) {
+      return false;
+    }
+    if (
+      !matches(recording, ALL_RECORDING, NO_RECORDING, knownRecordingTech(row.recordingTech))
+    ) {
+      return false;
+    }
+    if (!matches(vendor, ALL_VENDORS, NO_VENDOR, row.vendor)) return false;
     if (wantedStates.length && !wantedStates.includes(row.state)) return false;
     if (!needle) return true;
     return [row.alias, row.model, row.serial].some((value) =>

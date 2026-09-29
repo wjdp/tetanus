@@ -1,3 +1,4 @@
+import { interfaceLabel, sectorFormat } from "#shared/hardware";
 import { usageShort } from "#shared/usage";
 import type { InventoryDisk, SortingState } from "./types";
 
@@ -13,6 +14,32 @@ export const SORT_FIELDS: SortField[] = [
   { id: "alias", label: "Alias", value: (disk) => disk.alias },
   { id: "model", label: "Model", value: (disk) => disk.model },
   { id: "capacity", label: "Capacity", value: (disk) => disk.capacityBytes },
+  {
+    id: "vendor",
+    label: "Vendor",
+    value: (disk) => vendorLabel(disk.vendor),
+  },
+  {
+    id: "media",
+    label: "Media",
+    value: (disk) => mediaLabel(disk.media, disk.rotationRate),
+  },
+  {
+    id: "interface",
+    label: "Interface",
+    value: (disk) => interfaceLabel(disk.interface, disk.link),
+  },
+  {
+    id: "recording",
+    label: "Recording",
+    value: (disk) => knownRecordingTech(disk.recordingTech),
+  },
+  {
+    id: "sectors",
+    label: "Sectors",
+    value: (disk) =>
+      sectorFormat(disk.logicalBlockSize, disk.physicalBlockSize),
+  },
   { id: "host", label: "Host", value: (disk) => disk.hostName },
   {
     id: "pool",

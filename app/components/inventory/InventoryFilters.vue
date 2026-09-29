@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { PURPOSES, USAGE_KINDS } from "#shared/usage";
+import { VENDORS } from "#shared/vendor";
 
 const props = defineProps<{
   hosts: string[];
@@ -32,6 +33,35 @@ const purposeItems = [
   { label: "No purpose", value: NO_PURPOSE },
 ];
 
+const mediaItems = [
+  { label: "All media", value: ALL_MEDIA },
+  { label: "HDD", value: "hdd" },
+  { label: "SSD", value: "ssd" },
+  { label: "Unknown media", value: NO_MEDIA },
+];
+
+const interfaceItems = [
+  { label: "All interfaces", value: ALL_INTERFACES },
+  { label: "SATA", value: "sata" },
+  { label: "SAS", value: "sas" },
+  { label: "NVMe", value: "nvme" },
+  { label: "USB", value: "usb" },
+  { label: "No interface", value: NO_INTERFACE },
+];
+
+const recordingItems = [
+  { label: "All recording", value: ALL_RECORDING },
+  { label: "CMR", value: "cmr" },
+  { label: "SMR", value: "smr" },
+  { label: "No recording", value: NO_RECORDING },
+];
+
+const vendorItems = [
+  { label: "All vendors", value: ALL_VENDORS },
+  ...VENDORS.map((vendor) => ({ label: vendorLabel(vendor) ?? vendor, value: vendor })),
+  { label: "No vendor", value: NO_VENDOR },
+];
+
 const isFiltered = computed(
   () =>
     filters.value.search ||
@@ -39,6 +69,10 @@ const isFiltered = computed(
     filters.value.pool !== ALL_POOLS ||
     filters.value.usage !== ALL_USAGE ||
     filters.value.purpose !== ALL_PURPOSES ||
+    filters.value.media !== ALL_MEDIA ||
+    filters.value.interface !== ALL_INTERFACES ||
+    filters.value.recording !== ALL_RECORDING ||
+    filters.value.vendor !== ALL_VENDORS ||
     filters.value.states.length,
 );
 
@@ -53,6 +87,10 @@ export interface InventoryFilterState {
   pool: string;
   usage: string;
   purpose: string;
+  media: string;
+  interface: string;
+  recording: string;
+  vendor: string;
   states: string[];
   search: string;
 }
@@ -64,6 +102,14 @@ export const NO_POOL = "-";
 export const ALL_USAGE = "*";
 export const ALL_PURPOSES = "*";
 export const NO_PURPOSE = "-";
+export const ALL_MEDIA = "*";
+export const NO_MEDIA = "-";
+export const ALL_INTERFACES = "*";
+export const NO_INTERFACE = "-";
+export const ALL_RECORDING = "*";
+export const NO_RECORDING = "-";
+export const ALL_VENDORS = "*";
+export const NO_VENDOR = "-";
 
 export const CLEARED_FILTERS: InventoryFilterState = {
   search: "",
@@ -71,6 +117,10 @@ export const CLEARED_FILTERS: InventoryFilterState = {
   pool: ALL_POOLS,
   usage: ALL_USAGE,
   purpose: ALL_PURPOSES,
+  media: ALL_MEDIA,
+  interface: ALL_INTERFACES,
+  recording: ALL_RECORDING,
+  vendor: ALL_VENDORS,
   states: [],
 };
 </script>
@@ -114,6 +164,34 @@ export const CLEARED_FILTERS: InventoryFilterState = {
       class="min-w-0 sm:w-36"
       aria-label="Filter by purpose"
       @update:model-value="update({ purpose: String($event) })"
+    />
+    <USelect
+      :model-value="filters.media"
+      :items="mediaItems"
+      class="min-w-0 sm:w-36"
+      aria-label="Filter by media"
+      @update:model-value="update({ media: String($event) })"
+    />
+    <USelect
+      :model-value="filters.interface"
+      :items="interfaceItems"
+      class="min-w-0 sm:w-40"
+      aria-label="Filter by interface"
+      @update:model-value="update({ interface: String($event) })"
+    />
+    <USelect
+      :model-value="filters.recording"
+      :items="recordingItems"
+      class="min-w-0 sm:w-36"
+      aria-label="Filter by recording"
+      @update:model-value="update({ recording: String($event) })"
+    />
+    <USelect
+      :model-value="filters.vendor"
+      :items="vendorItems"
+      class="min-w-0 sm:w-36"
+      aria-label="Filter by vendor"
+      @update:model-value="update({ vendor: String($event) })"
     />
     <USelect
       :model-value="filters.states"

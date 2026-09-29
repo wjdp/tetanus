@@ -25,6 +25,15 @@ const disk = (
   usage: UNKNOWN_USAGE,
   purpose: null,
   purposeInferred: false,
+  vendor: null,
+  media: null,
+  rotationRate: null,
+  interface: null,
+  link: null,
+  recordingTech: null,
+  logicalBlockSize: null,
+  physicalBlockSize: null,
+  hardware: null,
   ...overrides,
 });
 
@@ -91,5 +100,53 @@ describe("pool and usage fields", () => {
     expect(fieldValue("usage", member)).toBe("tank");
     expect(fieldValue("usage", boot)).toBe("ext4 /");
     expect(fieldValue("usage", disk(3, {}))).toBe("?");
+  });
+});
+
+describe("hardware sorting", () => {
+  const disks = [
+    disk(1, { media: "ssd", rotationRate: 0, interface: "nvme" }),
+    disk(2, {
+      media: "hdd",
+      rotationRate: 7200,
+      interface: "sata",
+      link: "sas",
+    }),
+    disk(3, {
+      media: "hdd",
+      rotationRate: 5400,
+      interface: "sata",
+      link: "sata",
+    }),
+    disk(4, {}),
+  ];
+
+  it("sorts media by label with rotation rate, unknown last", () => {
+    expect(ids(sortDisks(disks, [{ id: "media", desc: false }]))).toEqual([
+      3, 2, 1, 4,
+    ]);
+  });
+
+  it("sorts interface by displayed label", () => {
+    expect(ids(sortDisks(disks, [{ id: "interface", desc: false }]))).toEqual([
+      1, 3, 2, 4,
+    ]);
+  });
+
+  it("sorts sector format and treats unknown recording as missing", () => {
+    const sectors = [
+      disk(1, { logicalBlockSize: 4096, physicalBlockSize: 4096 }),
+      disk(2, { logicalBlockSize: 512, physicalBlockSize: 4096 }),
+    ];
+    expect(ids(sortDisks(sectors, [{ id: "sectors", desc: false }]))).toEqual([
+      1, 2,
+    ]);
+    const recording = [
+      disk(1, { recordingTech: "unknown" }),
+      disk(2, { recordingTech: "smr" }),
+    ];
+    expect(
+      ids(sortDisks(recording, [{ id: "recording", desc: true }])),
+    ).toEqual([2, 1]);
   });
 });

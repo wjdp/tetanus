@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { interfaceLabel } from "#shared/hardware";
+import { displayModel } from "#shared/model";
 import { usageColour, usageShort } from "#shared/usage";
 import { SORT_FIELDS, sortDisks } from "./inventorySort";
 import {
@@ -69,7 +71,7 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
               <span class="text-highlighted font-semibold">
                 {{ disk.alias ?? disk.serial ?? "—" }}
               </span>
-              <span class="text-muted truncate text-sm">{{ disk.model ?? "—" }}</span>
+              <span class="text-muted truncate text-sm">{{ displayModel(disk.model, disk.vendor) ?? "—" }}</span>
               <span
                 v-if="disk.alias"
                 class="text-dimmed truncate font-mono text-xs"
@@ -132,6 +134,27 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
               <dd class="tabular-nums" :class="warrantyClass(disk.warrantyDaysLeft)">
                 {{ warrantyLabel(disk.warrantyDaysLeft) }}
               </dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="text-dimmed text-xs">Media</dt>
+              <dd v-if="mediaLabel(disk.media, disk.rotationRate)" class="flex items-center gap-1">
+                <UIcon :name="mediaIcon(disk.media) ?? ''" class="text-muted size-4" />
+                {{ mediaLabel(disk.media, disk.rotationRate) }}
+              </dd>
+              <dd v-else class="text-dimmed">—</dd>
+            </div>
+            <div class="flex min-w-0 flex-col">
+              <dt class="text-dimmed text-xs">Interface</dt>
+              <dd class="truncate">
+                {{ interfaceLabel(disk.interface, disk.link) ?? "—" }}
+              </dd>
+            </div>
+            <div class="flex flex-col items-start">
+              <dt class="text-dimmed text-xs">Recording</dt>
+              <dd v-if="recordingBadge(disk)">
+                <UBadge v-bind="recordingBadge(disk)" size="xs" />
+              </dd>
+              <dd v-else class="text-dimmed">—</dd>
             </div>
             <div class="col-span-3 flex min-w-0 flex-col items-start">
               <dt class="text-dimmed text-xs">Usage</dt>

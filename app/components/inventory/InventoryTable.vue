@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { interfaceLabel, sectorFormat } from "#shared/hardware";
+import { displayModel } from "#shared/model";
 import { usageColour, usageShort } from "#shared/usage";
 import { SORT_FIELDS } from "./inventorySort";
 import {
@@ -43,9 +45,14 @@ const hideCell = (cls: string) => ({ class: { th: cls, td: cls } });
 const COLUMN_META: Record<string, TableColumn<InventoryDisk>["meta"]> = {
   age: hideCell("hidden 2xl:table-cell"),
   pin33: hideCell("hidden 2xl:table-cell"),
+  interface: hideCell("hidden lg:table-cell"),
+  recording: hideCell("hidden xl:table-cell"),
   usage: hideCell("hidden lg:table-cell"),
+  vendor: hideCell("hidden xl:table-cell"),
   warranty: hideCell("hidden xl:table-cell"),
 };
+
+const columnVisibility = ref({ sectors: false });
 
 const columns: TableColumn<InventoryDisk>[] = SORT_FIELDS.map((field) => ({
   id: field.id,
@@ -63,6 +70,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
 <template>
   <UTable
     v-model:sorting="sorting"
+    v-model:column-visibility="columnVisibility"
     :data="disks"
     :columns="columns"
     empty="No disks match the filters."
@@ -82,7 +90,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
 
     <template #model-cell="{ row }">
       <div class="flex flex-col">
-        <span>{{ row.original.model ?? "—" }}</span>
+        <span>{{ displayModel(row.original.model, row.original.vendor) ?? "—" }}</span>
         <span class="text-dimmed font-mono text-xs">
           {{ row.original.serial ?? "—" }}
         </span>
@@ -91,6 +99,39 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
 
     <template #capacity-cell="{ row }">
       <span class="tabular-nums">{{ formatBytes(row.original.capacityBytes) }}</span>
+    </template>
+
+    <template #vendor-cell="{ row }">
+      {{ vendorLabel(row.original.vendor) ?? "—" }}
+    </template>
+
+    <template #media-cell="{ row }">
+      <span
+        v-if="mediaLabel(row.original.media, row.original.rotationRate)"
+        class="flex items-center gap-1.5"
+      >
+        <UIcon :name="mediaIcon(row.original.media) ?? ''" class="text-muted size-4" />
+        {{ mediaLabel(row.original.media, row.original.rotationRate) }}
+      </span>
+      <span v-else class="text-dimmed">—</span>
+    </template>
+
+    <template #interface-cell="{ row }">
+      {{ interfaceLabel(row.original.interface, row.original.link) ?? "—" }}
+    </template>
+
+    <template #recording-cell="{ row }">
+      <UBadge
+        v-if="recordingBadge(row.original)"
+        v-bind="recordingBadge(row.original)"
+        size="xs"
+      />
+    </template>
+
+    <template #sectors-cell="{ row }">
+      <span class="tabular-nums">
+        {{ sectorFormat(row.original.logicalBlockSize, row.original.physicalBlockSize) ?? "—" }}
+      </span>
     </template>
 
     <template #host-cell="{ row }">
