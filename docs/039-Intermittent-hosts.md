@@ -111,8 +111,9 @@ lists them in a user-set order, not by name.
 - `PUT /api/hosts/order` with `hostOrderSchema = { hostIds: number[] }` (the full list,
   unique). `reorderHosts(hostIds)` writes `position = index`; unknown ids or a list
   that is not every host throws `ServiceError(400)`.
-- Hosts page: up / down buttons per row (no drag library in the stack); each move
-  sends the whole order.
+- Hosts page: a grip handle per row, dragged with VueUse `useSortable`
+  (`@vueuse/integrations` + `sortablejs`, the approach Nuxt UI's UTable docs use); each
+  drop sends the whole order.
 
 ## Order
 
@@ -122,7 +123,7 @@ lists them in a user-set order, not by name.
 3. `useFaults` skips offline hosts.
 4. Disk state reference time + tests (off for weeks, pulled while on, boot window).
 5. Hosts page switch and badge; host header chip; 037 row.
-6. Host order: column, service, route, hosts page buttons.
+6. Host order: column, service, route, hosts page drag handle.
 7. Demo (`server/demo/`): add or mark one seeded host intermittent, last contact
    about 12 days before the demo's `now`, with disks in a pool, so the offline chip
    and the held disk states are visible.

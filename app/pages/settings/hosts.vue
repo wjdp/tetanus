@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { moveArrayElement, useSortable } from "@vueuse/integrations/useSortable";
+import type { SortableEvent } from "sortablejs";
 import {
   COLLECTOR_VERSION,
   type CollectorStatus,
@@ -14,7 +16,9 @@ import {
   type ThresholdMedia,
 } from "#shared/temperature";
 
-const { data: hosts, refresh } = await useFetch("/api/hosts");
+const { data: hosts, refresh } = await useFetch("/api/hosts", {
+  default: () => [],
+});
 
 type Host = NonNullable<typeof hosts.value>[number];
 
@@ -83,14 +87,9 @@ const columns: TableColumn<Host>[] = [
 
 const toast = useToast();
 
-const reordering = ref(false);
+const table = useTemplateRef("table");
 
-const move = async (index: number, offset: -1 | 1) => {
-  const hostIds = (hosts.value ?? []).map((row) => row.id);
-  const target = index + offset;
-  if (target < 0 || target >= hostIds.length) return;
-  [hostIds[index], hostIds[target]] = [hostIds[target], hostIds[index]];
-  reordering.value = true;
+const saveOrder = async (hostIds: number[]) => {
   try {
     hosts.value = await $fetch("/api/hosts/order", {
       method: "PUT",
@@ -98,10 +97,25 @@ const move = async (index: number, offset: -1 | 1) => {
     });
   } catch {
     toast.add({ title: "Could not reorder the hosts", color: "error" });
-  } finally {
-    reordering.value = false;
+    await refresh();
   }
 };
+
+useSortable(() => table.value?.$el?.querySelector("tbody"), hosts, {
+  handle: "[data-drag-handle]",
+  animation: 150,
+  watchElement: true,
+  onUpdate: (event: SortableEvent) => {
+    const { oldIndex, newIndex } = event;
+    if (oldIndex === undefined || newIndex === undefined) return;
+    const hostIds = (hosts.value ?? []).map((row) => row.id);
+    const [moved] = hostIds.splice(oldIndex, 1);
+    hostIds.splice(newIndex, 0, moved);
+    moveArrayElement(hosts, oldIndex, newIndex, event);
+    saveOrder(hostIds);
+  },
+});
+
 const selected = ref<Host | null>(null);
 const editorOpen = ref(false);
 
@@ -198,32 +212,20 @@ const { data: settings } = await useFetch("/api/settings");
     <h2 class="text-highlighted text-lg font-semibold">Hosts</h2>
 
     <UTable
+      ref="table"
       :data="hosts ?? []"
       :columns="columns"
       :empty="'No hosts have reported yet.'"
       :on-select="onSelectRow"
     >
-      <template #order-cell="{ row }">
-        <div class="flex gap-0.5">
-          <UButton
-            icon="i-lucide-chevron-up"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            aria-label="Move up"
-            :disabled="reordering || row.index === 0"
-            @click.stop="move(row.index, -1)"
-          />
-          <UButton
-            icon="i-lucide-chevron-down"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            aria-label="Move down"
-            :disabled="reordering || row.index === (hosts?.length ?? 0) - 1"
-            @click.stop="move(row.index, 1)"
-          />
-        </div>
+      <template #order-cell>
+        <UIcon
+          name="i-lucide-grip-vertical"
+          data-drag-handle
+          aria-label="Drag to reorder"
+          class="text-dimmed size-4 cursor-grab active:cursor-grabbing"
+          @click.stop
+        />
       </template>
 
       <template #name-cell="{ row }">

@@ -97,6 +97,12 @@ describe("hosts page", () => {
     expect(rowText(page, "mars")).not.toContain("intermittent");
   });
 
+  it("gives each row a drag handle", async () => {
+    const page = await mountSuspended(HostsPage);
+
+    expect(page.findAll("tbody tr [data-drag-handle]")).toHaveLength(5);
+  });
+
   it("shortens tool versions", async () => {
     const page = await mountSuspended(HostsPage);
 
