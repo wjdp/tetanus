@@ -1,18 +1,4 @@
-import { register } from "node:module";
 import { parseArgs } from "node:util";
-
-// Server code imports `h3`, which only Nuxt depends on; Nitro resolves it through
-// Nuxt, so plain Node is pointed at Nuxt's copy the same way.
-register(
-  `data:text/javascript,${encodeURIComponent(`
-    const nuxt = ${JSON.stringify(import.meta.resolve("nuxt"))};
-    export function resolve(specifier, context, next) {
-      return specifier === "h3"
-        ? next(specifier, { ...context, parentURL: nuxt })
-        : next(specifier, context);
-    }
-  `)}`,
-);
 
 // Services reach for a few Nitro auto-imports; outside Nitro these stand in, as the
 // unit test project's Nuxt environment does. `useStorage` stays undefined, so ingest's

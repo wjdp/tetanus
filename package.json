@@ -28,6 +28,7 @@
     "@iconify-json/lucide": "^1.2.137",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",
+    "h3": "^1.15.11",
     "markdown-it": "^15.0.2",
     "uplot": "^1.6.32"
   },

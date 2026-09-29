@@ -178,10 +178,20 @@ export function sctTemperaturePoints(
   });
 }
 
+// Durable Object SQLite allows only 100 bound parameters per statement.
+const MAX_BOUND_PARAMETERS = 100;
+
+function* chunked<T>(rows: T[], columnsPerRow: number) {
+  const size = Math.floor(MAX_BOUND_PARAMETERS / columnsPerRow);
+  for (let start = 0; start < rows.length; start += size) {
+    yield rows.slice(start, start + size);
+  }
+}
+
 export function insertTemperatures(diskId: number, points: TemperaturePoint[]) {
-  for (const point of points) {
+  for (const chunk of chunked(points, 3)) {
     db.insert(temperatureReading)
-      .values({ diskId, ...point })
+      .values(chunk.map((point) => ({ diskId, ...point })))
       .onConflictDoNothing()
       .run();
   }
@@ -464,25 +474,27 @@ export function insertSmartReading(
   attributes: EvaluatedAttribute[],
 ): SmartReadingRow {
   const reading = db.insert(smartReading).values(values).returning().get();
-  for (const attribute of attributes) {
+  for (const chunk of chunked(attributes, 15)) {
     db.insert(smartAttribute)
-      .values({
-        readingId: reading.id,
-        diskId: reading.diskId,
-        takenAt: reading.takenAt,
-        attrId: attribute.attrId,
-        name: attribute.name,
-        value: attribute.value,
-        worst: attribute.worst ?? null,
-        thresh: attribute.thresh ?? null,
-        rawValue: attribute.rawValue ?? null,
-        rawString: attribute.rawString ?? null,
-        whenFailed: attribute.whenFailed ?? null,
-        transformedValue: attribute.transformedValue,
-        status: attribute.status,
-        failureRate: attribute.failureRate ?? null,
-        reason: attribute.reason ?? null,
-      })
+      .values(
+        chunk.map((attribute) => ({
+          readingId: reading.id,
+          diskId: reading.diskId,
+          takenAt: reading.takenAt,
+          attrId: attribute.attrId,
+          name: attribute.name,
+          value: attribute.value,
+          worst: attribute.worst ?? null,
+          thresh: attribute.thresh ?? null,
+          rawValue: attribute.rawValue ?? null,
+          rawString: attribute.rawString ?? null,
+          whenFailed: attribute.whenFailed ?? null,
+          transformedValue: attribute.transformedValue,
+          status: attribute.status,
+          failureRate: attribute.failureRate ?? null,
+          reason: attribute.reason ?? null,
+        })),
+      )
       .run();
   }
   return reading;
