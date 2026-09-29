@@ -38,6 +38,8 @@ const mars = {
   displayName: null,
   toolVersions: {},
   healthchecksUrl: null,
+  intermittent: false,
+  position: 0,
   notes: "",
   firstSeenAt: new Date().toISOString(),
   lastSeenAt: new Date().toISOString(),

@@ -13,6 +13,7 @@ const host = (
   name: string,
   collectorVersion: string | null,
   lastRuns: Record<string, { receivedAt: string; ok: boolean }> = {},
+  intermittent = false,
 ) => ({
   id,
   name,
@@ -25,6 +26,8 @@ const host = (
   collectorVersion,
   collectorStatus: "current",
   healthchecksUrl: null,
+  intermittent,
+  position: id,
   notes: "",
   temperatureThresholds: null,
   firstSeenAt: new Date().toISOString(),
@@ -40,6 +43,13 @@ registerEndpoint("/api/hosts", () => [
   host(2, "pihost", "0.3.0"),
   host(3, "venus", "0.2.0"),
   host(4, "ceres", null),
+  host(
+    5,
+    "bench",
+    "0.3.1",
+    { "zpool-status": { receivedAt: hoursAgo(24 * 9), ok: true } },
+    true,
+  ),
 ]);
 registerEndpoint("/api/settings", () => ({ enrolToken: "ab".repeat(32) }));
 
@@ -76,6 +86,15 @@ describe("hosts page", () => {
     expect(chipClasses("zfs")).toContain("text-default");
     expect(chipClasses("smart")).toContain("text-warning");
     expect(chipClasses("snapshots")).toContain("text-error");
+  });
+
+  it("badges an intermittent host and shows it offline", async () => {
+    const page = await mountSuspended(HostsPage);
+
+    expect(rowText(page, "bench")).toContain("intermittent");
+    expect(rowText(page, "bench")).toContain("offline · last seen");
+    expect(rowText(page, "bench")).not.toContain("zfs:");
+    expect(rowText(page, "mars")).not.toContain("intermittent");
   });
 
   it("shortens tool versions", async () => {

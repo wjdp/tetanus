@@ -156,6 +156,7 @@ Host header chips, Hosts settings page.
 | `ok` | neutral chip | within cadence |
 | `warning` | warning chip | more than twice the cadence |
 | `error` | error chip | never seen, or the group has no run at all; fault `collector-silent` when every group is non-ok |
+| `offline` | one neutral chip `offline · last seen 9 d` in place of the group chips | `intermittent` hosts only, when every group is non-ok; no fault ([039](039-Intermittent-hosts.md)) |
 
 Collector version (`collectorStatus`): `current` nothing shown, `outdated` warning fault,
 `incompatible` error fault. No icon; the fault row carries the copyable command.

@@ -13,7 +13,14 @@ const TooltipPassthrough = defineComponent({
       slots.default?.(),
 });
 
-const host = { id: 1, name: "mars", displayName: null, lastRuns: {} };
+const host = {
+  id: 1,
+  name: "mars",
+  displayName: null,
+  intermittent: false,
+  lastRuns: {},
+  lastSeenAt: new Date().toISOString(),
+};
 
 const pool: TopologyPool = {
   id: 7,
@@ -34,13 +41,39 @@ const mountHost = (
   pools: TopologyPool[],
   disks: TopologyDisk[],
   inPool = new Set<number>(),
+  hostOverrides: Partial<typeof host> = {},
 ) =>
   mountSuspended(HostSection, {
-    props: { host, pools, disks, inPool, now: Date.now() },
+    props: {
+      host: { ...host, ...hostOverrides },
+      pools,
+      disks,
+      inPool,
+      now: Date.now(),
+    },
     global: { stubs: { UTooltip: TooltipPassthrough } },
   });
 
 describe("TopologyHostSection", () => {
+  it("shows one offline chip for a silent intermittent host", async () => {
+    const section = await mountHost([pool], [], new Set(), {
+      intermittent: true,
+      lastSeenAt: new Date(Date.now() - 9 * 24 * 60 * 60_000).toISOString(),
+    });
+
+    expect(section.get('[data-testid="offline-chip"]').text()).toBe(
+      "offline · last seen 9 d",
+    );
+    expect(section.text()).not.toContain("zfs:");
+  });
+
+  it("shows freshness chips for a silent host that is not intermittent", async () => {
+    const section = await mountHost([pool], []);
+
+    expect(section.find('[data-testid="offline-chip"]').exists()).toBe(false);
+    expect(section.text()).toContain("zfs: never");
+  });
+
   it("summarises disk counts by media and raw capacity", async () => {
     const section = await mountHost(
       [pool],

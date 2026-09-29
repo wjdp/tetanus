@@ -13,22 +13,15 @@ const props = defineProps<{
     id: number;
     name: string;
     displayName: string | null;
+    intermittent: boolean;
     lastRuns: Record<string, RunLike>;
+    lastSeenAt: Date | string;
   };
   pools: TopologyPool[];
   disks: TopologyDisk[];
   inPool: Set<number>;
   now: number;
 }>();
-
-const cadences = useRuntimeConfig().public.demo ? DEMO_CADENCES : undefined;
-
-const relativeTime = (date: Date | null) =>
-  date ? `${formatDuration(props.now - date.getTime())} ago` : "never";
-
-const chipColor = (
-  status: ReturnType<typeof allGroupFreshness>[number]["status"],
-) => (status === "ok" ? "neutral" : status);
 
 const activeScans = computed(() =>
   props.pools.flatMap((pool) => {
@@ -76,15 +69,7 @@ const otherDisks = computed(() =>
           {{ summary }}
         </p>
         <div class="ml-auto flex flex-wrap items-center gap-1">
-          <UBadge
-            v-for="group in allGroupFreshness(host.lastRuns, now, cadences)"
-            :key="group.name"
-            :color="chipColor(group.status)"
-            variant="subtle"
-            size="sm"
-          >
-            {{ group.name }}: {{ relativeTime(group.lastSeenAt) }}
-          </UBadge>
+          <HostFreshnessChips :host="host" :now="now" />
           <UBadge
             v-for="scan in activeScans"
             :key="scan.pool"

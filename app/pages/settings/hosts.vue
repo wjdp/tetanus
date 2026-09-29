@@ -19,7 +19,6 @@ const { data: hosts, refresh } = await useFetch("/api/hosts");
 type Host = NonNullable<typeof hosts.value>[number];
 
 const demo = useRuntimeConfig().public.demo;
-const cadences = demo ? DEMO_CADENCES : undefined;
 
 const now = ref(Date.now());
 let pollHandle: ReturnType<typeof setInterval> | undefined;
@@ -72,10 +71,8 @@ const relativeTime = (date: Date | null) => {
   return `${formatDuration(now.value - date.getTime())} ago`;
 };
 
-const chipColor = (status: ReturnType<typeof allGroupFreshness>[number]["status"]) =>
-  status === "ok" ? "neutral" : status;
-
 const columns: TableColumn<Host>[] = [
+  { id: "order", header: "" },
   { accessorKey: "name", header: "Host" },
   { accessorKey: "displayName", header: "Display name" },
   { id: "collector", header: "Collector" },
@@ -85,11 +82,32 @@ const columns: TableColumn<Host>[] = [
 ];
 
 const toast = useToast();
+
+const reordering = ref(false);
+
+const move = async (index: number, offset: -1 | 1) => {
+  const hostIds = (hosts.value ?? []).map((row) => row.id);
+  const target = index + offset;
+  if (target < 0 || target >= hostIds.length) return;
+  [hostIds[index], hostIds[target]] = [hostIds[target], hostIds[index]];
+  reordering.value = true;
+  try {
+    hosts.value = await $fetch("/api/hosts/order", {
+      method: "PUT",
+      body: { hostIds },
+    });
+  } catch {
+    toast.add({ title: "Could not reorder the hosts", color: "error" });
+  } finally {
+    reordering.value = false;
+  }
+};
 const selected = ref<Host | null>(null);
 const editorOpen = ref(false);
 
 const editDisplayName = ref("");
 const editHealthchecksUrl = ref("");
+const editIntermittent = ref(false);
 const editNotes = ref("");
 const saving = ref(false);
 
@@ -132,6 +150,7 @@ const openEditor = (row: Host) => {
   selected.value = row;
   editDisplayName.value = row.displayName ?? "";
   editHealthchecksUrl.value = row.healthchecksUrl ?? "";
+  editIntermittent.value = row.intermittent;
   editNotes.value = row.notes;
   for (const media of ["hdd", "ssd"] as const) {
     const saved = row.temperatureThresholds?.[media];
@@ -152,7 +171,10 @@ const save = async () => {
       method: "PATCH",
       body: {
         displayName: editDisplayName.value,
-        healthchecksUrl: editHealthchecksUrl.value,
+        intermittent: editIntermittent.value,
+        healthchecksUrl: editIntermittent.value
+          ? null
+          : editHealthchecksUrl.value,
         notes: editNotes.value,
         temperatureThresholds: thresholdsPatch(),
       },
@@ -181,6 +203,43 @@ const { data: settings } = await useFetch("/api/settings");
       :empty="'No hosts have reported yet.'"
       :on-select="onSelectRow"
     >
+      <template #order-cell="{ row }">
+        <div class="flex gap-0.5">
+          <UButton
+            icon="i-lucide-chevron-up"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            aria-label="Move up"
+            :disabled="reordering || row.index === 0"
+            @click.stop="move(row.index, -1)"
+          />
+          <UButton
+            icon="i-lucide-chevron-down"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            aria-label="Move down"
+            :disabled="reordering || row.index === (hosts?.length ?? 0) - 1"
+            @click.stop="move(row.index, 1)"
+          />
+        </div>
+      </template>
+
+      <template #name-cell="{ row }">
+        <div class="flex items-center gap-2">
+          <span>{{ row.original.name }}</span>
+          <UBadge
+            v-if="row.original.intermittent"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+          >
+            intermittent
+          </UBadge>
+        </div>
+      </template>
+
       <template #displayName-cell="{ row }">
         {{ row.original.displayName ?? "—" }}
       </template>
@@ -218,15 +277,7 @@ const { data: settings } = await useFetch("/api/settings");
 
       <template #freshness-cell="{ row }">
         <div class="flex flex-wrap gap-1">
-          <UBadge
-            v-for="group in allGroupFreshness(row.original.lastRuns, now, cadences)"
-            :key="group.name"
-            :color="chipColor(group.status)"
-            variant="subtle"
-            size="sm"
-          >
-            {{ group.name }}: {{ relativeTime(group.lastSeenAt) }}
-          </UBadge>
+          <HostFreshnessChips :host="row.original" :now="now" />
         </div>
       </template>
 
@@ -271,7 +322,19 @@ const { data: settings } = await useFetch("/api/settings");
           <UInput v-model="editDisplayName" class="w-full" />
         </UFormField>
 
-        <UFormField label="Healthchecks URL" name="healthchecksUrl">
+        <UFormField
+          label="Intermittent"
+          name="intermittent"
+          description="Expected to be off for long periods. No silent-collector fault; disks keep their state while it is off."
+        >
+          <USwitch v-model="editIntermittent" />
+        </UFormField>
+
+        <UFormField
+          v-if="!editIntermittent"
+          label="Healthchecks URL"
+          name="healthchecksUrl"
+        >
           <UInput v-model="editHealthchecksUrl" class="w-full" />
         </UFormField>
 
