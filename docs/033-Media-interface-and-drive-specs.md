@@ -414,8 +414,6 @@ missing columns as unknown. Bump collector to 0.3.0. Not required for anything a
 - Sectors toggle: `UCheckbox` at the end of the `InventoryFilters` row (`showSectors`
   model, desktop only, not persisted), state held by the page and passed to
   `InventoryTable`, whose column visibility is now derived from it.
-- The full unit run timed out once on the slow filter test in `disks/index.test.ts`
-  under load; it passes alone.
 
 ## Decisions (2026-09-29)
 
