@@ -17,3 +17,5 @@ allowBuilds:
   "@prisma/client": false
   "@prisma/engines": false
   prisma: false
+  # Binary arrives via the platform optional dependency; the postinstall only re-verifies it
+  workerd: false

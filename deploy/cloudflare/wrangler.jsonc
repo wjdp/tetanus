@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "tetanus-demo",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "../../.output/public" },
+  "durable_objects": {
+    "bindings": [{ "name": "DEMO", "class_name": "TetanusDemo" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TetanusDemo"] }],
+  "triggers": { "crons": ["0 * * * *", "15 4 * * *"] },
+  "vars": { "NUXT_PUBLIC_DEMO": "true" },
+  "limits": { "cpu_ms": 300000 },
+  "ratelimits": [
+    {
+      "name": "WRITES",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ],
+  "routes": [{ "pattern": "tetanus-demo.wjdp.uk", "custom_domain": true }],
+  "observability": { "enabled": true }
+}

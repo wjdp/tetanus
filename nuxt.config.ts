@@ -14,6 +14,8 @@ const relaxedIndexAccess = () => ({
 const rootDirsOutsideNuxtProjects = ["../test/**/*"];
 
 export default defineNuxtConfig({
+  extends:
+    process.env.TETANUS_TARGET === "cloudflare" ? ["./deploy/cloudflare"] : [],
   compatibilityDate: "2026-09-28",
   buildDir: ".nuxt",
   typescript: {

@@ -41,6 +41,8 @@ jobs:
         run: pnpm install
       - name: Typecheck
         run: pnpm typecheck
+      - name: Typecheck Cloudflare demo
+        run: pnpm demo:typecheck
 
   vitest:
     runs-on: ubuntu-latest

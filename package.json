@@ -15,7 +15,12 @@
     "test": "vitest",
     "test:host": "bash host/test/run.sh",
     "db:migrate": "tsx server/database/migrate-cli.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "build:demo": "pnpm demo:migrations && TETANUS_TARGET=cloudflare nuxt build",
+    "demo:migrations": "tsx deploy/cloudflare/bundleMigrations.ts",
+    "demo:typecheck": "pnpm demo:migrations && tsc -p deploy/cloudflare",
+    "demo:dev": "wrangler dev -c deploy/cloudflare/wrangler.jsonc",
+    "demo:deploy": "wrangler deploy -c deploy/cloudflare/wrangler.jsonc"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.137",
@@ -30,6 +35,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
+    "@cloudflare/workers-types": "^5.20260926.1",
     "@nuxt/test-utils": "4.2.0",
     "@nuxt/ui": "^4.11.2",
     "@tailwindcss/vite": "^4.3.3",
@@ -49,6 +55,7 @@
     "vue": "latest",
     "vue-router": "latest",
     "vue-tsc": "^3.3.11",
+    "wrangler": "^4.141.0",
     "zod": "^4.6.5"
   }
 }

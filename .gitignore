@@ -19,3 +19,7 @@ dist
 # Logs
 logs
 *.log
+
+# Cloudflare demo: local Miniflare state and the generated migrations bundle
+.wrangler
+deploy/cloudflare/migrations.ts
