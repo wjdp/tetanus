@@ -1,7 +1,13 @@
 import { eq, inArray, max } from "drizzle-orm";
+import {
+  type CollectorStatus,
+  collectorStatus,
+  MIN_COLLECTOR_VERSION,
+} from "#shared/collector";
 import type { HostPatch } from "#shared/schemas/hosts";
 import { db } from "~~/server/database/client";
 import { collectorRun, host } from "~~/server/database/schema";
+import { addAutoEvent } from "~~/server/services/diary";
 import { notFound } from "~~/server/utils/serviceError";
 
 type HostRow = typeof host.$inferSelect;
@@ -90,4 +96,41 @@ export function setToolVersions(
   toolVersions: Record<string, string>,
 ) {
   db.update(host).set({ toolVersions }).where(eq(host.id, hostId)).run();
+}
+
+function collectorStatusTitle(to: CollectorStatus, version: string) {
+  switch (to) {
+    case "incompatible":
+      return `Collector ${version} incompatible (needs ${MIN_COLLECTOR_VERSION})`;
+    case "outdated":
+      return `Collector ${version} outdated`;
+    default:
+      return `Collector ${version} current`;
+  }
+}
+
+function isFirstSighting(from: CollectorStatus, to: CollectorStatus) {
+  return from === "unknown" && to !== "incompatible";
+}
+
+export function recordCollectorVersion(
+  hostRow: HostRow,
+  version: string,
+  at = new Date(),
+) {
+  const from = hostRow.collectorStatus;
+  const to = collectorStatus(version);
+  db.update(host)
+    .set({ collectorVersion: version, collectorStatus: to })
+    .where(eq(host.id, hostRow.id))
+    .run();
+  if (from === to || isFirstSighting(from, to)) return;
+  addAutoEvent({
+    subjectType: "host",
+    subjectId: hostRow.id,
+    eventType: "collector-status-changed",
+    title: collectorStatusTitle(to, version),
+    data: { from, to, version, minVersion: MIN_COLLECTOR_VERSION },
+    at,
+  });
 }

@@ -31,7 +31,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 9;
+const MIGRATION_COUNT = 10;
 
 const openConnections: Database.Database[] = [];
 
@@ -140,6 +140,42 @@ describe("runMigrations", () => {
     expect(schemaOf(path)).toEqual(schema);
     expect(rowCounts(path)).toEqual(counts);
     expect(drizzleMigrationCount(path)).toBe(MIGRATION_COUNT);
+  });
+});
+
+describe("0009_host_collector_version", () => {
+  it("backfills each host's latest versioned collector", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      ALTER TABLE Host DROP COLUMN collectorVersion;
+      ALTER TABLE Host DROP COLUMN collectorStatus;
+      DELETE FROM __drizzle_migrations
+        WHERE created_at = (SELECT max(created_at) FROM __drizzle_migrations);
+      INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
+        VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
+      INSERT INTO CollectorRun (hostId, source, receivedAt, ok, bytes, producer)
+        VALUES (1, 'versions', 0, 1, 0, 'tetanus-collect/0.2.0'),
+               (1, 'versions', 0, 1, 0, 'tetanus-collect/0.3.0'),
+               (1, 'zed-event', 0, 1, 0, 'tetanus-zed'),
+               (2, 'versions', 0, 1, 0, 'tetanus-collect/1'),
+               (3, 'versions', 0, 1, 0, NULL);
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0009_host_collector_version",
+    ]);
+    expect(
+      sqlite
+        .prepare(
+          "SELECT name, collectorVersion, collectorStatus FROM Host ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      { name: "mars", collectorVersion: "0.3.0", collectorStatus: "unknown" },
+      { name: "pihost", collectorVersion: null, collectorStatus: "unknown" },
+      { name: "venus", collectorVersion: null, collectorStatus: "unknown" },
+    ]);
   });
 });
 

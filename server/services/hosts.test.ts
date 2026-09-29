@@ -1,9 +1,12 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "~~/server/database/client";
 import { collectorRun, host } from "~~/server/database/schema";
+import { listDiary } from "~~/server/services/diary";
 import {
   getHost,
   listHosts,
+  recordCollectorVersion,
   setToolVersions,
   updateHost,
   upsertHostByName,
@@ -127,5 +130,72 @@ describe("hosts", () => {
     setToolVersions(mars.id, { zfs: "2.4.1", kernel: "6.8" });
     setToolVersions(mars.id, { zfs: "2.4.2" });
     expect(getHost(mars.id).toolVersions).toEqual({ zfs: "2.4.2" });
+  });
+});
+
+describe("recordCollectorVersion", () => {
+  beforeEach(() => {
+    flushDb();
+  });
+
+  const record = (version: string) =>
+    recordCollectorVersion(getHost(mars().id), version, laterSeen);
+  const mars = () => upsertHostByName("mars", firstSeen);
+  const events = () =>
+    listDiary({ subjectType: "host" }).map(({ title, data }) => ({
+      title,
+      data,
+    }));
+
+  it.each(["0.3.0", "0.3.1"])(
+    "records %s on first sight without a diary entry",
+    (version) => {
+      record(version);
+      expect(getHost(mars().id).collectorVersion).toBe(version);
+      expect(events()).toEqual([]);
+    },
+  );
+
+  it("records an incompatible collector on first sight", () => {
+    record("0.2.0");
+    expect(getHost(mars().id).collectorStatus).toBe("incompatible");
+    expect(events()).toEqual([
+      {
+        title: "Collector 0.2.0 incompatible (needs 0.3.0)",
+        data: {
+          from: "unknown",
+          to: "incompatible",
+          version: "0.2.0",
+          minVersion: "0.3.0",
+        },
+      },
+    ]);
+  });
+
+  it("records each status change once", () => {
+    record("0.2.0");
+    record("0.2.0");
+    record("0.3.1");
+    record("0.3.1");
+    record("0.3.0");
+    expect(events().map(({ title }) => title)).toEqual([
+      "Collector 0.3.0 outdated",
+      "Collector 0.3.1 current",
+      "Collector 0.2.0 incompatible (needs 0.3.0)",
+    ]);
+  });
+
+  it("records a raised minimum with the version unchanged", () => {
+    const { id } = mars();
+    db.update(host)
+      .set({ collectorVersion: "0.2.0", collectorStatus: "current" })
+      .where(eq(host.id, id))
+      .run();
+    record("0.2.0");
+    expect(events()).toEqual([
+      expect.objectContaining({
+        data: expect.objectContaining({ from: "current", to: "incompatible" }),
+      }),
+    ]);
   });
 });

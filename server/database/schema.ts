@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import type { AlertChannel, NotificationRule } from "../../shared/alerts";
+import type { CollectorStatus } from "../../shared/collector";
 import type { DiaryEntryKind, DiarySubjectType } from "../../shared/diary";
 import type {
   DiskKeyKind,
@@ -48,6 +49,8 @@ export const host = sqliteTable("Host", {
   name: text().notNull().unique(),
   displayName: text(),
   toolVersions: json().$type<Record<string, string>>().notNull().default({}),
+  collectorVersion: text(),
+  collectorStatus: text().$type<CollectorStatus>().notNull().default("unknown"),
   healthchecksUrl: text(),
   notes: text().notNull().default(""),
   firstSeenAt: datetime().notNull(),

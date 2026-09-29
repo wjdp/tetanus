@@ -1,3 +1,4 @@
+import { parseCollectorProducer } from "#shared/collector";
 import {
   type IngestMeta,
   type IngestSource,
@@ -8,7 +9,10 @@ import { db } from "~~/server/database/client";
 import { collectorRun, NO_DEVICE, payload } from "~~/server/database/schema";
 import { HANDLERS, type IngestContext } from "~~/server/ingest/handlers";
 import { PARSERS } from "~~/server/ingest/registry";
-import { upsertHostByName } from "~~/server/services/hosts";
+import {
+  recordCollectorVersion,
+  upsertHostByName,
+} from "~~/server/services/hosts";
 import { requestAlertsTick } from "~~/server/tasks/queueable/alertsTick";
 import { invalidRequest } from "~~/server/utils/serviceError";
 
@@ -58,6 +62,10 @@ export function recordIngest({
   const hostRow = upsertHostByName(hostName, receivedAt);
   if (!isIngestSource(source)) {
     throw invalidRequest(`Unknown ingest source: ${source}`);
+  }
+  const collectorVersion = parseCollectorProducer(producer);
+  if (collectorVersion) {
+    recordCollectorVersion(hostRow, collectorVersion, receivedAt);
   }
 
   const run = {

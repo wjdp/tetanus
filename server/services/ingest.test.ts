@@ -13,6 +13,25 @@ describe("recordIngest", () => {
     flushDb();
   });
 
+  it.each([
+    ["tetanus-collect/0.3.1", "0.3.1", "current"],
+    ["tetanus-zed/0.3.1", null, "unknown"],
+    [null, null, "unknown"],
+  ])("takes the collector version from %s", (producer, version, status) => {
+    recordIngest({
+      hostName: "mars",
+      source: "versions",
+      meta: {},
+      body: "zfs=2.4.1\n",
+      producer,
+      receivedAt,
+    });
+    expect(db.select().from(host).get()).toMatchObject({
+      collectorVersion: version,
+      collectorStatus: status,
+    });
+  });
+
   it("records a parsed payload, a run and the host's tool versions", () => {
     const outcome = recordIngest({
       hostName: "mars",
