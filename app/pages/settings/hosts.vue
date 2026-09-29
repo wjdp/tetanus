@@ -174,8 +174,13 @@ const openEditor = (row: Host) => {
   editorOpen.value = true;
 };
 
-const onSelectRow = (_event: Event, row: { original: Host }) =>
-  openEditor(row.original);
+const isDragHandle = (event: Event) =>
+  event.target instanceof Element &&
+  event.target.closest("[data-drag-handle]") !== null;
+
+const onSelectRow = (event: Event, row: { original: Host }) => {
+  if (!isDragHandle(event)) openEditor(row.original);
+};
 
 const save = async () => {
   if (!selected.value) return;
@@ -219,13 +224,13 @@ const { data: settings } = await useFetch("/api/settings");
       :on-select="onSelectRow"
     >
       <template #order-cell>
-        <UIcon
-          name="i-lucide-grip-vertical"
+        <span
           data-drag-handle
-          aria-label="Drag to reorder"
-          class="text-dimmed size-4 cursor-grab active:cursor-grabbing"
-          @click.stop
-        />
+          title="Drag to reorder"
+          class="text-dimmed hover:text-default -m-2 inline-flex cursor-grab p-2 active:cursor-grabbing"
+        >
+          <UIcon name="i-lucide-grip-vertical" class="size-4" />
+        </span>
       </template>
 
       <template #name-cell="{ row }">
