@@ -6,6 +6,7 @@ import {
 } from "~/utils/vocabulary";
 
 const props = defineProps<{
+  kicker?: string | null;
   label: string;
   type?: string;
   icon?: string;
@@ -34,6 +35,13 @@ const usage = computed(() => {
     data-testid="vdev-group"
   >
     <div class="flex w-40 shrink-0 flex-col gap-0.5 sm:pt-1">
+      <span
+        v-if="kicker"
+        class="text-dimmed font-mono text-xs"
+        data-testid="vdev-kicker"
+      >
+        {{ kicker }}
+      </span>
       <span class="flex min-w-0 items-center gap-1.5">
         <VdevTypeIcon v-if="type" :type="type" />
         <UIcon v-else-if="icon" :name="icon" class="text-muted size-4 shrink-0" />

@@ -84,6 +84,7 @@ const capColour = computed(() => capacityColour(props.pool.cap));
         :class="{ 'border-default border-t pt-3': index === classDividerIndex }"
         :data-class-divider="index === classDividerIndex || undefined"
         :type="group.type"
+        :kicker="group.kicker"
         :label="group.label"
         :state="group.state"
         :size-bytes="group.sizeBytes"

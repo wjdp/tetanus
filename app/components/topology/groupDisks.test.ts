@@ -54,15 +54,16 @@ describe("vdevGroups", () => {
     expect(
       groups.map((group) => [
         group.type,
+        group.kicker,
         group.label,
         group.state,
         group.leaves.map(leafLabel),
       ]),
     ).toEqual([
-      ["raidz1", "raidz1-0", "ONLINE", ["K1", "K2", "K3"]],
-      ["disk", "stripe", null, ["sdz1"]],
-      ["special", "special · mirror-1", "DEGRADED", ["S1", "S2", "S3"]],
-      ["cache", "cache", null, ["C1", "C2"]],
+      ["raidz1", null, "raidz1-0", "ONLINE", ["K1", "K2", "K3"]],
+      ["disk", null, "stripe", null, ["sdz1"]],
+      ["special", "special", "mirror-1", "DEGRADED", ["S1", "S2", "S3"]],
+      ["cache", null, "cache", null, ["C1", "C2"]],
     ]);
   });
 
@@ -99,10 +100,10 @@ describe("vdevGroups", () => {
       ["mirror-0", false],
       ["raidz2-2", false],
       ["stripe", false],
-      ["special · mirror-1", true],
+      ["mirror-1", true],
       ["log", true],
       ["cache", true],
-      ["dedup · mirror-3", true],
+      ["mirror-3", true],
       ["spares", true],
     ]);
   });

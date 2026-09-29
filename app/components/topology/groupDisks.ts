@@ -73,6 +73,7 @@ export interface VdevGroup {
   key: string;
   type: string;
   isClass: boolean;
+  kicker: string | null;
   label: string;
   state: string | null;
   sizeBytes: number | null;
@@ -113,10 +114,6 @@ export function leafVdevs(node: TopologyVdev): TopologyVdev[] {
   return node.children.flatMap(leafVdevs);
 }
 
-function groupLabel(node: TopologyVdev) {
-  return CLASS_TYPES.has(node.type) ? `${node.type} · ${node.name}` : node.name;
-}
-
 function sumKnown(values: (number | null)[]): number | null {
   if (values.length === 0 || values.some((value) => value === null)) {
     return null;
@@ -134,7 +131,8 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
         key: child.guid,
         type: child.type,
         isClass: CLASS_TYPES.has(child.type),
-        label: groupLabel(child),
+        kicker: CLASS_TYPES.has(child.type) ? child.type : null,
+        label: child.name,
         state: child.state,
         sizeBytes: child.sizeBytes,
         allocBytes: child.allocBytes,
@@ -151,6 +149,7 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
         key: `single-${label}`,
         type: child.type,
         isClass: CLASS_TYPES.has(child.type),
+        kicker: null,
         label,
         state: null,
         sizeBytes: null,
