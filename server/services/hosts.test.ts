@@ -7,6 +7,7 @@ import {
   getHost,
   listHosts,
   recordCollectorVersion,
+  reorderHosts,
   setToolVersions,
   updateHost,
   upsertHostByName,
@@ -140,6 +141,38 @@ describe("hosts", () => {
     expect(updateHost(mars.id, {})).toMatchObject({ id: mars.id });
   });
 
+  it("clears the Healthchecks URL when marked intermittent", () => {
+    const mars = upsertHostByName("mars", firstSeen);
+    updateHost(mars.id, { healthchecksUrl: "https://hc-ping.com/abc" });
+    expect(updateHost(mars.id, { intermittent: true })).toMatchObject({
+      intermittent: true,
+      healthchecksUrl: null,
+    });
+  });
+
+  it("rejects a Healthchecks URL on an intermittent host", () => {
+    const mars = upsertHostByName("mars", firstSeen);
+    updateHost(mars.id, { intermittent: true });
+    expect(() =>
+      updateHost(mars.id, { healthchecksUrl: "https://hc-ping.com/abc" }),
+    ).toThrow(expect.objectContaining({ statusCode: 400 }));
+    expect(() =>
+      updateHost(mars.id, {
+        intermittent: true,
+        healthchecksUrl: "https://hc-ping.com/abc",
+      }),
+    ).toThrow(expect.objectContaining({ statusCode: 400 }));
+  });
+
+  it("allows a Healthchecks URL once no longer intermittent", () => {
+    const mars = upsertHostByName("mars", firstSeen);
+    updateHost(mars.id, { intermittent: true });
+    const healthchecksUrl = "https://hc-ping.com/abc";
+    expect(
+      updateHost(mars.id, { intermittent: false, healthchecksUrl }),
+    ).toMatchObject({ intermittent: false, healthchecksUrl });
+  });
+
   it("replaces tool versions", () => {
     const mars = upsertHostByName("mars", firstSeen);
     setToolVersions(mars.id, { zfs: "2.4.1", kernel: "6.8" });
@@ -212,5 +245,33 @@ describe("recordCollectorVersion", () => {
         data: expect.objectContaining({ from: "current", to: "incompatible" }),
       }),
     ]);
+  });
+});
+
+describe("reorderHosts", () => {
+  beforeEach(() => {
+    flushDb();
+  });
+
+  it("lists hosts in the set order", () => {
+    const mars = upsertHostByName("mars", firstSeen);
+    const bench = upsertHostByName("bench", firstSeen);
+    const venus = upsertHostByName("venus", firstSeen);
+    const order = [venus.id, mars.id, bench.id];
+    expect(reorderHosts(order).map((row) => row.id)).toEqual(order);
+    expect(listHosts().map((row) => row.id)).toEqual(order);
+  });
+
+  it.each([
+    ["a partial list", (ids: number[]) => ids.slice(1)],
+    ["an unknown id", (ids: number[]) => [...ids.slice(1), 999]],
+  ])("rejects %s", (_label, mutate) => {
+    const ids = [
+      upsertHostByName("mars", firstSeen).id,
+      upsertHostByName("venus", firstSeen).id,
+    ];
+    expect(() => reorderHosts(mutate(ids))).toThrow(
+      expect.objectContaining({ statusCode: 400 }),
+    );
   });
 });

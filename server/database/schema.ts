@@ -53,6 +53,8 @@ export const host = sqliteTable("Host", {
   collectorVersion: text(),
   collectorStatus: text().$type<CollectorStatus>().notNull().default("unknown"),
   healthchecksUrl: text(),
+  intermittent: boolean().notNull().default(false),
+  position: integer().notNull().default(0),
   notes: text().notNull().default(""),
   temperatureThresholds: json().$type<HostTemperatureThresholds>(),
   firstSeenAt: datetime().notNull(),

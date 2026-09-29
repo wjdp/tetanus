@@ -8,7 +8,7 @@ import type { HostPatch } from "#shared/schemas/hosts";
 import { db } from "~~/server/database/client";
 import { collectorRun, host } from "~~/server/database/schema";
 import { addAutoEvent } from "~~/server/services/diary";
-import { notFound } from "~~/server/utils/serviceError";
+import { invalidRequest, notFound } from "~~/server/utils/serviceError";
 
 type HostRow = typeof host.$inferSelect;
 
@@ -67,7 +67,7 @@ export function listHosts(): HostWithRuns[] {
   return db
     .select()
     .from(host)
-    .orderBy(host.name)
+    .orderBy(host.position, host.name)
     .all()
     .map((row) => ({ ...row, lastRuns: lastRuns.get(row.id) ?? {} }));
 }
@@ -78,17 +78,46 @@ export function getHost(id: number): HostWithRuns {
   return { ...row, lastRuns: lastRunsByHost(id).get(id) ?? {} };
 }
 
+function withIntermittentRule(current: HostRow, patch: HostPatch): HostPatch {
+  if (patch.intermittent === true && !current.intermittent) {
+    return { healthchecksUrl: null, ...patch };
+  }
+  const intermittent = patch.intermittent ?? current.intermittent;
+  const healthchecksUrl =
+    patch.healthchecksUrl === undefined
+      ? current.healthchecksUrl
+      : patch.healthchecksUrl;
+  if (intermittent && healthchecksUrl !== null) {
+    throw invalidRequest("An intermittent host cannot have a Healthchecks URL");
+  }
+  return patch;
+}
+
 export function updateHost(id: number, patch: HostPatch): HostWithRuns {
-  if (Object.keys(patch).length > 0) {
-    const updated = db
-      .update(host)
-      .set(patch)
-      .where(eq(host.id, id))
-      .returning({ id: host.id })
-      .get();
-    if (!updated) throw notFound(`Host ${id} not found`);
+  const current = db.select().from(host).where(eq(host.id, id)).get();
+  if (!current) throw notFound(`Host ${id} not found`);
+  const changes = withIntermittentRule(current, patch);
+  if (Object.keys(changes).length > 0) {
+    db.update(host).set(changes).where(eq(host.id, id)).run();
   }
   return getHost(id);
+}
+
+export function reorderHosts(hostIds: number[]): HostWithRuns[] {
+  const known = db.select({ id: host.id }).from(host).all();
+  const requested = new Set(hostIds);
+  const isFullList =
+    requested.size === known.length &&
+    known.every((row) => requested.has(row.id));
+  if (!isFullList) {
+    throw invalidRequest("Host order must list every host exactly once");
+  }
+  db.transaction((tx) => {
+    hostIds.forEach((id, position) => {
+      tx.update(host).set({ position }).where(eq(host.id, id)).run();
+    });
+  });
+  return listHosts();
 }
 
 export function setToolVersions(

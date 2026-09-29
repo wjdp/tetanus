@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostIdSchema, hostPatchSchema } from "./hosts";
+import { hostIdSchema, hostOrderSchema, hostPatchSchema } from "./hosts";
 
 describe("hostPatchSchema", () => {
   it("accepts an empty patch", () => {
@@ -59,5 +59,17 @@ describe("hostIdSchema", () => {
 
   it.each(["0", "-1", "1.5", "mars"])("rejects %j", (id) => {
     expect(hostIdSchema.safeParse(id).success).toBe(false);
+  });
+});
+
+describe("hostOrderSchema", () => {
+  it("accepts unique ids", () => {
+    expect(hostOrderSchema.parse({ hostIds: [2, 1] })).toEqual({
+      hostIds: [2, 1],
+    });
+  });
+
+  it.each([{ hostIds: [1, 1] }, { hostIds: [0] }, {}])("rejects %j", (body) => {
+    expect(hostOrderSchema.safeParse(body).success).toBe(false);
   });
 });

@@ -33,6 +33,7 @@ export const hostPatchSchema = z.strictObject({
     ])
     .nullable()
     .optional(),
+  intermittent: z.boolean().optional(),
   notes: z.string().max(100_000).optional(),
   temperatureThresholds: temperatureThresholdsSchema.optional(),
 });
@@ -40,5 +41,13 @@ export const hostPatchSchema = z.strictObject({
 export type HostPatch = z.infer<typeof hostPatchSchema>;
 
 export const hostIdSchema = z.coerce.number().int().positive();
+
+export const hostOrderSchema = z.strictObject({
+  hostIds: z
+    .array(hostIdSchema)
+    .refine((ids) => new Set(ids).size === ids.length, "Duplicate host id"),
+});
+
+export type HostOrder = z.infer<typeof hostOrderSchema>;
 
 export const hostParamsSchema = z.object({ id: hostIdSchema });
