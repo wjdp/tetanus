@@ -20,6 +20,7 @@ import type {
 import type { Inventory } from "../../shared/inventory-fields";
 import type { SettingsConfig } from "../../shared/schemas/settings";
 import type { AttributeStatus, DeviceStatus } from "../../shared/smart/status";
+import type { DiskUsage } from "../../shared/usage";
 import type { ZfsDatasetType } from "../ingest/zfs-list";
 import type { ZpoolStatusScan } from "../ingest/zpool-status";
 import { autoIncrementId, boolean, datetime, json } from "./columns";
@@ -119,6 +120,7 @@ export const disk = sqliteTable("Disk", {
   notes: text().notNull().default(""),
   inventory: json().$type<Partial<Inventory>>().notNull().default({}),
   latestRaw: text(),
+  latestUsage: json().$type<DiskUsage>(),
   latestStatus: text().$type<DeviceStatus>().notNull().default("unknown"),
   latestTemp: integer(),
   latestPowerOnHours: integer(),

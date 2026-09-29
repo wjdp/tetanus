@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { PURPOSES } from "./usage";
 
 export const INVENTORY_FIELDS = [
+  { key: "purpose", label: "Purpose", type: "enum", values: PURPOSES },
   { key: "purchaseDate", label: "Purchased", type: "date" },
   { key: "purchasePrice", label: "Price", type: "money" },
   { key: "supplier", label: "Supplier", type: "text" },
