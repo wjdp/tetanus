@@ -41,11 +41,13 @@ export const DEMO_PRODUCER = `tetanus-collect/${COLLECTOR_VERSION}`;
 const DAILY_FOR_MS = 90 * DAY_MS;
 
 /**
- * `full` is the reset schedule (034). `short` keeps every story instant but samples
- * weekly and quarterly, with three hourly runs, for tests that cannot afford a full replay.
+ * `full` is the reset schedule: hourly for a day and every third day to 90 d keeps the
+ * 7 d and 30 d trend windows populated at a quarter of 034's original post count.
+ * `short` keeps every story instant but samples weekly and quarterly, with three hourly
+ * runs, for tests that cannot afford a full replay.
  */
 const REPLAY_GRIDS = {
-  full: { hourlyRuns: 48, dailyStepDays: 1, monthStep: 1 },
+  full: { hourlyRuns: 24, dailyStepDays: 3, monthStep: 1 },
   short: { hourlyRuns: 3, dailyStepDays: 7, monthStep: 3 },
 } as const;
 
@@ -148,7 +150,7 @@ function monthsBack(from: Date, months: number): Date {
   return at;
 }
 
-/** Monthly to `now − 90 d`, daily to `now − 48 h`, hourly after, on the collector's hourly grid. */
+/** Monthly to `now − 90 d`, every third day to `now − 48 h`, hourly for the last day. */
 function gridInstants(
   world: DemoWorld,
   lastHour: Date,
