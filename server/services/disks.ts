@@ -10,6 +10,12 @@ import type {
 import type { IngestMeta } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
 import type { DiskPatch } from "#shared/schemas/disks";
+import {
+  type DiskUsage,
+  isMounted,
+  type Purpose,
+  UNKNOWN_USAGE,
+} from "#shared/usage";
 import { db } from "~~/server/database/client";
 import { disk, diskKey, host, pool, vdev } from "~~/server/database/schema";
 import type { LsblkResult } from "~~/server/ingest/lsblk";
@@ -31,6 +37,7 @@ import {
   scrutinyUuid,
 } from "~~/server/services/identity";
 import { getSettings } from "~~/server/services/settings";
+import { inferUsage } from "~~/server/services/usage";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiskRow = typeof disk.$inferSelect;
@@ -72,7 +79,8 @@ export interface DiskMembership {
   vdevState: string;
 }
 
-export interface DiskSummary extends Omit<DiskRow, "latestRaw"> {
+export interface DiskSummary
+  extends Omit<DiskRow, "latestRaw" | "latestUsage"> {
   keys: DiskKey[];
   membership: DiskMembership | null;
   state: EffectiveDiskState;
@@ -80,6 +88,9 @@ export interface DiskSummary extends Omit<DiskRow, "latestRaw"> {
   hostName: string | null;
   ageDays: number | null;
   warrantyDaysLeft: number | null;
+  usage: DiskUsage;
+  purpose: Purpose | null;
+  purposeInferred: boolean;
 }
 
 export interface DiskDetail extends DiskSummary {
@@ -90,6 +101,7 @@ export interface DiskDetail extends DiskSummary {
 export interface StateContext {
   inPool: boolean;
   present: boolean;
+  mounted: boolean;
   now: Date;
   missingAfterDays: number;
 }
@@ -364,7 +376,7 @@ export function observeLsblk(
   receivedAt: Date,
 ): DiskRow[] {
   return data.disks.flatMap((lsblkDisk) => {
-    const row = observeDisk({
+    const observed = observeDisk({
       hostId,
       receivedAt,
       keys: extractKeys({ source: "lsblk", disk: lsblkDisk }),
@@ -376,8 +388,49 @@ export function observeLsblk(
       },
       devicePath: lsblkDisk.path,
     });
-    return row ? [row] : [];
+    if (!observed) return [];
+    return [recordUsage(observed, inferUsage(lsblkDisk), receivedAt)];
   });
+}
+
+function usageChangeTitle(diskId: number, usage: DiskUsage): string {
+  switch (usage.kind) {
+    case "zfs": {
+      const poolName = membershipsOf([diskId]).get(diskId)?.poolName;
+      return poolName ? `joined pool ${poolName}` : "zfs label";
+    }
+    case "filesystem":
+      return `formatted ${usage.fsTypes.join(", ")}`;
+    default:
+      return "wiped";
+  }
+}
+
+function recordUsageChange(row: DiskRow, usage: DiskUsage, at: Date) {
+  const from = row.latestUsage?.kind;
+  const to = usage.kind;
+  if (from === undefined || from === to) return;
+  if (from === "unknown" || to === "unknown") return;
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: row.id,
+    eventType: "usage-changed",
+    title: usageChangeTitle(row.id, usage),
+    data: { from, to, fsTypes: usage.fsTypes },
+    at,
+  });
+}
+
+function recordUsage(row: DiskRow, usage: DiskUsage, receivedAt: Date) {
+  const isLatest = row.lastSeenAt === null || receivedAt >= row.lastSeenAt;
+  if (!isLatest) return row;
+  recordUsageChange(row, usage, receivedAt);
+  return db
+    .update(disk)
+    .set({ latestUsage: usage })
+    .where(eq(disk.id, row.id))
+    .returning()
+    .get();
 }
 
 function recordAliasDrift(
@@ -487,10 +540,10 @@ export function applyVdevIdConf(
 
 export function inferState(
   row: Pick<DiskRow, "lastSeenAt">,
-  { inPool, present, now, missingAfterDays }: StateContext,
+  { inPool, present, mounted, now, missingAfterDays }: StateContext,
 ): DiskState {
   if (row.lastSeenAt === null) return "unseen";
-  if (present && inPool) return "in-use";
+  if (present && (inPool || mounted)) return "in-use";
   if (present) return "spare";
   const absentMs = now.getTime() - row.lastSeenAt.getTime();
   return absentMs <= missingAfterDays * DAY_MS ? "missing" : "removed";
@@ -549,6 +602,7 @@ function stateResolver(now: Date, missingAfterDays: number) {
     const inferredState = inferState(row, {
       inPool: inPool.has(row.id),
       present: isPresent(row, now),
+      mounted: isMounted(row.latestUsage ?? UNKNOWN_USAGE),
       now,
       missingAfterDays,
     });
@@ -594,6 +648,18 @@ function inventoryDays(inventory: Partial<Inventory>, now: Date) {
   };
 }
 
+function resolveUsage(row: DiskRow, inPool: boolean) {
+  const recorded = row.latestUsage ?? UNKNOWN_USAGE;
+  const usage: DiskUsage = inPool ? { ...recorded, kind: "zfs" } : recorded;
+  const chosenPurpose = row.inventory.purpose ?? null;
+  const purposeInferred = chosenPurpose === null && usage.system;
+  return {
+    usage,
+    purpose: chosenPurpose ?? (usage.system ? ("system" as const) : null),
+    purposeInferred,
+  };
+}
+
 async function missingAfterDays() {
   return (await getSettings()).config.missingAfterDays;
 }
@@ -616,13 +682,19 @@ function summarise(
   return rows.map((row) => {
     const snapshot = resolveState(row);
     recordStateTransition(row, snapshot.state, now);
-    const { latestRaw: _latestRaw, ...columns } = row;
+    const {
+      latestRaw: _latestRaw,
+      latestUsage: _latestUsage,
+      ...columns
+    } = row;
+    const membership = memberships.get(row.id) ?? null;
     return {
       ...columns,
       lastState: snapshot.state,
       keys: keys.get(row.id) ?? [],
-      membership: memberships.get(row.id) ?? null,
+      membership,
       ...snapshot,
+      ...resolveUsage(row, membership !== null),
       hostName:
         row.lastSeenHostId === null
           ? null

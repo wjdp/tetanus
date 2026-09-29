@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { UNKNOWN_USAGE } from "#shared/usage";
 import { db } from "~~/server/database/client";
 import {
   diaryEntry,
@@ -105,6 +106,48 @@ function snapshot() {
     keys: db.select().from(diskKey).orderBy(diskKey.id).all(),
     diary: db.select().from(diaryEntry).orderBy(diaryEntry.id).all(),
   };
+}
+
+function putInPool(diskId: number, present = true) {
+  const mars = upsertHostByName("mars", seenAt);
+  const tank = db
+    .insert(pool)
+    .values({
+      hostId: mars.id,
+      guid: "1",
+      name: "tank",
+      state: "ONLINE",
+      firstSeenAt: seenAt,
+      lastSeenAt: seenAt,
+    })
+    .returning()
+    .get();
+  const mirror = db
+    .insert(vdev)
+    .values({
+      poolId: tank.id,
+      guid: "2",
+      name: "mirror-0",
+      type: "mirror",
+      state: "ONLINE",
+      lastSeenAt: seenAt,
+    })
+    .returning()
+    .get();
+  db.insert(vdev)
+    .values({
+      poolId: tank.id,
+      guid: "3",
+      parentId: mirror.id,
+      name: "K1",
+      type: "disk",
+      state: "DEGRADED",
+      diskId,
+      present,
+      lastSeenAt: seenAt,
+    })
+    .run();
+  return tank.id;
 }
 
 describe("observing mars", () => {
@@ -268,7 +311,13 @@ describe("observing mars", () => {
 
 describe("inferState", () => {
   const now = new Date("2026-09-10T10:00:00Z");
-  const context = { inPool: false, present: false, now, missingAfterDays: 7 };
+  const context = {
+    inPool: false,
+    present: false,
+    mounted: false,
+    now,
+    missingAfterDays: 7,
+  };
 
   it("is unseen when never seen", () => {
     expect(inferState({ lastSeenAt: null }, context)).toBe("unseen");
@@ -279,6 +328,15 @@ describe("inferState", () => {
       inferState(
         { lastSeenAt: now },
         { ...context, present: true, inPool: true },
+      ),
+    ).toBe("in-use");
+  });
+
+  it("is in-use when present and mounted", () => {
+    expect(
+      inferState(
+        { lastSeenAt: now },
+        { ...context, present: true, mounted: true },
       ),
     ).toBe("in-use");
   });
@@ -313,48 +371,6 @@ describe("disk state, overrides and inventory", () => {
     ingestMars();
     sdaId = diskBySerial("0UTY8HTE").id;
   });
-
-  function putInPool(diskId: number, present = true) {
-    const mars = upsertHostByName("mars", seenAt);
-    const tank = db
-      .insert(pool)
-      .values({
-        hostId: mars.id,
-        guid: "1",
-        name: "tank",
-        state: "ONLINE",
-        firstSeenAt: seenAt,
-        lastSeenAt: seenAt,
-      })
-      .returning()
-      .get();
-    const mirror = db
-      .insert(vdev)
-      .values({
-        poolId: tank.id,
-        guid: "2",
-        name: "mirror-0",
-        type: "mirror",
-        state: "ONLINE",
-        lastSeenAt: seenAt,
-      })
-      .returning()
-      .get();
-    db.insert(vdev)
-      .values({
-        poolId: tank.id,
-        guid: "3",
-        parentId: mirror.id,
-        name: "K1",
-        type: "disk",
-        state: "DEGRADED",
-        diskId,
-        present,
-        lastSeenAt: seenAt,
-      })
-      .run();
-    return tank.id;
-  }
 
   it("reports pool membership from the present vdev", async () => {
     const poolId = putInPool(sdaId);
@@ -480,3 +496,162 @@ describe("disk state, overrides and inventory", () => {
     });
   });
 });
+
+type LsblkNode = Record<string, unknown>;
+
+function syntheticLsblk(patches: Record<string, LsblkNode> = {}) {
+  const json = JSON.parse(readFixture("synthetic-lsblk/lvm-on-luks.json"));
+  json.blockdevices = json.blockdevices.map((device: LsblkNode) => ({
+    ...device,
+    ...patches[device.name as string],
+  }));
+  return JSON.stringify(json);
+}
+
+const wiped = { fstype: null, mountpoints: [null] };
+const zfsLabel = { fstype: "zfs_member", mountpoints: [null] };
+
+describe("disk usage", () => {
+  const later = new Date("2026-09-01T11:00:00Z");
+
+  beforeEach(() => {
+    flushDb();
+  });
+
+  function ingestSynthetic(
+    patches: Record<string, LsblkNode> = {},
+    receivedAt = seenAt,
+  ) {
+    ingest("lsblk", syntheticLsblk(patches), undefined, "mars", receivedAt);
+  }
+
+  function usageEvents(serial: string) {
+    return eventsOf(diskBySerial(serial).id, "usage-changed");
+  }
+
+  it("persists the latest usage without an event on first sight", () => {
+    ingestSynthetic();
+    expect(diskBySerial("WD-WCC7K1234567").latestUsage).toEqual({
+      kind: "filesystem",
+      fsTypes: ["ext4"],
+      mounts: [{ fsType: "ext4", path: "/srv", via: [] }],
+      system: false,
+    });
+    expect(usageEvents("WD-WCC7K1234567")).toEqual([]);
+  });
+
+  it("records a kind change", () => {
+    ingestSynthetic();
+    ingestSynthetic({ sda: wiped }, later);
+    ingestSynthetic({ sda: zfsLabel }, new Date("2026-09-01T12:00:00Z"));
+    expect(diskBySerial("WD-WCC7K1234567").latestUsage?.kind).toBe("zfs");
+    expect(usageEvents("WD-WCC7K1234567")).toEqual([
+      expect.objectContaining({
+        title: "zfs label",
+        data: { from: "empty", to: "zfs", fsTypes: ["zfs_member"] },
+      }),
+      expect.objectContaining({
+        title: "wiped",
+        at: later,
+        data: { from: "filesystem", to: "empty", fsTypes: [] },
+      }),
+    ]);
+  });
+
+  it("titles formatting and joining a pool", () => {
+    ingestSynthetic({ sda: wiped });
+    ingestSynthetic({}, later);
+    putInPool(diskBySerial("WD-WCC7K1234567").id);
+    ingestSynthetic({ sda: zfsLabel }, new Date("2026-09-01T12:00:00Z"));
+    expect(usageEvents("WD-WCC7K1234567").map((entry) => entry.title)).toEqual([
+      "joined pool tank",
+      "formatted ext4",
+    ]);
+  });
+
+  it("stays quiet when either side is unknown", () => {
+    ingestSynthetic();
+    ingestSynthetic(
+      { sdc: { children: [{ ...sdcPartition(), mountpoints: ["/media"] }] } },
+      later,
+    );
+    expect(diskBySerial("WL1ABCDE").latestUsage?.kind).toBe("filesystem");
+    expect(usageEvents("WL1ABCDE")).toEqual([]);
+  });
+
+  it("ignores an older sighting", () => {
+    ingestSynthetic({}, later);
+    ingestSynthetic({ sda: wiped });
+    expect(diskBySerial("WD-WCC7K1234567").latestUsage?.kind).toBe(
+      "filesystem",
+    );
+  });
+
+  it("marks mounted disks in use and infers the system purpose", async () => {
+    ingestSynthetic();
+    const disks = await listDisks(later);
+    const nvme = disks.find((row) => row.serial === "S4EVNX0R123456A")!;
+    const sda = disks.find((row) => row.serial === "WD-WCC7K1234567")!;
+    const sdc = disks.find((row) => row.serial === "WL1ABCDE")!;
+    expect(nvme).toMatchObject({
+      state: "in-use",
+      usage: { kind: "filesystem", system: true },
+      purpose: "system",
+      purposeInferred: true,
+    });
+    expect(nvme).not.toHaveProperty("latestUsage");
+    expect(sda).toMatchObject({
+      state: "in-use",
+      purpose: null,
+      purposeInferred: false,
+    });
+    expect(sdc).toMatchObject({ state: "spare", usage: { kind: "unknown" } });
+  });
+
+  it("keeps an unmounted filesystem spare", async () => {
+    ingestSynthetic({ sda: { mountpoints: [null] } });
+    const disks = await listDisks(later);
+    expect(disks.find((row) => row.serial === "WD-WCC7K1234567")).toMatchObject(
+      { state: "spare", usage: { kind: "filesystem" } },
+    );
+  });
+
+  it("prefers the inventory purpose over the inferred one", async () => {
+    ingestSynthetic();
+    const nvmeId = diskBySerial("S4EVNX0R123456A").id;
+    const updated = await updateDisk(
+      nvmeId,
+      { inventory: { purpose: "other" } },
+      later,
+    );
+    expect(updated).toMatchObject({
+      purpose: "other",
+      purposeInferred: false,
+    });
+  });
+
+  it("reports zfs usage for pool members whatever the labels say", async () => {
+    ingestSynthetic();
+    const sdcId = diskBySerial("WL1ABCDE").id;
+    putInPool(sdcId);
+    expect((await getDisk(sdcId, later)).usage.kind).toBe("zfs");
+  });
+
+  it("is unknown before any lsblk", async () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const row = observeDisk({
+      hostId: mars.id,
+      receivedAt: seenAt,
+      keys: [{ kind: "wwn", value: "aa" }],
+    })!;
+    expect((await getDisk(row.id, later)).usage).toEqual(UNKNOWN_USAGE);
+  });
+});
+
+function sdcPartition(): LsblkNode {
+  const json = JSON.parse(readFixture("synthetic-lsblk/lvm-on-luks.json"));
+  const sdc = json.blockdevices.find(
+    (device: LsblkNode) => device.name === "sdc",
+  );
+  return sdc.children[0];
+}
