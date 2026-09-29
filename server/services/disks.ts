@@ -47,6 +47,7 @@ import {
   recordingTechChanges,
   zonedChanges,
 } from "~~/server/services/hardware";
+import { intermittentSightingTimes } from "~~/server/services/hosts";
 import {
   extractKeys,
   isPartitionName,
@@ -660,19 +661,34 @@ function diskIdsInPools(): Set<number> {
 interface StateSnapshot {
   inferredState: DiskState;
   state: EffectiveDiskState;
+  present: boolean;
 }
 
 function stateResolver(now: Date, missingAfterDays: number) {
   const inPool = diskIdsInPools();
+  const sightingTimes = intermittentSightingTimes();
+  const referenceFor = (row: DiskRow) => {
+    const sightedAt =
+      row.lastSeenHostId === null
+        ? undefined
+        : sightingTimes.get(row.lastSeenHostId);
+    return sightedAt && sightedAt < now ? sightedAt : now;
+  };
   return (row: DiskRow): StateSnapshot => {
+    const referenceAt = referenceFor(row);
+    const present = isPresent(row, referenceAt);
     const inferredState = inferState(row, {
       inPool: inPool.has(row.id),
-      present: isPresent(row, now),
+      present,
       mounted: isMounted(row.latestUsage ?? UNKNOWN_USAGE),
-      now,
+      now: referenceAt,
       missingAfterDays,
     });
-    return { inferredState, state: row.stateOverride ?? inferredState };
+    return {
+      inferredState,
+      state: row.stateOverride ?? inferredState,
+      present,
+    };
   };
 }
 
@@ -767,7 +783,6 @@ function summarise(
       ...inventoryDays(row.inventory, now),
       sectorFormat: sectorFormat(row.logicalBlockSize, row.physicalBlockSize),
       interfaceLabel: interfaceLabel(row.interface, row.link),
-      present: isPresent(row, now),
       modelShort: resolveModelShort(row.inventory, row.specs, row.model),
       tempThresholds: resolveTemperatureThresholds(lastHost, row.media),
     };

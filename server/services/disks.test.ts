@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { UNKNOWN_USAGE } from "#shared/usage";
 import { db } from "~~/server/database/client";
 import {
+  collectorRun,
   diaryEntry,
   disk,
   diskKey,
@@ -1028,5 +1029,78 @@ describe("Pi SD card bundle", () => {
       },
       purpose: "system",
     });
+  });
+});
+
+describe("disk state on an intermittent host", () => {
+  const HOUR_MS = 60 * 60 * 1000;
+  const DAY_MS = 24 * HOUR_MS;
+  const seenAtPlus = (ms: number) => new Date(seenAt.getTime() + ms);
+  let sdaId: number;
+
+  const lsblkWithout = (serial: string) => {
+    const json = JSON.parse(readFixture("mars/lsblk.json"));
+    json.blockdevices = json.blockdevices.filter(
+      (device: { serial: string | null }) => device.serial !== serial,
+    );
+    return JSON.stringify(json);
+  };
+
+  const stateOf = async (at: Date) =>
+    (await listDisks(at)).find((row) => row.id === sdaId)?.state;
+
+  beforeEach(() => {
+    flushDb();
+    ingestMars();
+    sdaId = diskBySerial("0UTY8HTE").id;
+    putInPool(sdaId);
+    updateHost(upsertHostByName("mars", seenAt).id, { intermittent: true });
+  });
+
+  it("holds disk state while the host is off for weeks", async () => {
+    expect(await stateOf(seenAtPlus(HOUR_MS))).toBe("in-use");
+    const weeksLater = await listDisks(seenAtPlus(30 * DAY_MS));
+    expect(weeksLater.find((row) => row.id === sdaId)).toMatchObject({
+      state: "in-use",
+      present: true,
+    });
+    expect(weeksLater.some((row) => row.state === "missing")).toBe(false);
+    expect(eventsOf(sdaId, "state-changed")).toEqual([]);
+  });
+
+  it("marks a disk pulled while the host is on as missing", async () => {
+    ingest(
+      "lsblk",
+      lsblkWithout("0UTY8HTE"),
+      undefined,
+      "mars",
+      seenAtPlus(3 * HOUR_MS),
+    );
+    expect(await stateOf(seenAtPlus(3 * HOUR_MS))).toBe("missing");
+    expect(await stateOf(seenAtPlus(30 * DAY_MS))).toBe("missing");
+  });
+
+  it("holds state while the host boots and zfs reports before smart", async () => {
+    await listDisks(seenAtPlus(HOUR_MS));
+    const bootedAt = seenAtPlus(10 * DAY_MS);
+    db.insert(collectorRun)
+      .values({
+        hostId: upsertHostByName("mars", bootedAt).id,
+        source: "zpool-status",
+        receivedAt: bootedAt,
+        ok: true,
+        bytes: 10,
+      })
+      .run();
+    expect(await stateOf(seenAtPlus(10 * DAY_MS + 5 * 60_000))).toBe("in-use");
+    ingestLsblk("mars", seenAtPlus(10 * DAY_MS + 10 * 60_000));
+    expect(await stateOf(seenAtPlus(10 * DAY_MS + 15 * 60_000))).toBe("in-use");
+    expect(eventsOf(sdaId, "state-changed")).toEqual([]);
+  });
+
+  it("applies normal rules once the disk is sighted on another host", async () => {
+    ingestLsblk("venus", seenAtPlus(DAY_MS));
+    expect(await stateOf(seenAtPlus(DAY_MS + HOUR_MS))).toBe("in-use");
+    expect(await stateOf(seenAtPlus(DAY_MS + 3 * HOUR_MS))).toBe("missing");
   });
 });

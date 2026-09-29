@@ -1,4 +1,4 @@
-import { eq, inArray, max } from "drizzle-orm";
+import { and, eq, inArray, max } from "drizzle-orm";
 import {
   type CollectorStatus,
   collectorStatus,
@@ -60,6 +60,29 @@ function lastRunsByHost(hostId?: number) {
     byHost.set(run.hostId, lastRuns);
   }
   return byHost;
+}
+
+const DISK_SIGHTING_SOURCES = ["lsblk", "smartctl-scan"];
+
+// When each intermittent host last looked for its disks. Disk state on such
+// a host is judged as of then, so switching it off does not age its disks.
+export function intermittentSightingTimes(): Map<number, Date> {
+  const rows = db
+    .select({ hostId: collectorRun.hostId, at: max(collectorRun.receivedAt) })
+    .from(collectorRun)
+    .innerJoin(host, eq(host.id, collectorRun.hostId))
+    .where(
+      and(
+        eq(host.intermittent, true),
+        eq(collectorRun.ok, true),
+        inArray(collectorRun.source, DISK_SIGHTING_SOURCES),
+      ),
+    )
+    .groupBy(collectorRun.hostId)
+    .all();
+  return new Map(
+    rows.flatMap(({ hostId, at }) => (at ? [[hostId, at] as const] : [])),
+  );
 }
 
 export function listHosts(): HostWithRuns[] {
