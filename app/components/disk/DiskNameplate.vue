@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { displayName } from "./displayName";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{ disk: DiskDetail }>();
 defineEmits<{ updated: [disk: DiskDetail] }>();
+
+const name = computed(() => displayName(props.disk));
 
 const protocolLabel = computed(() =>
   [props.disk.protocol, props.disk.transport]
@@ -32,9 +35,9 @@ const facts = computed(() => [
       <div class="flex min-w-0 flex-col gap-1">
         <h1
           class="text-2xl font-semibold tracking-tight"
-          :class="disk.alias ? 'text-highlighted' : 'text-dimmed italic'"
+          :class="name ? 'text-highlighted' : 'text-dimmed italic'"
         >
-          {{ disk.alias ?? "unnamed" }}
+          {{ name ?? "unnamed" }}
         </h1>
         <p class="text-muted text-sm">
           {{ disk.model ?? "Unknown model" }}

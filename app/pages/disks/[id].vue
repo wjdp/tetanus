@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
+import { displayName } from "~/components/disk/displayName";
 import type { DiskDetail } from "~/components/disk/types";
 
 const route = useRoute();
@@ -12,7 +13,10 @@ const {
 } = await useFetch<DiskDetail>(() => `/api/disks/${diskId.value}`);
 
 const heading = computed(
-  () => disk.value?.alias ?? disk.value?.model ?? `Disk ${diskId.value}`,
+  () =>
+    (disk.value && displayName(disk.value)) ??
+    disk.value?.model ??
+    `Disk ${diskId.value}`,
 );
 
 useSeoMeta({ title: () => getPageTitle(heading.value) });

@@ -26,8 +26,13 @@ const reset = (disk: DiskDetail) => {
 
 watch(() => props.disk, reset, { immediate: true });
 
-const enumItems = (values: readonly string[]) => [
-  { label: "—", value: UNSET },
+const unsetLabel = (key: InventoryKey) =>
+  key === "purpose" && props.disk.purposeInferred && props.disk.purpose
+    ? `— (inferred: ${props.disk.purpose})`
+    : "—";
+
+const enumItems = (key: InventoryKey, values: readonly string[]) => [
+  { label: unsetLabel(key), value: UNSET },
   ...values.map((value) => ({ label: value, value })),
 ];
 
@@ -126,7 +131,7 @@ const save = async () => {
         <USelect
           v-else-if="field.type === 'enum'"
           :model-value="textValue(field.key) || UNSET"
-          :items="enumItems(field.values)"
+          :items="enumItems(field.key, field.values)"
           class="w-full"
           @update:model-value="
             (value) => setField(field.key, value === UNSET ? null : String(value))

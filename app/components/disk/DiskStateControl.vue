@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { STATE_OVERRIDES, type StateOverride } from "#shared/disk";
+import { usageColour, usageDetail } from "#shared/usage";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{ disk: DiskDetail }>();
@@ -10,6 +11,17 @@ type Choice = StateOverride | typeof AUTOMATIC;
 
 const toast = useToast();
 const saving = ref(false);
+
+const SYSTEM_MOUNT_PATHS = ["/", "/boot"];
+
+const usageLabel = computed(() =>
+  usageDetail(props.disk.usage, props.disk.membership?.poolName ?? null),
+);
+
+const inferredFromPath = computed(() => {
+  const paths = props.disk.usage.mounts.map((mount) => mount.path);
+  return SYSTEM_MOUNT_PATHS.find((path) => paths.includes(path)) ?? "/";
+});
 
 const items = computed(() => [
   { label: `Automatic (${props.disk.inferredState})`, value: AUTOMATIC },
@@ -48,6 +60,24 @@ const setOverride = async (value: string) => {
     <span v-if="disk.stateOverride" class="text-dimmed text-xs">
       inferred {{ disk.inferredState }}
     </span>
+    <UBadge
+      :color="usageColour(disk.usage.kind)"
+      variant="subtle"
+      :label="usageLabel"
+      :class="{ 'opacity-60': disk.usage.kind === 'empty' }"
+    />
+    <UTooltip
+      v-if="disk.purpose && disk.purposeInferred"
+      :text="`inferred from mount at ${inferredFromPath}`"
+    >
+      <UBadge color="neutral" variant="outline" :label="disk.purpose" />
+    </UTooltip>
+    <UBadge
+      v-else-if="disk.purpose"
+      color="neutral"
+      variant="subtle"
+      :label="disk.purpose"
+    />
     <USelect
       :model-value="choice"
       :items="items"

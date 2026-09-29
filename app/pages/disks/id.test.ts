@@ -31,6 +31,9 @@ registerEndpoint("/api/disks/7", () => ({
   ageDays: 2100,
   warrantyDaysLeft: null,
   keys: [],
+  usage: { kind: "zfs", fsTypes: ["zfs_member"], mounts: [], system: false },
+  purpose: null,
+  purposeInferred: false,
   membership: {
     poolId: 3,
     poolName: "tank",
