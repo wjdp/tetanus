@@ -245,7 +245,7 @@ describe("disk page", () => {
     expect(rows[3]).not.toContain("Accept");
 
     expect(page.get('[data-testid="attribute-visibility"]').text()).toBe(
-      "4 shown, 2 hidden",
+      "4 shown, 2 less useful hidden",
     );
     const notedRows = attributeRows().map((row) =>
       row.find('[data-testid="attribute-note"]').exists(),
@@ -277,7 +277,7 @@ describe("disk page", () => {
     expect(text).toContain("warning (was passed)");
 
     const toggle = page.get('[data-testid="attribute-visibility-toggle"]');
-    expect(toggle.text()).toBe("Show 2 more");
+    expect(toggle.text()).toBe("Show 2 less useful attributes");
     await toggle.trigger("click");
     const allRows = attributeRows().map((row) => row.text());
     expect(allRows).toHaveLength(6);
@@ -286,6 +286,6 @@ describe("disk page", () => {
     expect(page.get('[data-testid="attribute-visibility"]').text()).toBe(
       "6 shown",
     );
-    expect(toggle.text()).toBe("Show fewer");
+    expect(toggle.text()).toBe("Hide less useful attributes");
   });
 });

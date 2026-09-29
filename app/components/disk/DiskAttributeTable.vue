@@ -48,9 +48,12 @@ const hiddenCount = computed(
 );
 const rows = computed(() => (showAll.value ? ordered.value : shownByDefault.value));
 
+const LESS_USEFUL_TOOLTIP =
+  "Usage and environment counters with unremarkable values. They never affect disk status.";
+
 const visibilitySummary = computed(() =>
   hiddenCount.value && !showAll.value
-    ? `${shownByDefault.value.length} shown, ${hiddenCount.value} hidden`
+    ? `${shownByDefault.value.length} shown, ${hiddenCount.value} less useful hidden`
     : `${ordered.value.length} shown`,
 );
 
@@ -252,15 +255,17 @@ const rowClass = (row: { original: LatestAttribute }) =>
       </template>
     </UTable>
     <div v-if="hiddenCount">
-      <UButton
-        color="neutral"
-        variant="ghost"
-        size="xs"
-        :label="showAll ? 'Show fewer' : `Show ${hiddenCount} more`"
-        :icon="showAll ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-        data-testid="attribute-visibility-toggle"
-        @click="toggleShowAll"
-      />
+      <UTooltip :text="LESS_USEFUL_TOOLTIP">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          :label="showAll ? 'Hide less useful attributes' : `Show ${hiddenCount} less useful attributes`"
+          :icon="showAll ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          data-testid="attribute-visibility-toggle"
+          @click="toggleShowAll"
+        />
+      </UTooltip>
     </div>
   </div>
 </template>
