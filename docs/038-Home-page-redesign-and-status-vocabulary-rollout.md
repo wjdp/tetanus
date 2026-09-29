@@ -83,11 +83,12 @@ rail as if nobody could see them.
   `lastSeenHostId` set. State override is irrelevant: a `dead` disk plugged into boxy is
   live. `listDisks` returns `present: boolean` so the client never re-derives the window.
 - Host section order: pools first, then one **Other disks** card (same border and padding
-  as a pool card, header "Other disks" with no state badge) holding one vdev-style row per
-  group: label column carries the lifecycle icon and label from 037 (`sys` badge group is
-  labelled "system"), tiles to the right. Group order: `system`, `spare`, `in-use`
-  ("in use, not in a pool"), `dead`, `retired`, `sold`. Tiles are the same `DiskTile`
-  fed a `TopologyDisk` (no leaf): dot = `railColour`, no vdev state line, no counters.
+  as a pool card, header "Other disks" with no state badge) holding two vdev-style rows:
+  `system` (purpose `system`, `i-lucide-cpu`) and `other` (`i-lucide-hard-drive`), each
+  omitted when empty. Not grouped by state: a disk plugged in is either the system disk
+  or it is not. Tiles are the same `DiskTile` fed a `TopologyDisk` (no leaf): dot from
+  SMART and lifecycle, no vdev state line, no counters; a `dead`, `retired`, `sold` or
+  `removed` disk shows its lifecycle icon beside the alias so the state is not lost.
 - A host with no pools and no live disks keeps "No pools reported yet."; a host with
   live disks and no pools shows only the Other disks card.
 - Rail keeps only disks nobody can see: `missing`, `removed`, `unseen`, then the
