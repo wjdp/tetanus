@@ -39,6 +39,12 @@ function lastAppliedMillis(sqlite: Database): number | undefined {
   return row.millis ?? undefined;
 }
 
+export function latestAppliedMigration(sqlite: Database): string | null {
+  const last = lastAppliedMillis(sqlite);
+  if (last === undefined) return null;
+  return journalEntries().find((entry) => entry.when === last)?.tag ?? null;
+}
+
 // Mirrors drizzle's own rule: a migration is pending when its journal
 // timestamp is newer than the most recently recorded one.
 function pendingMigrations(sqlite: Database) {

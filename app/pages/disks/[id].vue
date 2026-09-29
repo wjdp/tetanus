@@ -29,14 +29,30 @@ const onUpdated = (updated: DiskDetail) => {
 <template>
   <AppPanel :title="heading" class="max-w-7xl">
     <div class="flex flex-col gap-10">
-      <UButton
-        to="/disks"
-        color="neutral"
-        variant="ghost"
-        icon="i-lucide-arrow-left"
-        label="Disks"
-        class="-ml-2.5 self-start"
-      />
+      <div class="flex items-center justify-between gap-4">
+        <UButton
+          to="/disks"
+          color="neutral"
+          variant="ghost"
+          icon="i-lucide-arrow-left"
+          label="Disks"
+          class="-ml-2.5"
+        />
+        <UTooltip
+          v-if="disk"
+          text="Includes serials, hostnames and mount paths. Check before posting publicly."
+        >
+          <UButton
+            :to="`/api/disks/${disk.id}/diagnostics`"
+            external
+            download
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-file-archive"
+            label="Download diagnostics"
+          />
+        </UTooltip>
+      </div>
 
       <p v-if="error || !disk" class="text-muted">
         {{ error?.statusCode === 404 ? "No such disk." : "Could not load the disk." }}

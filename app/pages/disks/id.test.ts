@@ -267,6 +267,9 @@ describe("disk page", () => {
     const text = page.text();
 
     expect(text).toContain("K2");
+    const diagnostics = page.get('a[href="/api/disks/7/diagnostics"]');
+    expect(diagnostics.text()).toBe("Download diagnostics");
+    expect(diagnostics.attributes()).toHaveProperty("download");
     expect(text).toMatch(/WD80EFAX\s+· VK0ABC/);
     expect(text).not.toContain("WDC WD80EFAX");
     expect(text).toMatch(/SATA 3\.1 via SAS\s+· 6\.0 Gb\/s/);

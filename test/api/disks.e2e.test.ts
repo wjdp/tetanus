@@ -1,4 +1,5 @@
 import { fetch, setup } from "@nuxt/test-utils/e2e";
+import { strFromU8, unzipSync } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "~~/server/database/client";
 import { runMigrations } from "~~/server/database/migrate";
@@ -200,5 +201,36 @@ describe("/api/disks", () => {
     expect((await (await fetch(`/api/disks/${id}`)).json()).membership).toEqual(
       membership,
     );
+  });
+});
+
+describe("/api/disks/:id/diagnostics", () => {
+  it("downloads a zip of the disk's diagnostics", async () => {
+    const id = diskIdBySerial("1AQLP5ME");
+    const response = await fetch(`/api/disks/${id}/diagnostics`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/zip");
+    const name = `tetanus-disk-${id}-${new Date().toISOString().slice(0, 10)}`;
+    expect(response.headers.get("content-disposition")).toBe(
+      `attachment; filename="${name}.zip"`,
+    );
+    const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+    expect(Object.keys(files)).toEqual(
+      expect.arrayContaining([
+        `${name}/README.md`,
+        `${name}/meta.json`,
+        `${name}/db/summary.json`,
+        `${name}/raw/mars/manifest.json`,
+        `${name}/raw/mars/lsblk.json`,
+        `${name}/raw/mars/udev/8-16.txt`,
+      ]),
+    );
+    expect(strFromU8(files[`${name}/raw/mars/lsblk.json`])).toBe(
+      readFixture("mars/lsblk.json"),
+    );
+  });
+
+  it("404s for an unknown disk", async () => {
+    expect((await fetch("/api/disks/999999/diagnostics")).status).toBe(404);
   });
 });
