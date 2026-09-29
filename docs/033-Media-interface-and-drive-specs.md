@@ -397,6 +397,26 @@ missing columns as unknown. Bump collector to 0.3.0. Not required for anything a
 - T1 tests adjusted: sda now resolves `cmr` from the dataset; the TRIM-on-HDD test uses a
   model the dataset misses, since sde's local row says cmr.
 
+### T5b
+
+- `app/components/disk/DiskSpecs.vue`, under the inventory form. `dl` rows (omitted when
+  null): Line (`brand line`), Class, Cache, TLER/ERC, Helium, NAND, DRAM, PLP, TBW, DWPD,
+  Sustained write, AFR, In production, Also sold as. Capacity skipped (nameplate has it).
+- AFR quarter text: `reliabilitySource` is `Backblaze thru Q2 2026` optionally followed by
+  ` (merged …)`; the panel keeps only the `Backblaze thru Qn yyyy` prefix, else
+  `Backblaze Drive Stats`.
+- Footer per source (`nasdisks.com (CC BY 4.0)` + Backblaze, or `local override`) plus
+  `· snapshot <date>` when present. No match: `No spec match for <bareModel>`. Mismatch
+  note is dimmed with `i-lucide-info`, one line per `specMismatch` entry.
+- Warranty hint: `warrantySuggestion(draft, line)` in `inventoryDraft.ts`; the form fills
+  the `#hint` slot of the warranty field with the text and an Apply link button that sets
+  the draft only. Hint follows the draft, so it disappears once applied or typed over.
+- Sectors toggle: `UCheckbox` at the end of the `InventoryFilters` row (`showSectors`
+  model, desktop only, not persisted), state held by the page and passed to
+  `InventoryTable`, whose column visibility is now derived from it.
+- The full unit run timed out once on the slow filter test in `disks/index.test.ts`
+  under load; it passes alone.
+
 ## Decisions (2026-09-29)
 
 1. Columns for `media`, `interface`, `recordingTech`, block sizes, `trimSupported`; JSON
