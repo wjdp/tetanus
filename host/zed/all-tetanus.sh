@@ -3,6 +3,8 @@
 # zed-event. ZED runs all-*.sh for every event class, so this never blocks, never fails
 # and says nothing: the POST runs in the background and its errors are discarded.
 
+readonly version=0.3.1
+
 config=${TETANUS_CONFIG:-/etc/tetanus/collect.env}
 [[ -r $config ]] || exit 0
 
@@ -24,7 +26,7 @@ event=$(env | grep '^ZEVENT_')
 
 printf '%s\n' "$event" |
   curl -q --silent --max-time 10 \
-    --user-agent tetanus-zed \
+    --user-agent "tetanus-zed/$version" \
     --header @<(printf 'Authorization: Bearer %s\nTetanus-Host: %s\n' "$TETANUS_TOKEN" "$host") \
     --header 'Content-Type: text/plain' \
     --data-binary @- \

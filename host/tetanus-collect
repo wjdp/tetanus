@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-readonly version=0.3.0
+readonly version=0.3.1
 readonly default_config=/etc/tetanus/collect.env
 readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
 readonly sources=(
