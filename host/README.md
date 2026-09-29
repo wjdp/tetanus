@@ -59,6 +59,9 @@ Each source is one command whose stdout is POSTed to `/api/ingest/<source>`:
 - version strings from `zfs version`, `zpool version`, `uname -r`, `smartctl --version`
   and `lsb_release -ds`
 
+`lsblk` requests `MOUNTPOINTS`, which needs util-linux 2.37+ (Debian 12, Ubuntu 22.04);
+older hosts fall back to `MOUNTPOINT`.
+
 It never writes to the host: the service runs with a read-only file system
 (`ProtectSystem=strict`) and a private `/tmp`. It runs as root because `zpool` needs
 `/dev/zfs` and `smartctl` needs raw disk access. The token is sent in a header, never on

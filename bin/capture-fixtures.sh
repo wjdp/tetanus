@@ -98,7 +98,7 @@ capture zpool-events txt zpool events -vH
 capture vdev-id-conf txt cat /etc/zfs/vdev_id.conf
 capture by-vdev txt ls -l /dev/disk/by-vdev
 capture by-id txt ls -l /dev/disk/by-id
-capture lsblk json lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE
+capture lsblk json lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE,MOUNTPOINTS
 
 list_disk_and_part_devnums() {
   python3 -c '
