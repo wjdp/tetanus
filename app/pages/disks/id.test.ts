@@ -303,6 +303,24 @@ describe("disk page", () => {
     expect(rows[3]).toContain("34 °C");
     expect(rows[3]).not.toContain("Accept");
 
+    const statusDots = attributeRows().map((row) => {
+      const dot = row.find('[data-testid="attribute-status"] [data-shape]');
+      return dot.exists()
+        ? `${dot.attributes("data-colour")} ${dot.attributes("data-shape")}`
+        : null;
+    });
+    expect(statusDots).toEqual([
+      "warning filled",
+      "warning hollow",
+      null,
+      null,
+    ]);
+    const acceptedValue = attributeRows()[1]?.get(
+      '[data-testid="accepted-value"]',
+    );
+    expect(acceptedValue?.text()).toBe("accepted at 8");
+    expect(acceptedValue?.html()).toContain("i-lucide:shield-check");
+
     expect(page.get('[data-testid="attribute-visibility"]').text()).toBe(
       "4 shown, 2 less useful hidden",
     );

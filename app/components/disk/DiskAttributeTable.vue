@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 import {
+  ATTRIBUTE_TREND_COLOUR,
   attributeNote,
   isNotableContextRate,
   isShownByDefault,
@@ -72,13 +73,6 @@ watch(
   { immediate: true },
 );
 
-const ATTRIBUTE_STATUS_COLOUR = {
-  failed: "error",
-  warning: "warning",
-  accepted: "neutral",
-  passed: "neutral",
-} as const;
-
 const ROW_TINT = {
   failed: "bg-error/5",
   warning: "bg-warning/5",
@@ -89,9 +83,14 @@ const ROW_TINT = {
 const isAcceptable = (attribute: LatestAttribute) =>
   attribute.displayStatus === "failed" || attribute.displayStatus === "warning";
 
+const acceptedAt = (attribute: LatestAttribute) =>
+  attribute.acceptance
+    ? `accepted at ${attribute.acceptance.acceptedValue.toLocaleString("en-GB")}`
+    : "accepted";
+
 const acceptanceTooltip = (attribute: LatestAttribute) =>
   attribute.acceptance
-    ? `accepted at ${attribute.acceptance.acceptedValue.toLocaleString("en-GB")} on ${formatDate(attribute.acceptance.acceptedAt)}`
+    ? `${acceptedAt(attribute)} on ${formatDate(attribute.acceptance.acceptedAt)}`
     : "accepted";
 
 const formatValue = (attribute: LatestAttribute) => {
@@ -156,24 +155,11 @@ const rowClass = (row: { original: LatestAttribute }) =>
     >
       <template #status-cell="{ row }">
         <UTooltip
-          v-if="row.original.displayStatus === 'accepted'"
           :text="acceptanceTooltip(row.original)"
+          :disabled="row.original.displayStatus !== 'accepted'"
         >
-          <UBadge
-            color="neutral"
-            variant="outline"
-            size="sm"
-            label="accepted"
-            data-testid="accepted-badge"
-          />
+          <DiskAttributeStatus :status="row.original.displayStatus" />
         </UTooltip>
-        <UBadge
-          v-else
-          :color="ATTRIBUTE_STATUS_COLOUR[row.original.displayStatus]"
-          variant="subtle"
-          size="sm"
-          :label="row.original.displayStatus"
-        />
       </template>
 
       <template #name-cell="{ row }">
@@ -190,7 +176,17 @@ const rowClass = (row: { original: LatestAttribute }) =>
       </template>
 
       <template #value-cell="{ row }">
-        {{ formatValue(row.original) }}
+        <span class="inline-flex items-center gap-1.5">
+          {{ formatValue(row.original) }}
+          <span
+            v-if="row.original.displayStatus === 'accepted'"
+            class="text-dimmed inline-flex items-center gap-1 text-xs"
+            data-testid="accepted-value"
+          >
+            <UIcon name="i-lucide-shield-check" class="size-3.5" />
+            {{ acceptedAt(row.original) }}
+          </span>
+        </span>
       </template>
 
       <template #normalised-cell="{ row }">
@@ -216,7 +212,7 @@ const rowClass = (row: { original: LatestAttribute }) =>
 
       <template #trend-cell="{ row }">
         <UBadge
-          :color="attributeTrendColour(row.original.trend)"
+          :color="ATTRIBUTE_TREND_COLOUR[row.original.trend]"
           variant="soft"
           size="sm"
           :label="row.original.trend"

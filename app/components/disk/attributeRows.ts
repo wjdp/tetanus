@@ -1,5 +1,6 @@
 import { attributeClass } from "#shared/smart/classification";
 import type { AttributeDisplayStatus } from "#shared/smart/status";
+import type { DotShape, StatusColour } from "~/utils/vocabulary";
 
 interface RankedAttribute {
   attrId: string;
@@ -92,3 +93,27 @@ export function countByStatus(
     accepted: count("accepted"),
   };
 }
+
+export interface AttributeStatusDot {
+  colour: StatusColour;
+  shape: DotShape;
+}
+
+export const ATTRIBUTE_STATUS_DOT: Record<
+  AttributeDisplayStatus,
+  AttributeStatusDot | null
+> = {
+  passed: null,
+  warning: { colour: "warning", shape: "filled" },
+  failed: { colour: "error", shape: "filled" },
+  accepted: { colour: "warning", shape: "hollow" },
+};
+
+export type AttributeTrend = "new" | "stable" | "worsening" | "improving";
+
+export const ATTRIBUTE_TREND_COLOUR: Record<AttributeTrend, StatusColour> = {
+  new: "neutral",
+  stable: "neutral",
+  worsening: "warning",
+  improving: "success",
+};

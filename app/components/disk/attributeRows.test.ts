@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ATTRIBUTE_STATUS_DOT,
   attributeNote,
   CONTEXT_RATE_NOTE,
   countByStatus,
@@ -158,5 +159,29 @@ describe("isNotableContextRate", () => {
 
   it("ignores a missing rate", () => {
     expect(isNotableContextRate(rate("4", null))).toBe(false);
+  });
+});
+
+describe("ATTRIBUTE_STATUS_DOT", () => {
+  it("draws no dot for passed", () => {
+    expect(ATTRIBUTE_STATUS_DOT.passed).toBeNull();
+  });
+
+  it("fills the dot for a live fault", () => {
+    expect(ATTRIBUTE_STATUS_DOT.warning).toEqual({
+      colour: "warning",
+      shape: "filled",
+    });
+    expect(ATTRIBUTE_STATUS_DOT.failed).toEqual({
+      colour: "error",
+      shape: "filled",
+    });
+  });
+
+  it("draws an accepted fault as a hollow warning ring", () => {
+    expect(ATTRIBUTE_STATUS_DOT.accepted).toEqual({
+      colour: "warning",
+      shape: "hollow",
+    });
   });
 });

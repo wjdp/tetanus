@@ -5,6 +5,7 @@ import {
   REFERENCE_AGES_DAYS,
   referenceValue,
 } from "~/utils/acceptanceSummary";
+import { ATTRIBUTE_TREND_COLOUR } from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 const props = defineProps<{
@@ -140,7 +141,7 @@ const confirm = async () => {
               {{ withUnit(attribute.transformedValue) }}
             </span>
             <UBadge
-              :color="attributeTrendColour(attribute.trend)"
+              :color="ATTRIBUTE_TREND_COLOUR[attribute.trend]"
               variant="soft"
               size="sm"
               :label="attribute.trend"
