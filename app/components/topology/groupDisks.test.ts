@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { TEMPERATURE_DEFAULTS } from "#shared/temperature";
 import {
   diskDot,
   hostDiskGroups,
@@ -8,89 +7,15 @@ import {
   linkedDiskIds,
   railGroups,
   type TopologyDisk,
-  type TopologyVdev,
-  type TopologyVdevDisk,
   tileColour,
   vdevGroups,
 } from "./groupDisks";
-
-let nextId = 1;
-
-function vdev(overrides: Partial<TopologyVdev>): TopologyVdev {
-  const id = nextId++;
-  return {
-    id,
-    guid: `guid-${id}`,
-    name: `vdev-${id}`,
-    type: "disk",
-    state: "ONLINE",
-    readErrors: 0,
-    writeErrors: 0,
-    checksumErrors: 0,
-    slowIos: 0,
-    path: null,
-    sizeBytes: null,
-    allocBytes: null,
-    disk: null,
-    children: [],
-    ...overrides,
-  };
-}
-
-function vdevDisk(
-  id: number,
-  alias: string,
-  overrides: Partial<TopologyVdevDisk> = {},
-): TopologyVdevDisk {
-  return {
-    id,
-    alias,
-    state: "in-use",
-    latestStatus: "passed",
-    capacityBytes: null,
-    media: "hdd",
-    purpose: null,
-    latestTemp: null,
-    modelShort: null,
-    tempThresholds: TEMPERATURE_DEFAULTS.hdd,
-    ...overrides,
-  };
-}
-
-function leaf(
-  alias: string,
-  diskId: number,
-  overrides: Partial<TopologyVdev> = {},
-) {
-  return vdev({
-    name: `/dev/disk/by-vdev/${alias}-part1`,
-    path: `/dev/disk/by-vdev/${alias}-part1`,
-    disk: vdevDisk(diskId, alias),
-    ...overrides,
-  });
-}
-
-function disk(id: number, overrides: Partial<TopologyDisk> = {}): TopologyDisk {
-  return {
-    id,
-    alias: `D${id}`,
-    model: null,
-    serial: null,
-    interfaceLabel: null,
-    state: "in-use",
-    stateOverride: null,
-    purpose: null,
-    media: null,
-    latestStatus: "passed",
-    capacityBytes: null,
-    latestTemp: null,
-    modelShort: null,
-    tempThresholds: TEMPERATURE_DEFAULTS.hdd,
-    present: false,
-    lastSeenHostId: null,
-    ...overrides,
-  };
-}
+import {
+  diskFixture as disk,
+  leafFixture as leaf,
+  vdevFixture as vdev,
+  vdevDiskFixture as vdevDisk,
+} from "./testFixtures";
 
 const tree = vdev({
   name: "tank",
