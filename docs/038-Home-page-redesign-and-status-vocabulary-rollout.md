@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Home page redesign and status vocabulary rollout
@@ -161,9 +161,13 @@ per-status rules, and rule 2 gains "ONLINE is the other green".
 6. Rollout to the other pages, one commit per row of the table. Later phase.
 7. Docs 008 amendment. Later phase.
 
-Steps 1 to 5 are being built by delegated agents from 2026-09-29; `statusColour.ts`
-and `mediaIcon` stay as thin wrappers over the vocabulary module until step 6 removes
-them, so the other pages keep working untouched.
+Built 2026-09-29 by delegated agents. `statusColour.ts` and `mediaIcon` are gone; every
+page reads the vocabulary module. Left for later: attribute trend and display-status
+tables live in `attributeRows.ts` rather than the vocabulary module; `new` trend stays
+neutral (037 says info); table dots are 8 px, not 6 px, as `StatusDot` has no size prop;
+`navigation.ts` hard-codes icons that match `ENTITY_ICON`; `chipColor` is duplicated in
+`hosts.vue` and `HostSection.vue`; `Fault` has no `severity`, so banners only use the
+error gutter; vdev diary events carry no `data.type`, so they always show the layers icon.
 
 ## Tests
 
