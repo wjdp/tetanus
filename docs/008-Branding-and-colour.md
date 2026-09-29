@@ -49,6 +49,10 @@ Nuxt UI 4 colour aliases; Tailwind 4 `@theme` for the custom palette.
 | `info` | `sky` | Scrub/resilver in progress, informational banners. |
 | `secondary` | `stone` | Unused; alias to neutral so nothing accidentally introduces a second brand hue. |
 
+Which alias each status, state and lifecycle bucket takes, with dot shape and icon, is the
+[037 status and icon vocabulary](037-Status-and-icon-vocabulary.md). This table names the
+palette; 037 names the rules per status.
+
 Rust palette (desaturated oxide, main step 500). Decided 2026-09-28 against a swatch page;
 the more vivid `#d3512f`, a redder and an oranger candidate were rejected as too loud:
 
@@ -81,7 +85,8 @@ Rules that keep red from being overused:
    `error`/`warning`/`success`/`info` or neutral. A rust tile would read as a fault.
 2. **Passed is quiet.** Healthy disks and pools are neutral surfaces with a small
    `success` dot, not green cards. Confirmed against the swatch page. The home screen should be mostly stone; anything red
-   or amber on it is a problem.
+   or amber on it is a problem. `ONLINE` is the other green: ZFS's own word for healthy,
+   rendered `success` as text or a subtle badge, never a surface.
 3. **One primary action per view.** Everything else is `neutral` `ghost`/`soft`.
 4. **Dark mode first.** Default to system, but design in dark and check light. Fills
    (buttons, nav bar, mark dot) use rust 500 on dark and 600 on light. Text and links use
@@ -103,4 +108,4 @@ status text never are.
 ## Related
 
 [001](001-Product-goals.md) decision table, [003](003-Architecture-and-data-model.md)
-UI section.
+UI section, [037](037-Status-and-icon-vocabulary.md) per-status colour, shape and icon.
