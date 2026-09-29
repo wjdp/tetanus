@@ -179,6 +179,20 @@ describe("disks inventory page", () => {
       expect(page.text()).not.toContain("512e");
     });
 
+    it("reveals and hides the sector column from the toolbar toggle", async () => {
+      disks = [disk({ id: 1, alias: "K1", ...sataHdd })];
+      const page = await mountSuspended(DisksPage);
+      const headers = () => page.findAll("thead th").map((th) => th.text());
+      const toggle = page.get('button[data-testid="show-sectors"]');
+
+      await toggle.trigger("click");
+      expect(headers()).toContain("Sectors");
+      expect(page.text()).toContain("512e");
+
+      await toggle.trigger("click");
+      expect(headers()).not.toContain("Sectors");
+    });
+
     it("filters by media, interface, recording and vendor", async () => {
       disks = [
         disk({ id: 1, alias: "K1", ...sataHdd }),

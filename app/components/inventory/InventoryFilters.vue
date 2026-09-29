@@ -9,6 +9,7 @@ const props = defineProps<{
 }>();
 
 const filters = defineModel<InventoryFilterState>({ required: true });
+const showSectors = defineModel<boolean>("showSectors", { default: false });
 
 const hostItems = computed(() => [
   { label: "All hosts", value: ALL_HOSTS },
@@ -201,6 +202,12 @@ export const CLEARED_FILTERS: InventoryFilterState = {
       class="min-w-0 sm:w-48"
       aria-label="Filter by state"
       @update:model-value="update({ states: $event as string[] })"
+    />
+    <UCheckbox
+      v-model="showSectors"
+      label="Sectors column"
+      class="hidden md:flex"
+      data-testid="show-sectors"
     />
     <UButton
       v-if="isFiltered"

@@ -52,7 +52,14 @@ const COLUMN_META: Record<string, TableColumn<InventoryDisk>["meta"]> = {
   warranty: hideCell("hidden xl:table-cell"),
 };
 
-const columnVisibility = ref({ sectors: false });
+const showSectors = defineModel<boolean>("showSectors", { default: false });
+
+const columnVisibility = computed({
+  get: () => ({ sectors: showSectors.value }),
+  set: (visibility: Record<string, boolean>) => {
+    showSectors.value = visibility.sectors ?? false;
+  },
+});
 
 const columns: TableColumn<InventoryDisk>[] = SORT_FIELDS.map((field) => ({
   id: field.id,

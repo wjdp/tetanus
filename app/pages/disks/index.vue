@@ -37,6 +37,8 @@ onUnmounted(() => {
 
 const filters = ref<InventoryFilterState>({ ...CLEARED_FILTERS });
 
+const showSectors = ref(false);
+
 const sorting = ref<SortingState>([{ id: "alias", desc: false }]);
 
 const allDisks = computed(() => disks.value ?? []);
@@ -158,9 +160,13 @@ const countLabel = computed(() =>
     </div>
 
     <template v-else>
-      <InventoryFilters v-model="filters" :hosts="hosts" :pools="pools" :states="states" />
+      <InventoryFilters
+        v-model="filters"
+        v-model:show-sectors="showSectors"
+        :hosts="hosts" :pools="pools" :states="states" />
       <InventoryTable
         v-model:sorting="sorting"
+        v-model:show-sectors="showSectors"
         :disks="visibleDisks"
         class="hidden md:block"
       />
