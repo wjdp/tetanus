@@ -1,5 +1,6 @@
 import { count } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
+import { isHostOffline } from "#shared/hostFreshness";
 import { db } from "~~/server/database/client";
 import { dataset, smartReading } from "~~/server/database/schema";
 import { listNotifications } from "~~/server/services/alerts/dispatch";
@@ -46,19 +47,21 @@ describe("seed", () => {
     expect(report.at).toEqual(new Date("2026-09-29T06:00:00Z"));
   });
 
-  it("builds the fleet: three hosts, six pools, present and inventory-only disks", () => {
+  it("builds the fleet: four hosts, seven pools, present and inventory-only disks", () => {
     expect(listHosts().map((row) => [row.name, row.displayName])).toEqual([
       ["atlas", "Atlas"],
-      ["pip", "Pip"],
       ["styx", "Styx (offsite)"],
+      ["pip", "Pip"],
+      ["bench", "Test bench"],
     ]);
-    expect(listPools()).toHaveLength(6);
-    expect(disks).toHaveLength(29);
+    expect(listPools()).toHaveLength(7);
+    expect(disks).toHaveLength(31);
     const present = disks.filter((row) => row.state === "in-use");
     expect(present).toHaveLength(
       stories.disksPresent("atlas", NOW).length +
         stories.disksPresent("styx", NOW).length +
-        stories.disksPresent("pip", NOW).length,
+        stories.disksPresent("pip", NOW).length +
+        stories.disksPresent("bench", NOW).length,
     );
     expect(
       disks
@@ -78,7 +81,7 @@ describe("seed", () => {
   });
 
   it("upserts datasets and snapshots once", () => {
-    expect(db.select({ n: count() }).from(dataset).get()?.n).toBe(44);
+    expect(db.select({ n: count() }).from(dataset).get()?.n).toBe(45);
     const snapshots = listPools().reduce(
       (total, row) => total + row.snapshotCount,
       0,
@@ -156,6 +159,24 @@ describe("seed", () => {
     }
   });
 
+  it("holds the switched-off bench's disks in use, with no missing entry", () => {
+    const bench = listHosts().find((row) => row.name === "bench");
+    expect(bench?.intermittent).toBe(true);
+    expect(bench?.healthchecksUrl).toBeNull();
+    expect(bench && isHostOffline(bench, report.at.getTime())).toBe(true);
+    const benchDisks = disks.filter((row) => row.hostName === "bench");
+    expect(benchDisks.map((row) => [row.alias, row.state])).toEqual([
+      ["B1", "in-use"],
+      ["B2", "in-use"],
+    ]);
+    for (const row of benchDisks) {
+      const wentMissing = listDiary({ subjectType: "disk", subjectId: row.id })
+        .filter((entry) => entry.eventType === "state-changed")
+        .filter((entry) => entry.title.startsWith("missing"));
+      expect(wentMissing).toEqual([]);
+    }
+  });
+
   it("tick adds one reading per present disk an hour later, once", async () => {
     const before = readingCount();
     const later = new Date(NOW.getTime() + HOUR_MS);
@@ -163,7 +184,8 @@ describe("seed", () => {
     expect(first.failures).toEqual([]);
     expect(first.skipped).toEqual([]);
     expect(readingCount() - before).toBe(
-      disks.filter((row) => row.state === "in-use").length,
+      disks.filter((row) => row.state === "in-use" && row.hostName !== "bench")
+        .length,
     );
     const again = await tick(new Date(later.getTime() + 10 * 60_000));
     expect(again.skipped).toEqual(["atlas", "styx", "pip"]);

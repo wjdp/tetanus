@@ -78,6 +78,8 @@ export interface Timeline {
   vaultScrubEnd: Date;
   /** One warranty ends next month (A17). */
   a17WarrantyExpiry: Date;
+  /** The test bench's last collector run before it was switched off. */
+  benchLastRunAt: Date;
 }
 
 export function createTimeline(anchor: Date = DEMO_EPOCH): Timeline {
@@ -107,6 +109,7 @@ export function createTimeline(anchor: Date = DEMO_EPOCH): Timeline {
     vaultScrubStart,
     vaultScrubEnd: addMs(vaultScrubStart, VAULT_SCRUB_DURATION_MS),
     a17WarrantyExpiry: onDay(anchor, 23, "00:00"),
+    benchLastRunAt: onDay(anchor, -12, "22:00"),
   };
 }
 

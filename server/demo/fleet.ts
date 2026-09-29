@@ -389,6 +389,8 @@ const STYX_BUILT = date("2020-06-06T15:00:00Z");
 const VAULT_SPARE_ADDED = date("2021-01-16T12:30:00Z");
 const PIP_BUILT = date("2022-06-18T19:00:00Z");
 const PIP_MEDIA_DISK_ADDED = date("2023-01-21T14:00:00Z");
+const BENCH_BUILT = date("2025-02-08T11:00:00Z");
+const BURNIN_CREATED = date("2025-02-08T11:40:00Z");
 
 /** P1 reaches 87.5 % of rated endurance at the anchor, so `percentage_used` reads 87. */
 export const P1_PERCENTAGE_USED_AT_ANCHOR = 87.5;
@@ -694,6 +696,23 @@ function pipDisks(timeline: Timeline): DiskSpec[] {
   ];
 }
 
+function benchDisks(): DiskSpec[] {
+  const usedExos = (alias: string, kernel: string, position: number) =>
+    ({
+      alias,
+      host: "bench",
+      product: "exosX16",
+      slot: ahci(kernel),
+      membership: member("burnin", "normal", 0, position),
+      installedAt: BENCH_BUILT,
+      inventory: inventory("2025-01-30", 164.0, "eBay", "used", null),
+      powerOnHoursAtInstall: position === 0 ? 31_206 : 29_874,
+      powerCyclesAtInstall: position === 0 ? 22 : 25,
+      bytesWrittenPerDay: 5 * GB,
+    }) satisfies DiskSpec;
+  return [usedExos("B1", "sda", 0), usedExos("B2", "sdb", 1)];
+}
+
 /** No reboots in the 50 days before the anchor, so `zpool events` and error counters still carry the stories. */
 function hostBoots(
   name: HostName,
@@ -759,6 +778,20 @@ function hosts(timeline: Timeline): HostModel[] {
       vdevIdConf: false,
       ambientC: 25,
       installedAt: PIP_BUILT,
+    }),
+    host({
+      name: "bench",
+      role: "test bench",
+      os: "Debian GNU/Linux 13 (trixie)",
+      kernel: "6.12.43+deb13-amd64",
+      zfsVersion: "zfs-2.3.2-2",
+      smartctlVersion:
+        "smartctl 7.4 2023-08-01 r5530 [x86_64-linux-6.12.43+deb13-amd64] (local build)",
+      vdevIdConf: false,
+      ambientC: 21,
+      installedAt: BENCH_BUILT,
+      intermittent: true,
+      lastRunAt: timeline.benchLastRunAt,
     }),
   ];
 }
@@ -856,6 +889,17 @@ function pools(): PoolModel[] {
       scrubDurationMs: 14 * 60_000,
       scrubSchedule: "monthly-second-sunday",
       properties: { ...DEFAULT_POOL_PROPERTIES, autotrim: "on" },
+    }),
+    pool({
+      name: "burnin",
+      host: "bench",
+      createdAt: BURNIN_CREATED,
+      ashift: 12,
+      vdevs: [vdev("normal", "mirror", 0, 2, BURNIN_CREATED)],
+      allocatedFraction: { atCreation: 0, atAnchor: 0.08 },
+      scrubDurationMs: 6 * HOUR_MS,
+      scrubSchedule: "monthly-second-sunday",
+      properties: DEFAULT_POOL_PROPERTIES,
     }),
   ];
 }
@@ -1223,12 +1267,24 @@ function pipDatasets(): DatasetModel[] {
   ];
 }
 
+function benchDatasets(): DatasetModel[] {
+  return [
+    dataset({
+      name: "burnin",
+      createdAt: BURNIN_CREATED,
+      referenced: [96 * KiB, 1.1 * TB],
+      churnPerDay: 5 * GB,
+    }),
+  ];
+}
+
 export function createFleet(timeline: Timeline): Fleet {
   const disks = [
     ...atlasDisks(timeline),
     ...formerAtlasDisks(),
     ...styxDisks(timeline),
     ...pipDisks(timeline),
+    ...benchDisks(),
   ].map(buildDisk);
   return {
     hosts: hosts(timeline),
@@ -1238,6 +1294,7 @@ export function createFleet(timeline: Timeline): Fleet {
       atlas: atlasDatasets(),
       styx: styxDatasets(),
       pip: pipDatasets(),
+      bench: benchDatasets(),
     },
   };
 }

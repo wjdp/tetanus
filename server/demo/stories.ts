@@ -663,6 +663,8 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
   };
   const bootPart = (alias: string) =>
     `/dev/disk/by-id/${byIdNames(disk(alias))[0]}-part2`;
+  const wholeDisk = (alias: string) =>
+    `/dev/disk/by-id/${byIdNames(disk(alias))[0]}`;
   const ROOT_POOL_OPTIONS =
     "-o ashift=12 -o autotrim=on -O compression=lz4 -O acltype=posixacl -O xattr=sa -O relatime=on -O canmount=off -O mountpoint=/ -R /mnt";
 
@@ -674,6 +676,7 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
     const scratch = pool("atlas", "scratch");
     const styxRpool = pool("styx", "rpool");
     const pipRpool = pool("pip", "rpool");
+    const burnin = pool("bench", "burnin");
     const events: (PoolHistoryEvent & { host: HostName })[] = [
       {
         host: "atlas",
@@ -764,6 +767,12 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
         pool: "rpool",
         command: `zpool create ${ROOT_POOL_OPTIONS} rpool mirror ${leafName("P1")} ${leafName("P2")}`,
       },
+      {
+        host: "bench",
+        at: burnin.createdAt,
+        pool: "burnin",
+        command: `zpool create -o ashift=12 burnin mirror ${wholeDisk("B1")} ${wholeDisk("B2")}`,
+      },
     ];
     for (const [hostName, datasets] of Object.entries(fleet.datasets) as [
       HostName,
@@ -800,6 +809,7 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
       atlas: [],
       styx: [],
       pip: [],
+      bench: [],
     };
     for (const { host: owner, ...event } of staticHistory()) {
       grouped[owner].push(event);
@@ -921,7 +931,12 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
     ({ type: "pool", host, pool }) as const;
 
   return {
-    hostDisplayNames: { atlas: "Atlas", styx: "Styx (offsite)", pip: "Pip" },
+    hostDisplayNames: {
+      atlas: "Atlas",
+      styx: "Styx (offsite)",
+      pip: "Pip",
+      bench: "Test bench",
+    },
     hostNotes: {
       atlas: [
         "## Hardware",
@@ -951,6 +966,11 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
         "",
         "- `rpool` is a mirror of two different NVMe drives; Frigate writes ~100 GB a day to `rpool/frigate`",
         "- The 870 EVO is LUKS + ext4 at `/srv/media`, unlocked from a keyfile on rpool",
+      ].join("\n"),
+      bench: [
+        "Old desktop under the workbench for burning in secondhand disks. Switched on when there is something to test.",
+        "",
+        "- `burnin` is a mirror of two used Exos X16 from eBay, kept as a warm copy of `tank/photos`",
       ].join("\n"),
     },
     manualDiary: [

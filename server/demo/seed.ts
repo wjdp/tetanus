@@ -20,7 +20,7 @@ import {
   PRESENT_WINDOW_MS,
   updateDisk,
 } from "~~/server/services/disks";
-import { updateHost } from "~~/server/services/hosts";
+import { reorderHosts, updateHost } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import { ensureSettings, setAlertCursor } from "~~/server/services/settings";
 import { renderSmart } from "./smart";
@@ -217,6 +217,12 @@ function replayInstants(
   }
   return [...byTime.values()].sort((a, b) => ms(a.at) - ms(b.at));
 }
+
+const isSwitchedOff = (host: HostModel, at: Date) =>
+  host.lastRunAt !== undefined && ms(at) > ms(host.lastRunAt);
+
+const isHostsLastRun = (host: HostModel, at: Date) =>
+  host.lastRunAt !== undefined && ms(at) === ms(host.lastRunAt);
 
 function hostPayloadsAt(
   world: DemoWorld,
@@ -442,6 +448,7 @@ async function applyFinishingTouches(world: DemoWorld, now: Date) {
       notes: seeds.hostNotes[host.name],
     });
   }
+  reorderHosts(fleet.hosts.map((host) => hostIdOf(host.name)));
   for (const disk of fleet.disks) {
     const aliasFromConf = stories.host(disk.host).vdevIdConf;
     await updateDisk(
@@ -495,6 +502,13 @@ export async function* seedSteps(
   ensureSettings();
   setAlertCursor(Number.MAX_SAFE_INTEGER);
 
+  const markedIntermittent = new Set<HostName>();
+  const markIntermittentOnFirstRun = (host: HostModel) => {
+    if (!host.intermittent || markedIntermittent.has(host.name)) return;
+    updateHost(hostIdOf(host.name), { intermittent: true });
+    markedIntermittent.add(host.name);
+  };
+
   let pendingAction = 0;
   const applyActionsUntil = async (at: Date) => {
     for (; pendingAction < actions.length; pendingAction++) {
@@ -509,16 +523,19 @@ export async function* seedSteps(
     const isLast = index === instants.length - 1;
     for (const host of world.fleet.hosts) {
       if (ms(host.installedAt) > ms(instant.at)) continue;
+      if (isSwitchedOff(host, instant.at)) continue;
+      const isHostsLast = isLast || isHostsLastRun(host, instant.at);
       ingest(
         host.name,
         () =>
           trim(
             host.name,
-            hostPayloadsAt(world, host, instant.at, instant.xall, isLast),
-            { xallForAll: instant.xall === "all", isLast },
+            hostPayloadsAt(world, host, instant.at, instant.xall, isHostsLast),
+            { xallForAll: instant.xall === "all", isLast: isHostsLast },
           ),
         instant.at,
       );
+      markIntermittentOnFirstRun(host);
     }
     await listDisks(instant.at);
     yield { done: index + 1, total, at: instant.at };
@@ -580,6 +597,7 @@ export async function tick(now: Date): Promise<TickReport> {
   const { tally, failures, ingest } = ingestTally();
   const skipped: HostName[] = [];
   for (const host of world.fleet.hosts) {
+    if (isSwitchedOff(host, at)) continue;
     if (hasRunSince(host.name, at)) {
       skipped.push(host.name);
       continue;

@@ -36,7 +36,7 @@ export const SOURCE_META = {
   "zed-event": "not produced by the demo",
 } as const satisfies Record<IngestSource, string>;
 
-export type HostName = "atlas" | "styx" | "pip";
+export type HostName = "atlas" | "styx" | "pip" | "bench";
 
 export interface HostModel {
   name: HostName;
@@ -55,6 +55,10 @@ export interface HostModel {
   installedAt: Date;
   /** Host reboots (kernel updates, power cuts): power cycles and the `zpool events` ring buffer restart at each. */
   boots: Date[];
+  /** Marked intermittent at seed: expected to be off for long periods. */
+  intermittent?: boolean;
+  /** Switched off after this run: the host posts nothing later. */
+  lastRunAt?: Date;
 }
 
 export type Vendor = "seagate" | "wd" | "samsung" | "intel" | "crucial";

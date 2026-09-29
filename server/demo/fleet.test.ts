@@ -15,11 +15,12 @@ const count = <T>(items: T[], predicate: (item: T) => boolean) =>
   items.filter(predicate).length;
 
 describe("demo fleet", () => {
-  it("has 17, 6 and 3 disks on atlas, styx and pip plus three inventory-only", () => {
+  it("has 17, 6, 3 and 2 disks on atlas, styx, pip and bench plus three inventory-only", () => {
     const active = fleet.disks.filter((disk) => !disk.inventoryOnly);
     expect(count(active, (disk) => disk.host === "atlas")).toBe(17);
     expect(count(active, (disk) => disk.host === "styx")).toBe(6);
     expect(count(active, (disk) => disk.host === "pip")).toBe(3);
+    expect(count(active, (disk) => disk.host === "bench")).toBe(2);
     expect(
       fleet.disks
         .filter((disk) => disk.inventoryOnly)
@@ -175,6 +176,7 @@ describe("worldAt", () => {
       "atlas",
       "styx",
       "pip",
+      "bench",
     ]);
   });
 });

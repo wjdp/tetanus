@@ -331,6 +331,7 @@ describe("ingest pipeline", () => {
       "atlas/rpool",
       "atlas/scratch",
       "atlas/tank",
+      "bench/burnin",
       "pip/rpool",
       "styx/rpool",
       "styx/vault",
