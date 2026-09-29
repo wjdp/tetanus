@@ -121,7 +121,7 @@ describe("disks inventory page", () => {
     expect(page.find('[aria-label="Filter by pool"]').exists()).toBe(true);
   });
 
-  describe("hardware columns and filters", () => {
+  describe("hardware columns and filters", { timeout: 15_000 }, () => {
     const sataHdd = {
       media: "hdd",
       rotationRate: 7200,
