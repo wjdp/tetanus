@@ -120,6 +120,21 @@ describe("hosts", () => {
     expect(updateHost(mars.id, { displayName: null }).displayName).toBeNull();
   });
 
+  it("stores temperature thresholds and clears them with null", () => {
+    const mars = upsertHostByName("mars", firstSeen);
+    const temperatureThresholds = { ssd: { warning: 65, error: 75 } };
+    expect(
+      updateHost(mars.id, { temperatureThresholds }).temperatureThresholds,
+    ).toEqual(temperatureThresholds);
+    expect(getHost(mars.id).temperatureThresholds).toEqual(
+      temperatureThresholds,
+    );
+    expect(
+      updateHost(mars.id, { temperatureThresholds: null })
+        .temperatureThresholds,
+    ).toBeNull();
+  });
+
   it("returns the host unchanged for an empty patch", () => {
     const mars = upsertHostByName("mars", firstSeen);
     expect(updateHost(mars.id, {})).toMatchObject({ id: mars.id });

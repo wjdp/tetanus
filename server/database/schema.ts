@@ -28,6 +28,7 @@ import type {
 import type { Inventory } from "../../shared/inventory-fields";
 import type { SettingsConfig } from "../../shared/schemas/settings";
 import type { AttributeStatus, DeviceStatus } from "../../shared/smart/status";
+import type { HostTemperatureThresholds } from "../../shared/temperature";
 import type { DiskUsage } from "../../shared/usage";
 import type { Vendor } from "../../shared/vendor";
 import type { ZfsDatasetType } from "../ingest/zfs-list";
@@ -53,6 +54,7 @@ export const host = sqliteTable("Host", {
   collectorStatus: text().$type<CollectorStatus>().notNull().default("unknown"),
   healthchecksUrl: text(),
   notes: text().notNull().default(""),
+  temperatureThresholds: json().$type<HostTemperatureThresholds>(),
   firstSeenAt: datetime().notNull(),
   lastSeenAt: datetime().notNull(),
 });

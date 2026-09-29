@@ -25,7 +25,24 @@ describe("hostPatchSchema", () => {
     });
   });
 
+  it("accepts temperature thresholds and null to clear them", () => {
+    const temperatureThresholds = { hdd: { warning: 50, error: 60 } };
+    expect(hostPatchSchema.parse({ temperatureThresholds })).toEqual({
+      temperatureThresholds,
+    });
+    expect(hostPatchSchema.parse({ temperatureThresholds: null })).toEqual({
+      temperatureThresholds: null,
+    });
+  });
+
   it.each([
+    { temperatureThresholds: { hdd: { warning: 60, error: 50 } } },
+    { temperatureThresholds: { ssd: { warning: 60, error: 60 } } },
+    { temperatureThresholds: { hdd: { warning: 45 } } },
+    { temperatureThresholds: { hdd: { warning: 45.5, error: 55 } } },
+    { temperatureThresholds: { hdd: { warning: -1, error: 55 } } },
+    { temperatureThresholds: { hdd: { warning: 45, error: 121 } } },
+    { temperatureThresholds: { unknown: { warning: 45, error: 55 } } },
     { healthchecksUrl: "ftp://example.com" },
     { healthchecksUrl: "not a url" },
     { name: "renamed" },

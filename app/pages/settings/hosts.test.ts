@@ -1,6 +1,7 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
+import { nextTick } from "vue";
 import HostsPage from "./hosts.vue";
 
 const host = (id: number, name: string, collectorVersion: string | null) => ({
@@ -16,6 +17,7 @@ const host = (id: number, name: string, collectorVersion: string | null) => ({
   collectorStatus: "current",
   healthchecksUrl: null,
   notes: "",
+  temperatureThresholds: null,
   firstSeenAt: new Date().toISOString(),
   lastSeenAt: new Date().toISOString(),
   lastRuns: {},
@@ -66,5 +68,22 @@ describe("hosts page", () => {
     expect(commands).toContainEqual(
       expect.stringMatching(/\/host\/install\.sh \| sudo bash$/),
     );
+  });
+
+  it("shows the default temperature thresholds as placeholders", async () => {
+    const page = await mountSuspended(HostsPage, { attachTo: document.body });
+
+    await page.find("tbody tr").trigger("click");
+    await nextTick();
+    await nextTick();
+
+    const placeholders = [
+      ...document.body.querySelectorAll<HTMLInputElement>(
+        'input[type="number"]',
+      ),
+    ].map((input) => input.placeholder);
+    expect(placeholders).toEqual(["45", "55", "60", "70"]);
+    expect(document.body.textContent).toContain("Temperature thresholds (°C)");
+    page.unmount();
   });
 });

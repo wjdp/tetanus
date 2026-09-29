@@ -71,6 +71,13 @@
       "when": 1790692876441,
       "tag": "0009_host_collector_version",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1790709797200,
+      "tag": "0010_host_temperature_thresholds",
+      "breakpoints": true
     }
   ]
 }

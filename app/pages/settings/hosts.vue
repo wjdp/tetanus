@@ -7,6 +7,12 @@ import {
   MIN_COLLECTOR_VERSION,
   upgradeCommand,
 } from "#shared/collector";
+import {
+  type HostTemperatureThresholds,
+  TEMPERATURE_DEFAULTS,
+  type TemperatureThresholds,
+  type ThresholdMedia,
+} from "#shared/temperature";
 
 const { data: hosts, refresh } = await useFetch("/api/hosts");
 
@@ -87,11 +93,51 @@ const editHealthchecksUrl = ref("");
 const editNotes = ref("");
 const saving = ref(false);
 
+type ThresholdInput = number | string | undefined;
+type ThresholdInputs = Record<
+  ThresholdMedia,
+  Record<keyof TemperatureThresholds, ThresholdInput>
+>;
+
+const THRESHOLD_FIELDS = (["hdd", "ssd"] as const).flatMap((media) =>
+  (["warning", "error"] as const).map((level) => ({
+    media,
+    level,
+    label: `${media.toUpperCase()} ${level}`,
+    placeholder: String(TEMPERATURE_DEFAULTS[media][level]),
+  })),
+);
+
+const editThresholds = reactive<ThresholdInputs>({
+  hdd: { warning: "", error: "" },
+  ssd: { warning: "", error: "" },
+});
+
+const parseCelsius = (value: ThresholdInput) =>
+  value === "" || value === undefined ? null : Number(value);
+
+const thresholdsPatch = (): HostTemperatureThresholds | null => {
+  const thresholds: HostTemperatureThresholds = {};
+  for (const media of ["hdd", "ssd"] as const) {
+    const warning = parseCelsius(editThresholds[media].warning);
+    const error = parseCelsius(editThresholds[media].error);
+    if (warning !== null && error !== null) {
+      thresholds[media] = { warning, error };
+    }
+  }
+  return Object.keys(thresholds).length > 0 ? thresholds : null;
+};
+
 const openEditor = (row: Host) => {
   selected.value = row;
   editDisplayName.value = row.displayName ?? "";
   editHealthchecksUrl.value = row.healthchecksUrl ?? "";
   editNotes.value = row.notes;
+  for (const media of ["hdd", "ssd"] as const) {
+    const saved = row.temperatureThresholds?.[media];
+    editThresholds[media].warning = saved?.warning ?? "";
+    editThresholds[media].error = saved?.error ?? "";
+  }
   editorOpen.value = true;
 };
 
@@ -108,6 +154,7 @@ const save = async () => {
         displayName: editDisplayName.value,
         healthchecksUrl: editHealthchecksUrl.value,
         notes: editNotes.value,
+        temperatureThresholds: thresholdsPatch(),
       },
     });
     await refresh();
@@ -230,6 +277,31 @@ const { data: settings } = await useFetch("/api/settings");
 
         <UFormField label="Notes" name="notes">
           <UTextarea v-model="editNotes" class="w-full" :rows="6" />
+        </UFormField>
+
+        <UFormField
+          label="Temperature thresholds (°C)"
+          name="temperatureThresholds"
+          description="Blank uses the default shown. A pair with only one value set uses the defaults for that media."
+        >
+          <div class="grid grid-cols-2 gap-2">
+            <UFormField
+              v-for="field in THRESHOLD_FIELDS"
+              :key="`${field.media}-${field.level}`"
+              :label="field.label"
+              :name="`temperatureThresholds.${field.media}.${field.level}`"
+              size="sm"
+            >
+              <UInput
+                v-model="editThresholds[field.media][field.level]"
+                type="number"
+                :min="0"
+                :max="120"
+                :placeholder="field.placeholder"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
         </UFormField>
 
         <UButton
