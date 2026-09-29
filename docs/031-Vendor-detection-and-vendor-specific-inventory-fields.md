@@ -45,6 +45,10 @@ today (observed 2026-09-28; it did not previously).
 
 ### Product line and warranty term
 
+Revised 2026-09-29: [033](033-Media-interface-and-drive-specs.md) lands first and supplies
+`specs.line` from the vendored drive dataset (plus `overrides.json`), so the table below
+becomes `Record<line, warrantyYears>` keyed by that string and the model regexes go.
+
 - `shared/product-lines.ts`: hand-maintained `as const` table keyed by vendor + model regex →
   `{ line, warrantyYears }`. Code, not JSON: the keys are regexes, typecheck catches
   mistakes, and there is no UI to edit it anyway. Seed with what mars owns plus the common NAS lines:
