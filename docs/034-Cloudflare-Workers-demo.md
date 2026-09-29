@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Cloudflare Workers demo
@@ -127,8 +127,9 @@ ticking):
 7. Manual diary entries and host notes in markdown, a few per subject.
 
 **Replay schedule at reset** (`seed(now)`): for each disk, monthly SMART from its
-install date to `now − 90 d`; daily from there to `now − 48 h`; hourly for the last
-48 h (7 d and 30 d trend windows and sparklines need real points). ZFS sources at every
+install date to `now − 90 d`; every third day from there to `now − 48 h`; hourly for the
+last 24 h (7 d and 30 d trend windows and sparklines need real points; thinned from
+daily/48 h on 2026-09-29 to halve seed time). ZFS sources at every
 story instant plus daily. Snapshots and datasets only at the end (upsert; creation dates
 carry the history). After replay, `listDisks(now)` materialises state transitions (those
 emitters stamp `now`, not `receivedAt`), then the manual diary entries, acceptances and
@@ -136,9 +137,8 @@ overrides are applied through the services with backdated `at`. Finally a handfu
 `Notification` rows are inserted directly (channel `pushover`, `ok: true`, backdated)
 for the story alerts (`A7` attribute-failed, `V2` disk-failed, `V5` disk-missing,
 `vault` pool-degraded and recovered) so Settings › Alerts has history; the only direct
-table write in the seed. Budget: ~30 disks ×
-~250 readings ≈ 7500 `smartctl-xall` ingests; must complete in well under the DO CPU
-limit (30 s default). Measure in the spike; chunk with DO alarms if needed.
+table write in the seed. Measured: ~200
+instants, ~3500 `smartctl-xall` ingests, ~37 s on Node; chunked across DO alarms (below).
 
 **Tick** (`tick(now)`): `worldAt(now)` for every host, ingest every source with
 `receivedAt = now`. Idempotent for a given hour.
@@ -171,11 +171,16 @@ deploy/cloudflare/
   triggers `0 * * * *` (tick) and `15 4 * * *` (reset) call internal DO methods via RPC
   (`stub.tick()`, `stub.reset()`), never over a public path.
 - **Durable Object.** Constructor, inside `blockConcurrencyWhile`: bind
-  `drizzle(ctx.storage, { schema })` into `client.ts`, run bundled migrations,
-  `ensureSettings()`, `applySmartPolicyIfStale()`, seed if `Host` is empty. `fetch`
-  lazily imports the built Nitro handler (`.output/server/index.mjs`) after the db is
-  bound and calls `nitro.fetch(request, env, ctx)`. The Nitro migrate plugin then runs
-  against the shim and is a no-op.
+  `drizzle(ctx.storage, { schema })` into `client.ts`, run bundled migrations, import the
+  built Nitro handler (`.output/server/index.mjs`), `ensureSettings()`,
+  `applySmartPolicyIfStale()`; if `Host` is empty, write a `seed` flag and set an alarm.
+  The seed runs in `alarm()` in 40-instant chunks (`seedSteps`), re-arming until done,
+  because `blockConcurrencyWhile` resets the DO after ~30 s. While the flag is set,
+  `fetch` answers 503 with a holding page (HTML) or `{ error }` (`/api/*`) and `tick()` is
+  a no-op; a DO restart mid-seed wipes and starts over (three attempts). `fetch` calls
+  `nitro.fetch(request, env, ctx)`; the Nitro migrate plugin is a no-op against the shim.
+  Seed/tick live in a layer Nitro plugin (`deploy/cloudflare/server/plugins/demo.ts`)
+  reached through `bridge.ts`, since they need Nitro auto-imports.
 - **db shim.** `export const db` is a Proxy forwarding to the bound drizzle instance;
   `sqlite` exposes `prepare(sql).get()` over `storage.sql.exec` for `/health`.
   `Db` type stays.
@@ -184,9 +189,9 @@ deploy/cloudflare/
   drizzle-kit's `driver: "durable-sqlite"` output first, fall back to a 30-line script.
   The migrate shim mirrors `migrateWithoutForeignKeyEnforcement` if DO SQLite honours
   `PRAGMA foreign_keys`; otherwise document the difference.
-- **Reset.** `storage.deleteAll()` (SQL and KV), then the constructor sequence. Viewers
-  block for the seed duration. Also runs on the first request after a deploy that finds
-  no `Host` rows.
+- **Reset.** `storage.deleteAll()` (SQL and KV), then the constructor sequence, which
+  schedules the seed alarm; viewers see the 503 holding page for ~1 min. Also runs on the
+  first request after a deploy that finds no `Host` rows.
 - **wrangler.jsonc.** `main`, `assets: { directory: ".output/public" }`,
   `compatibility_flags: ["nodejs_compat"]`, DO binding `DEMO` → class `TetanusDemo`
   with `new_sqlite_classes`, `triggers.crons`, `vars.NUXT_PUBLIC_DEMO`,
@@ -228,6 +233,34 @@ e.g. 60 writes / 60 s) and enforced in `worker.ts` for `PATCH|POST|DELETE /api/*
 before forwarding to the DO: 429 with a short JSON body. The daily reset is the
 cleanup. No secrets exist in the demo: channels are off, token hidden, no outbound
 requests.
+
+## Landed 2026-09-29
+
+All four stages built and committed. Spike results: Nitro `cloudflare-module` runs inside
+the DO; durable-sqlite gives sync `transaction`, `json_extract`, `returning()`;
+`PRAGMA foreign_keys` is always on (cannot be turned off; the migrate shim uses
+`defer_foreign_keys` and `foreign_key_check` instead); `nodejs_compat` covers
+`node:crypto` and `Buffer` with `nitro.cloudflare.nodeCompat: true`; `useStorage()` is
+the memory driver; SSE streams; bundle 4.2 MB raw / 0.9 MB gzip; `markdown-it` already
+`html: false`. DO SQLite allows 100 bound parameters per statement, so multi-row inserts
+in `smart.ts` and `zfs/datasets.ts` are chunked.
+
+Left for the author:
+
+- `wrangler.jsonc`: replace the `ratelimits[].namespace_id` placeholder (`1001`).
+- Repo secrets `CLOUDFLARE_API_TOKEN` (Workers, DO, custom domains) and
+  `CLOUDFLARE_ACCOUNT_ID`; `wjdp.uk` zone on that account. First push to `master` deploys.
+- Confirm the hourly tick adds readings in production (locally the seed's closing tick
+  covered the current hour, so it was not observed).
+- `demo.yml` re-runs `checks.yml`, so every `master` push runs checks twice; a `demo`
+  job in `main.yml` with `needs: checks` would avoid that.
+- `build:demo` shares `.nuxt`/`.output` with the primary build and disrupts a running
+  `nuxt dev`.
+- Seeding a database while `nuxt dev` writes to it gives the dev server `SQLITE_BUSY`
+  for the seed's duration.
+- `recordIngest` swallows handler errors, so `SeedReport.failures` cannot report them.
+- V5 (hot spare) is rendered under zpool status's `spares` key, which the parser ignores,
+  so it reads `missing (was spare)` rather than as a vdev member.
 
 ## Order of work
 
