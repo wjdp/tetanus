@@ -91,6 +91,26 @@ Form shows the inferred value as placeholder when unset.
   inventory table.
 - Dashboard counts: `spare` count excludes system disks.
 
+## UX decisions (2026-09-29)
+
+- Nameplate: a second badge beside the state badge carries usage detail, coloured by
+  kind: zfs `info`, filesystem `neutral`, empty `neutral` dimmed, unknown `warning`.
+  Wording: `tank` (pool member), `zfs label, no pool`, `ext4 on /` with mapper chain
+  suffix outermost-first `(lvm)` / `(luks, lvm)`, several mounts as `ext4 on /, /boot`,
+  `has ext4 data` (unmounted), `empty`, `usage unknown`. Purpose badge third, `outline`
+  variant when inferred, tooltip `inferred from mount at /`.
+- Header h1: alias if set, else `mars · system` (host · resolved purpose), else the
+  existing `unnamed`. Page title follows the same fallback.
+- Inventory form: purpose select; unset option reads `— (inferred: system)` when an
+  inferred value exists.
+- Rail: `System` group before `Spare`. Purpose badge on rail rows only when purpose is
+  `other`.
+- Disks list: `Usage` column after Pool with the same wording as the badge (short form
+  `ext4 /`). Pool column shows the resolved purpose, italic when inferred, for disks not
+  in a pool. Filter bar gains usage kind and purpose selects.
+- Dashboard counts: nothing to do; no spare stat exists, the rail group count moves
+  with the disk.
+
 ## Alerts and other consumers
 
 - `missing` alert unchanged; a missing system disk means the host is silent anyway and
