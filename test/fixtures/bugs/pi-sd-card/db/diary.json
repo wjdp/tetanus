@@ -1,0 +1,16 @@
+[
+  {
+    "id": 98,
+    "subjectType": "disk",
+    "subjectId": 30,
+    "at": "2026-09-28T22:40:14.732Z",
+    "kind": "auto",
+    "eventType": "disk-appeared",
+    "title": "appeared on pihost",
+    "body": "",
+    "data": {
+      "hostId": 142,
+      "devicePath": null
+    }
+  }
+]

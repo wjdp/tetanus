@@ -1,0 +1,131 @@
+{
+   "blockdevices": [
+      {
+         "name": "sda",
+         "type": "disk",
+         "size": 500107862016,
+         "model": "Samsung SSD 860 EVO M.2 500GB",
+         "serial": "H893OM3W553902H",
+         "wwn": "0x5002538d7f521d82",
+         "tran": "usb",
+         "rota": true,
+         "maj:min": "8:0",
+         "path": "/dev/sda",
+         "pttype": "gpt",
+         "partuuid": null,
+         "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             null
+         ],
+         "children": [
+            {
+               "name": "sda1",
+               "type": "part",
+               "size": 500098400256,
+               "model": null,
+               "serial": null,
+               "wwn": "0x5002538d7f521d82",
+               "tran": null,
+               "rota": true,
+               "maj:min": "8:1",
+               "path": "/dev/sda1",
+               "pttype": "gpt",
+               "partuuid": "3833ca91-4779-78fe-9556-6ed67fb1a1de",
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": [
+                   null
+               ]
+            },{
+               "name": "sda9",
+               "type": "part",
+               "size": 8388608,
+               "model": null,
+               "serial": null,
+               "wwn": "0x5002538d7f521d82",
+               "tran": null,
+               "rota": true,
+               "maj:min": "8:9",
+               "path": "/dev/sda9",
+               "pttype": "gpt",
+               "partuuid": "f32c0895-b3ed-27c3-8e4b-3c4b05e46060",
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": [
+                   null
+               ]
+            }
+         ]
+      },{
+         "name": "mmcblk0",
+         "type": "disk",
+         "size": 15931539456,
+         "model": null,
+         "serial": "0x3c91d0a4",
+         "wwn": null,
+         "tran": null,
+         "rota": false,
+         "maj:min": "179:0",
+         "path": "/dev/mmcblk0",
+         "pttype": "dos",
+         "partuuid": null,
+         "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             null
+         ],
+         "children": [
+            {
+               "name": "mmcblk0p1",
+               "type": "part",
+               "size": 536870912,
+               "model": null,
+               "serial": null,
+               "wwn": null,
+               "tran": null,
+               "rota": false,
+               "maj:min": "179:1",
+               "path": "/dev/mmcblk0p1",
+               "pttype": "dos",
+               "partuuid": "7b2d64c0-01",
+               "fstype": "vfat",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": [
+                   "/boot/firmware"
+               ]
+            },{
+               "name": "mmcblk0p2",
+               "type": "part",
+               "size": 15390474240,
+               "model": null,
+               "serial": null,
+               "wwn": null,
+               "tran": null,
+               "rota": false,
+               "maj:min": "179:2",
+               "path": "/dev/mmcblk0p2",
+               "pttype": "dos",
+               "partuuid": "7b2d64c0-02",
+               "fstype": "ext4",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": [
+                   "/var/tmp", "/tmp", "/"
+               ]
+            }
+         ]
+      }
+   ]
+}

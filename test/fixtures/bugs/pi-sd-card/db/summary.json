@@ -1,0 +1,87 @@
+{
+  "id": 30,
+  "alias": null,
+  "scrutinyUuid": null,
+  "model": null,
+  "modelFamily": null,
+  "serial": null,
+  "firmware": null,
+  "capacityBytes": null,
+  "rotationRate": null,
+  "protocol": null,
+  "link": null,
+  "formFactor": null,
+  "media": null,
+  "interface": null,
+  "recordingTech": null,
+  "logicalBlockSize": null,
+  "physicalBlockSize": null,
+  "trimSupported": null,
+  "hardware": null,
+  "specs": null,
+  "vendor": null,
+  "firstSeenAt": "2026-09-28T22:40:14.732Z",
+  "lastSeenAt": "2026-09-29T19:04:27.176Z",
+  "lastSeenHostId": 142,
+  "lastDevicePath": null,
+  "lastDeviceType": null,
+  "stateOverride": null,
+  "lastState": "spare",
+  "notes": "",
+  "inventory": {
+    "purpose": "system"
+  },
+  "latestStatus": "unknown",
+  "latestTemp": null,
+  "latestPowerOnHours": null,
+  "latestPowerCycles": null,
+  "latestReadingAt": null,
+  "keys": [
+    {
+      "kind": "by-id",
+      "value": "mmc-SC16G_0x3c91d0a4"
+    },
+    {
+      "kind": "udev-serial",
+      "value": "0x3c91d0a4"
+    }
+  ],
+  "membership": null,
+  "inferredState": "spare",
+  "state": "spare",
+  "usage": {
+    "kind": "unknown",
+    "fsTypes": [],
+    "mounts": [],
+    "system": false
+  },
+  "purpose": "system",
+  "purposeInferred": false,
+  "hostName": "pihost",
+  "ageDays": null,
+  "warrantyDaysLeft": null,
+  "sectorFormat": null,
+  "interfaceLabel": null,
+  "present": true,
+  "modelShort": null,
+  "tempThresholds": {
+    "warning": 45,
+    "error": 55
+  },
+  "diary": [
+    {
+      "id": 98,
+      "subjectType": "disk",
+      "subjectId": 30,
+      "at": "2026-09-28T22:40:14.732Z",
+      "kind": "auto",
+      "eventType": "disk-appeared",
+      "title": "appeared on pihost",
+      "body": "",
+      "data": {
+        "hostId": 142,
+        "devicePath": null
+      }
+    }
+  ]
+}

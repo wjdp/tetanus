@@ -1,0 +1,12 @@
+{
+  "app": "tetanus",
+  "appVersion": "dev",
+  "migration": "0010_host_temperature_thresholds",
+  "generatedAt": "2026-09-29T20:03:03.749Z",
+  "diskId": 30,
+  "windowDays": 30,
+  "settings": {
+    "missingAfterDays": 7,
+    "smartPolicyVersion": 1
+  }
+}

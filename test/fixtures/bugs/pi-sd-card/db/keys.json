@@ -1,0 +1,14 @@
+[
+  {
+    "id": 188,
+    "diskId": 30,
+    "kind": "udev-serial",
+    "value": "0x3c91d0a4"
+  },
+  {
+    "id": 189,
+    "diskId": 30,
+    "kind": "by-id",
+    "value": "mmc-SC16G_0x3c91d0a4"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "id": 142,
+  "name": "pihost",
+  "displayName": null,
+  "toolVersions": {
+    "zfs": "zfs-2.3.1-1~bpo12+1~rpt1",
+    "zpool": "zfs-2.3.1-1~bpo12+1~rpt1",
+    "kernel": "6.6.74+rpt-rpi-v8",
+    "smartctl": "smartctl 7.3 2022-02-28 r5338 [aarch64-linux-6.6.74+rpt-rpi-v8] (local build)",
+    "os": "Debian GNU/Linux 12 (bookworm)"
+  },
+  "collectorVersion": "0.3.1",
+  "collectorStatus": "current",
+  "notes": "",
+  "temperatureThresholds": null,
+  "firstSeenAt": "2026-09-28T22:30:59.271Z",
+  "lastSeenAt": "2026-09-29T19:11:20.868Z"
+}

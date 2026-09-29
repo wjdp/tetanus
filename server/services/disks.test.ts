@@ -28,6 +28,7 @@ import { DRIVE_DB_SNAPSHOT } from "~~/server/services/drive-db/lookup";
 import { updateHost, upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import { flushDb } from "~~/test/db";
+import { replayBundle } from "~~/test/diagnostics";
 import { readFixture } from "~~/test/fixtures";
 
 const seenAt = new Date("2026-09-01T10:00:00Z");
@@ -996,5 +997,36 @@ describe("hardware classification", () => {
     const sde = observeDiskFromSmartctl(mars.id, {}, parsed, seenAt);
     expect(sde).toMatchObject({ recordingTech: "smr", trimSupported: true });
     expect(sde?.hardware?.recordingTechInferred).toBe(true);
+  });
+});
+
+describe("Pi SD card bundle", () => {
+  const BUNDLE = join(
+    import.meta.dirname,
+    "../../test/fixtures/bugs/pi-sd-card",
+  );
+
+  it("attaches the model-less lsblk entry to the udev-seen card", async () => {
+    replayBundle(BUNDLE);
+
+    const cards = db
+      .select({ diskId: diskKey.diskId })
+      .from(diskKey)
+      .where(eq(diskKey.value, "0x3c91d0a4"))
+      .all();
+    expect(new Set(cards.map((row) => row.diskId)).size).toBe(1);
+    const card = await getDisk(cards[0].diskId);
+    expect(card).toMatchObject({
+      serial: "0x3c91d0a4",
+      capacityBytes: 15_931_539_456,
+      lastDevicePath: "/dev/mmcblk0",
+      media: "ssd",
+      usage: {
+        kind: "filesystem",
+        fsTypes: ["ext4", "vfat"],
+        system: true,
+      },
+      purpose: "system",
+    });
   });
 });

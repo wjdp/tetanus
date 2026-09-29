@@ -1,0 +1,16 @@
+S:disk/by-id/mmc-SC16G_0x3c91d0a4
+S:disk/by-path/platform-fe340000.mmc
+S:disk/by-diskseq/25
+I:1157628
+E:ID_SERIAL=0x3c91d0a4
+E:ID_NAME=SC16G
+E:ID_PATH=platform-fe340000.mmc
+E:ID_PATH_TAG=platform-fe340000_mmc
+E:ID_PART_TABLE_UUID=7b2d64c0
+E:ID_PART_TABLE_TYPE=dos
+E:MMC_TYPE=SD
+E:ID_DRIVE_FLASH_SD=1
+E:ID_DRIVE_MEDIA_FLASH_SD=1
+G:systemd
+Q:systemd
+V:1

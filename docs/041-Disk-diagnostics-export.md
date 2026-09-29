@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Disk diagnostics export
@@ -55,11 +55,13 @@ tetanus-disk-30-2026-09-29/
   raw/<host>/               latest payloads, fixture naming (test/fixtures/mars)
     lsblk.json
     smartctl-scan.json
-    smartctl/xall-<dev>.json      one per device payload on the host
-    udev/<maj:min>                one per device payload on the host
+    versions.txt
+    smartctl/xall-<dev>[-<type>].json   one per device payload on the host
+    udev/<device, : as ->.txt           one per device payload on the host
     zpool-status.json
     vdev-id-conf.txt
     *.exit                        exit status from the matching CollectorRun
+    manifest.json                 per file: source, device, type, exit status, receivedAt
 ```
 
 Disk sources: `lsblk`, `udev`, `smartctl-scan`, `smartctl-xall`, `zpool-status`,
@@ -82,6 +84,18 @@ service the route uses. A maintainer unzips into `test/fixtures/bugs/<name>/`, c
 Disk page header actions: "Download diagnostics" (`i-lucide-file-archive`), plain
 `<a href download>` to the route. Tooltip: "Includes serials, hostnames and mount
 paths. Check before posting publicly."
+
+### As built
+
+- `manifest.json` added: `Payload` keeps no device type, and file names cannot
+  round-trip device paths, so replay reads meta from the manifest (type and exit from the
+  `CollectorRun` matching the payload's `receivedAt`).
+- `versions` payload included so replay sets tool versions.
+- `db/host.json` omits `healthchecksUrl` (a credential, not evidence); `meta.json`
+  settings are `missingAfterDays` and `smartPolicyVersion` only.
+- Disk 30 root cause: lsblk reports a model-less, WWN-less `mmcblk0` whose serial is
+  udev's `ID_SERIAL`, so it yielded no keys. lsblk now keys such disks as `udev-serial`.
+  Regression: `server/services/disks.test.ts` "Pi SD card bundle".
 
 ## Order
 

@@ -74,6 +74,16 @@ describe("extractKeys", () => {
     expect(extractKeys({ source: "lsblk", disk: zram })).toEqual([]);
   });
 
+  it("keys a model-less lsblk disk by its serial as udev's ID_SERIAL", () => {
+    const [mmc] = parseLsblk(
+      readFixture("bugs/pi-sd-card/raw/pihost/lsblk.json"),
+      {},
+    ).data.disks.filter((entry) => entry.name === "mmcblk0");
+    expect(extractKeys({ source: "lsblk", disk: mmc })).toEqual([
+      { kind: "udev-serial", value: "0x3c91d0a4" },
+    ]);
+  });
+
   it("takes ID_WWN, ID_SERIAL and by-id names from udev", () => {
     expect(extractKeys({ source: "udev", udev: udev("b65-0") })).toEqual([
       { kind: "wwn", value: "5002538bd9338903" },

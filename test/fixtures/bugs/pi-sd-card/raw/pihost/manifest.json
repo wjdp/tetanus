@@ -1,0 +1,61 @@
+{
+  "host": "pihost",
+  "manifest": [
+    {
+      "file": "versions.txt",
+      "source": "versions",
+      "device": null,
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-09-29T19:10:27.124Z"
+    },
+    {
+      "file": "lsblk.json",
+      "source": "lsblk",
+      "device": null,
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-09-29T19:04:27.091Z"
+    },
+    {
+      "file": "udev/b179-0.txt",
+      "source": "udev",
+      "device": "b179:0",
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-09-29T19:04:27.176Z"
+    },
+    {
+      "file": "udev/b8-0.txt",
+      "source": "udev",
+      "device": "b8:0",
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-09-29T19:04:27.137Z"
+    },
+    {
+      "file": "smartctl-scan.json",
+      "source": "smartctl-scan",
+      "device": null,
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-09-29T19:04:27.256Z"
+    },
+    {
+      "file": "smartctl/xall-sda.json",
+      "source": "smartctl-xall",
+      "device": "/dev/sda",
+      "type": null,
+      "exitStatus": 0,
+      "receivedAt": "2026-09-29T19:04:27.378Z"
+    },
+    {
+      "file": "zpool-status.json",
+      "source": "zpool-status",
+      "device": null,
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-09-29T19:10:27.176Z"
+    }
+  ]
+}

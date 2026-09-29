@@ -95,6 +95,16 @@ function udevKeys(udev: UdevResult): DiskKey[] {
   ];
 }
 
+// lsblk reports udev's ID_SERIAL when a device has no ID_SERIAL_SHORT, which is
+// the case for model-less devices such as SD cards (mmcblk).
+function lsblkKeys({ serial, model, wwn }: LsblkDisk): DiskKey[] {
+  if (!present(serial)) return [];
+  if (!present(model) && !present(wwn)) {
+    return [{ kind: "udev-serial", value: serial.trim() }];
+  }
+  return [...wwnKey(wwn), ...modelSerialKey(model, serial)];
+}
+
 function dedupeKeys(keys: DiskKey[]): DiskKey[] {
   const seen = new Set<string>();
   return keys.filter((key) => {
@@ -116,11 +126,7 @@ export function extractKeys(observation: DiskObservation): DiskKey[] {
         ),
       ]);
     case "lsblk":
-      if (!present(observation.disk.serial)) return [];
-      return dedupeKeys([
-        ...wwnKey(observation.disk.wwn),
-        ...modelSerialKey(observation.disk.model, observation.disk.serial),
-      ]);
+      return dedupeKeys(lsblkKeys(observation.disk));
     case "udev":
       return dedupeKeys(udevKeys(observation.udev));
   }
