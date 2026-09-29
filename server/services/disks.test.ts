@@ -24,6 +24,7 @@ import {
   observeDiskFromSmartctl,
   updateDisk,
 } from "~~/server/services/disks";
+import { DRIVE_DB_SNAPSHOT } from "~~/server/services/drive-db/lookup";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import { flushDb } from "~~/test/db";
@@ -702,6 +703,116 @@ describe("hardware classification", () => {
     });
   });
 
+  function countBy(key: (row: DiskRow) => string) {
+    const counts: Record<string, number> = {};
+    for (const row of db.select().from(disk).all()) {
+      counts[key(row)] = (counts[key(row)] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  it("resolves vendor, specs and recording tech for every mars disk", () => {
+    ingestLsblk();
+    ingestMarsSmartctl();
+    expect(countBy((row) => `${row.media}/${row.vendor}`)).toEqual({
+      "hdd/western-digital": 5,
+      "hdd/seagate": 6,
+      "hdd/toshiba": 1,
+      "ssd/samsung": 5,
+      "ssd/intel": 2,
+      "ssd/western-digital": 1,
+    });
+    expect(countBy((row) => `${row.media}/${row.recordingTech}`)).toEqual({
+      "hdd/cmr": 12,
+      "ssd/null": 8,
+    });
+    expect(countBy((row) => String(row.specs?.source))).toEqual({
+      local: 13,
+      nasdisks: 7,
+    });
+    const rows = db.select().from(disk).all();
+    expect(rows.flatMap((row) => row.hardware?.specMismatch ?? [])).toEqual([]);
+    expect(
+      rows.filter((row) => row.hardware?.recordingTechInferred),
+    ).toHaveLength(0);
+  });
+
+  it("stores the dataset spec with its source and snapshot", () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const sdf = observeSmartctl("xall-sdf-auto", mars.id);
+    expect(sdf?.specs).toMatchObject({
+      source: "nasdisks",
+      snapshot: DRIVE_DB_SNAPSHOT,
+      matchedModel: "ST12000NM000J",
+      recordingTech: "cmr",
+    });
+  });
+
+  it("stores null specs for a model the dataset misses", () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const parsed = parseSmartctl(
+      readFixture("mars/smartctl/xall-sdf-auto.json"),
+      {},
+    ).data;
+    parsed.identity.model = "ST99999NM999Z-2TY103";
+    const unknown = observeDiskFromSmartctl(mars.id, {}, parsed, seenAt);
+    expect(unknown).toMatchObject({
+      specs: null,
+      vendor: "seagate",
+      recordingTech: "unknown",
+    });
+  });
+
+  it("fills the NVMe form factor from the dataset", () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const nvme = observeSmartctl("xall-nvme0", mars.id);
+    expect(nvme).toMatchObject({ formFactor: "M.2", media: "ssd" });
+    expect(nvme?.hardware?.specMismatch).toBeUndefined();
+  });
+
+  it("records a spec mismatch without losing observed hardware", async () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const parsed = parseSmartctl(
+      readFixture("mars/smartctl/xall-sda-auto.json"),
+      {},
+    ).data;
+    parsed.identity.rotationRate = 7200;
+    const sda = observeDiskFromSmartctl(mars.id, {}, parsed, seenAt) as DiskRow;
+    expect(sda).toMatchObject({
+      rotationRate: 7200,
+      hardware: {
+        sataVersion: "SATA 3.2",
+        specMismatch: ["rotationRate: observed 7200, dataset 5400"],
+      },
+    });
+
+    const patched = await updateDisk(sda.id, {
+      inventory: { recordingTech: "smr" },
+    });
+    expect(patched.hardware?.specMismatch).toEqual([
+      "rotationRate: observed 7200, dataset 5400",
+    ]);
+
+    const agreed = observeSmartctl("xall-sda-auto", mars.id);
+    expect(agreed?.hardware?.specMismatch).toBeUndefined();
+    expect(agreed).toMatchObject({
+      recordingTech: "smr",
+      hardware: { sataVersion: "SATA 3.2" },
+    });
+  });
+
+  it("detects the vendor from the WWN when the model is blank", () => {
+    const mars = upsertHostByName("mars", seenAt);
+    const parsed = parseSmartctl(
+      readFixture("mars/smartctl/xall-sdf-auto.json"),
+      {},
+    ).data;
+    parsed.identity.model = undefined;
+    parsed.identity.modelFamily = undefined;
+    const sdf = observeDiskFromSmartctl(mars.id, {}, parsed, seenAt);
+    expect(sdf).toMatchObject({ vendor: "seagate", specs: null });
+  });
+
   it("classifies a SATA hdd behind the SAS HBA", () => {
     ingestLsblk();
     const mars = upsertHostByName("mars", seenAt);
@@ -710,7 +821,7 @@ describe("hardware classification", () => {
       media: "hdd",
       interface: "sata",
       link: "sas",
-      recordingTech: "unknown",
+      recordingTech: "cmr",
       logicalBlockSize: 512,
       physicalBlockSize: 4096,
       trimSupported: false,
@@ -778,7 +889,7 @@ describe("hardware classification", () => {
   it("recomputes recording tech when the inventory override changes", async () => {
     const mars = upsertHostByName("mars", seenAt);
     const sda = observeSmartctl("xall-sda-auto", mars.id) as DiskRow;
-    expect(sda.recordingTech).toBe("unknown");
+    expect(sda.recordingTech).toBe("cmr");
 
     const overridden = await updateDisk(sda.id, {
       inventory: { recordingTech: "smr" },
@@ -788,7 +899,7 @@ describe("hardware classification", () => {
     const cleared = await updateDisk(sda.id, {
       inventory: { recordingTech: null },
     });
-    expect(cleared.recordingTech).toBe("unknown");
+    expect(cleared.recordingTech).toBe("cmr");
   });
 
   it("infers SMR from TRIM on an hdd and flags it inferred", () => {
@@ -798,6 +909,7 @@ describe("hardware classification", () => {
       {},
     ).data;
     parsed.identity.trimSupported = true;
+    parsed.identity.model = "WDC WD999ZZZZ-11B1HA0";
     const sde = observeDiskFromSmartctl(mars.id, {}, parsed, seenAt);
     expect(sde).toMatchObject({ recordingTech: "smr", trimSupported: true });
     expect(sde?.hardware?.recordingTechInferred).toBe(true);

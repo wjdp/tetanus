@@ -7,6 +7,11 @@ import type {
   DiskState,
   EffectiveDiskState,
 } from "#shared/disk";
+import {
+  interfaceLabel,
+  type SectorFormat,
+  sectorFormat,
+} from "#shared/hardware";
 import type { IngestMeta } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
 import type { DiskPatch } from "#shared/schemas/disks";
@@ -16,6 +21,7 @@ import {
   type Purpose,
   UNKNOWN_USAGE,
 } from "#shared/usage";
+import { detectVendor } from "#shared/vendor";
 import { db } from "~~/server/database/client";
 import { disk, diskKey, host, pool, vdev } from "~~/server/database/schema";
 import type { LsblkResult } from "~~/server/ingest/lsblk";
@@ -29,6 +35,8 @@ import {
   listDiary,
 } from "~~/server/services/diary";
 import {
+  type DerivedHardware,
+  deriveHardware,
   hardwareFromSmartctl,
   hardwareHintsFromLsblk,
   recordingTechChanges,
@@ -76,6 +84,7 @@ export interface DiskSighting {
   keys: DiskKey[];
   identity?: DiskIdentity;
   identityHints?: DiskIdentity;
+  derive?: (previous: DiskRow | undefined) => DerivedHardware;
   devicePath?: string | null;
   deviceType?: string | null;
 }
@@ -103,6 +112,8 @@ export interface DiskSummary
   usage: DiskUsage;
   purpose: Purpose | null;
   purposeInferred: boolean;
+  sectorFormat: SectorFormat | null;
+  interfaceLabel: string | null;
 }
 
 export interface DiskDetail extends DiskSummary {
@@ -220,6 +231,7 @@ function createDisk(sighting: DiskSighting): DiskRow {
     .values({
       ...definedFields(sighting.identityHints),
       ...definedFields(sighting.identity),
+      ...sighting.derive?.(undefined),
       firstSeenAt: sighting.receivedAt,
       lastSeenAt: sighting.receivedAt,
       lastSeenHostId: sighting.hostId,
@@ -289,6 +301,7 @@ function mergeIntoDisk(row: DiskRow, sighting: DiskSighting): DiskRow {
     .set({
       ...missingFields(row, sighting.identityHints ?? {}),
       ...definedFields(sighting.identity),
+      ...sighting.derive?.(row),
       ...sightingUpdate(row, sighting),
     })
     .where(eq(disk.id, row.id))
@@ -359,29 +372,33 @@ export function observeDiskFromSmartctl(
   receivedAt: Date,
 ): DiskRow | null {
   const { identity, device } = parsed;
-  const observed = observeDisk({
+  const keys = extractKeys({ source: "smartctl-xall", identity });
+  const observedIdentity = {
+    model: identity.model,
+    modelFamily: identity.modelFamily,
+    serial: identity.serial,
+    firmware: identity.firmware,
+    capacityBytes: identity.capacityBytes,
+    rotationRate: identity.rotationRate,
+    formFactor: identity.formFactor,
+    protocol: toProtocol(device.protocol),
+    ...hardwareFromSmartctl(parsed),
+    scrutinyUuid:
+      identity.model && identity.serial
+        ? scrutinyUuid(identity.model, identity.serial, identity.wwn)
+        : undefined,
+  };
+  const wwn = keys.find((key) => key.kind === "wwn")?.value;
+  return observeDisk({
     hostId,
     receivedAt,
-    keys: extractKeys({ source: "smartctl-xall", identity }),
-    identity: {
-      model: identity.model,
-      modelFamily: identity.modelFamily,
-      serial: identity.serial,
-      firmware: identity.firmware,
-      capacityBytes: identity.capacityBytes,
-      rotationRate: identity.rotationRate,
-      formFactor: identity.formFactor,
-      protocol: toProtocol(device.protocol),
-      ...hardwareFromSmartctl(parsed),
-      scrutinyUuid:
-        identity.model && identity.serial
-          ? scrutinyUuid(identity.model, identity.serial, identity.wwn)
-          : undefined,
-    },
+    keys,
+    identity: observedIdentity,
+    derive: (previous) =>
+      deriveHardware(previous, { ...observedIdentity, wwn }),
     devicePath: device.name || meta.device,
     deviceType: meta.type ?? (device.type || undefined),
   });
-  return observed && refreshRecordingTech(observed);
 }
 
 function refreshRecordingTech(row: DiskRow): DiskRow {
@@ -409,6 +426,7 @@ export function observeLsblk(
       identityHints: {
         ...hardwareHintsFromLsblk(lsblkDisk),
         model: lsblkDisk.model,
+        vendor: detectVendor(lsblkDisk),
         serial: lsblkDisk.serial,
         capacityBytes: lsblkDisk.sizeBytes,
       },
@@ -726,6 +744,8 @@ function summarise(
           ? null
           : (hostNames.get(row.lastSeenHostId) ?? null),
       ...inventoryDays(row.inventory, now),
+      sectorFormat: sectorFormat(row.logicalBlockSize, row.physicalBlockSize),
+      interfaceLabel: interfaceLabel(row.interface, row.link),
     };
   });
 }

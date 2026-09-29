@@ -103,6 +103,38 @@ describe("/api/disks", () => {
     expect(detail.membership).toBeNull();
   });
 
+  it("returns hardware, vendor and specs after a smartctl sighting", async () => {
+    const response = await ingest(
+      "smartctl-xall",
+      readFixture("mars/smartctl/xall-sdf-auto.json"),
+      "/dev/sdf",
+    );
+    expect(response.status).toBe(200);
+    const id = diskIdBySerial("IEQ07JCE");
+    const hardware = {
+      media: "hdd",
+      interface: "sata",
+      link: "sas",
+      interfaceLabel: "SATA via SAS",
+      recordingTech: "cmr",
+      logicalBlockSize: 512,
+      physicalBlockSize: 4096,
+      sectorFormat: "512e",
+      trimSupported: false,
+      vendor: "seagate",
+      hardware: expect.objectContaining({ sataVersion: expect.any(String) }),
+      specs: expect.objectContaining({
+        source: "nasdisks",
+        matchedModel: "ST12000NM000J",
+      }),
+    };
+    const disks: DiskListing[] = await (await fetch("/api/disks")).json();
+    expect(disks.find((row) => row.id === id)).toMatchObject(hardware);
+    expect(await (await fetch(`/api/disks/${id}`)).json()).toMatchObject(
+      hardware,
+    );
+  });
+
   it("404s for a missing disk", async () => {
     expect((await fetch("/api/disks/99999")).status).toBe(404);
   });

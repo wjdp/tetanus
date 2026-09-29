@@ -1,3 +1,4 @@
+import type { DriveSpec } from "#shared/drive-spec";
 import {
   classifyInterface,
   classifyMedia,
@@ -6,9 +7,14 @@ import {
   type Media,
   resolveRecordingTech,
 } from "#shared/hardware";
+import { detectVendor } from "#shared/vendor";
 import type { disk } from "~~/server/database/schema";
 import type { LsblkDisk } from "~~/server/ingest/lsblk";
 import type { SmartctlXallResult } from "~~/server/ingest/smartctl-xall";
+import {
+  lookupSpec,
+  specsNeedRefresh,
+} from "~~/server/services/drive-db/lookup";
 
 type DiskRow = typeof disk.$inferSelect;
 
@@ -103,4 +109,210 @@ export function recordingTechChanges(
     recordingTech === row.recordingTech &&
     Boolean(row.hardware?.recordingTechInferred) === inferred;
   return unchanged ? null : { recordingTech, hardware };
+}
+
+export interface SpecOverlap {
+  rotationRate?: number;
+  formFactor?: string;
+  interface?: Interface;
+  media?: Media;
+}
+
+export interface SpecReconciliation {
+  filled: SpecOverlap;
+  specMismatch: string[];
+}
+
+export function normaliseFormFactor(
+  formFactor: string | null | undefined,
+): string | null {
+  const normalised = formFactor
+    ?.trim()
+    .replace(/\s*(?:inch(?:es)?|")$/i, "")
+    .toUpperCase();
+  return normalised || null;
+}
+
+const INCH_FORM_FACTORS = new Set(["3.5", "2.5", "1.8"]);
+
+function formFactorAsObserved(formFactor: string): string {
+  return INCH_FORM_FACTORS.has(formFactor)
+    ? `${formFactor} inches`
+    : formFactor;
+}
+
+type OverlapValue = string | number;
+
+interface OverlapRule {
+  datasetField: keyof DriveSpec;
+  fromSpec: (spec: DriveSpec) => OverlapValue | undefined;
+  comparable?: (value: OverlapValue) => OverlapValue | null;
+}
+
+const OVERLAP_RULES: Record<keyof SpecOverlap, OverlapRule> = {
+  rotationRate: {
+    datasetField: "rpm",
+    fromSpec: (spec) => spec.rpm ?? undefined,
+  },
+  formFactor: {
+    datasetField: "formFactor",
+    fromSpec: (spec) =>
+      spec.formFactor ? formFactorAsObserved(spec.formFactor) : undefined,
+    comparable: (value) => normaliseFormFactor(String(value)),
+  },
+  interface: {
+    datasetField: "interface",
+    fromSpec: (spec) => specInterface(spec.interface),
+  },
+  media: {
+    datasetField: "mediaType",
+    fromSpec: (spec) => spec.mediaType,
+  },
+};
+
+export function specInterface(
+  driveInterface: DriveSpec["interface"],
+): Interface | undefined {
+  return driveInterface
+    ? (driveInterface.toLowerCase() as Interface)
+    : undefined;
+}
+
+const isObserved = <T>(value: T | null | undefined): value is T =>
+  value !== undefined && value !== null && value !== "" && value !== "unknown";
+
+export function reconcileWithSpec(
+  observed: SpecOverlap,
+  spec: DriveSpec | null,
+): SpecReconciliation {
+  const filled: Record<string, OverlapValue> = {};
+  const specMismatch: string[] = [];
+  for (const [field, rule] of Object.entries(OVERLAP_RULES)) {
+    const observedValue = observed[field as keyof SpecOverlap];
+    const datasetValue = spec ? rule.fromSpec(spec) : undefined;
+    if (!isObserved(observedValue)) {
+      if (isObserved(datasetValue)) filled[field] = datasetValue;
+      continue;
+    }
+    filled[field] = observedValue;
+    const comparable = rule.comparable ?? ((value: OverlapValue) => value);
+    if (
+      spec &&
+      isObserved(datasetValue) &&
+      comparable(observedValue) !== comparable(datasetValue)
+    ) {
+      specMismatch.push(
+        `${field}: observed ${observedValue}, dataset ${spec[rule.datasetField]}`,
+      );
+    }
+  }
+  return { filled: filled as SpecOverlap, specMismatch };
+}
+
+export interface HardwareObservation extends ObservedHardware {
+  model?: string | null;
+  modelFamily?: string | null;
+  rotationRate?: number | null;
+  formFactor?: string | null;
+  wwn?: string | null;
+}
+
+export type PreviousHardware = Pick<
+  DiskRow,
+  | "model"
+  | "modelFamily"
+  | "media"
+  | "trimSupported"
+  | "inventory"
+  | "specs"
+  | "hardware"
+  | "vendor"
+>;
+
+export type DerivedHardware = Partial<
+  Pick<
+    DiskRow,
+    | "rotationRate"
+    | "formFactor"
+    | "media"
+    | "interface"
+    | "specs"
+    | "vendor"
+    | "recordingTech"
+    | "hardware"
+  >
+>;
+
+const orNull = <T>(value: T | null | undefined): T | null =>
+  isObserved(value) ? value : null;
+
+function observedHardwareOf(hardware: HardwareJson | null | undefined) {
+  const {
+    recordingTechInferred: _inferred,
+    specMismatch: _mismatch,
+    ...observed
+  } = hardware ?? {};
+  return observed;
+}
+
+function composeHardware(
+  observed: HardwareJson,
+  recordingTechInferred: boolean,
+  specMismatch: string[],
+): HardwareJson | null {
+  const hardware: HardwareJson = {
+    ...observed,
+    ...(recordingTechInferred ? { recordingTechInferred } : {}),
+    ...(specMismatch.length > 0 ? { specMismatch } : {}),
+  };
+  return Object.keys(hardware).length > 0 ? hardware : null;
+}
+
+export function deriveHardware(
+  previous: PreviousHardware | undefined,
+  observation: HardwareObservation,
+): DerivedHardware {
+  const model = orNull(observation.model) ?? previous?.model ?? null;
+  const modelFamily =
+    orNull(observation.modelFamily) ?? previous?.modelFamily ?? null;
+  const specs =
+    previous && !specsNeedRefresh(previous.specs, previous.model, model)
+      ? previous.specs
+      : lookupSpec(model);
+  const { filled, specMismatch } = reconcileWithSpec(
+    {
+      rotationRate: observation.rotationRate ?? undefined,
+      formFactor: observation.formFactor ?? undefined,
+      interface: observation.interface,
+      media: observation.media,
+    },
+    specs,
+  );
+  const { recordingTech, inferred } = resolveRecordingTech({
+    media: filled.media ?? previous?.media,
+    override: previous?.inventory.recordingTech,
+    datasetRecordingTech: specs?.recordingTech ?? null,
+    modelFamily,
+    trimSupported: observation.trimSupported ?? previous?.trimSupported,
+  });
+  const vendor =
+    detectVendor({
+      model,
+      wwn: observation.wwn,
+      modelFamily,
+      brand: specs?.brand,
+    }) ??
+    previous?.vendor ??
+    null;
+  return {
+    ...filled,
+    specs,
+    vendor,
+    recordingTech,
+    hardware: composeHardware(
+      observation.hardware ?? observedHardwareOf(previous?.hardware),
+      inferred,
+      specMismatch,
+    ),
+  };
 }

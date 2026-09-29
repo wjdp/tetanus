@@ -157,6 +157,14 @@ describe("importScrutiny matching", () => {
       lastDevicePath: "/dev/sdi",
       latestStatus: "unknown",
       latestReadingAt: null,
+      media: "hdd",
+      interface: "sata",
+      vendor: "seagate",
+      recordingTech: "cmr",
+      specs: expect.objectContaining({
+        source: "nasdisks",
+        matchedModel: "ST16000NM001G",
+      }),
     });
     expect(
       db

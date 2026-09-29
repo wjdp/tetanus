@@ -17,6 +17,7 @@ import {
 } from "~~/server/database/schema";
 import { addAutoEvent } from "~~/server/services/diary";
 import { type DiskRow, findDiskByKey } from "~~/server/services/disks";
+import { deriveHardware } from "~~/server/services/hardware";
 import {
   normaliseModelSerial,
   normaliseWwn,
@@ -190,28 +191,37 @@ function diskProtocol(protocol: string): DiskProtocol | null {
   return DISK_PROTOCOLS[protocol.toLowerCase()] ?? "unknown";
 }
 
-function knownMedia(media: Media): Media | null {
-  return media === "unknown" ? null : media;
+function knownMedia(media: Media): Media | undefined {
+  return media === "unknown" ? undefined : media;
 }
 
 function createInventoryDisk(device: ScrutinyDevice, hostId: number): number {
+  const model = device.model_name || null;
+  const rotationRate = device.rotational_speed ?? null;
+  const formFactor = device.form_factor || null;
   const created = db
     .insert(disk)
     .values({
-      model: device.model_name || null,
+      model,
       serial: device.serial_number || null,
       firmware: device.firmware || null,
       capacityBytes: device.capacity || null,
-      rotationRate: device.rotational_speed ?? null,
+      rotationRate,
       protocol: diskProtocol(device.device_protocol),
       link: device.interface_type || null,
-      media: knownMedia(
-        classifyMedia({
-          rotationRate: device.rotational_speed,
-          protocol: device.device_protocol,
-        }),
-      ),
-      formFactor: device.form_factor || null,
+      formFactor,
+      ...deriveHardware(undefined, {
+        model,
+        rotationRate,
+        formFactor,
+        media: knownMedia(
+          classifyMedia({
+            rotationRate: device.rotational_speed,
+            protocol: device.device_protocol,
+          }),
+        ),
+        wwn: scrutinyWwn(device),
+      }),
       scrutinyUuid: device.scrutiny_uuid || null,
       firstSeenAt: device.CreatedAt,
       lastSeenAt: device.UpdatedAt,
