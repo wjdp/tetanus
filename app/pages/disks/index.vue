@@ -3,9 +3,13 @@ import { getPageTitle } from "#shared/app";
 import {
   ALL_HOSTS,
   ALL_POOLS,
+  ALL_PURPOSES,
+  ALL_USAGE,
+  CLEARED_FILTERS,
   type InventoryFilterState,
   NO_HOST,
   NO_POOL,
+  NO_PURPOSE,
 } from "~/components/inventory/InventoryFilters.vue";
 import type { SortingState } from "~/components/inventory/types";
 
@@ -23,12 +27,7 @@ onUnmounted(() => {
   if (pollHandle) clearInterval(pollHandle);
 });
 
-const filters = ref<InventoryFilterState>({
-  host: ALL_HOSTS,
-  pool: ALL_POOLS,
-  states: [],
-  search: "",
-});
+const filters = ref<InventoryFilterState>({ ...CLEARED_FILTERS });
 
 const sorting = ref<SortingState>([{ id: "alias", desc: false }]);
 
@@ -57,7 +56,15 @@ const states = computed(() =>
 );
 
 const visibleDisks = computed(() => {
-  const { host, pool, states: wantedStates, search } = filters.value;
+  const {
+    host,
+    pool,
+    usage,
+    purpose,
+    states: wantedStates,
+    search,
+  } = filters.value;
+  const wantedPurpose = purpose === NO_PURPOSE ? null : purpose;
   const needle = search.trim().toLowerCase();
   return allDisks.value.filter((row) => {
     if (host === NO_HOST && row.hostName !== null) return false;
@@ -69,6 +76,8 @@ const visibleDisks = computed(() => {
     if (pool !== ALL_POOLS && pool !== NO_POOL && poolName !== pool) {
       return false;
     }
+    if (usage !== ALL_USAGE && row.usage.kind !== usage) return false;
+    if (purpose !== ALL_PURPOSES && row.purpose !== wantedPurpose) return false;
     if (wantedStates.length && !wantedStates.includes(row.state)) return false;
     if (!needle) return true;
     return [row.alias, row.model, row.serial].some((value) =>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usageColour, usageShort } from "#shared/usage";
 import { SORT_FIELDS, sortDisks } from "./inventorySort";
 import {
   type InventoryDisk,
@@ -106,7 +107,17 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
             </div>
             <div class="flex min-w-0 flex-col">
               <dt class="text-dimmed text-xs">Pool</dt>
-              <dd class="truncate">{{ disk.membership?.poolName ?? "—" }}</dd>
+              <dd v-if="disk.membership" class="truncate">
+                {{ disk.membership.poolName }}
+              </dd>
+              <dd
+                v-else-if="disk.purpose"
+                class="truncate"
+                :class="disk.purposeInferred ? 'text-dimmed italic' : 'text-muted'"
+              >
+                {{ disk.purpose }}
+              </dd>
+              <dd v-else class="text-dimmed">—</dd>
             </div>
             <div class="flex flex-col">
               <dt class="text-dimmed text-xs">Temp</dt>
@@ -120,6 +131,20 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
               <dt class="text-dimmed text-xs">Warranty</dt>
               <dd class="tabular-nums" :class="warrantyClass(disk.warrantyDaysLeft)">
                 {{ warrantyLabel(disk.warrantyDaysLeft) }}
+              </dd>
+            </div>
+            <div class="col-span-3 flex min-w-0 flex-col items-start">
+              <dt class="text-dimmed text-xs">Usage</dt>
+              <dd class="max-w-full">
+                <UBadge
+                  size="xs"
+                  variant="subtle"
+                  :color="usageColour(disk.usage.kind)"
+                  :class="{ 'opacity-60': disk.usage.kind === 'empty' }"
+                  class="max-w-full truncate"
+                >
+                  {{ usageShort(disk.usage, disk.membership?.poolName ?? null) }}
+                </UBadge>
               </dd>
             </div>
           </dl>

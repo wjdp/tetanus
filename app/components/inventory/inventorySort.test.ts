@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { sortDisks } from "./inventorySort";
+import { UNKNOWN_USAGE } from "#shared/usage";
+import { SORT_FIELDS, sortDisks } from "./inventorySort";
 import type { InventoryDisk } from "./types";
 
 const disk = (
@@ -21,6 +22,9 @@ const disk = (
   warrantyDaysLeft: null,
   inventory: {},
   membership: null,
+  usage: UNKNOWN_USAGE,
+  purpose: null,
+  purposeInferred: false,
   ...overrides,
 });
 
@@ -49,5 +53,43 @@ describe("sortDisks", () => {
     expect(ids(sortDisks(disks, [{ id: "nope", desc: false }]))).toEqual([
       1, 2, 3,
     ]);
+  });
+});
+
+const fieldValue = (id: string, target: InventoryDisk) =>
+  SORT_FIELDS.find((field) => field.id === id)?.value(target);
+
+describe("pool and usage fields", () => {
+  const member = disk(1, {
+    membership: { poolId: 1, poolName: "tank" },
+    usage: { kind: "zfs", fsTypes: ["zfs_member"], mounts: [], system: false },
+    purpose: "other",
+  });
+  const boot = disk(2, {
+    usage: {
+      kind: "filesystem",
+      fsTypes: ["ext4"],
+      mounts: [{ fsType: "ext4", path: "/", via: [] }],
+      system: true,
+    },
+    purpose: "system",
+    purposeInferred: true,
+  });
+
+  it("orders usage directly after pool", () => {
+    const ids = SORT_FIELDS.map(({ id }) => id);
+    expect(ids.indexOf("usage")).toBe(ids.indexOf("pool") + 1);
+  });
+
+  it("uses the pool name, then the purpose, for pool", () => {
+    expect(fieldValue("pool", member)).toBe("tank");
+    expect(fieldValue("pool", boot)).toBe("system");
+    expect(fieldValue("pool", disk(3, {}))).toBeNull();
+  });
+
+  it("uses the short usage wording for usage", () => {
+    expect(fieldValue("usage", member)).toBe("tank");
+    expect(fieldValue("usage", boot)).toBe("ext4 /");
+    expect(fieldValue("usage", disk(3, {}))).toBe("?");
   });
 });

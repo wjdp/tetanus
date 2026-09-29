@@ -1,6 +1,7 @@
 import type { EffectiveDiskState, StateOverride } from "#shared/disk";
 import type { Inventory } from "#shared/inventory-fields";
 import type { DeviceStatus } from "#shared/smart/status";
+import type { DiskUsage, Purpose } from "#shared/usage";
 import { formatDays } from "~/utils/format";
 
 export interface InventoryDisk {
@@ -19,6 +20,9 @@ export interface InventoryDisk {
   warrantyDaysLeft: number | null;
   inventory: Partial<Inventory>;
   membership: { poolId: number; poolName: string } | null;
+  usage: DiskUsage;
+  purpose: Purpose | null;
+  purposeInferred: boolean;
 }
 
 export type SortingState = { id: string; desc: boolean }[];

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { usageColour, usageShort } from "#shared/usage";
 import { SORT_FIELDS } from "./inventorySort";
 import {
   type InventoryDisk,
@@ -42,6 +43,7 @@ const hideCell = (cls: string) => ({ class: { th: cls, td: cls } });
 const COLUMN_META: Record<string, TableColumn<InventoryDisk>["meta"]> = {
   age: hideCell("hidden 2xl:table-cell"),
   pin33: hideCell("hidden 2xl:table-cell"),
+  usage: hideCell("hidden lg:table-cell"),
   warranty: hideCell("hidden xl:table-cell"),
 };
 
@@ -104,7 +106,24 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
       >
         {{ row.original.membership.poolName }}
       </NuxtLink>
-      <span v-else class="text-dimmed">—</span>
+      <span
+        v-else-if="row.original.purpose"
+        :class="row.original.purposeInferred ? 'text-dimmed italic' : 'text-muted'"
+        :title="row.original.purposeInferred ? 'Purpose inferred from usage' : undefined"
+      >
+        {{ row.original.purpose }}
+      </span>
+    </template>
+
+    <template #usage-cell="{ row }">
+      <UBadge
+        size="xs"
+        variant="subtle"
+        :color="usageColour(row.original.usage.kind)"
+        :class="{ 'opacity-60': row.original.usage.kind === 'empty' }"
+      >
+        {{ usageShort(row.original.usage, row.original.membership?.poolName ?? null) }}
+      </UBadge>
     </template>
 
     <template #state-cell="{ row }">

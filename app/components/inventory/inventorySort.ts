@@ -1,3 +1,4 @@
+import { usageShort } from "#shared/usage";
 import type { InventoryDisk, SortingState } from "./types";
 
 type SortValue = string | number | null;
@@ -16,7 +17,12 @@ export const SORT_FIELDS: SortField[] = [
   {
     id: "pool",
     label: "Pool",
-    value: (disk) => disk.membership?.poolName ?? null,
+    value: (disk) => disk.membership?.poolName ?? disk.purpose ?? null,
+  },
+  {
+    id: "usage",
+    label: "Usage",
+    value: (disk) => usageShort(disk.usage, disk.membership?.poolName ?? null),
   },
   { id: "state", label: "State", value: (disk) => disk.state },
   { id: "status", label: "Status", value: (disk) => disk.latestStatus },

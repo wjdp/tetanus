@@ -1,10 +1,5 @@
 <script setup lang="ts">
-export interface InventoryFilterState {
-  host: string;
-  pool: string;
-  states: string[];
-  search: string;
-}
+import { PURPOSES, USAGE_KINDS } from "#shared/usage";
 
 const props = defineProps<{
   hosts: string[];
@@ -26,11 +21,24 @@ const poolItems = computed(() => [
   { label: "No pool", value: NO_POOL },
 ]);
 
+const usageItems = [
+  { label: "All usage", value: ALL_USAGE },
+  ...USAGE_KINDS.map((kind) => ({ label: kind, value: kind })),
+];
+
+const purposeItems = [
+  { label: "All purposes", value: ALL_PURPOSES },
+  ...PURPOSES.map((purpose) => ({ label: purpose, value: purpose })),
+  { label: "No purpose", value: NO_PURPOSE },
+];
+
 const isFiltered = computed(
   () =>
     filters.value.search ||
     filters.value.host !== ALL_HOSTS ||
     filters.value.pool !== ALL_POOLS ||
+    filters.value.usage !== ALL_USAGE ||
+    filters.value.purpose !== ALL_PURPOSES ||
     filters.value.states.length,
 );
 
@@ -40,10 +48,31 @@ const update = (patch: Partial<InventoryFilterState>) => {
 </script>
 
 <script lang="ts">
+export interface InventoryFilterState {
+  host: string;
+  pool: string;
+  usage: string;
+  purpose: string;
+  states: string[];
+  search: string;
+}
+
 export const ALL_HOSTS = "*";
 export const NO_HOST = "-";
 export const ALL_POOLS = "*";
 export const NO_POOL = "-";
+export const ALL_USAGE = "*";
+export const ALL_PURPOSES = "*";
+export const NO_PURPOSE = "-";
+
+export const CLEARED_FILTERS: InventoryFilterState = {
+  search: "",
+  host: ALL_HOSTS,
+  pool: ALL_POOLS,
+  usage: ALL_USAGE,
+  purpose: ALL_PURPOSES,
+  states: [],
+};
 </script>
 
 <template>
@@ -71,6 +100,22 @@ export const NO_POOL = "-";
       @update:model-value="update({ pool: String($event) })"
     />
     <USelect
+      :model-value="filters.usage"
+      :items="usageItems"
+      placeholder="All usage"
+      class="min-w-0 sm:w-36"
+      aria-label="Filter by usage"
+      @update:model-value="update({ usage: String($event) })"
+    />
+    <USelect
+      :model-value="filters.purpose"
+      :items="purposeItems"
+      placeholder="All purposes"
+      class="min-w-0 sm:w-36"
+      aria-label="Filter by purpose"
+      @update:model-value="update({ purpose: String($event) })"
+    />
+    <USelect
       :model-value="filters.states"
       :items="states"
       multiple
@@ -86,7 +131,7 @@ export const NO_POOL = "-";
       icon="i-lucide-x"
       label="Clear"
       class="col-span-3 justify-self-start"
-      @click="update({ search: '', host: ALL_HOSTS, pool: ALL_POOLS, states: [] })"
+      @click="filters = { ...CLEARED_FILTERS }"
     />
   </div>
 </template>
