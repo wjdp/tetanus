@@ -12,11 +12,14 @@ export interface StatusVdev extends Json {
   class?: string;
   state?: string;
   parent?: string;
+  aux?: string;
   read_errors?: number;
   write_errors?: number;
   checksum_errors?: number;
+  slow_ios?: number;
   alloc_space?: number;
   total_space?: number;
+  def_space?: number;
   vdevs?: Record<string, StatusVdev>;
 }
 
@@ -37,10 +40,12 @@ export interface StatusPool extends Json {
   pool_guid?: string;
   status?: string;
   action?: string;
+  msgid?: string;
+  moreinfo?: string;
   scan_stats?: ScanStats;
   vdevs: Record<string, StatusVdev>;
-  spares?: Record<string, StatusVdev>;
   error_count?: number | string;
+  errlist?: string[] | string;
 }
 
 interface ListProperty {
@@ -70,9 +75,19 @@ const MISSING_STATES = new Set(["UNAVAIL", "CANT_OPEN"]);
 const SUSPENDED = "SUSPENDED";
 const LEAF_TYPES = new Set(["disk", "file"]);
 const MIRROR_LIKE_TYPES = new Set(["mirror", "spare", "replacing"]);
+const SPARE_CLASS = "spare";
+const CACHE_CLASS = "l2cache";
+const LOG_CLASS = "log";
+const ALLOCATION_CLASSES = new Set(["special", "dedup"]);
 const GUID_NUMBER = /"([a-zA-Z_]*guid[a-zA-Z_]*)":\s*(\d+)(?=[,}\s])/g;
 const GUID_STRING = /"([a-zA-Z_]*guid[a-zA-Z_]*)":"(\d+)"/g;
 const UINT64_MASK = (1n << 64n) - 1n;
+
+export interface StatusMessage {
+  status: string;
+  action: string;
+  msgid?: string;
+}
 
 /** `zpool status` texts from libzfs, in the order `check_status` tests for them. */
 export const STATUS_MESSAGES = {
@@ -80,11 +95,13 @@ export const STATUS_MESSAGES = {
     status: "One or more devices are faulted in response to IO failures.\n",
     action:
       "Make sure the affected devices are connected, then run 'zpool clear'.\n",
+    msgid: "ZFS-8000-HC",
   },
   missingDevNoReplicas: {
     status:
       "One or more devices could not be opened.  There are insufficient\n\treplicas for the pool to continue functioning.\n",
     action: "Attach the missing device and online it using 'zpool online'.\n",
+    msgid: "ZFS-8000-3C",
   },
   faultedDevNoReplicas: {
     status:
@@ -97,6 +114,7 @@ export const STATUS_MESSAGES = {
       "One or more devices has experienced an error resulting in data\n\tcorruption.  Applications may be affected.\n",
     action:
       "Restore the file in question if possible.  Otherwise restore the\n\tentire pool from backup.\n",
+    msgid: "ZFS-8000-8A",
   },
   faultedDev: {
     status:
@@ -108,12 +126,14 @@ export const STATUS_MESSAGES = {
     status:
       "One or more devices could not be opened.  Sufficient replicas exist for\n\tthe pool to continue functioning in a degraded state.\n",
     action: "Attach the missing device and online it using 'zpool online'.\n",
+    msgid: "ZFS-8000-2Q",
   },
   failingDev: {
     status:
       "One or more devices has experienced an unrecoverable error.  An\n\tattempt was made to correct the error.  Applications are unaffected.\n",
     action:
       "Determine if the device needs to be replaced, and clear the errors\n\tusing 'zpool clear' or replace the device with 'zpool replace'.\n",
+    msgid: "ZFS-8000-9P",
   },
   offlineDev: {
     status:
@@ -132,12 +152,42 @@ export const STATUS_MESSAGES = {
       "One or more devices is currently being resilvered.  The pool will\n\tcontinue to function, possibly in a degraded state.\n",
     action: "Wait for the resilver to complete.\n",
   },
+} satisfies Record<string, StatusMessage>;
+
+/** Texts for message ids no other fault kind covers, as `zpool status` prints them. */
+export const UNCOVERED_STATUS_MESSAGES: Record<string, StatusMessage> = {
+  "ZFS-8000-EY": {
+    status:
+      "Mismatch between pool hostid and system hostid on imported pool.\n\tThis pool was previously imported into a system with a different hostid,\n\tand then was verbatim imported into this system.\n",
+    action:
+      "Export this pool on all systems on which it is imported.\n\tThen import it to correct the mismatch.\n",
+    msgid: "ZFS-8000-EY",
+  },
+  "ZFS-8000-K4": {
+    status:
+      "An intent log record could not be read.\n\tWaiting for administrator intervention to fix the faulted pool.\n",
+    action:
+      "Either restore the affected device(s) and run 'zpool online',\n\tor ignore the intent log records by running 'zpool clear'.\n",
+    msgid: "ZFS-8000-K4",
+  },
+  "ZFS-8000-A5": {
+    status: "The pool is formatted using an incompatible version.\n",
+    action:
+      "The pool cannot be accessed on this system.  Either move it to a\n\tsystem running a newer version of the software, or recreate the\n\tpool from backup.\n",
+    msgid: "ZFS-8000-A5",
+  },
 };
 
-type StatusMessage = (typeof STATUS_MESSAGES)[keyof typeof STATUS_MESSAGES];
+const MOREINFO_BASE = "https://openzfs.github.io/openzfs-docs/msg/";
 
 const KNOWN_STATUSES = new Set(
   Object.values(STATUS_MESSAGES).map((message) => message.status),
+);
+
+const KNOWN_MSGIDS = new Set(
+  Object.values(STATUS_MESSAGES).flatMap((message: StatusMessage) =>
+    message.msgid ? [message.msgid] : [],
+  ),
 );
 
 export function parseZpoolJson(body: string): Json {
@@ -199,8 +249,28 @@ export function editListPool(
   return editPool(stored, name, edit);
 }
 
+/** Returns a copy of the `zpool status -j` payload without the pool, as after a failed import or an export. */
+export function withoutStatusPool(
+  stored: StoredPayload,
+  name: string,
+): StoredPayload {
+  const json = parseZpoolJson(stored.body);
+  const pools = poolsOf<StatusPool>(json);
+  if (!pools[name]) throw new Error(`No pool ${name} in ${stored.source}`);
+  delete pools[name];
+  return { ...stored, body: stringifyZpoolJson(json) };
+}
+
 const isLeaf = (vdev: StatusVdev) =>
   vdev.vdev_type === undefined || LEAF_TYPES.has(vdev.vdev_type);
+
+/** A spare's flat entry is its aux status (`AVAIL`, `INUSE`, `UNAVAIL`), outside the vdev tree. */
+const isSpareEntry = (vdev: StatusVdev) =>
+  vdev.class === SPARE_CLASS && vdev.parent === undefined;
+
+/** Cache devices and spares are aux devices: their state never reaches the root's. */
+const isAux = (vdev: StatusVdev) =>
+  vdev.class === CACHE_CLASS || isSpareEntry(vdev);
 
 const stateOf = (vdev: StatusVdev) => vdev.state ?? "ONLINE";
 
@@ -216,18 +286,29 @@ function childrenOf(pool: StatusPool, parent: StatusVdev): StatusVdev[] {
     return all.filter(
       (vdev) =>
         vdev !== parent &&
+        !isAux(vdev) &&
         (vdev.parent === parent.name ||
           (vdev.parent === undefined && vdev.vdev_type !== "root")),
     );
   }
-  return all.filter((vdev) => vdev.parent === parent.name);
+  const flat = all.filter((vdev) => vdev.parent === parent.name);
+  // An in-use spare's in-pool copy lives only in the nested maps: its flat key
+  // holds the aux entry.
+  const nestedOnly = Object.entries(parent.vdevs ?? {})
+    .filter(
+      ([name, vdev]) =>
+        vdev.parent === parent.name && pool.vdevs[name]?.parent !== parent.name,
+    )
+    .map(([, vdev]) => vdev);
+  return [...flat, ...nestedOnly];
 }
 
 function topLevelOf(pool: StatusPool): StatusVdev[] {
   const root = rootOf(pool);
   if (root) return childrenOf(pool, root);
   return Object.values(pool.vdevs).filter(
-    (vdev) => vdev.parent === undefined || vdev.parent === pool.name,
+    (vdev) =>
+      !isAux(vdev) && (vdev.parent === undefined || vdev.parent === pool.name),
   );
 }
 
@@ -235,23 +316,63 @@ const dataFirst = (a: StatusVdev, b: StatusVdev) =>
   Number((a.class ?? "normal") !== "normal") -
   Number((b.class ?? "normal") !== "normal");
 
-/** Leaves of the pool's vdev tree, data vdevs first; spares are not in the tree. */
+/** Leaves of the pool, data vdevs first, then special, log and cache devices; spares' aux entries are not leaves. */
 export function poolLeaves(pool: StatusPool): StatusVdev[] {
-  return Object.values(pool.vdevs).filter(isLeaf).sort(dataFirst);
+  return Object.values(pool.vdevs)
+    .filter((vdev) => isLeaf(vdev) && !isSpareEntry(vdev))
+    .sort(dataFirst);
 }
 
+export function cacheLeaves(pool: StatusPool): StatusVdev[] {
+  return poolLeaves(pool).filter((vdev) => vdev.class === CACHE_CLASS);
+}
+
+/** Spares free to take over (`AVAIL`). */
 export function poolSpares(pool: StatusPool): StatusVdev[] {
-  return Object.values(pool.spares ?? {});
+  return Object.values(pool.vdevs).filter(
+    (vdev) => isSpareEntry(vdev) && stateOf(vdev) === "AVAIL",
+  );
+}
+
+/** Group vdevs (mirror, raidz, …) below the root, data vdevs first. */
+export function poolGroups(pool: StatusPool): StatusVdev[] {
+  return Object.values(pool.vdevs)
+    .filter((vdev) => !isLeaf(vdev) && vdev.vdev_type !== "root")
+    .sort(dataFirst);
+}
+
+/** Mirrors of a special or dedup class: losing one of those loses the pool. */
+export function allocationClassMirrors(pool: StatusPool): StatusVdev[] {
+  return poolGroups(pool).filter(
+    (vdev) =>
+      ALLOCATION_CLASSES.has(vdev.class ?? "") &&
+      vdev.vdev_type === "mirror" &&
+      childrenOf(pool, vdev).length > 1,
+  );
 }
 
 export function leafLabel(vdev: StatusVdev): string {
   return vdev.name.replace(/^\/dev\/(disk\/by-[a-z-]+\/)?/, "");
 }
 
+function vdevNamed(pool: StatusPool, name: string): StatusVdev {
+  const found = pool.vdevs[name];
+  if (!found) throw new Error(`No vdev ${name} in pool ${pool.name}`);
+  return found;
+}
+
 function leafNamed(pool: StatusPool, name: string): StatusVdev {
   const found = pool.vdevs[name];
-  if (!found || !isLeaf(found)) {
+  if (!found || !isLeaf(found) || isSpareEntry(found)) {
     throw new Error(`No leaf ${name} in pool ${pool.name}`);
+  }
+  return found;
+}
+
+function groupNamed(pool: StatusPool, name: string): StatusVdev {
+  const found = vdevNamed(pool, name);
+  if (isLeaf(found) || found.vdev_type === "root") {
+    throw new Error(`No group vdev ${name} in pool ${pool.name}`);
   }
   return found;
 }
@@ -267,8 +388,13 @@ function redundancy(vdev: StatusVdev, children: StatusVdev[]): number {
 }
 
 function groupState(vdev: StatusVdev, children: StatusVdev[]): string {
-  const failed = children.filter(isUnhealthy).length;
-  const limit = vdev.vdev_type === "root" ? 0 : redundancy(vdev, children);
+  const isRoot = vdev.vdev_type === "root";
+  // A failed log device only degrades the pool: the intent log falls back to
+  // the main pool.
+  const failed = children.filter(
+    (child) => isUnhealthy(child) && !(isRoot && child.class === LOG_CLASS),
+  ).length;
+  const limit = isRoot ? 0 : redundancy(vdev, children);
   if (failed > limit) return "UNAVAIL";
   return children.some((child) => stateOf(child) !== "ONLINE")
     ? "DEGRADED"
@@ -324,17 +450,41 @@ function statusMessage(pool: StatusPool, root: string): StatusMessage | null {
   return null;
 }
 
+/** Sets the status and action texts, with the message id and its link when the message has one. */
+export function showMessage(pool: StatusPool, message: StatusMessage) {
+  pool.status = message.status;
+  pool.action = message.action;
+  if (message.msgid) {
+    pool.msgid = message.msgid;
+    pool.moreinfo = `${MOREINFO_BASE}${message.msgid}`;
+  } else {
+    delete pool.msgid;
+    delete pool.moreinfo;
+  }
+}
+
+function clearMessage(pool: StatusPool) {
+  delete pool.status;
+  delete pool.action;
+  delete pool.msgid;
+  delete pool.moreinfo;
+}
+
+// A message id the leaves cannot explain (hostid mismatch, bad log, …) keeps
+// its message; simulated failures leave it in place.
+const hasUnexplainedMessage = (pool: StatusPool) =>
+  pool.msgid !== undefined && !KNOWN_MSGIDS.has(pool.msgid);
+
 /** Recomputes group and pool states from the leaves the way ZFS does, and the status/action texts that follow. */
 export function settle(pool: StatusPool) {
   const root = rootState(pool);
   if (pool.state !== SUSPENDED) pool.state = root;
+  if (hasUnexplainedMessage(pool)) return;
   const message = statusMessage(pool, root);
   if (message) {
-    pool.status = message.status;
-    pool.action = message.action;
+    showMessage(pool, message);
   } else if (pool.status !== undefined && KNOWN_STATUSES.has(pool.status)) {
-    delete pool.status;
-    delete pool.action;
+    clearMessage(pool);
   }
 }
 
@@ -346,16 +496,39 @@ export function failLeaf(
   leafNamed(pool, leafName).state = state;
 }
 
-export function setLeafErrors(
-  pool: StatusPool,
-  leafName: string,
-  errors: { read: number; write: number; checksum: number },
-) {
-  Object.assign(leafNamed(pool, leafName), {
+interface ErrorCounts {
+  read: number;
+  write: number;
+  checksum: number;
+}
+
+function setErrors(vdev: StatusVdev, errors: ErrorCounts) {
+  Object.assign(vdev, {
     read_errors: errors.read,
     write_errors: errors.write,
     checksum_errors: errors.checksum,
   });
+}
+
+export function setLeafErrors(
+  pool: StatusPool,
+  leafName: string,
+  errors: ErrorCounts,
+) {
+  setErrors(leafNamed(pool, leafName), errors);
+}
+
+/** Errors counted on a mirror or raidz itself: data it could not reconstruct. */
+export function setGroupErrors(
+  pool: StatusPool,
+  groupName: string,
+  errors: ErrorCounts,
+) {
+  setErrors(groupNamed(pool, groupName), errors);
+}
+
+export function setSlowIos(pool: StatusPool, leafName: string, count: number) {
+  leafNamed(pool, leafName).slow_ios = count;
 }
 
 function descendantLeaves(pool: StatusPool, vdev: StatusVdev): StatusVdev[] {
@@ -400,20 +573,33 @@ function insertAfter<T>(
   );
 }
 
-/** Nested `vdevs` maps mirror the flat map; point them at the edited entries. */
+function withoutKeys<T>(
+  map: Record<string, T>,
+  keys: Set<string>,
+): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(map).filter(([name]) => !keys.has(name)),
+  );
+}
+
+/** Nested `vdevs` maps mirror the flat map; point them at the edited entries, except where the flat key holds a spare's aux entry. */
 function relink(pool: StatusPool) {
   for (const vdev of Object.values(pool.vdevs)) {
     if (!vdev.vdevs) continue;
     vdev.vdevs = Object.fromEntries(
-      Object.keys(vdev.vdevs).map((name) => [
-        name,
-        pool.vdevs[name] ?? (vdev.vdevs as Record<string, StatusVdev>)[name],
-      ]),
-    ) as Record<string, StatusVdev>;
+      Object.entries(vdev.vdevs).map(([name, nested]) => {
+        const flat = pool.vdevs[name];
+        return [name, flat && !isSpareEntry(flat) ? flat : nested];
+      }),
+    );
   }
 }
 
-/** A hot spare takes over for a failed leaf: both sit under a `spare-N` vdev and the spare shows INUSE. */
+/**
+ * A hot spare takes over for a failed leaf, as `zpool status -j --json-flat-vdevs` shows
+ * it: both sit under a new `spare-N` vdev, the spare's in-pool copy only in the nested
+ * maps, and its flat entry turns to aux `INUSE`.
+ */
 export function useSpare(
   pool: StatusPool,
   leafName: string,
@@ -421,14 +607,16 @@ export function useSpare(
   failedState: LeafFailureState = "FAULTED",
 ) {
   const leaf = leafNamed(pool, leafName);
-  const spare = pool.spares?.[spareName];
-  if (!spare) throw new Error(`No spare ${spareName} in pool ${pool.name}`);
+  const aux = pool.vdevs[spareName];
+  if (!aux || !isSpareEntry(aux) || stateOf(aux) !== "AVAIL") {
+    throw new Error(`No available spare ${spareName} in pool ${pool.name}`);
+  }
   const parent = leaf.parent ? pool.vdevs[leaf.parent] : rootOf(pool);
   const position = parent ? childrenOf(pool, parent).indexOf(leaf) : 0;
   const spareVdev: StatusVdev = {
     name: `spare-${position}`,
     vdev_type: "spare",
-    guid: derivedGuid(spare.guid ?? leaf.guid ?? "1"),
+    guid: derivedGuid(aux.guid ?? leaf.guid ?? "1"),
     class: leaf.class ?? "normal",
     state: "DEGRADED",
     ...(leaf.parent !== undefined && { parent: leaf.parent }),
@@ -438,20 +626,21 @@ export function useSpare(
     vdevs: {},
   };
   const active: StatusVdev = {
-    ...spare,
-    class: leaf.class ?? "normal",
+    ...aux,
     state: "ONLINE",
     parent: spareVdev.name,
+    read_errors: 0,
+    write_errors: 0,
+    checksum_errors: 0,
+    slow_ios: 0,
   };
   leaf.state = failedState;
   leaf.parent = spareVdev.name;
   spareVdev.vdevs = { [leafName]: leaf, [spareName]: active };
-  spare.state = "INUSE";
+  aux.state = "INUSE";
+  aux.aux = "SPARED";
 
-  pool.vdevs = insertAfter(pool.vdevs, leafName, [
-    [spareName, active],
-    [spareVdev.name, spareVdev],
-  ]);
+  pool.vdevs = insertAfter(pool.vdevs, leafName, [[spareVdev.name, spareVdev]]);
   for (const vdev of Object.values(pool.vdevs)) {
     if (vdev.vdevs && leafName in vdev.vdevs && vdev !== spareVdev) {
       vdev.vdevs = insertAfter(vdev.vdevs, leafName, [
@@ -459,6 +648,28 @@ export function useSpare(
         [spareVdev.name, spareVdev],
       ]);
     }
+  }
+  relink(pool);
+}
+
+const SPACE_KEYS = ["alloc_space", "total_space", "def_space"] as const;
+
+/** `zpool detach` every side of a mirror but the first: the survivor stands alone in the group's place. */
+export function detachToSingle(pool: StatusPool, groupName: string) {
+  const group = groupNamed(pool, groupName);
+  const [kept, ...detached] = childrenOf(pool, group);
+  if (!kept || !isLeaf(kept)) {
+    throw new Error(`Vdev ${groupName} has no leaf to keep`);
+  }
+  if (group.parent === undefined) delete kept.parent;
+  else kept.parent = group.parent;
+  for (const key of SPACE_KEYS) {
+    if (group[key] !== undefined) kept[key] = group[key];
+  }
+  const gone = new Set([groupName, ...detached.map((vdev) => vdev.name)]);
+  pool.vdevs = withoutKeys(pool.vdevs, gone);
+  for (const vdev of Object.values(pool.vdevs)) {
+    if (vdev.vdevs) vdev.vdevs = withoutKeys(vdev.vdevs, gone);
   }
   relink(pool);
 }
@@ -532,8 +743,57 @@ export function finishScrub(
   });
 }
 
+function damagedPaths(poolName: string, count: number): string[] {
+  return Array.from(
+    { length: count },
+    (_, index) =>
+      `/${poolName}/photos/${2019 + (index % 6)}/IMG_${4100 + index}.jpg`,
+  );
+}
+
+/** `error_count`, and the damaged files `-v` lists as root; an unprivileged `errlist` string stays. */
 export function setDataErrors(pool: StatusPool, count: number) {
   pool.error_count = count;
+  if (count === 0) delete pool.errlist;
+  else if (typeof pool.errlist !== "string") {
+    pool.errlist = damagedPaths(pool.name, count);
+  }
+}
+
+export type ScanFunction = "SCRUB" | "RESILVER";
+
+/** A running scan `percent` through that last moved at `movedAt`; a paused one has been paused since then. */
+export function runScan(
+  pool: StatusPool,
+  options: {
+    function: ScanFunction;
+    percent: number;
+    movedAt: Date;
+    paused?: boolean;
+  },
+) {
+  const toExamine = allocatedBytes(pool);
+  const examined = Math.round((toExamine * options.percent) / 100);
+  const elapsed = Math.max(
+    60,
+    Math.round((lastScanSeconds(pool) * options.percent) / 100),
+  );
+  const movedAt = epochSeconds(options.movedAt);
+  const leaves = Math.max(1, poolLeaves(pool).length);
+  pool.scan_stats = {
+    ...scanStats({
+      function: options.function,
+      state: "SCANNING",
+      start: movedAt - elapsed,
+      end: 0,
+      toExamine,
+      examined,
+      processed:
+        options.function === "RESILVER" ? Math.round(examined / leaves) : 0,
+      errors: 0,
+    }),
+    scrub_pause: options.paused ? movedAt : 0,
+  };
 }
 
 /** The leaf rejoins (if it had failed) and resilvers; the scan is `percent` through. */

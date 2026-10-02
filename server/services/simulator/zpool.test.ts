@@ -1,7 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_EPOCH } from "~~/server/demo/timeline";
-import { createWorld } from "~~/server/demo/world";
-import { renderZpoolStatus } from "~~/server/demo/zpoolStatus";
 import { parse as parseEvents } from "~~/server/ingest/zpool-events";
 import { parse as parseList } from "~~/server/ingest/zpool-list";
 import {
@@ -11,7 +8,10 @@ import {
 import { readFixture } from "~~/test/fixtures";
 import type { StoredPayload } from "./payloads";
 import {
+  allocationClassMirrors,
   appendEreports,
+  cacheLeaves,
+  detachToSingle,
   editListPool,
   editStatusPool,
   ereportLeaf,
@@ -19,16 +19,22 @@ import {
   finishScrub,
   newestEid,
   poolLeaves,
+  poolSpares,
+  runScan,
   STATUS_MESSAGES,
   type StatusPool,
   setDataErrors,
+  setGroupErrors,
   setLeafErrors,
   setListCapacity,
   setListFragmentation,
+  showMessage,
   startResilver,
   statusPoolIn,
   suspendPool,
+  UNCOVERED_STATUS_MESSAGES,
   useSpare,
+  withoutStatusPool,
 } from "./zpool";
 
 const NOW = new Date("2026-10-02T12:00:00Z");
@@ -202,42 +208,174 @@ describe("zpool status edits", () => {
   });
 });
 
-describe("spares", () => {
-  const world = createWorld();
-  const styx = world.fleet.hosts.find((host) => host.name === "styx");
-  if (!styx) throw new Error("No styx in the demo fleet");
-  const stored = payloadOf(
+describe("spares, logs and cache", () => {
+  const avail = payloadOf(
     "zpool-status",
-    renderZpoolStatus(world, styx, DEMO_EPOCH),
+    readFixture("mars/zpool-status-spare-avail.json"),
   );
+  const leaf = "/var/tmp/tspare-a.img";
+  const spare = "/var/tmp/tspare-spare.img";
 
-  it("puts a spare in use under a spare-N vdev", () => {
-    const vault = statusPoolIn(stored.body, "vault");
-    const leaf = poolLeaves(vault)[0]?.name ?? "";
-    const spare = Object.keys(vault.spares ?? {})[0] ?? "";
-    const edited = editStatusPool(stored, "vault", (pool) =>
-      useSpare(pool, leaf, spare),
+  it("offers the AVAIL spare, and keeps it and the cache out of the pool state", () => {
+    const tspare = statusPoolIn(avail.body, "tspare");
+    expect(poolSpares(tspare).map((vdev) => vdev.name)).toEqual([spare]);
+    expect(poolLeaves(tspare).map((vdev) => vdev.name)).not.toContain(spare);
+    expect(cacheLeaves(tspare).map((vdev) => vdev.name)).toEqual([
+      "/var/tmp/tspare-cache.img",
+    ]);
+    const settled = editStatusPool(avail, "tspare", () => {});
+    expect(parseStatus(settled.body, {}).data).toEqual(
+      parseStatus(avail.body, {}).data,
     );
-    const parsed = parsedPool(edited, "vault");
-    const spareVdev = parsed.vdevs.find((vdev) => vdev.type === "spare");
-    expect(spareVdev?.name).toMatch(/^spare-\d$/);
-    expect(spareVdev?.state).toBe("DEGRADED");
-    expect(vdevNamed(parsed, leaf)).toMatchObject({
-      state: "FAULTED",
-      parentGuid: spareVdev?.guid,
+  });
+
+  it("puts a spare in use as real zpool status shows it", () => {
+    const edited = editStatusPool(avail, "tspare", (pool) =>
+      useSpare(pool, leaf, spare, "OFFLINE"),
+    );
+    const inuse = payloadOf(
+      "zpool-status",
+      readFixture("mars/zpool-status-spare-inuse.json"),
+    );
+    const shape = (stored: StoredPayload) =>
+      parsedPool(stored, "tspare").vdevs.map((vdev) => ({
+        name: vdev.name,
+        type: vdev.type,
+        role: vdev.role,
+        state: vdev.state,
+        spareState: vdev.spareState,
+        parent: parsedPool(stored, "tspare").vdevs.find(
+          (other) => other.guid === vdev.parentGuid,
+        )?.name,
+      }));
+    const byName = (a: { name: string }, b: { name: string }) =>
+      a.name.localeCompare(b.name);
+    expect(shape(edited).sort(byName)).toEqual(shape(inuse).sort(byName));
+    const raw = statusPoolIn(edited.body, "tspare");
+    expect(raw.vdevs[spare]).toMatchObject({ state: "INUSE", aux: "SPARED" });
+    expect(raw.state).toBe("DEGRADED");
+  });
+
+  it("keeps the pool ONLINE when the cache device fails", () => {
+    const edited = editStatusPool(avail, "tspare", (pool) =>
+      failLeaf(pool, "/var/tmp/tspare-cache.img", "UNAVAIL"),
+    );
+    const tspare = parsedPool(edited, "tspare");
+    expect(tspare.state).toBe("ONLINE");
+    expect(vdevNamed(tspare, "/var/tmp/tspare-cache.img")).toMatchObject({
+      role: "cache",
+      state: "UNAVAIL",
     });
-    expect(vdevNamed(parsed, spare)).toMatchObject({
+  });
+
+  it("only degrades the pool when the log device fails", () => {
+    const edited = editStatusPool(avail, "tspare", (pool) =>
+      failLeaf(pool, "/var/tmp/tspare-log.img", "FAULTED"),
+    );
+    expect(parsedPool(edited, "tspare").state).toBe("DEGRADED");
+  });
+});
+
+describe("messages and errors", () => {
+  it("lists damaged files and the message id with permanent errors", () => {
+    const edited = editStatusPool(statusFixture(), "tank", (pool) =>
+      setDataErrors(pool, 2),
+    );
+    const tank = parsedPool(edited, "tank");
+    expect(tank).toMatchObject({
+      errors: 2,
+      msgid: "ZFS-8000-8A",
+      moreinfo: "https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-8A",
+    });
+    expect(tank.damagedFiles).toHaveLength(2);
+    const cleared = editStatusPool(edited, "tank", (pool) =>
+      setDataErrors(pool, 0),
+    );
+    expect(parsedPool(cleared, "tank")).toMatchObject({
+      errors: 0,
+      msgid: undefined,
+      status: undefined,
+    });
+  });
+
+  it("keeps an unprivileged errlist", () => {
+    const stored = payloadOf(
+      "zpool-status",
+      readFixture("mars/zpool-status-errlist-unprivileged.json"),
+    );
+    const edited = editStatusPool(stored, "tfault", (pool) =>
+      setDataErrors(pool, 3),
+    );
+    expect(parsedPool(edited, "tfault")).toMatchObject({
+      errors: 3,
+      damagedFilesError: "Permission denied",
+    });
+  });
+
+  it("keeps a message no state explains", () => {
+    const edited = editStatusPool(statusFixture(), "tank", (pool) =>
+      showMessage(pool, UNCOVERED_STATUS_MESSAGES["ZFS-8000-EY"] as never),
+    );
+    expect(parsedPool(edited, "tank")).toMatchObject({
       state: "ONLINE",
-      parentGuid: spareVdev?.guid,
+      msgid: "ZFS-8000-EY",
     });
-    expect(parsed.state).toBe("DEGRADED");
-    expect(statusPoolIn(edited.body, "vault").spares?.[spare]?.state).toBe(
-      "INUSE",
+  });
+
+  it("counts errors on a group", () => {
+    const edited = editStatusPool(statusFixture(), "tank", (pool) =>
+      setGroupErrors(pool, "raidz1-1", { read: 0, write: 0, checksum: 4 }),
     );
-    const raidz = vdevNamed(parsed, "raidz1-0");
-    expect(raidz?.state).toBe("DEGRADED");
-    expect(raidz?.children).toContain(spareVdev?.guid);
-    expect(raidz?.children).not.toContain(vdevNamed(parsed, leaf)?.guid);
+    expect(vdevNamed(parsedPool(edited, "tank"), "raidz1-1")).toMatchObject({
+      checksumErrors: 4,
+      state: "ONLINE",
+    });
+  });
+});
+
+describe("scans and layout", () => {
+  it("pauses a scrub at the given time", () => {
+    const pausedAt = new Date(NOW.getTime() - 30 * 3600_000);
+    const edited = editStatusPool(statusFixture(), "tank", (pool) =>
+      runScan(pool, {
+        function: "SCRUB",
+        percent: 40,
+        movedAt: pausedAt,
+        paused: true,
+      }),
+    );
+    const scan = parsedPool(edited, "tank").scan;
+    expect(scan).toMatchObject({
+      function: "SCRUB",
+      state: "SCANNING",
+      pausedAt: pausedAt.getTime() / 1000,
+    });
+    expect(scan?.startTime).toBeLessThan(pausedAt.getTime() / 1000);
+  });
+
+  it("detaches a special mirror down to one top-level device", () => {
+    const stored = statusFixture();
+    const [mirror] = allocationClassMirrors(statusPoolIn(stored.body, "tank"));
+    expect(mirror?.name).toBe("mirror-4");
+    const edited = editStatusPool(stored, "tank", (pool) =>
+      detachToSingle(pool, "mirror-4"),
+    );
+    const tank = parsedPool(edited, "tank");
+    expect(vdevNamed(tank, "mirror-4")).toBeUndefined();
+    expect(vdevNamed(tank, "/dev/disk/by-vdev/M2-part1")).toBeUndefined();
+    const root = vdevNamed(tank, "tank");
+    expect(vdevNamed(tank, "/dev/disk/by-vdev/M1-part1")).toMatchObject({
+      role: "special",
+      parentGuid: root?.guid,
+    });
+    expect(tank.state).toBe("ONLINE");
+  });
+
+  it("drops a pool from the payload", () => {
+    const edited = withoutStatusPool(statusFixture(), "zeta");
+    expect(
+      parseStatus(edited.body, {}).data.pools.map((pool) => pool.name),
+    ).toEqual(["tank"]);
   });
 });
 

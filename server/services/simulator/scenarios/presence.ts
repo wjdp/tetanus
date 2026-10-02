@@ -18,15 +18,29 @@ const HOUR_MS = 60 * 60 * 1000;
 const DEVICE_OPEN_FAILED = 2;
 const COMMAND_FAILED = 4;
 
-function missingAfterHours() {
+export function missingAfterHours() {
   const config = { ...DEFAULT_SETTINGS_CONFIG, ...ensureSettings().config };
   return config.missingAfterDays * 24;
 }
 
 /** Disk state is judged as of the host's last sighting, not now. */
-function sightingReference(subject: SubjectOf<"disk">, now: Date) {
-  const sightedAt = diskSightingTimes().get(subject.host.id);
+function sightingReference(hostId: number, now: Date) {
+  const sightedAt = diskSightingTimes().get(hostId);
   return sightedAt && sightedAt < now ? sightedAt : now;
+}
+
+/** Moves the disk's last sighting `hours` before its host's, so it reads as missing. */
+export function backdateSighting(
+  diskId: number,
+  hostId: number,
+  hours: number,
+  now: Date,
+) {
+  const reference = sightingReference(hostId, now);
+  db.update(disk)
+    .set({ lastSeenAt: new Date(reference.getTime() - hours * HOUR_MS) })
+    .where(eq(disk.id, diskId))
+    .run();
 }
 
 export const missing = defineScenario({
@@ -49,17 +63,13 @@ export const missing = defineScenario({
   ],
   plan: (subject, params) => ({
     replays: [],
-    afterReplay: (now) => {
-      const reference = sightingReference(subject, now);
-      db.update(disk)
-        .set({
-          lastSeenAt: new Date(
-            reference.getTime() - Number(params.hours) * HOUR_MS,
-          ),
-        })
-        .where(eq(disk.id, subject.disk.id))
-        .run();
-    },
+    afterReplay: (now) =>
+      backdateSighting(
+        subject.disk.id,
+        subject.host.id,
+        Number(params.hours),
+        now,
+      ),
   }),
 });
 
