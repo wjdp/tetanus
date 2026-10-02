@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 
 // Services reach for a few Nitro auto-imports; outside Nitro these stand in, as the
-// unit test project's Nuxt environment does. `useStorage` stays undefined, so ingest's
+// unit test setup does. `useStorage` stays undefined, so ingest's
 // alerts request fails fast and nothing is queued.
 const runtimeConfig = { public: { demo: false } };
 Object.assign(globalThis, {

@@ -22,7 +22,7 @@ Nuxt 4 (Vue, Nuxt UI 4, Tailwind 4) with a Nitro server, Drizzle ORM on better-s
 
 ## Commands
 
-- `pnpm test` — Vitest (unit project with a per-file `:memory:` database, then e2e route tests that boot `nuxt dev`)
+- `pnpm test` — Vitest: `unit` (server/shared in plain Node, per-file `:memory:` database), `app` (Nuxt environment), `e2e` (route tests that boot `nuxt dev`). Run one with `--project <name>` or a file path; prefer the narrowest run, the full suite is memory-heavy
 - `pnpm lint` — Biome (writes fixes); `pnpm lint:ci` to check only
 - `pnpm typecheck`
 - `pnpm db:migrate` — apply migrations (not automatic in dev; the Nitro plugin migrates at boot in production)
