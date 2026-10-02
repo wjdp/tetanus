@@ -64,14 +64,14 @@ export interface Detection {
   state?: FaultState;
 }
 
-interface DetectionContext {
+export interface DetectionContext {
   now: Date;
   disks: DiskSummary[];
   hosts: HostWithRuns[];
   cadences: CadenceOverrides;
 }
 
-const LEFT_SERVICE_STATES = new Set(["dead", "retired", "sold"]);
+export const LEFT_SERVICE_STATES = new Set(["dead", "retired", "sold"]);
 
 const ACCEPTANCE_STATE = {
   accepted: "accepted",
@@ -508,16 +508,23 @@ export function notifyFaultsChanged() {
   useSseEvent().push("faults", { at: new Date().toISOString() });
 }
 
+export function faultDetectionContext(
+  now: Date,
+  disks: DiskSummary[],
+): DetectionContext {
+  return {
+    now,
+    disks,
+    hosts: listHosts(),
+    cadences: isDemo() ? DEMO_CADENCES : {},
+  };
+}
+
 export async function syncFaults(
   now = new Date(),
   disks?: DiskSummary[],
 ): Promise<number> {
-  const context: DetectionContext = {
-    now,
-    disks: disks ?? (await listDisks(now)),
-    hosts: listHosts(),
-    cadences: isDemo() ? DEMO_CADENCES : {},
-  };
+  const context = faultDetectionContext(now, disks ?? (await listDisks(now)));
   const changes = applyDetections(detectFaults(context), now);
   if (changes > 0) notifyFaultsChanged();
   return changes;

@@ -31,6 +31,7 @@ export const settingsConfigSchema = z.object({
   notifications: notificationsConfigSchema,
   alertCursor: z.number().int().min(0),
   smartPolicyVersion: z.number().int().min(0),
+  faultsBackfilledAt: z.iso.datetime().optional(),
 });
 
 export type SettingsConfig = z.infer<typeof settingsConfigSchema>;

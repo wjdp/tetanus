@@ -79,3 +79,11 @@ export function setAlertCursor(alertCursor: number) {
     .where(eq(setting.id, SETTING_ROW_ID))
     .run();
 }
+
+export function setFaultsBackfilledAt(at: Date) {
+  const row = ensureSettings();
+  db.update(setting)
+    .set({ config: { ...row.config, faultsBackfilledAt: at.toISOString() } })
+    .where(eq(setting.id, SETTING_ROW_ID))
+    .run();
+}

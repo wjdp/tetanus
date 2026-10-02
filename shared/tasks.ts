@@ -3,6 +3,7 @@ export const TASK_NAMES = [
   "alerts:tick",
   "healthchecks:ping",
   "import:scrutiny",
+  "faults:backfill",
 ] as const;
 
 export type TaskName = (typeof TASK_NAMES)[number];
