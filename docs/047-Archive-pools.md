@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Archive pools
@@ -79,6 +79,51 @@ modal.
 3. Pool page banner and menu; ZFS list toggle; faults page action.
 4. Demo seed; 037 icons; 003 data model note.
 5. Archive `tfault` and `tspare` on mars.
+
+## As built
+
+Steps 1–4; step 5 (archive `tfault` and `tspare` on mars) is left to do by hand.
+
+- Migration `0020_pool_archive`. Service in `server/services/zfs/archive.ts`
+  (`archivePool`, `unarchivePool`), exported through `server/services/zfs.ts`. Both
+  routes queue `alerts:tick` like the config PATCH, so faults resync.
+- Archiving resolves every live fault whose subject is the pool (all of
+  `POOL_FAULT_KINDS`, leaf and vdev faults keyed `poolId:vdevGuid` included) through
+  `resolvePoolFaults` in `faults.ts`, diary `fault-resolved` with `data.reason:
+  "archived"`. `resolveFault` now takes extra diary data instead of only
+  `supersededBy`. Unarchiving resolves nothing and opens nothing itself; the next sync
+  re-detects.
+- `detectPoolFaults` reads only pools with `archivedAt` null, so an archived pool on a
+  silent host is not superseded by `collector-silent` either (its faults are already
+  resolved).
+- Disk faults stay independent: an archived pool supersedes nothing, so a member disk
+  that goes missing raises `disk-missing` (the disk is real hardware), where a live
+  missing or degraded pool would have folded it.
+- Alerts: `AlertPool` gains `archived`; `deriveAlert` drops any match whose subject is
+  an archived pool, which covers `vdev-state-changed` (mapped to its pool) as well as
+  pool entries. Disk entries are unaffected.
+- Backfill replays `pool-archived` (resolves the pool's replayed faults) and
+  `pool-unarchived`, and skips pool and vdev entries while the pool is archived. Pool
+  state replayed while archived is lost, so after an unarchive the replay starts from
+  the next entry; the final sync corrects the live rows.
+- Hidden: `GET /api/pools` defaults to `exclude`, which covers the ZFS list, topology
+  (home), the command palette and the diary subject pickers. `searchDatasets` skips
+  archived pools; `listDatasets(poolId)`, `getDataset` and `lookupDatasets(ids)` still
+  serve them so the pool page and diary links work. No snapshot-staleness detector
+  exists yet; when one lands it should read pools through the same filter.
+- Disks of an archived pool are not in any `/api/pools` vdev tree, so topology puts
+  them in the host's rails like unpooled disks. `DiskMembership` gains
+  `poolArchived`; a disk in both an archived and a live pool reports the live one.
+- UI: pool page header has a `…` menu (Archive… / Unarchive) beside the simulate menu
+  and a neutral banner "Archived <date> · note" with Unarchive.
+  `PoolArchiveModal` (`app/components/pool/ArchiveModal.vue`) is shared with the
+  faults page, where open `pool-missing` rows get "Archive pool" in `FaultActions`.
+  ZFS list: "Show archived" switch kept in `?archived=include`, archived rows muted
+  with an outline "archived" badge. Disk page membership is dimmed with an "archived
+  pool" badge.
+- Demo: `seeds.archivedPools` holds `tfault` on atlas, a file-backed mirror inserted
+  directly (it never reaches a `zpool-status`) and archived three hours after creation,
+  nine days before the anchor. Without the archive it would be `pool-missing`.
 
 ## Open questions
 
