@@ -17,6 +17,7 @@ import type {
   AcceptanceSeed,
   DatasetModel,
   DiskModel,
+  FaultActionSeed,
   HostModel,
   HostName,
   LeafAt,
@@ -917,6 +918,7 @@ export interface Seeds {
   hostDisplayNames: Record<HostName, string>;
   manualDiary: ManualDiarySeed[];
   acceptances: AcceptanceSeed[];
+  faultActions: FaultActionSeed[];
   overrides: OverrideSeed[];
   notifications: NotificationSeed[];
 }
@@ -1112,6 +1114,15 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
         kind: "acknowledge",
         note: "Long self-test queued; watching it.",
         at: timeline.a12AcknowledgedAt,
+      },
+    ],
+    faultActions: [
+      {
+        subject: disk("V5"),
+        kind: "disk-missing",
+        action: "acknowledge",
+        note: "Pulled for RMA",
+        at: hours(14, timeline.v5PulledAt),
       },
     ],
     overrides: [

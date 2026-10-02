@@ -1,5 +1,6 @@
 import type { AlertRule } from "#shared/alerts";
 import type { DiskProtocol, StateOverride } from "#shared/disk";
+import type { FaultAction, FaultKind } from "#shared/faults";
 import type { IngestMeta, IngestSource } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
 import type { AcceptanceKind } from "#shared/smart/status";
@@ -331,6 +332,15 @@ export interface AcceptanceSeed {
   alias: string;
   attrId: string;
   kind: AcceptanceKind;
+  note: string;
+  at: Date;
+}
+
+/** For `performFaultAction(id, action, { note, now: at })` on the subject's live fault of this kind. */
+export interface FaultActionSeed {
+  subject: Exclude<SeedSubject, { type: "system" }>;
+  kind: FaultKind;
+  action: FaultAction;
   note: string;
   at: Date;
 }

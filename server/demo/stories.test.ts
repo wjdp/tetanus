@@ -281,11 +281,12 @@ describe("ZFS instants", () => {
 
 describe("seeds", () => {
   it("backdates everything to before the anchor", () => {
-    const { manualDiary, acceptances, overrides, notifications } =
+    const { manualDiary, acceptances, faultActions, overrides, notifications } =
       stories.seeds;
     for (const seed of [
       ...manualDiary,
       ...acceptances,
+      ...faultActions,
       ...overrides,
       ...notifications,
     ]) {

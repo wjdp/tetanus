@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, max } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, max } from "drizzle-orm";
 import { COLLECTOR_VERSION } from "#shared/collector";
 import type { DiarySubjectType } from "#shared/diary";
 import type { IngestSource } from "#shared/ingest";
@@ -6,6 +6,7 @@ import { db } from "~~/server/database/client";
 import {
   collectorRun,
   diaryEntry,
+  fault,
   host as hostTable,
   notification,
   pool as poolTable,
@@ -20,7 +21,7 @@ import {
   PRESENT_WINDOW_MS,
   updateDisk,
 } from "~~/server/services/disks";
-import { syncFaults } from "~~/server/services/faults";
+import { performFaultAction, syncFaults } from "~~/server/services/faults";
 import { reorderHosts, updateHost } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import { ensureSettings, setAlertCursor } from "~~/server/services/settings";
@@ -28,6 +29,7 @@ import { renderSmart } from "./smart";
 import { addMs, DAY_MS, HOUR_MS, resetAnchor } from "./timeline";
 import type {
   DiskModel,
+  FaultActionSeed,
   HostModel,
   HostName,
   HostPayload,
@@ -367,6 +369,31 @@ function resolveSubject(
   }
 }
 
+/** The kind fixes the subject type, so the subject's id picks the fault. */
+function liveFaultIdOf(
+  world: DemoWorld,
+  { subject, kind }: FaultActionSeed,
+): number {
+  const { subjectId } = resolveSubject(world, subject);
+  const row =
+    subjectId === null
+      ? undefined
+      : db
+          .select({ id: fault.id })
+          .from(fault)
+          .where(
+            and(
+              eq(fault.kind, kind),
+              eq(fault.subjectId, subjectId),
+              isNull(fault.resolvedAt),
+            ),
+          )
+          .get();
+  if (!row)
+    throw new Error(`No live ${kind} fault on ${subject.type} ${subjectId}`);
+  return row.id;
+}
+
 function replayActions(world: DemoWorld): ReplayAction[] {
   const { seeds, disk } = world.stories;
   return [
@@ -380,6 +407,16 @@ function replayActions(world: DemoWorld): ReplayAction[] {
             kind,
             note,
             now: at,
+          }),
+      }),
+    ),
+    ...seeds.faultActions.map(
+      (seed): ReplayAction => ({
+        at: seed.at,
+        apply: () =>
+          performFaultAction(liveFaultIdOf(world, seed), seed.action, {
+            note: seed.note,
+            now: seed.at,
           }),
       }),
     ),
