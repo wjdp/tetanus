@@ -169,14 +169,17 @@ describe("zpool-status", () => {
     expect(db.select().from(vdev).all()).toHaveLength(25);
   });
 
-  it("is idempotent and seeds no diary on first sight", () => {
+  it("is idempotent and seeds only finished scans on first sight", () => {
     run("zpool-status", marsStatus());
     const first = snapshot();
     run("zpool-status", marsStatus(), minutesAfter(10));
     const second = snapshot();
 
-    expect(first.diary).toEqual([]);
-    expect(second.diary).toEqual([]);
+    expect(first.diary.map((entry) => entry.eventType)).toEqual([
+      "scrub-finished",
+      "scrub-finished",
+    ]);
+    expect(second.diary).toEqual(first.diary);
     expect(second.pools.map((row) => row.id)).toEqual(
       first.pools.map((row) => row.id),
     );
@@ -285,7 +288,9 @@ describe("zpool-status", () => {
     tank(later).scan = { ...scan, endTime: 1789411657 };
     run("zpool-status", later, minutesAfter(30));
 
-    const finished = diary("scrub-finished");
+    const finished = diary("scrub-finished").filter((entry) =>
+      entry.title.startsWith("tank "),
+    );
     expect(finished).toHaveLength(2);
     expect(diary("scan-finished")).toEqual([]);
     expect(finished[0]).toMatchObject({
@@ -345,6 +350,202 @@ describe("zpool-status", () => {
         data: { fromHostId: marsId, toHostId: venusId },
       },
       { data: { fromHostId: marsId } },
+    ]);
+  });
+});
+
+describe("zpool-status fault inputs", () => {
+  const TFAULT_LEAF_GUID = "11428255043898652460";
+
+  function tfaultStatus(fixture = "zpool-status-errlist.json") {
+    return parseZpoolStatus(readFixture(`mars/${fixture}`), {}).data;
+  }
+
+  function tankRow() {
+    const row = db.select().from(pool).where(eq(pool.guid, TANK_GUID)).get();
+    if (!row) throw new Error("tank not stored");
+    return row;
+  }
+
+  function withTankScan(
+    status: ZpoolStatusResult,
+    scan: Partial<NonNullable<ZpoolStatusResult["pools"][number]["scan"]>>,
+  ) {
+    const current = tank(status).scan;
+    if (!current) throw new Error("tank has no scan");
+    tank(status).scan = { ...current, ...scan };
+    return status;
+  }
+
+  it("stores msgid, moreinfo, damaged files and removal", () => {
+    run("zpool-status", tfaultStatus());
+    expect(db.select().from(pool).get()).toMatchObject({
+      name: "tfault",
+      errors: 1,
+      msgid: "ZFS-8000-8A",
+      moreinfo: "https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-8A",
+      damagedFiles: ["/tfault/victim"],
+      damagedFilesError: null,
+      removal: null,
+    });
+
+    run(
+      "zpool-status",
+      tfaultStatus("zpool-status-errlist-unprivileged.json"),
+      minutesAfter(10),
+    );
+    expect(db.select().from(pool).get()).toMatchObject({
+      damagedFiles: null,
+      damagedFilesError: "Permission denied",
+    });
+
+    run(
+      "zpool-status",
+      parseZpoolStatus(readFixture("mars/zpool-status.json"), {}).data,
+    );
+    const zeta = db.select().from(pool).where(eq(pool.name, "zeta")).get();
+    expect(zeta?.removal).toMatchObject({
+      state: "FINISHED",
+      copied: 97076903936,
+    });
+  });
+
+  it("writes a finished scrub seen at first sighting with its last scrub", () => {
+    run("zpool-status", marsStatus());
+    const [finished] = diary("scrub-finished");
+    expect(finished).toMatchObject({
+      subjectId: tankRow().id,
+      at: new Date(1789325257 * 1000),
+      data: {
+        function: "SCRUB",
+        errors: 0,
+        repairedBytes: 0,
+        startTime: 1789255441,
+        endTime: 1789325257,
+      },
+    });
+    expect(tankRow().lastScrub).toEqual({
+      endAt: new Date(1789325257 * 1000).toISOString(),
+      errors: 0,
+      repairedBytes: 0,
+      durationS: 1789325257 - 1789255441,
+    });
+  });
+
+  it("keeps the last scrub when a resilver replaces the scan", () => {
+    run("zpool-status", marsStatus());
+    const scrub = tankRow().lastScrub;
+    run(
+      "zpool-status",
+      withTankScan(marsStatus(), {
+        function: "RESILVER",
+        startTime: 1789400000,
+        endTime: 1789403600,
+        processed: 4096,
+      }),
+      minutesAfter(10),
+    );
+    expect(diary("resilver-finished")).toMatchObject([
+      { data: { repairedBytes: 4096, startTime: 1789400000 } },
+    ]);
+    expect(tankRow().scan?.function).toBe("RESILVER");
+    expect(tankRow().lastScrub).toEqual(scrub);
+  });
+
+  it("records a cancelled scrub once", () => {
+    run("zpool-status", marsStatus());
+    const cancelled = withTankScan(marsStatus(), {
+      state: "CANCELED",
+      startTime: 1789400000,
+      endTime: 1789401000,
+    });
+    run("zpool-status", cancelled, minutesAfter(10));
+    run("zpool-status", cancelled, minutesAfter(20));
+
+    expect(diary("scrub-cancelled")).toMatchObject([
+      {
+        subjectType: "pool",
+        subjectId: tankRow().id,
+        title: "tank scrub cancelled",
+        at: new Date(1789401000 * 1000),
+        data: { function: "SCRUB", startTime: 1789400000 },
+      },
+    ]);
+    expect(tankRow().lastScrub?.endAt).toBe(
+      new Date(1789325257 * 1000).toISOString(),
+    );
+  });
+
+  it("records leaf error counters rising, once per leaf per ingest", () => {
+    run("zpool-status", marsStatus());
+    const erring = marsStatus();
+    vdevNamed(erring, "/dev/disk/by-vdev/K1-part1").checksumErrors = 4;
+    vdevNamed(erring, "raidz1-0").checksumErrors = 4;
+    run("zpool-status", erring, minutesAfter(10));
+    run("zpool-status", erring, minutesAfter(20));
+
+    const rising = marsStatus();
+    Object.assign(vdevNamed(rising, "/dev/disk/by-vdev/K1-part1"), {
+      readErrors: 1,
+      checksumErrors: 12,
+    });
+    run("zpool-status", rising, minutesAfter(30));
+    run("zpool-status", marsStatus(), minutesAfter(40));
+
+    const entries = diary("leaf-errors-changed");
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({
+      subjectType: "pool",
+      subjectId: tankRow().id,
+      title: "/dev/disk/by-vdev/K1-part1 in tank: R 0 W 0 C 4",
+      data: {
+        poolId: tankRow().id,
+        vdevGuid: K1_GUID,
+        leaf: "/dev/disk/by-vdev/K1-part1",
+        diskId: null,
+        from: { read: 0, write: 0, checksum: 0 },
+        to: { read: 0, write: 0, checksum: 4 },
+      },
+    });
+    expect(entries[1]?.data).toMatchObject({
+      from: { read: 0, write: 0, checksum: 4 },
+      to: { read: 1, write: 0, checksum: 12 },
+    });
+  });
+
+  it("records errors on a file leaf seen for the first time", () => {
+    run("zpool-status", tfaultStatus());
+    expect(diary("leaf-errors-changed")).toMatchObject([
+      {
+        data: {
+          vdevGuid: TFAULT_LEAF_GUID,
+          leaf: "/var/tmp/tfault.img",
+          from: { read: 0, write: 0, checksum: 0 },
+          to: { read: 0, write: 0, checksum: 6 },
+        },
+      },
+    ]);
+    expect(diary("pool-data-errors-changed")).toMatchObject([
+      { title: "tfault has 1 data error (was 0)", data: { from: 0, to: 1 } },
+    ]);
+    expect(diary("scrub-finished")).toMatchObject([{ data: { errors: 1 } }]);
+  });
+
+  it("records pool data errors rising but not falling", () => {
+    run("zpool-status", marsStatus());
+    const withErrors = (count: number) => {
+      const status = marsStatus();
+      tank(status).errors = count;
+      return status;
+    };
+    run("zpool-status", withErrors(2), minutesAfter(10));
+    run("zpool-status", withErrors(2), minutesAfter(20));
+    run("zpool-status", withErrors(5), minutesAfter(30));
+    run("zpool-status", withErrors(0), minutesAfter(40));
+
+    expect(diary("pool-data-errors-changed")).toMatchObject([
+      { title: "tank has 2 data errors (was 0)", data: { from: 0, to: 2 } },
+      { data: { from: 2, to: 5 } },
     ]);
   });
 });
@@ -680,7 +881,14 @@ describe("pool queries", () => {
 
     const detail = getPool(tankRow?.id ?? 0, minutesAfter(20));
     expect(detail.readings).toHaveLength(2);
-    expect(detail.diary.map((entry) => entry.eventType)).toEqual(["vdev-left"]);
+    expect(detail.diary.map((entry) => entry.eventType)).toEqual([
+      "vdev-left",
+      "scrub-finished",
+    ]);
+    expect(detail.resolvedConfig).toEqual({
+      scrubIntervalDays: 35,
+      slowIoThreshold: 10,
+    });
     expect(detail.historyScope).toBe("host");
     expect(detail.history).toHaveLength(50);
     expect(detail.events).toHaveLength(50);

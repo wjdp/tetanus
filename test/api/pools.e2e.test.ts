@@ -131,7 +131,8 @@ describe("/api/pools", () => {
       id: pools[0].id,
       name: "tank",
       historyScope: "host",
-      diary: [],
+      diary: [{ eventType: "scrub-finished" }],
+      resolvedConfig: { scrubIntervalDays: 35, slowIoThreshold: 10 },
     });
     expect(detail.readings).toHaveLength(1);
     expect(detail.history).toHaveLength(50);

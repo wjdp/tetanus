@@ -1,6 +1,10 @@
 import { and, asc, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import type { Media } from "#shared/hardware";
 import { resolveModelShort } from "#shared/model";
+import {
+  type ResolvedPoolConfig,
+  resolvePoolConfig,
+} from "#shared/schemas/pools";
 import type { DeviceStatus } from "#shared/smart/status";
 import {
   type HostTemperatureThresholds,
@@ -56,6 +60,7 @@ export interface PoolHost {
 
 export interface PoolSummary extends Omit<PoolRow, "hostId"> {
   host: PoolHost;
+  resolvedConfig: ResolvedPoolConfig;
   vdevs: VdevNode | null;
   datasetCount: number;
   snapshotCount: number;
@@ -187,6 +192,7 @@ function summarise(rows: { pool: PoolRow; host: PoolHost }[]): PoolSummary[] {
     return {
       ...columns,
       host: hostRow,
+      resolvedConfig: resolvePoolConfig(poolRow.config),
       vdevs: trees.get(poolRow.id) ?? null,
       datasetCount: poolCounts?.datasets ?? 0,
       snapshotCount: poolCounts?.snapshots ?? 0,

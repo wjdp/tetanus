@@ -269,7 +269,9 @@ without colour. Manual entries `i-lucide-pencil`.
 | `moved-host`, `pool-moved` | `i-lucide-move-right` |
 | `vdev-joined`, `vdev-left`, `vdev-state-changed` | the vdev type icon |
 | `pool-state-changed` | `i-lucide-database` |
-| `scrub-finished`, `resilver-finished`, `scan-finished` | `i-lucide-scan-line` |
+| `scrub-finished`, `resilver-finished`, `scan-finished`, `scrub-cancelled` | `i-lucide-scan-line` |
+| `leaf-errors-changed` | `i-lucide-hard-drive` |
+| `pool-data-errors-changed` | `i-lucide-file-warning` |
 | `alias-set`, `alias-drift` | `i-lucide-tag` |
 | `identity-conflict` | `i-lucide-octagon-alert` |
 | `usage-changed` | `i-lucide-hard-drive` |

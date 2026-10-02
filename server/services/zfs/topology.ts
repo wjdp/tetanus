@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { DiaryEventType } from "#shared/diary";
+import type { PoolLastScrub } from "#shared/schemas/pools";
 import { db } from "~~/server/database/client";
 import {
   pool,
@@ -66,6 +67,16 @@ function scanFinished(
   return previous?.state !== "FINISHED" || previous.endTime !== current.endTime;
 }
 
+function scanCancelled(
+  previous: ZpoolStatusScan | null,
+  current: ZpoolStatusScan | null,
+): current is ZpoolStatusScan {
+  if (current?.state !== "CANCELED") return false;
+  return (
+    previous?.state !== "CANCELED" || previous.startTime !== current.startTime
+  );
+}
+
 const SCAN_EVENT_TYPES: Record<string, DiaryEventType> = {
   SCRUB: "scrub-finished",
   RESILVER: "resilver-finished",
@@ -73,6 +84,94 @@ const SCAN_EVENT_TYPES: Record<string, DiaryEventType> = {
 
 function scanEventType(scanFunction: string): DiaryEventType {
   return SCAN_EVENT_TYPES[scanFunction.toUpperCase()] ?? "scan-finished";
+}
+
+const isScrub = (scan: ZpoolStatusScan) =>
+  scan.function.toUpperCase() === "SCRUB";
+
+function finishedScrub(
+  previous: ZpoolStatusScan | null,
+  current: ZpoolStatusScan | null,
+): PoolLastScrub | undefined {
+  if (!scanFinished(previous, current) || !isScrub(current)) return undefined;
+  return {
+    endAt: new Date(current.endTime * 1000).toISOString(),
+    errors: current.errors,
+    repairedBytes: current.processed ?? null,
+    durationS: current.endTime - current.startTime,
+  };
+}
+
+const plural = (count: number, noun: string) =>
+  `${count} ${noun}${count === 1 ? "" : "s"}`;
+
+function recordScanChanges(
+  poolId: number,
+  previous: ZpoolStatusScan | null,
+  observed: ZpoolStatusPool,
+  receivedAt: Date,
+) {
+  const { scan } = observed;
+  if (scanCancelled(previous, scan)) {
+    addAutoEvent({
+      subjectType: "pool",
+      subjectId: poolId,
+      eventType: "scrub-cancelled",
+      title: `${observed.name} ${scan.function.toLowerCase()} cancelled`,
+      data: {
+        function: scan.function,
+        examined: scan.examined,
+        toExamine: scan.toExamine,
+        startTime: scan.startTime,
+        endTime: scan.endTime ?? null,
+      },
+      at:
+        scan.endTime === undefined ? receivedAt : new Date(scan.endTime * 1000),
+    });
+  }
+  if (scanFinished(previous, scan)) {
+    const {
+      function: scanFunction,
+      errors,
+      examined,
+      endTime,
+      startTime,
+    } = scan;
+    addAutoEvent({
+      subjectType: "pool",
+      subjectId: poolId,
+      eventType: scanEventType(scanFunction),
+      title: `${observed.name} ${scanFunction.toLowerCase()} finished with ${plural(errors, "error")}`,
+      data: {
+        function: scanFunction,
+        errors,
+        examined,
+        repairedBytes: scan.processed ?? null,
+        startTime,
+        endTime,
+      },
+      at: new Date(endTime * 1000),
+    });
+  }
+}
+
+function recordDataErrorChanges(
+  poolId: number,
+  previousErrors: number | null,
+  observed: ZpoolStatusPool,
+  receivedAt: Date,
+) {
+  const from = previousErrors ?? 0;
+  const to = observed.errors ?? 0;
+  if (to <= from) return;
+  addAutoEvent({
+    subjectType: "pool",
+    subjectId: poolId,
+    eventType: "pool-data-errors-changed",
+    title: `${observed.name} has ${plural(to, "data error")} (was ${from})`,
+    data: { from, to },
+    at: receivedAt,
+  });
 }
 
 function recordPoolChanges(
@@ -101,17 +200,8 @@ function recordPoolChanges(
       at: receivedAt,
     });
   }
-  if (scanFinished(existing.scan, observed.scan)) {
-    const { function: scanFunction, errors, examined, endTime } = observed.scan;
-    addAutoEvent({
-      subjectType: "pool",
-      subjectId: existing.id,
-      eventType: scanEventType(scanFunction),
-      title: `${observed.name} ${scanFunction.toLowerCase()} finished with ${errors} error${errors === 1 ? "" : "s"}`,
-      data: { function: scanFunction, errors, examined, endTime },
-      at: new Date(endTime * 1000),
-    });
-  }
+  recordScanChanges(existing.id, existing.scan, observed, receivedAt);
+  recordDataErrorChanges(existing.id, existing.errors, observed, receivedAt);
 }
 
 function upsertPool(
@@ -119,27 +209,36 @@ function upsertPool(
   hostId: number,
   receivedAt: Date,
 ): { row: PoolRow; firstSeen: boolean } {
+  const existing = db
+    .select()
+    .from(pool)
+    .where(eq(pool.guid, observed.guid))
+    .get();
+  const lastScrub = finishedScrub(existing?.scan ?? null, observed.scan);
   const fields = {
     hostId,
     name: observed.name,
     state: observed.state,
     status: observed.status ?? null,
     action: observed.action ?? null,
+    msgid: observed.msgid ?? null,
+    moreinfo: observed.moreinfo ?? null,
     errors: observed.errors ?? null,
+    damagedFiles: observed.damagedFiles ?? null,
+    damagedFilesError: observed.damagedFilesError ?? null,
     scan: observed.scan,
+    removal: observed.removal,
+    ...(lastScrub && { lastScrub }),
     lastSeenAt: receivedAt,
   };
-  const existing = db
-    .select()
-    .from(pool)
-    .where(eq(pool.guid, observed.guid))
-    .get();
   if (!existing) {
     const row = db
       .insert(pool)
       .values({ ...fields, guid: observed.guid, firstSeenAt: receivedAt })
       .returning()
       .get();
+    recordScanChanges(row.id, null, observed, receivedAt);
+    recordDataErrorChanges(row.id, null, observed, receivedAt);
     return { row, firstSeen: true };
   }
   recordPoolChanges(existing, observed, hostId, receivedAt);
@@ -202,6 +301,48 @@ function recordVdevChanges(
       data: { poolId: poolRow.id, from: existing.state, to: observed.state },
     });
   }
+}
+
+const LEAF_TYPES: ReadonlySet<string> = new Set(["disk", "file"]);
+
+type ErrorCounts = Pick<
+  VdevRow,
+  "readErrors" | "writeErrors" | "checksumErrors"
+>;
+
+const errorTotals = (counts: ErrorCounts | undefined) => ({
+  read: counts?.readErrors ?? 0,
+  write: counts?.writeErrors ?? 0,
+  checksum: counts?.checksumErrors ?? 0,
+});
+
+function recordLeafErrorChanges(
+  existing: VdevRow | undefined,
+  row: VdevRow,
+  poolRow: PoolRow,
+  receivedAt: Date,
+) {
+  if (!LEAF_TYPES.has(row.type)) return;
+  const from = errorTotals(existing);
+  const to = errorTotals(row);
+  const rose =
+    to.read > from.read || to.write > from.write || to.checksum > from.checksum;
+  if (!rose) return;
+  addAutoEvent({
+    subjectType: "pool",
+    subjectId: poolRow.id,
+    eventType: "leaf-errors-changed",
+    title: `${row.name} in ${poolRow.name}: R ${to.read} W ${to.write} C ${to.checksum}`,
+    data: {
+      poolId: poolRow.id,
+      vdevGuid: row.guid,
+      leaf: row.name,
+      diskId: row.diskId,
+      from,
+      to,
+    },
+    at: receivedAt,
+  });
 }
 
 type ReadingFields = Pick<
@@ -291,6 +432,7 @@ function upsertVdevs(
       firstSeen,
       receivedAt,
     );
+    recordLeafErrorChanges(existing, row, poolRow, receivedAt);
     recordVdevReading(row, receivedAt);
   }
 

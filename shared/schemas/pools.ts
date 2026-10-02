@@ -33,6 +33,6 @@ export function resolvePoolConfig(
 export interface PoolLastScrub {
   endAt: string;
   errors: number;
-  repairedBytes: number;
+  repairedBytes: number | null;
   durationS: number;
 }
