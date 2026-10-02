@@ -4,6 +4,8 @@ import { zfsStateColour } from "./zfsState";
 describe("zfsStateColour", () => {
   it.each([
     ["ONLINE", "success"],
+    ["AVAIL", "success"],
+    ["INUSE", "success"],
     ["DEGRADED", "warning"],
     ["OFFLINE", "warning"],
     ["REMOVED", "warning"],

@@ -2,6 +2,8 @@ export type ZfsStateColour = "success" | "warning" | "error";
 
 export const ZFS_STATE_COLOUR: Record<string, ZfsStateColour> = {
   ONLINE: "success",
+  AVAIL: "success",
+  INUSE: "success",
   DEGRADED: "warning",
   OFFLINE: "warning",
   REMOVED: "warning",

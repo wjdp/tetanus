@@ -93,6 +93,7 @@ Applies to pool, vdev and leaf state strings everywhere: pool badge, vdev group 
 | state | colour | shape | note |
 | --- | --- | --- | --- |
 | `ONLINE` | success | text / subtle badge | change from today (was neutral) |
+| `AVAIL` / `INUSE` | success | | a spare's healthy aux states: free, or standing in for a failed leaf |
 | `DEGRADED` | warning | | fault `pool-degraded` at pool level |
 | `OFFLINE` | warning | | administrative, still lost redundancy |
 | `REMOVED` | warning | | |
