@@ -55,14 +55,17 @@ acknowledgement is attached to:
 | kind | category | lifetime | severity | key | actions |
 | --- | --- | --- | --- | --- | --- |
 | `smart-attribute` | disk | persistent | attribute status | `diskId:attrId` | acknowledge, accept, clear |
-| `smart-health-failed` | disk | persistent | error | `diskId` | acknowledge |
-| `disk-missing` | disk | transient | error | `diskId` | acknowledge |
+| `smart-health-failed` | disk | persistent | error | `diskId` | acknowledge, clear |
+| `disk-missing` | disk | transient | error | `diskId` | acknowledge, clear |
 | `identity-conflict` | disk | until acknowledged | error | `diskId:<sorted diskIds>` | acknowledge (resolves it) |
-| `pool-degraded` | zfs | transient | by state, 037 `zfsStateColour` | `poolId` | acknowledge, accept |
-| `scan-errors` | zfs | until a clean scan | error | `poolId` | acknowledge |
-| `collector-silent` | host | transient | error | `hostId` | acknowledge |
-| `collector-incompatible` | host | transient | error | `hostId:version` | acknowledge |
-| `collector-outdated` | host | transient | warning | `hostId:version` | acknowledge |
+| `pool-degraded` | zfs | transient | by state, 037 `zfsStateColour` | `poolId` | acknowledge, accept, clear |
+| `scan-errors` | zfs | until a clean scan | error | `poolId` | acknowledge, clear |
+| `collector-silent` | host | transient | error | `hostId` | acknowledge, clear |
+| `collector-incompatible` | host | transient | error | `hostId:version` | acknowledge, clear |
+| `collector-outdated` | host | transient | warning | `hostId:version` | acknowledge, clear |
+
+Clear takes an acknowledgement or acceptance back to `open`, so a mistaken click can be
+undone; identity conflicts have none because acknowledging resolves them.
 
 One fault per SMART attribute, the grain acknowledge and accept already work at
 (nothing in code derives a per-disk fault today; the `disk-failed` alert rule stays as

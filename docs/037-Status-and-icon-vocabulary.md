@@ -41,8 +41,8 @@ Worst of health, un-accepted attribute statuses (acknowledged ones count as `war
 | status | colour | shape | badge label | where |
 | --- | --- | --- | --- | --- |
 | `passed` | success | filled | `SMART passed` | tile dot, rail dot, Disks status column, nameplate badge |
-| `warning` | warning | filled | `SMART warning` | as above; a fault `disk-warning` unless accepted |
-| `failed` | error | filled | `SMART failed` | as above; fault `disk-failed` |
+| `warning` | warning | filled | `SMART warning` | as above; one `smart-attribute` fault per attribute ([036](036-Faults-page.md)) |
+| `failed` | error | filled | `SMART failed` | as above; `smart-attribute` faults, `smart-health-failed` when the drive says so |
 | `unknown` | neutral | hollow | `SMART unknown` | never read, or `smartctl -n standby` skipped it |
 
 ## SMART attribute display status (`AttributeDisplayStatus`)
@@ -162,13 +162,15 @@ Host header chips, Hosts settings page.
 Collector version (`collectorStatus`): `current` nothing shown, `outdated` warning fault,
 `incompatible` error fault. No icon; the fault row carries the copyable command.
 
-## Faults (`Fault.severity`)
+## Faults (`Fault.state`, `Fault.severity`)
 
-| severity | gutter | nav badge |
-| --- | --- | --- |
-| `error` | 3 px `error` left border | counted, badge `error` |
-| `warning` | 3 px `warning` | not counted |
-| dismissed | no gutter, row at 60 % opacity | not counted |
+| state | severity | gutter | nav badge, banner |
+| --- | --- | --- | --- |
+| `open` | `error` | 3 px `error` left border | counted, badge `error`; banner |
+| `open` | `warning` | 3 px `warning` | not counted |
+| `acknowledged` | any | 3 px `warning` | not counted |
+| `accepted` | any | none | not counted |
+| `resolved` | any | none, row at 60 % opacity, "resolved 3 d ago" | not counted |
 
 Nav entry `i-lucide-siren` ([036](036-Faults-page.md)).
 
@@ -272,7 +274,7 @@ without colour. Manual entries `i-lucide-pencil`.
 | `collector-status-changed` | `i-lucide-server` |
 | `events-gap`, `events-reset` | `i-lucide-history` |
 | `imported-from-scrutiny` | `i-lucide-import` |
-| `fault-dismissed`, `fault-restored` | `i-lucide-siren` |
+| `fault-opened`, `fault-state-changed`, `fault-resolved` | `i-lucide-siren` |
 
 ## Where the code lives
 

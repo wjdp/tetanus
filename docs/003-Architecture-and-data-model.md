@@ -93,8 +93,8 @@ banners on silence. A "collect now" button is not possible without a callback;
 accept that, or later add a long-poll the script honours.
 
 Each source records a `CollectorRun` (host, started, finished, ok, error, producer).
-Missing runs beyond the expected cadence raise a fault banner: "no ZFS data from mars
-for 3 h".
+When every source group is past twice its cadence the host gets a `collector-silent`
+fault ([036](036-Faults-page.md)), shown in the banner strip: "No data for 3 h".
 
 First-run page shows the enrol token, the collector install one-liner, and which hosts
 and sources have reported.
@@ -233,6 +233,10 @@ SmartAttribute  readingId, attrId (text: "5" | "media_errors"), value, worst, th
 TemperatureReading  diskId, at, celsius       unique(diskId, at)
 SelfTest        diskId, type, status, lifetimeHours, lba?, seenAt   unique per (disk, lifetimeHours, type)
 FaultAcceptance id, diskId, attrId, kind (accept | acknowledge), acceptedValue, acceptedAt, note, supersededAt?
+Fault           id, kind, category (disk|zfs|host), subjectType (disk|pool|host), subjectId, key,
+                severity (warning|error), data (json), openedAt, lastSeenAt, resolvedAt?,
+                state (open|acknowledged|accepted|resolved), stateChangedAt, note
+                unique(kind, key) where resolvedAt is null; see 036
 Pool            id, hostId (current), guid (unique), name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
                 dedup, scan (json: type, state, started, finished, examined, errors),
                 firstSeenAt, lastSeenAt
@@ -329,7 +333,8 @@ and cached, or bundled.
 - **Settings.** Enrol token and install one-liner; Hosts page (rename, healthchecks
   URL, last seen per source); cadences, thresholds, notification channels,
   vdev_id.conf proposal, importers.
-- Fault banners in layout for collector silence, identity conflicts, vdev_id drift.
+- Faults page and banner strip ([036](036-Faults-page.md)): stored occurrences synced
+  by the alerts pass; the banner shows open errors, capped at three.
 - Command palette: jump to disk/pool by alias or serial.
 
 Charts: library undecided. Sparklines in tables as inline SVG regardless.

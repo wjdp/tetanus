@@ -94,6 +94,11 @@ message `mars · collector: 0.2.0 is too old; tetanus needs 0.3.0 or later`.
 
 ### Fault (`app/composables/useFaults.ts`)
 
+Superseded by [036](036-Faults-page.md): the rules moved server-side
+(`server/services/faults.ts`). `collector-incompatible` (error) and `collector-outdated`
+(warning) are stored faults keyed `hostId:version`, acknowledged rather than dismissed,
+and live until the collector is upgraded. As built here:
+
 - An incompatible host adds a fault, id `collector-incompatible:<host>:<version>` so an
   upgrade to another incompatible version shows it again after a dismissal.
 - Title: `<host> collector <version> is too old; tetanus needs <MIN> or later`.

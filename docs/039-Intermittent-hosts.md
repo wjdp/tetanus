@@ -18,7 +18,7 @@ Rule: an intermittent host being **off** is not a fault. Anything wrong while it
 
 | Source | Where | Effect on an off host |
 | --- | --- | --- |
-| `collector-silent` fault | `app/composables/useFaults.ts` | banner "No data for 9 d" once every group is non-ok |
+| `collector-silent` fault | `server/services/faults.ts` (was `app/composables/useFaults.ts` before [036](036-Faults-page.md)) | banner "No data for 9 d" once every group is non-ok |
 | Freshness chips | `shared/hostFreshness.ts`, host header, `settings/hosts.vue` | `warning` after 2× cadence, `error` if never seen |
 | Healthchecks ping | `server/services/healthchecks.ts` | `POST <url>/fail` naming stale groups |
 | Disk state | `inferState` / `stateResolver` in `server/services/disks.ts` | disks leave `isPresent` after `PRESENT_WINDOW_MS` (2 h) → `missing` → `removed` after `missingAfterDays`; `recordStateTransition` writes `state-changed` diary entries → `disk-missing` alert |
@@ -120,7 +120,8 @@ lists them in a user-set order, not by name.
 1. Schema, migration, patch schema, `updateHost` (URL rule), `listHosts` returns the
    field.
 2. `isHostOffline` + tests.
-3. `useFaults` skips offline hosts.
+3. `useFaults` skips offline hosts. Now enforced server-side by the `collector-silent`
+   detector ([036](036-Faults-page.md)).
 4. Disk state reference time + tests (off for weeks, pulled while on, boot window).
 5. Hosts page switch and badge; host header chip; 037 row.
 6. Host order: column, service, route, hosts page drag handle.
