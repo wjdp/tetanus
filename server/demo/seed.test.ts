@@ -204,14 +204,24 @@ describe("seed", () => {
   });
 
   describe("faults", () => {
-    it("counts four live, one accepted and six resolved", () => {
+    it("counts five live, one accepted and eleven resolved", () => {
       const { counts } = allFaults();
       expect(counts).toEqual({
-        open: 2,
+        open: 3,
         acknowledged: 2,
         accepted: 1,
-        resolved: 6,
+        resolved: 11,
       });
+      const zfsKinds = allFaults()
+        .faults.filter((row) => row.category === "zfs")
+        .map((row) => [row.kind, row.subject.label, row.state]);
+      expect(zfsKinds).toEqual(
+        expect.arrayContaining([
+          ["leaf-errors", "tank", "open"],
+          ["leaf-errors", "vault", "resolved"],
+          ["scrub-overdue", "vault", "resolved"],
+        ]),
+      );
       expect(
         allFaults().faults.filter((row) => row.kind === "collector-silent"),
       ).toEqual([]);

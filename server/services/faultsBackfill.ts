@@ -8,6 +8,8 @@ import {
   type FaultKind,
   type FaultSeverity,
   type FaultState,
+  type LeafCounts,
+  type PoolDegradedLeaf,
 } from "#shared/faults";
 import { healthStatus } from "#shared/smart/status";
 import { db } from "~~/server/database/client";
@@ -17,6 +19,7 @@ import {
   fault,
   pool,
   smartReading,
+  vdev,
 } from "~~/server/database/schema";
 import type { DiaryEntryRow } from "~~/server/services/diary";
 import { listDisks } from "~~/server/services/disks";
@@ -28,9 +31,21 @@ import {
   identityConflictKey,
   LEFT_SERVICE_STATES,
   notifyFaultsChanged,
+} from "~~/server/services/faults";
+import {
+  accumulatedRise,
+  addCounts,
+  countsRose,
+  hasLeafErrors,
+  isHealthyLeafState,
+  LEAF_TYPES,
+  leafErrorsSeverity,
+  leafKey,
+  poolDegradedWorsened,
   poolSeverity,
   SCAN_FINISHED_EVENTS,
-} from "~~/server/services/faults";
+  worstSeverity,
+} from "~~/server/services/poolFaults";
 import { setFaultsBackfilledAt } from "~~/server/services/settings";
 
 type ReplayedFault = Omit<FaultRow, "id">;
@@ -46,6 +61,10 @@ const REPLAYED_EVENTS = [
   "state-changed",
   "override-set",
   "pool-state-changed",
+  "vdev-state-changed",
+  "vdev-left",
+  "leaf-errors-changed",
+  "pool-data-errors-changed",
   ...SCAN_FINISHED_EVENTS,
   "identity-conflict",
   "collector-status-changed",
@@ -67,6 +86,13 @@ const COLLECTOR_VERSION_KINDS: FaultKind[] = [
   "collector-incompatible",
   "collector-outdated",
 ];
+const LEAF_FAULT_KINDS: FaultKind[] = ["leaf-errors", "leaf-slow"];
+const WARNING_KINDS = new Set<FaultKind>([
+  "collector-outdated",
+  "pool-missing",
+  "leaf-slow",
+  "scrub-overdue",
+]);
 const SETTABLE_STATES = new Set<FaultState>([
   "open",
   "acknowledged",
@@ -79,6 +105,13 @@ const identity = (kind: FaultKind, key: string) => `${kind}\u0000${key}`;
 
 function isFaultKind(value: unknown): value is FaultKind {
   return FAULT_KINDS.includes(value as FaultKind);
+}
+
+function withoutAcknowledgedLevel({
+  acknowledgedCounts: _counts,
+  ...data
+}: FaultData): FaultData {
+  return data;
 }
 
 function withoutAcceptance({
@@ -135,13 +168,27 @@ class FaultReplay {
     return row;
   }
 
-  observe(opening: Opening, at: Date, { reopenOnRise = false } = {}) {
+  observe(
+    opening: Opening,
+    at: Date,
+    {
+      reopenOnRise = false,
+      reopenWhen,
+    }: {
+      reopenOnRise?: boolean;
+      reopenWhen?: (previous: FaultData) => boolean;
+    } = {},
+  ) {
     const row = this.get(opening.kind, opening.key);
     if (!row) return this.open(opening, at);
     const isQuiet = row.state === "acknowledged" || row.state === "accepted";
     const rose =
       FAULT_SEVERITY_RANK[opening.severity] > FAULT_SEVERITY_RANK[row.severity];
-    if (reopenOnRise && isQuiet && rose) this.setState(row, "open", "", at);
+    const worsened = (reopenOnRise && rose) || reopenWhen?.(row.data) === true;
+    if (isQuiet && worsened) {
+      this.setState(row, "open", "", at);
+      row.data = withoutAcknowledgedLevel(row.data);
+    }
     row.severity = opening.severity;
     row.data = { ...row.data, ...opening.data };
     row.lastSeenAt = at;
@@ -165,11 +212,30 @@ class FaultReplay {
   }
 }
 
+interface ReplayedLeaf {
+  guid: string;
+  name: string;
+  role: string;
+  type: string;
+  diskId: number | null;
+  poolId: number;
+}
+
+interface PoolReplayState {
+  state: string;
+  failedLeaves: Map<string, PoolDegradedLeaf>;
+  dataErrors: number;
+  scanErrors: number;
+}
+
 interface ReplayContext {
   replay: FaultReplay;
   poolNames: Map<number, string>;
   diskLastSeen: Map<number, Date | null>;
   outOfService: Set<number>;
+  leaves: Map<number, ReplayedLeaf>;
+  leafCounts: Map<string, LeafCounts>;
+  pools: Map<number, PoolReplayState>;
 }
 
 function leaveOrReturnToService(
@@ -284,50 +350,220 @@ function replayDiskEntry(
   }
 }
 
-function replayPoolEntry(
+function poolState(context: ReplayContext, poolId: number) {
+  let state = context.pools.get(poolId);
+  if (!state) {
+    state = {
+      state: "ONLINE",
+      failedLeaves: new Map(),
+      dataErrors: 0,
+      scanErrors: 0,
+    };
+    context.pools.set(poolId, state);
+  }
+  return state;
+}
+
+const ZERO_COUNTS: LeafCounts = { read: 0, write: 0, checksum: 0 };
+
+function replayPoolDegraded(context: ReplayContext, poolId: number, at: Date) {
+  const { replay } = context;
+  const key = String(poolId);
+  const { state, failedLeaves } = poolState(context, poolId);
+  if (state === "ONLINE" && failedLeaves.size === 0) {
+    replay.resolve(replay.get("pool-degraded", key), at);
+    return;
+  }
+  const leaves = [...failedLeaves.values()];
+  const severity = worstSeverity([
+    ...(state === "ONLINE" ? [] : [poolSeverity(state)]),
+    ...leaves.map((leaf) => poolSeverity(leaf.state)),
+  ]);
+  replay.observe(
+    {
+      kind: "pool-degraded",
+      key,
+      subjectId: poolId,
+      severity,
+      data: { state, poolName: context.poolNames.get(poolId) ?? null, leaves },
+    },
+    at,
+    {
+      reopenOnRise: true,
+      reopenWhen: (previous) => poolDegradedWorsened(leaves, previous.leaves),
+    },
+  );
+}
+
+function replayVdevEntry(context: ReplayContext, entry: DiaryEntryRow) {
+  if (entry.subjectId === null) return;
+  const leaf = context.leaves.get(entry.subjectId);
+  if (entry.eventType === "vdev-left" && leaf) {
+    const { replay } = context;
+    for (const kind of LEAF_FAULT_KINDS) {
+      replay.resolve(
+        replay.get(kind, leafKey(leaf.poolId, leaf.guid)),
+        entry.at,
+      );
+    }
+    return;
+  }
+  if (entry.eventType !== "vdev-state-changed") return;
+  if (!leaf || !LEAF_TYPES.has(leaf.type)) return;
+  const { replay } = context;
+  const { failedLeaves } = poolState(context, leaf.poolId);
+  const state = text(entry.data.to);
+  if (isHealthyLeafState(state, leaf.role)) {
+    failedLeaves.delete(leaf.guid);
+  } else {
+    failedLeaves.set(leaf.guid, {
+      vdevGuid: leaf.guid,
+      name: leaf.name,
+      state,
+      role: leaf.role,
+      diskId: leaf.diskId,
+      diskMissing: false,
+      ...(context.leafCounts.get(leaf.guid) ?? ZERO_COUNTS),
+    });
+    for (const kind of LEAF_FAULT_KINDS) {
+      replay.resolve(
+        replay.get(kind, leafKey(leaf.poolId, leaf.guid)),
+        entry.at,
+      );
+    }
+  }
+  replayPoolDegraded(context, leaf.poolId, entry.at);
+}
+
+function countsOf(value: unknown): LeafCounts {
+  const counts = (value ?? {}) as Partial<LeafCounts>;
+  return {
+    read: Number(counts.read) || 0,
+    write: Number(counts.write) || 0,
+    checksum: Number(counts.checksum) || 0,
+  };
+}
+
+function replayLeafErrors(
   context: ReplayContext,
   entry: DiaryEntryRow,
   poolId: number,
 ) {
   const { replay } = context;
   const { data, at } = entry;
-  const key = String(poolId);
-  const poolName = context.poolNames.get(poolId) ?? null;
-  if (entry.eventType === "pool-state-changed") {
-    const state = text(data.to);
-    if (state === "ONLINE") {
-      replay.resolve(replay.get("pool-degraded", key), at);
-      return;
-    }
-    replay.observe(
-      {
-        kind: "pool-degraded",
-        key,
-        subjectId: poolId,
-        severity: poolSeverity(state),
-        data: { state, poolName },
-      },
-      at,
-      { reopenOnRise: true },
-    );
+  const vdevGuid = text(data.vdevGuid);
+  const counts = countsOf(data.to);
+  const previous = countsOf(data.from);
+  context.leafCounts.set(vdevGuid, counts);
+  const failed = poolState(context, poolId).failedLeaves.get(vdevGuid);
+  if (failed) {
+    Object.assign(failed, counts);
+    replayPoolDegraded(context, poolId, at);
     return;
   }
-  if (!SCAN_FINISHED_EVENTS.includes(entry.eventType as never)) return;
-  const errors = Number(data.errors);
-  if (!(errors > 0)) {
-    replay.resolve(replay.get("scan-errors", key), at);
-    return;
-  }
+  const key = leafKey(poolId, vdevGuid);
+  const live = replay.get("leaf-errors", key);
+  const resolvedBefore = replay.rows.some(
+    (row) => row.kind === "leaf-errors" && row.key === key,
+  );
+  const rise = accumulatedRise(
+    { ...(live || resolvedBefore ? previous : ZERO_COUNTS), slowIos: 0 },
+    [{ ...counts, slowIos: 0 }],
+  );
+  const total = live ? addCounts(countsOf(live.data.total), rise) : rise;
+  if (!hasLeafErrors(total)) return;
   replay.observe(
     {
-      kind: "scan-errors",
+      kind: "leaf-errors",
+      key,
+      subjectId: poolId,
+      severity: leafErrorsSeverity(data.role),
+      data: {
+        poolName: context.poolNames.get(poolId) ?? null,
+        vdevGuid,
+        name: data.leaf,
+        role: data.role ?? null,
+        diskId: data.diskId ?? null,
+        ...counts,
+        total,
+      },
+    },
+    at,
+    {
+      reopenWhen: (previousData) =>
+        countsRose(
+          total,
+          previousData.acknowledgedCounts ?? previousData.total,
+        ),
+    },
+  );
+}
+
+function replayPoolDataErrors(
+  context: ReplayContext,
+  poolId: number,
+  at: Date,
+  scan?: { function: unknown; finishedAt: string | null },
+) {
+  const { replay } = context;
+  const key = String(poolId);
+  const state = poolState(context, poolId);
+  if (state.dataErrors <= 0 && state.scanErrors <= 0) {
+    replay.resolve(replay.get("pool-data-errors", key), at);
+    return;
+  }
+  const dataErrors = state.dataErrors;
+  replay.observe(
+    {
+      kind: "pool-data-errors",
       key,
       subjectId: poolId,
       severity: "error",
-      data: { poolName, function: data.function, errors, finishedAt: iso(at) },
+      data: {
+        poolName: context.poolNames.get(poolId) ?? null,
+        dataErrors,
+        scanErrors: state.scanErrors,
+        ...(scan ?? {}),
+      },
     },
     at,
+    {
+      reopenWhen: (previous) =>
+        dataErrors > Number(previous.dataErrors ?? 0) ||
+        (scan !== undefined && state.scanErrors > 0),
+    },
   );
+}
+
+function replayPoolEntry(
+  context: ReplayContext,
+  entry: DiaryEntryRow,
+  poolId: number,
+) {
+  const { data, at } = entry;
+  switch (entry.eventType) {
+    case "pool-state-changed":
+      poolState(context, poolId).state = text(data.to);
+      replayPoolDegraded(context, poolId, at);
+      return;
+    case "leaf-errors-changed":
+      replayLeafErrors(context, entry, poolId);
+      return;
+    case "pool-data-errors-changed":
+      poolState(context, poolId).dataErrors = Number(data.to) || 0;
+      replayPoolDataErrors(context, poolId, at);
+      return;
+  }
+  if (!SCAN_FINISHED_EVENTS.includes(entry.eventType as never)) return;
+  const state = poolState(context, poolId);
+  state.scanErrors = Number(data.errors) || 0;
+  // A clean scan is the only trail of data errors clearing; the final sync
+  // reopens from Pool.errors if they did not.
+  if (state.scanErrors === 0) state.dataErrors = 0;
+  replayPoolDataErrors(context, poolId, at, {
+    function: state.scanErrors > 0 ? data.function : null,
+    finishedAt: state.scanErrors > 0 ? iso(at) : null,
+  });
 }
 
 function replayHostEntry(
@@ -366,8 +602,10 @@ function replayHostEntry(
 }
 
 function dataFromKey(kind: FaultKind, key: string): FaultData {
-  if (!COLLECTOR_VERSION_KINDS.includes(kind)) return {};
-  return { version: key.slice(key.indexOf(":") + 1) };
+  const afterColon = key.slice(key.indexOf(":") + 1);
+  if (COLLECTOR_VERSION_KINDS.includes(kind)) return { version: afterColon };
+  if (LEAF_FAULT_KINDS.includes(kind)) return { vdevGuid: afterColon };
+  return {};
 }
 
 // The fault trail sync writes since faults were stored: covers kinds with no
@@ -388,7 +626,7 @@ function replayFaultEntry(context: ReplayContext, entry: DiaryEntryRow) {
           kind,
           key,
           subjectId: entry.subjectId,
-          severity: kind === "collector-outdated" ? "warning" : "error",
+          severity: WARNING_KINDS.has(kind) ? "warning" : "error",
           data: dataFromKey(kind, key),
         },
         at,
@@ -398,6 +636,7 @@ function replayFaultEntry(context: ReplayContext, entry: DiaryEntryRow) {
       const state = data.to as FaultState;
       if (row && SETTABLE_STATES.has(state)) {
         replay.setState(row, state, text(data.note), at);
+        if (kind === "leaf-errors") setAcknowledgedLevel(row, state);
       }
       return;
     }
@@ -405,6 +644,12 @@ function replayFaultEntry(context: ReplayContext, entry: DiaryEntryRow) {
       replay.resolve(row, at, text(data.note));
       return;
   }
+}
+
+function setAcknowledgedLevel(row: ReplayedFault, state: FaultState) {
+  row.data = withoutAcknowledgedLevel(row.data);
+  if (state === "open") return;
+  row.data.acknowledgedCounts = countsOf(row.data.total);
 }
 
 function replayEntry(context: ReplayContext, entry: DiaryEntryRow) {
@@ -417,6 +662,8 @@ function replayEntry(context: ReplayContext, entry: DiaryEntryRow) {
     replayDiskEntry(context, entry, entry.subjectId);
   } else if (entry.subjectType === "pool") {
     replayPoolEntry(context, entry, entry.subjectId);
+  } else if (entry.subjectType === "vdev") {
+    replayVdevEntry(context, entry);
   } else if (entry.subjectType === "host") {
     replayHostEntry(context, entry, entry.subjectId);
   }
@@ -498,6 +745,23 @@ export function replayFaultHistory(): ReplayedFault[] {
         .map((row) => [row.id, row.lastSeenAt]),
     ),
     outOfService: new Set(),
+    leaves: new Map(
+      db
+        .select({
+          id: vdev.id,
+          guid: vdev.guid,
+          name: vdev.name,
+          role: vdev.role,
+          type: vdev.type,
+          diskId: vdev.diskId,
+          poolId: vdev.poolId,
+        })
+        .from(vdev)
+        .all()
+        .map(({ id, ...leaf }) => [id, leaf]),
+    ),
+    leafCounts: new Map(),
+    pools: new Map(),
   };
   for (const item of timeline()) {
     if ("entry" in item) replayEntry(context, item.entry);

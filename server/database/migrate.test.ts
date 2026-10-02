@@ -34,7 +34,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 17;
+const MIGRATION_COUNT = 18;
 
 const openConnections: Database.Database[] = [];
 
@@ -147,6 +147,50 @@ describe("runMigrations", () => {
 });
 
 describe("0009_host_collector_version", () => {
+  it("renames scan-errors faults, their diary trail and notifications", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DELETE FROM __drizzle_migrations
+        WHERE created_at = (SELECT MAX(created_at) FROM __drizzle_migrations);
+      INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
+                         data, openedAt, lastSeenAt, state, stateChangedAt)
+        VALUES ('scan-errors', 'zfs', 'pool', 1, '1', 'error',
+                '{"poolName":"tank","function":"SCRUB","errors":2}',
+                0, 0, 'open', 0);
+      INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title, data)
+        VALUES ('pool', 1, 0, 'auto', 'fault-opened', 'fault',
+                '{"faultId":1,"kind":"scan-errors","key":"1"}');
+      INSERT INTO Notification (at, channel, rule, dedupeKey, subject, title, message, ok)
+        VALUES (0, 'webhook', 'scan-errors', 'k', 's', 't', 'm', 1);
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0017_fault_kind_pool_data_errors",
+    ]);
+    const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
+      kind: string;
+      data: string;
+    };
+    expect(row.kind).toBe("pool-data-errors");
+    expect(JSON.parse(row.data)).toMatchObject({
+      scanErrors: 2,
+      dataErrors: 0,
+    });
+    expect(
+      JSON.parse(
+        (
+          sqlite.prepare("SELECT data FROM DiaryEntry").get() as {
+            data: string;
+          }
+        ).data,
+      ).kind,
+    ).toBe("pool-data-errors");
+    expect(sqlite.prepare("SELECT rule FROM Notification").get()).toEqual({
+      rule: "pool-data-errors",
+    });
+  });
+
   it("backfills each host's latest versioned collector", () => {
     const { db, sqlite } = open(":memory:");
     runMigrations(sqlite, db);
@@ -172,7 +216,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 8
+            ORDER BY created_at DESC LIMIT 9
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -193,6 +237,7 @@ describe("0009_host_collector_version", () => {
       "0014_simulation",
       "0015_pool_scrub_config_removal",
       "0016_vdev_role_spare_state",
+      "0017_fault_kind_pool_data_errors",
     ]);
     expect(
       sqlite

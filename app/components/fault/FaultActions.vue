@@ -15,12 +15,16 @@ const toast = useToast();
 
 const kinds = computed(() =>
   allowedActions(props.fault).filter(
-    (action): action is AcceptanceKind => action !== "clear",
+    (action): action is AcceptanceKind =>
+      action === "acknowledge" || action === "accept",
   ),
 );
 const primary = computed(() => kinds.value[0]);
 const canClear = computed(() =>
   allowedActions(props.fault).includes("clear"),
+);
+const canResolve = computed(() =>
+  allowedActions(props.fault).includes("resolve"),
 );
 const isSmartAttribute = computed(
   () => props.fault.kind === "smart-attribute",
@@ -59,7 +63,7 @@ const openDialog = async () => {
 
 <template>
   <div
-    v-if="primary || canClear"
+    v-if="primary || canClear || canResolve"
     class="relative z-10 flex shrink-0 justify-end gap-1"
   >
     <UButton
@@ -77,6 +81,14 @@ const openDialog = async () => {
       size="xs"
       label="Clear"
       @click="perform('clear')"
+    />
+    <UButton
+      v-if="canResolve"
+      color="neutral"
+      variant="ghost"
+      size="xs"
+      label="Resolve"
+      @click="perform('resolve')"
     />
     <template v-if="primary">
       <DiskAcceptFaultModal

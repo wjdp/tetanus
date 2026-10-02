@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { DiaryEventType } from "#shared/diary";
+import type { VdevRole } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
   diaryEntry,
@@ -8,6 +9,7 @@ import {
   fault,
   pool,
   smartReading,
+  vdev,
 } from "~~/server/database/schema";
 import { acceptFault } from "~~/server/services/acceptance";
 import { addAutoEvent } from "~~/server/services/diary";
@@ -40,7 +42,7 @@ function withAttributeRaw(body: string, attrId: number, raw: number) {
 }
 
 function event(
-  subjectType: "disk" | "pool" | "host",
+  subjectType: "disk" | "pool" | "host" | "vdev",
   subjectId: number,
   eventType: DiaryEventType,
   data: Record<string, unknown>,
@@ -303,10 +305,10 @@ describe("backfillFaults", () => {
       note: "",
       data: { state: "FAULTED", poolName: "vault" },
     });
-    expect(only("scan-errors")).toMatchObject({
+    expect(only("pool-data-errors")).toMatchObject({
       openedAt: at(HOUR_MS),
       resolvedAt: at(5 * HOUR_MS),
-      data: { errors: 2, function: "SCRUB", poolName: "vault" },
+      data: { scanErrors: 2, function: "SCRUB", poolName: "vault" },
     });
     expect(only("collector-incompatible")).toMatchObject({
       key: `${mars.id}:0.1.0`,
@@ -329,6 +331,135 @@ describe("backfillFaults", () => {
     expect((await getSettings()).config.faultsBackfilledAt).toBe(
       now.toISOString(),
     );
+  });
+
+  it("replays leaf states, leaf errors and data errors into the ZFS kinds", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = db
+      .insert(pool)
+      .values({
+        hostId: mars.id,
+        guid: "123",
+        name: "vault",
+        state: "ONLINE",
+        firstSeenAt: t0,
+        lastSeenAt: t0,
+      })
+      .returning()
+      .get().id;
+    const leaf = (guid: string, name: string, role: VdevRole = "normal") =>
+      db
+        .insert(vdev)
+        .values({
+          poolId: vault,
+          guid,
+          name,
+          type: "disk",
+          role,
+          state: "ONLINE",
+          lastSeenAt: t0,
+        })
+        .returning()
+        .get().id;
+    const cache = leaf("21", "C1", "cache");
+    const a7 = leaf("31", "A7");
+    const errors = (from: number, to: number, offsetMs: number) =>
+      event(
+        "pool",
+        vault,
+        "leaf-errors-changed",
+        {
+          poolId: vault,
+          vdevGuid: "31",
+          leaf: "A7",
+          role: "normal",
+          diskId: null,
+          from: { read: 0, write: 0, checksum: from },
+          to: { read: 0, write: 0, checksum: to },
+        },
+        offsetMs,
+      );
+
+    event(
+      "vdev",
+      cache,
+      "vdev-state-changed",
+      { poolId: vault, poolState: "ONLINE", from: "ONLINE", to: "UNAVAIL" },
+      HOUR_MS,
+    );
+    event(
+      "vdev",
+      cache,
+      "vdev-state-changed",
+      { poolId: vault, poolState: "ONLINE", from: "UNAVAIL", to: "ONLINE" },
+      2 * HOUR_MS,
+    );
+    errors(0, 4, HOUR_MS);
+    faultEvent(
+      { type: "pool", id: vault },
+      "fault-state-changed",
+      {
+        kind: "leaf-errors",
+        key: `${vault}:31`,
+        from: "open",
+        to: "acknowledged",
+        note: "watching",
+      },
+      2 * HOUR_MS,
+    );
+    errors(4, 6, 3 * HOUR_MS);
+    event(
+      "vdev",
+      a7,
+      "vdev-left",
+      { poolId: vault, lastState: "ONLINE" },
+      4 * HOUR_MS,
+    );
+    event(
+      "pool",
+      vault,
+      "pool-data-errors-changed",
+      { from: 0, to: 2 },
+      HOUR_MS,
+    );
+    event(
+      "pool",
+      vault,
+      "scrub-finished",
+      { function: "SCRUB", errors: 0 },
+      5 * HOUR_MS,
+    );
+
+    await backfillFaults(at(10 * DAY_MS));
+
+    expect(only("pool-degraded")).toMatchObject({
+      severity: "error",
+      openedAt: at(HOUR_MS),
+      resolvedAt: at(2 * HOUR_MS),
+      data: {
+        state: "ONLINE",
+        leaves: [
+          { vdevGuid: "21", name: "C1", role: "cache", state: "UNAVAIL" },
+        ],
+      },
+    });
+    expect(only("leaf-errors")).toMatchObject({
+      severity: "warning",
+      state: "resolved",
+      openedAt: at(HOUR_MS),
+      stateChangedAt: at(4 * HOUR_MS),
+      resolvedAt: at(4 * HOUR_MS),
+      data: { checksum: 6, total: { checksum: 6 } },
+    });
+    expect(only("pool-data-errors")).toMatchObject({
+      openedAt: at(HOUR_MS),
+      resolvedAt: at(5 * HOUR_MS),
+      data: { dataErrors: 2 },
+    });
+
+    const first = withoutIds(faultRows());
+    await backfillFaults(at(10 * DAY_MS));
+    expect(withoutIds(faultRows())).toEqual(first);
   });
 
   it("reproduces what live sync recorded, and a re-run gives the same rows", async () => {

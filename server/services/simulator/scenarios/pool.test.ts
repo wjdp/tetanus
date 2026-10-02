@@ -81,7 +81,7 @@ describe("pool scenarios", () => {
     ]);
   }, 60_000);
 
-  it("opens scan-errors when a scrub finds errors", async () => {
+  it("opens pool-data-errors when a scrub finds errors", async () => {
     const id = poolId("atlas", "tank");
     await simulate("pool", id, "scrub-found-errors", { errors: 3 }, LATER);
     const pool = getPool(id, LATER);
@@ -90,7 +90,9 @@ describe("pool scenarios", () => {
     expect(
       pool.diary.find((entry) => entry.eventType === "scrub-finished"),
     ).toMatchObject({ at: LATER, data: { errors: 3 } });
-    expect(liveFaults(id).map((fault) => fault.kind)).toContain("scan-errors");
+    expect(liveFaults(id).map((fault) => fault.kind)).toContain(
+      "pool-data-errors",
+    );
   }, 60_000);
 
   it("shows a resilver in progress", async () => {

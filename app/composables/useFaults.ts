@@ -35,6 +35,7 @@ const ACTION_REQUEST: Record<
   acknowledge: { path: "acknowledge", method: "POST" },
   accept: { path: "accept", method: "POST" },
   clear: { path: "acknowledgement", method: "DELETE" },
+  resolve: { path: "resolve", method: "POST" },
 };
 
 export function useFaults(query: MaybeRefOrGetter<FaultsQuery> = {}) {

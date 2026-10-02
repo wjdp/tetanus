@@ -476,7 +476,7 @@ describe("zpool-status fault inputs", () => {
     );
   });
 
-  it("records leaf error counters rising, once per leaf per ingest", () => {
+  it("records vdev error counters rising, once per vdev per ingest, groups included", () => {
     run("zpool-status", marsStatus());
     const erring = marsStatus();
     vdevNamed(erring, "/dev/disk/by-vdev/K1-part1").checksumErrors = 4;
@@ -492,7 +492,12 @@ describe("zpool-status fault inputs", () => {
     run("zpool-status", rising, minutesAfter(30));
     run("zpool-status", marsStatus(), minutesAfter(40));
 
-    const entries = diary("leaf-errors-changed");
+    const all = diary("leaf-errors-changed");
+    expect(all).toHaveLength(3);
+    expect(
+      all.find((entry) => entry.data.leaf === "raidz1-0")?.data,
+    ).toMatchObject({ role: "group", to: { read: 0, write: 0, checksum: 4 } });
+    const entries = all.filter((entry) => entry.data.vdevGuid === K1_GUID);
     expect(entries).toHaveLength(2);
     expect(entries[0]).toMatchObject({
       subjectType: "pool",
@@ -502,6 +507,7 @@ describe("zpool-status fault inputs", () => {
         poolId: tankRow().id,
         vdevGuid: K1_GUID,
         leaf: "/dev/disk/by-vdev/K1-part1",
+        role: "normal",
         diskId: null,
         from: { read: 0, write: 0, checksum: 0 },
         to: { read: 0, write: 0, checksum: 4 },

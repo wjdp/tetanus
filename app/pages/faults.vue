@@ -139,11 +139,13 @@ const ACTION_DONE: Record<FaultAction, string> = {
   acknowledge: "Acknowledged",
   accept: "Accepted",
   clear: "Cleared",
+  resolve: "Resolved",
 };
 const ACTION_FAILED: Record<FaultAction, string> = {
   acknowledge: "Could not acknowledge the fault",
   accept: "Could not accept the fault",
   clear: "Could not clear the fault",
+  resolve: "Could not resolve the fault",
 };
 
 const performFor =

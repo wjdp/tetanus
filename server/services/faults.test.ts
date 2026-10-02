@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { VdevRole } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
   collectorRun,
@@ -7,6 +8,8 @@ import {
   fault,
   host,
   pool,
+  vdev,
+  vdevReading,
 } from "~~/server/database/schema";
 import { acceptFault, activeAcceptances } from "~~/server/services/acceptance";
 import { addAutoEvent, listDiary } from "~~/server/services/diary";
@@ -257,6 +260,92 @@ describe("collector versions", () => {
   });
 });
 
+interface VdevSpec {
+  guid: string;
+  name: string;
+  state?: string;
+  type?: string;
+  role?: VdevRole;
+  spareState?: string;
+  diskId?: number | null;
+  readErrors?: number;
+  writeErrors?: number;
+  checksumErrors?: number;
+  slowIos?: number | null;
+}
+
+function insertVdev(poolId: number, spec: VdevSpec, seenAt = t0) {
+  return db
+    .insert(vdev)
+    .values({
+      poolId,
+      type: "disk",
+      role: "normal",
+      state: "ONLINE",
+      lastSeenAt: seenAt,
+      ...spec,
+    })
+    .returning()
+    .get();
+}
+
+function setVdev(guid: string, fields: Partial<VdevSpec>, readingAt?: Date) {
+  const row = db
+    .update(vdev)
+    .set(fields)
+    .where(eq(vdev.guid, guid))
+    .returning()
+    .get();
+  if (readingAt) recordVdevReading(row.id, readingAt);
+  return row;
+}
+
+function recordVdevReading(vdevId: number, readingAt: Date) {
+  const row = db.select().from(vdev).where(eq(vdev.id, vdevId)).get();
+  if (!row) throw new Error(`no vdev ${vdevId}`);
+  db.insert(vdevReading)
+    .values({
+      vdevId,
+      at: readingAt,
+      readErrors: row.readErrors,
+      writeErrors: row.writeErrors,
+      checksumErrors: row.checksumErrors,
+      slowIos: row.slowIos,
+      state: row.state,
+    })
+    .run();
+}
+
+function supersededBy(kind: string) {
+  return faultEvents()
+    .filter(
+      (entry) =>
+        entry.eventType === "fault-resolved" && entry.data.kind === kind,
+    )
+    .map((entry) => entry.data.supersededBy);
+}
+
+function liveKinds() {
+  return db
+    .select()
+    .from(fault)
+    .all()
+    .filter((row) => !row.resolvedAt)
+    .map((row) => row.kind)
+    .sort();
+}
+
+function ingestZpoolStatus(fixture: string, receivedAt: Date) {
+  const outcome = recordIngest({
+    hostName: "mars",
+    source: "zpool-status",
+    meta: {},
+    body: readFixture(`mars/${fixture}`),
+    receivedAt,
+  });
+  expect(outcome.ok).toBe(true);
+}
+
 describe("pool-degraded", () => {
   it("follows the pool state, reopening on a severity rise", async () => {
     const mars = upsertHostByName("mars", t0);
@@ -268,7 +357,7 @@ describe("pool-degraded", () => {
     expect(degraded).toMatchObject({
       severity: "warning",
       category: "zfs",
-      data: { state: "DEGRADED", poolName: "vault" },
+      data: { state: "DEGRADED", poolName: "vault", leaves: [] },
     });
 
     performFaultAction(degraded.id, "accept", { now: at(MINUTE_MS) });
@@ -292,7 +381,159 @@ describe("pool-degraded", () => {
     expect(faultsOf("pool-degraded")).toMatchObject([{ state: "resolved" }]);
   });
 
-  it("resolves when the pool drops out of the host's latest zpool-status", async () => {
+  it("lists failed leaves; a FAULTED leaf is red while the pool stays amber", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "DEGRADED", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    insertVdev(vault.id, { guid: "11", name: "K1", state: "OFFLINE" });
+    insertVdev(vault.id, { guid: "12", name: "K2" });
+
+    await syncFaults(t0);
+    expect(liveFault("pool-degraded", String(vault.id))).toMatchObject({
+      severity: "warning",
+      data: {
+        leaves: [
+          {
+            vdevGuid: "11",
+            name: "K1",
+            state: "OFFLINE",
+            role: "normal",
+            diskMissing: false,
+            read: 0,
+          },
+        ],
+      },
+    });
+
+    setVdev("12", { state: "FAULTED", readErrors: 3 });
+    await syncFaults(at(MINUTE_MS));
+    const row = liveFault("pool-degraded", String(vault.id)) as FaultRow;
+    expect(row.severity).toBe("error");
+    expect(row.data.leaves).toHaveLength(2);
+  });
+
+  it("faults an ONLINE pool for a failed cache leaf", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    insertVdev(vault.id, {
+      guid: "21",
+      name: "C1",
+      role: "cache",
+      state: "UNAVAIL",
+    });
+
+    await syncFaults(t0);
+
+    expect(liveFault("pool-degraded", String(vault.id))).toMatchObject({
+      severity: "error",
+      data: {
+        state: "ONLINE",
+        leaves: [{ name: "C1", role: "cache", state: "UNAVAIL" }],
+      },
+    });
+  });
+
+  it("leaves spares that are available or in use out of the list", async () => {
+    upsertHostByName("mars", t0);
+    ingestZpoolStatus("zpool-status-spare-avail.json", t0);
+    await syncFaults(t0);
+    expect(faultsOf("pool-degraded")).toEqual([]);
+
+    ingestZpoolStatus("zpool-status-spare-inuse.json", at(MINUTE_MS));
+    await syncFaults(at(MINUTE_MS));
+    const row = faultsOf("pool-degraded")[0];
+    expect(row.data.leaves).toMatchObject([
+      { name: "/var/tmp/tspare-a.img", state: "OFFLINE" },
+    ]);
+    expect(row.data.leaves).toHaveLength(1);
+  });
+
+  it("reopens when a leaf joins the list or a listed leaf's errors rise", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "DEGRADED", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    insertVdev(vault.id, { guid: "11", name: "K1", state: "OFFLINE" });
+    insertVdev(vault.id, { guid: "12", name: "K2" });
+    await syncFaults(t0);
+    const row = liveFault("pool-degraded", String(vault.id)) as FaultRow;
+
+    performFaultAction(row.id, "acknowledge", { now: at(MINUTE_MS) });
+    await syncFaults(at(2 * MINUTE_MS));
+    expect(liveFault("pool-degraded", String(vault.id))?.state).toBe(
+      "acknowledged",
+    );
+
+    setVdev("12", { state: "OFFLINE" });
+    await syncFaults(at(3 * MINUTE_MS));
+    expect(liveFault("pool-degraded", String(vault.id))?.state).toBe("open");
+
+    performFaultAction(row.id, "acknowledge", { now: at(4 * MINUTE_MS) });
+    setVdev("11", { writeErrors: 2 });
+    await syncFaults(at(5 * MINUTE_MS));
+    expect(liveFault("pool-degraded", String(vault.id))).toMatchObject({
+      id: row.id,
+      state: "open",
+      severity: "warning",
+    });
+  });
+
+  it("is the only fault for a pulled disk", async () => {
+    const mars = upsertHostByName("mars", t0);
+    recordRun(mars.id, "lsblk", at(3 * DAY_MS));
+    recordRun(mars.id, "zpool-status", at(3 * DAY_MS));
+    const diskId = db
+      .insert(disk)
+      .values({
+        alias: "K3",
+        lastSeenAt: t0,
+        lastSeenHostId: mars.id,
+        lastState: "in-use",
+      })
+      .returning()
+      .get().id;
+    const vault = insertPool(mars.id, "DEGRADED", at(3 * DAY_MS));
+    insertVdev(vault.id, { guid: "13", name: "K3", state: "REMOVED", diskId });
+
+    await syncFaults(at(3 * DAY_MS));
+
+    expect(liveKinds()).toEqual(["pool-degraded"]);
+    expect(
+      liveFault("pool-degraded", String(vault.id))?.data.leaves,
+    ).toMatchObject([{ diskId, state: "REMOVED", diskMissing: true }]);
+  });
+
+  it("resolves an open disk-missing it now explains", async () => {
+    const mars = upsertHostByName("mars", t0);
+    recordRun(mars.id, "lsblk", at(3 * DAY_MS));
+    recordRun(mars.id, "zpool-status", at(3 * DAY_MS));
+    const diskId = db
+      .insert(disk)
+      .values({
+        alias: "K3",
+        lastSeenAt: t0,
+        lastSeenHostId: mars.id,
+        lastState: "in-use",
+      })
+      .returning()
+      .get().id;
+    await syncFaults(at(3 * DAY_MS));
+    expect(liveKinds()).toEqual(["disk-missing"]);
+
+    const vault = insertPool(mars.id, "DEGRADED", at(3 * DAY_MS + HOUR_MS));
+    insertVdev(vault.id, { guid: "13", name: "K3", state: "REMOVED", diskId });
+    recordRun(mars.id, "zpool-status", at(3 * DAY_MS + HOUR_MS));
+    await syncFaults(at(3 * DAY_MS + HOUR_MS));
+
+    expect(liveKinds()).toEqual(["pool-degraded"]);
+    expect(supersededBy("disk-missing")).toEqual([
+      { kind: "pool-degraded", key: String(vault.id) },
+    ]);
+  });
+});
+
+describe("pool-missing", () => {
+  it("opens when the pool drops out of a fresh zpool-status, folding the pool's other faults", async () => {
     const mars = upsertHostByName("mars", t0);
     const vault = insertPool(mars.id, "DEGRADED", t0);
     recordRun(mars.id, "zpool-status", t0);
@@ -304,11 +545,251 @@ describe("pool-degraded", () => {
     expect(faultsOf("pool-degraded")).toMatchObject([
       { key: String(vault.id), state: "resolved" },
     ]);
+    expect(supersededBy("pool-degraded")).toEqual([
+      { kind: "pool-missing", key: String(vault.id) },
+    ]);
+    expect(liveFault("pool-missing", String(vault.id))).toMatchObject({
+      severity: "warning",
+      data: { poolName: "vault", lastSeenAt: t0.toISOString() },
+    });
+
+    observePool(vault.id, mars.id, "ONLINE", at(20 * MINUTE_MS));
+    await syncFaults(at(20 * MINUTE_MS));
+    expect(faultsOf("pool-missing")).toMatchObject([{ state: "resolved" }]);
+  });
+
+  it("suppresses disk-missing for its member disks", async () => {
+    const mars = upsertHostByName("mars", t0);
+    recordRun(mars.id, "lsblk", at(3 * DAY_MS));
+    const diskId = db
+      .insert(disk)
+      .values({
+        alias: "K3",
+        lastSeenAt: t0,
+        lastSeenHostId: mars.id,
+        lastState: "in-use",
+      })
+      .returning()
+      .get().id;
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    insertVdev(vault.id, { guid: "13", name: "K3", diskId });
+    recordRun(mars.id, "zpool-status", at(3 * DAY_MS));
+
+    await syncFaults(at(3 * DAY_MS));
+
+    expect(liveKinds()).toEqual(["pool-missing"]);
+  });
+
+  it("is not raised for a silent or offline intermittent host", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    recordRun(mars.id, "zpool-status", at(MINUTE_MS));
+
+    await syncFaults(at(DAY_MS));
+    expect(liveKinds()).toEqual(["collector-silent"]);
+
+    db.update(host)
+      .set({ intermittent: true })
+      .where(eq(host.id, mars.id))
+      .run();
+    await syncFaults(at(2 * DAY_MS));
+    expect(liveKinds()).toEqual([]);
+    expect(faultsOf("pool-missing")).toEqual([]);
+    expect(vault.id).toBeGreaterThan(0);
   });
 });
 
-describe("scan-errors", () => {
-  it("stays until a clean scan", async () => {
+describe("silent host", () => {
+  it("raises no pool faults and resolves live ones as superseded", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "DEGRADED", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    await syncFaults(t0);
+
+    await syncFaults(at(DAY_MS));
+
+    expect(liveKinds()).toEqual(["collector-silent"]);
+    expect(supersededBy("pool-degraded")).toEqual([
+      { kind: "collector-silent", key: String(mars.id) },
+    ]);
+    expect(vault.id).toBeGreaterThan(0);
+  });
+});
+
+describe("leaf-errors", () => {
+  function setUp() {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    const leaf = insertVdev(vault.id, {
+      guid: "31",
+      name: "/dev/disk/by-vdev/A7",
+    });
+    recordVdevReading(leaf.id, t0);
+    const status = (offsetMs: number, fields: Partial<VdevSpec>) => {
+      setVdev("31", fields, at(offsetMs));
+      observePool(vault.id, mars.id, "ONLINE", at(offsetMs));
+    };
+    recordRun(mars.id, "zpool-status", t0);
+    return { vault, status, key: `${vault.id}:31` };
+  }
+
+  it("opens amber on an ONLINE leaf with errors, with the 24 h rise", async () => {
+    const { status, key } = setUp();
+    status(HOUR_MS, { checksumErrors: 8 });
+    status(2 * HOUR_MS, { checksumErrors: 12 });
+
+    await syncFaults(at(2 * HOUR_MS));
+
+    expect(liveFault("leaf-errors", key)).toMatchObject({
+      severity: "warning",
+      subjectType: "pool",
+      data: {
+        name: "/dev/disk/by-vdev/A7",
+        role: "normal",
+        read: 0,
+        write: 0,
+        checksum: 12,
+        rise24h: 12,
+      },
+    });
+  });
+
+  it("raises errors on a group as red", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    insertVdev(vault.id, {
+      guid: "40",
+      name: "raidz1-0",
+      type: "raidz",
+      checksumErrors: 2,
+    });
+
+    await syncFaults(t0);
+
+    expect(liveFault("leaf-errors", `${vault.id}:40`)).toMatchObject({
+      severity: "error",
+      data: { role: "group", checksum: 2 },
+    });
+  });
+
+  it("holds an acknowledgement at its level, through a counter reset, and reopens on a rise", async () => {
+    const { status, key } = setUp();
+    status(HOUR_MS, { checksumErrors: 12 });
+    await syncFaults(at(HOUR_MS));
+    const row = liveFault("leaf-errors", key) as FaultRow;
+
+    performFaultAction(row.id, "acknowledge", { now: at(2 * HOUR_MS) });
+    expect(liveFault("leaf-errors", key)?.data).toMatchObject({
+      acknowledgedCounts: { read: 0, write: 0, checksum: 12 },
+    });
+
+    status(3 * HOUR_MS, { checksumErrors: 0 });
+    await syncFaults(at(3 * HOUR_MS));
+    expect(liveFault("leaf-errors", key)).toMatchObject({
+      id: row.id,
+      state: "acknowledged",
+      data: { checksum: 0, total: { checksum: 12 } },
+    });
+
+    status(4 * HOUR_MS, { checksumErrors: 1 });
+    await syncFaults(at(4 * HOUR_MS));
+    const reopened = liveFault("leaf-errors", key) as FaultRow;
+    expect(reopened).toMatchObject({
+      id: row.id,
+      state: "open",
+      data: { checksum: 1, total: { checksum: 13 } },
+    });
+    expect(reopened.data.acknowledgedCounts).toBeUndefined();
+  });
+
+  it("resolves only by hand, and after that opens again only on a rise", async () => {
+    const { status, key } = setUp();
+    status(HOUR_MS, { checksumErrors: 12 });
+    await syncFaults(at(HOUR_MS));
+    const row = liveFault("leaf-errors", key) as FaultRow;
+
+    expect(
+      performFaultAction(row.id, "resolve", {
+        note: "zpool clear after cable swap",
+        now: at(2 * HOUR_MS),
+      }),
+    ).toMatchObject({ state: "resolved" });
+    await syncFaults(at(3 * HOUR_MS));
+    expect(liveFault("leaf-errors", key)).toBeUndefined();
+
+    status(4 * HOUR_MS, { checksumErrors: 14 });
+    await syncFaults(at(4 * HOUR_MS));
+    expect(liveFault("leaf-errors", key)).toMatchObject({
+      state: "open",
+      data: { checksum: 14, total: { checksum: 2 } },
+    });
+  });
+
+  it("folds into pool-degraded when ZFS fails the leaf", async () => {
+    const { vault, status, key } = setUp();
+    status(HOUR_MS, { checksumErrors: 12 });
+    await syncFaults(at(HOUR_MS));
+
+    status(2 * HOUR_MS, { state: "FAULTED" });
+    observePool(vault.id, vault.hostId, "DEGRADED", at(2 * HOUR_MS));
+    await syncFaults(at(2 * HOUR_MS));
+
+    expect(liveFault("leaf-errors", key)).toBeUndefined();
+    expect(supersededBy("leaf-errors")).toEqual([
+      { kind: "pool-degraded", key: String(vault.id) },
+    ]);
+    expect(
+      liveFault("pool-degraded", String(vault.id))?.data.leaves,
+    ).toMatchObject([{ vdevGuid: "31", checksum: 12 }]);
+  });
+});
+
+describe("leaf-slow", () => {
+  it("opens when slow I/Os rise past the pool threshold within 24 h, and resolves after", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    const leaf = insertVdev(vault.id, { guid: "31", name: "A7", slowIos: 0 });
+    recordVdevReading(leaf.id, t0);
+    recordRun(mars.id, "zpool-status", t0);
+    const key = `${vault.id}:31`;
+
+    setVdev("31", { slowIos: 9 }, at(HOUR_MS));
+    observePool(vault.id, mars.id, "ONLINE", at(HOUR_MS));
+    await syncFaults(at(HOUR_MS));
+    expect(liveFault("leaf-slow", key)).toBeUndefined();
+
+    setVdev("31", { slowIos: 14 }, at(2 * HOUR_MS));
+    observePool(vault.id, mars.id, "ONLINE", at(2 * HOUR_MS));
+    await syncFaults(at(2 * HOUR_MS));
+    expect(liveFault("leaf-slow", key)).toMatchObject({
+      severity: "warning",
+      data: { slowIos: 14, rise24h: 14, threshold: 10 },
+    });
+
+    observePool(vault.id, mars.id, "ONLINE", at(2 * DAY_MS));
+    await syncFaults(at(2 * DAY_MS));
+    expect(liveFault("leaf-slow", key)).toBeUndefined();
+  });
+
+  it("is off when the pool's threshold is 0", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    db.update(pool)
+      .set({ config: { slowIoThreshold: 0 } })
+      .where(eq(pool.id, vault.id))
+      .run();
+    insertVdev(vault.id, { guid: "31", name: "A7", slowIos: 500 });
+    recordRun(mars.id, "zpool-status", t0);
+
+    await syncFaults(t0);
+
+    expect(faultsOf("leaf-slow")).toEqual([]);
+  });
+});
+
+describe("pool-data-errors", () => {
+  it("opens on permanent errors or a scan with errors, resolving when both are 0", async () => {
     const mars = upsertHostByName("mars", t0);
     const vault = insertPool(mars.id, "ONLINE", t0);
     recordRun(mars.id, "zpool-status", t0);
@@ -324,13 +805,72 @@ describe("scan-errors", () => {
 
     scan(3, 0);
     await syncFaults(at(MINUTE_MS));
-    expect(liveFault("scan-errors", String(vault.id))).toMatchObject({
-      data: { errors: 3, function: "SCRUB", poolName: "vault" },
+    expect(liveFault("pool-data-errors", String(vault.id))).toMatchObject({
+      severity: "error",
+      data: {
+        scanErrors: 3,
+        dataErrors: 0,
+        function: "SCRUB",
+        poolName: "vault",
+      },
     });
 
+    db.update(pool).set({ errors: 2 }).where(eq(pool.id, vault.id)).run();
     scan(0, HOUR_MS);
+    observePool(vault.id, mars.id, "ONLINE", at(HOUR_MS));
     await syncFaults(at(HOUR_MS));
-    expect(faultsOf("scan-errors")).toMatchObject([{ state: "resolved" }]);
+    expect(liveFault("pool-data-errors", String(vault.id))).toMatchObject({
+      data: { scanErrors: 0, dataErrors: 2 },
+    });
+
+    db.update(pool).set({ errors: 0 }).where(eq(pool.id, vault.id)).run();
+    observePool(vault.id, mars.id, "ONLINE", at(2 * HOUR_MS));
+    await syncFaults(at(2 * HOUR_MS));
+    expect(supersededBy("pool-data-errors")).toEqual([undefined]);
+    expect(faultsOf("pool-data-errors")).toMatchObject([{ state: "resolved" }]);
+  });
+});
+
+describe("scrub-overdue", () => {
+  it("counts from the last scrub, or from first sighting for a pool never scrubbed", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    const seenAt = (offsetMs: number) =>
+      observePool(vault.id, mars.id, "ONLINE", at(offsetMs));
+
+    seenAt(35 * DAY_MS);
+    await syncFaults(at(35 * DAY_MS));
+    expect(faultsOf("scrub-overdue")).toEqual([]);
+
+    seenAt(36 * DAY_MS);
+    await syncFaults(at(36 * DAY_MS));
+    expect(liveFault("scrub-overdue", String(vault.id))).toMatchObject({
+      severity: "warning",
+      data: { lastScrubAt: null, intervalDays: 35 },
+    });
+
+    db.update(pool)
+      .set({
+        lastScrub: {
+          endAt: at(36 * DAY_MS).toISOString(),
+          errors: 0,
+          repairedBytes: 0,
+          durationS: 60,
+        },
+      })
+      .where(eq(pool.id, vault.id))
+      .run();
+    seenAt(37 * DAY_MS);
+    await syncFaults(at(37 * DAY_MS));
+    expect(faultsOf("scrub-overdue")).toMatchObject([{ state: "resolved" }]);
+
+    db.update(pool)
+      .set({ config: { scrubIntervalDays: 0 } })
+      .where(eq(pool.id, vault.id))
+      .run();
+    seenAt(200 * DAY_MS);
+    await syncFaults(at(200 * DAY_MS));
+    expect(liveFault("scrub-overdue", String(vault.id))).toBeUndefined();
   });
 });
 

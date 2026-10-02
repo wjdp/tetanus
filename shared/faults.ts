@@ -20,7 +20,12 @@ export type FaultSeverity = (typeof FAULT_SEVERITIES)[number];
 export const FAULT_SUBJECT_TYPES = ["disk", "pool", "host"] as const;
 export type FaultSubjectType = (typeof FAULT_SUBJECT_TYPES)[number];
 
-export const FAULT_ACTIONS = ["acknowledge", "accept", "clear"] as const;
+export const FAULT_ACTIONS = [
+  "acknowledge",
+  "accept",
+  "clear",
+  "resolve",
+] as const;
 export type FaultAction = (typeof FAULT_ACTIONS)[number];
 
 export const FAULT_KINDS = [
@@ -29,7 +34,11 @@ export const FAULT_KINDS = [
   "disk-missing",
   "identity-conflict",
   "pool-degraded",
-  "scan-errors",
+  "pool-missing",
+  "leaf-errors",
+  "leaf-slow",
+  "pool-data-errors",
+  "scrub-overdue",
   "collector-silent",
   "collector-incompatible",
   "collector-outdated",
@@ -40,7 +49,9 @@ export type FaultLifetime =
   | "transient"
   | "persistent"
   | "until-acknowledged"
-  | "until-clean-scan";
+  | "until-seen-again"
+  | "until-resolved"
+  | "until-no-data-errors";
 
 export type FaultData = Record<string, unknown>;
 
@@ -72,6 +83,61 @@ function smartAttributeTitle(data: FaultData) {
     parts.push(`${label} at ${data.acceptedValue}`);
   }
   return parts.join(" · ");
+}
+
+export interface LeafCounts {
+  read: number;
+  write: number;
+  checksum: number;
+}
+
+export interface PoolDegradedLeaf extends LeafCounts {
+  vdevGuid: string;
+  name: string;
+  state: string;
+  role: string;
+  diskId: number | null;
+  diskMissing: boolean;
+}
+
+export function leafLabel(name: unknown) {
+  return text(name).split("/").at(-1) ?? "";
+}
+
+function poolDegradedLeafText(leaf: PoolDegradedLeaf) {
+  const role = leaf.role === "normal" ? "" : `${leaf.role} `;
+  const missing = leaf.diskMissing ? " (disk missing)" : "";
+  return `${role}${leafLabel(leaf.name)} ${leaf.state}${missing}`;
+}
+
+function poolDegradedTitle(data: FaultData) {
+  const state = text(data.state);
+  const pool = `Pool ${text(data.poolName)}${state === "ONLINE" ? "" : ` ${state}`}`;
+  const leaves = Array.isArray(data.leaves)
+    ? (data.leaves as PoolDegradedLeaf[])
+    : [];
+  if (leaves.length === 0) return pool;
+  return `${pool}: ${leaves.map(poolDegradedLeafText).join(", ")}`;
+}
+
+function leafErrorsTitle(data: FaultData) {
+  const counts = `R ${text(data.read)} W ${text(data.write)} C ${text(data.checksum)}`;
+  const rise = Number(data.rise24h);
+  const recent = rise > 0 ? `, +${rise} in 24 h` : "";
+  return `${leafLabel(data.name)} in ${text(data.poolName)}: ${counts}${recent}`;
+}
+
+function poolDataErrorsTitle(data: FaultData) {
+  const parts: string[] = [];
+  const dataErrors = Number(data.dataErrors);
+  if (dataErrors > 0) parts.push(plural(dataErrors, "data error"));
+  const scanErrors = Number(data.scanErrors);
+  if (scanErrors > 0) {
+    parts.push(
+      `${text(data.function).toLowerCase() || "scan"} found ${plural(scanErrors, "error")}`,
+    );
+  }
+  return `Pool ${text(data.poolName)}: ${parts.join("; ")}`;
 }
 
 export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
@@ -114,15 +180,53 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     subjectType: "pool",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
-    title: (data) => `Pool ${text(data.poolName)} ${text(data.state)}`,
+    title: poolDegradedTitle,
   },
-  "scan-errors": {
+  "pool-missing": {
     category: "zfs",
     subjectType: "pool",
-    lifetime: "until-clean-scan",
-    actions: ["acknowledge", "clear"],
+    lifetime: "until-seen-again",
+    actions: ["acknowledge", "accept", "clear"],
+    title: (data, now) => {
+      const age = ageSince(data.lastSeenAt, now);
+      const missing = `Pool ${text(data.poolName)} missing`;
+      return age ? `${missing}, last seen ${age} ago` : missing;
+    },
+  },
+  "leaf-errors": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "until-resolved",
+    actions: ["acknowledge", "accept", "clear", "resolve"],
+    title: leafErrorsTitle,
+  },
+  "leaf-slow": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
-      `Pool ${text(data.poolName)} ${text(data.function).toLowerCase()} found ${plural(Number(data.errors), "error")}`,
+      `${leafLabel(data.name)} in ${text(data.poolName)}: ${plural(Number(data.rise24h), "slow I/O")} in 24 h`,
+  },
+  "pool-data-errors": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "until-no-data-errors",
+    actions: ["acknowledge", "clear"],
+    title: poolDataErrorsTitle,
+  },
+  "scrub-overdue": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: (data, now) => {
+      const age = ageSince(data.lastScrubAt, now);
+      const pool = `Pool ${text(data.poolName)}`;
+      return age
+        ? `${pool} last scrubbed ${age} ago`
+        : `${pool} never scrubbed`;
+    },
   },
   "collector-silent": {
     category: "host",
@@ -170,6 +274,7 @@ export function allowedActions(fault: {
   return actions.filter((action) => {
     if (action === "clear") return fault.state !== "open";
     if (action === "acknowledge") return fault.state === "open";
+    if (action === "resolve") return true;
     return fault.state !== "accepted";
   });
 }

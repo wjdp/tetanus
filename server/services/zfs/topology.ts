@@ -300,7 +300,13 @@ function recordVdevChanges(
       ...common,
       eventType: "vdev-state-changed",
       title: `${observed.name} ${observed.state} (was ${existing.state})`,
-      data: { poolId: poolRow.id, from: existing.state, to: observed.state },
+      data: {
+        poolId: poolRow.id,
+        role: observed.role,
+        poolState: poolRow.state,
+        from: existing.state,
+        to: observed.state,
+      },
     });
   }
 }
@@ -324,7 +330,6 @@ function recordLeafErrorChanges(
   poolRow: PoolRow,
   receivedAt: Date,
 ) {
-  if (!LEAF_TYPES.has(row.type)) return;
   const from = errorTotals(existing);
   const to = errorTotals(row);
   const rose =
@@ -339,6 +344,7 @@ function recordLeafErrorChanges(
       poolId: poolRow.id,
       vdevGuid: row.guid,
       leaf: row.name,
+      role: LEAF_TYPES.has(row.type) ? row.role : "group",
       diskId: row.diskId,
       from,
       to,
