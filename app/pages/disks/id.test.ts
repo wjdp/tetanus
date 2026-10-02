@@ -311,8 +311,7 @@ describe("disk page", () => {
     expect(rows[0]).toContain("Current Pending Sector Count");
     expect(rows[0]).toContain("12.0 %");
     expect(rows[0]).toContain("Acknowledge");
-    expect(rows[0]).toContain("Accept");
-    expect(rows[0]).not.toContain("Clear");
+    expect(rows[0]).not.toMatch(/Accept|Clear/);
     expect(rows[1]).toContain("Offline Uncorrectable");
     expect(rows[1]).toContain("acknowledged at 18");
     expect(rows[1]).not.toContain("Acknowledge");

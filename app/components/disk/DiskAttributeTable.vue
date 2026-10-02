@@ -248,9 +248,9 @@ const rowClass = (row: { original: LatestAttribute }) =>
             @click.stop="emit('accept', row.original, 'acknowledge')"
           />
           <UButton
-            v-if="isAcceptable(row.original) || row.original.displayStatus === 'acknowledged'"
+            v-else-if="row.original.displayStatus === 'acknowledged'"
             color="neutral"
-            variant="ghost"
+            variant="soft"
             size="xs"
             label="Accept"
             @click.stop="emit('accept', row.original, 'accept')"

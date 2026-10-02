@@ -143,8 +143,8 @@ tell acknowledged apart from a plain `warning` row. 037's attribute table gains 
 
 Attribute table (`DiskAttributeTable.vue`), actions column:
 
-- `failed` / `warning`: `Acknowledge` (soft) and `Accept` (ghost). Both open the modal
-  preselected.
+- `failed` / `warning`: one `Acknowledge` button; the modal preselects acknowledge
+  and offers accept too.
 - `acknowledged`: `Accept`, `Clear`. The modal opened from here offers accept only
   (the active kind is hidden from the radio), so it cannot 409.
 - `accepted`: `Clear` (as today).
