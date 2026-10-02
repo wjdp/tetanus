@@ -83,6 +83,7 @@ const columns: TableColumn<Host>[] = [
   { id: "versions", header: "Tool versions" },
   { id: "freshness", header: "Sources" },
   { id: "lastSeen", header: "Last seen" },
+  ...(useSimulator().enabled ? [{ id: "simulate", header: "" }] : []),
 ];
 
 const toast = useToast();
@@ -174,12 +175,12 @@ const openEditor = (row: Host) => {
   editorOpen.value = true;
 };
 
-const isDragHandle = (event: Event) =>
+const isRowControl = (event: Event) =>
   event.target instanceof Element &&
-  event.target.closest("[data-drag-handle]") !== null;
+  event.target.closest("[data-drag-handle], [data-row-control]") !== null;
 
 const onSelectRow = (event: Event, row: { original: Host }) => {
-  if (!isDragHandle(event)) openEditor(row.original);
+  if (!isRowControl(event)) openEditor(row.original);
 };
 
 const save = async () => {
@@ -290,6 +291,17 @@ const { data: settings } = await useFetch("/api/settings");
 
       <template #lastSeen-cell="{ row }">
         {{ relativeTime(new Date(row.original.lastSeenAt)) }}
+      </template>
+
+      <template #simulate-cell="{ row }">
+        <div class="flex justify-end" data-row-control>
+          <SimulateFaultMenu
+            subject-type="host"
+            :subject-id="row.original.id"
+            size="xs"
+            compact
+          />
+        </div>
       </template>
     </UTable>
 

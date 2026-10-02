@@ -38,20 +38,22 @@ const onUpdated = (updated: DiskDetail) => {
           label="Disks"
           class="-ml-2.5"
         />
-        <UTooltip
-          v-if="disk"
-          text="Includes serials, hostnames and mount paths. Check before posting publicly."
-        >
-          <UButton
-            :to="`/api/disks/${disk.id}/diagnostics`"
-            external
-            download
-            color="neutral"
-            variant="outline"
-            icon="i-lucide-file-archive"
-            label="Download diagnostics"
-          />
-        </UTooltip>
+        <div v-if="disk" class="flex items-center gap-2">
+          <SimulateFaultMenu subject-type="disk" :subject-id="disk.id" />
+          <UTooltip
+            text="Includes serials, hostnames and mount paths. Check before posting publicly."
+          >
+            <UButton
+              :to="`/api/disks/${disk.id}/diagnostics`"
+              external
+              download
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-file-archive"
+              label="Download diagnostics"
+            />
+          </UTooltip>
+        </div>
       </div>
 
       <p v-if="error || !disk" class="text-muted">

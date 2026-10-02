@@ -81,6 +81,12 @@ const tabs = computed<TabsItem[]>(() => [
           <span class="text-muted">
             on {{ pool.host.displayName || pool.host.name }}
           </span>
+          <SimulateFaultMenu
+            subject-type="pool"
+            :subject-id="pool.id"
+            size="sm"
+            class="ms-auto"
+          />
         </div>
         <p class="text-dimmed font-mono text-xs">{{ pool.guid }}</p>
         <div

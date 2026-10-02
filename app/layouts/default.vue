@@ -17,6 +17,7 @@ const demo = useRuntimeConfig().public.demo;
         />
         Demo instance. Fake data, reset daily at 04:00 UTC. Edit anything.
       </p>
+      <AppSimulationBanner />
       <AppFaultBanners />
       <slot />
     </div>
