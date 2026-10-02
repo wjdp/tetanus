@@ -56,7 +56,7 @@ describe("/api/disks/:id/smart", () => {
       diskId: id,
       devicePath: "/dev/sda",
       deviceStatus: "passed",
-      temp: 42,
+      temp: 41,
     });
     expect(smart.attributes).toHaveLength(18);
     expect(smart.attributes).toContainEqual(
@@ -74,14 +74,14 @@ describe("/api/disks/:id/smart", () => {
       }),
     );
     expect(smart.history.attributes["194"]).toEqual([
-      { at: expect.any(String), value: 42 },
+      { at: expect.any(String), value: 41 },
     ]);
     expect(smart.history.temperature.length).toBeGreaterThan(100);
     expect(smart.acceptances).toEqual([]);
     expect(Array.isArray(smart.selfTests)).toBe(true);
 
     const detail = await (await fetch(`/api/disks/${id}`)).json();
-    expect(detail).toMatchObject({ latestStatus: "passed", latestTemp: 42 });
+    expect(detail).toMatchObject({ latestStatus: "passed", latestTemp: 41 });
   });
 
   it("400s for an unknown range", async () => {

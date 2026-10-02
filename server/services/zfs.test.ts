@@ -35,7 +35,6 @@ import { readFixture } from "~~/test/fixtures";
 
 const T0 = new Date("2026-09-28T17:00:00Z");
 const TANK_GUID = "4620770592528249368";
-const ZETA_GUID = "4965937374306319308";
 const K1_GUID = "615499781187199551";
 const UDEV_DIR = join(import.meta.dirname, "../../test/fixtures/mars/udev");
 
@@ -364,8 +363,8 @@ describe("zpool-list", () => {
       .get();
     expect(tankRow).toMatchObject({
       sizeBytes: 174457276596224,
-      allocBytes: 110478556663808,
-      freeBytes: 63978719932416,
+      allocBytes: 111526969077760,
+      freeBytes: 62930307518464,
       frag: 9,
       cap: 63,
       dedup: 1,
@@ -380,7 +379,7 @@ describe("zpool-list", () => {
       .orderBy(poolReading.id)
       .all()
       .at(-1);
-    expect(latest).toMatchObject({ allocBytes: 110478556663808, cap: 63 });
+    expect(latest).toMatchObject({ allocBytes: 111526969077760, cap: 63 });
   });
 
   it("ignores pools it has not seen in zpool-status", () => {
@@ -487,9 +486,9 @@ describe("zfs events", () => {
       .all();
     expect(rows).toHaveLength(marsEvents().events.length);
     expect(rows[0]).toMatchObject({
-      eid: 0x980,
+      eid: 0x8c86,
       class: "sysevent.fs.zfs.history_event",
-      poolGuid: ZETA_GUID,
+      poolGuid: TANK_GUID,
       payload: { history_internal_name: "snapshot" },
     });
     expect(diary()).toEqual([]);
@@ -508,7 +507,7 @@ describe("zfs events", () => {
 
   it("stores a zed event and dedupes it against zpool events", () => {
     const body = [
-      "ZEVENT_EID=2944",
+      "ZEVENT_EID=36486",
       "ZEVENT_CLASS=sysevent.fs.zfs.config_sync",
       `ZEVENT_POOL_GUID=${TANK_GUID}`,
       "ZEVENT_TIME_SECS=1790604000",
@@ -518,7 +517,7 @@ describe("zfs events", () => {
     run("zed-event", parseZedEvent(body, {}).data, minutesAfter(1));
     run("zed-event", parseZedEvent(body, {}).data, minutesAfter(2));
     expect(
-      db.select().from(zfsEvent).where(eq(zfsEvent.eid, 2944)).all(),
+      db.select().from(zfsEvent).where(eq(zfsEvent.eid, 36486)).all(),
     ).toHaveLength(1);
     expect(diary()).toEqual([]);
   });

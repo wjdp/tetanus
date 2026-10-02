@@ -23,8 +23,8 @@
     "exit_status": 64
   },
   "local_time": {
-    "time_t": 1790633456,
-    "asctime": "Mon Sep 28 23:10:56 2026 BST"
+    "time_t": 1790972120,
+    "asctime": "Fri Oct  2 21:15:20 2026 BST"
   },
   "device": {
     "name": "/dev/sdj",
@@ -33,8 +33,8 @@
     "protocol": "ATA"
   },
   "power_mode": {
-    "ata_value": 129,
-    "name": "IDLE_A"
+    "ata_value": 255,
+    "name": "ACTIVE or IDLE"
   },
   "model_family": "Seagate Exos X16",
   "model_name": "ST16000NM001G-2KK103",
@@ -155,7 +155,7 @@
       {
         "id": 1,
         "name": "Raw_Read_Error_Rate",
-        "value": 81,
+        "value": 82,
         "worst": 64,
         "thresh": 44,
         "when_failed": "",
@@ -170,8 +170,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 137774677,
-          "string": "0/137774677"
+          "value": 173936920,
+          "string": "0/173936920"
         }
       },
       {
@@ -258,8 +258,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 500501694,
-          "string": "0/500501694"
+          "value": 502490928,
+          "string": "0/502490928"
         }
       },
       {
@@ -280,8 +280,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 22150,
-          "string": "22150"
+          "value": 22244,
+          "string": "22244"
         }
       },
       {
@@ -397,7 +397,7 @@
       {
         "id": 190,
         "name": "Airflow_Temperature_Cel",
-        "value": 59,
+        "value": 58,
         "worst": 44,
         "thresh": 40,
         "when_failed": "",
@@ -412,8 +412,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 790429737,
-          "string": "41 (Min/Max 29/47)"
+          "value": 790429738,
+          "string": "42 (Min/Max 29/47)"
         }
       },
       {
@@ -456,14 +456,14 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 962,
-          "string": "962"
+          "value": 966,
+          "string": "966"
         }
       },
       {
         "id": 194,
         "name": "Temperature_Celsius",
-        "value": 41,
+        "value": 42,
         "worst": 56,
         "thresh": 0,
         "when_failed": "",
@@ -478,8 +478,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 81604378665,
-          "string": "41 (0 19 0 0 0)"
+          "value": 81604378666,
+          "string": "42 (0 19 0 0 0)"
         }
       },
       {
@@ -588,8 +588,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 6405497045407342,
-          "string": "22126h+24m+51.396s"
+          "value": 7543525939893964,
+          "string": "22220h+29m+16.364s"
         }
       },
       {
@@ -610,8 +610,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 94872338097,
-          "string": "94872338097"
+          "value": 95173387785,
+          "string": "95173387785"
         }
       },
       {
@@ -632,8 +632,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 370439710603,
-          "string": "370439710603"
+          "value": 370907258443,
+          "string": "370907258443"
         }
       }
     ]
@@ -643,11 +643,11 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 22150
+    "hours": 22244
   },
   "power_cycle_count": 37,
   "temperature": {
-    "current": 41,
+    "current": 42,
     "power_cycle_min": 28,
     "power_cycle_max": 47,
     "lifetime_min": 24,
@@ -1384,13 +1384,13 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 41,
+      "current": 42,
       "power_cycle_min": 28,
       "power_cycle_max": 47,
       "lifetime_min": 18,
       "lifetime_max": 56,
       "under_limit_count": 0,
-      "over_limit_count": 309
+      "over_limit_count": 404
     },
     "smart_status": {
       "passed": true
@@ -1441,103 +1441,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 12,
+    "index": 107,
     "table": [
-      42,
-      42,
-      42,
-      42,
-      42,
-      42,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      44,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      42,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      39,
-      40,
-      41,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      44,
-      45,
-      44,
-      44,
-      44,
-      43,
-      43,
-      44,
-      44,
-      44,
-      44,
       44,
       44,
       44,
@@ -1570,7 +1475,102 @@
       41,
       41,
       41,
-      41
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      43,
+      43,
+      43,
+      44,
+      44,
+      43,
+      43,
+      43,
+      43,
+      43,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      43,
+      42,
+      42,
+      44,
+      43,
+      44,
+      45,
+      45,
+      45,
+      45,
+      45,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      43,
+      44,
+      44,
+      43,
+      43,
+      44,
+      43,
+      43,
+      43,
+      44,
+      45,
+      45,
+      45,
+      45,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      43,
+      42,
+      42,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      42,
+      41,
+      41,
+      43,
+      43,
+      42,
+      43,
+      42,
+      43,
+      43,
+      43,
+      43,
+      42,
+      41,
+      41,
+      41,
+      41,
+      43,
+      43,
+      42
     ]
   },
   "ata_sct_erc": {
@@ -1608,7 +1608,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 22150,
+            "value": 22244,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1622,7 +1622,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 94869039297,
+            "value": 95170088985,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1636,7 +1636,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 631339222,
+            "value": 631778701,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1650,7 +1650,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 370425054631,
+            "value": 370892602471,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1664,7 +1664,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 1557521269,
+            "value": 1561258712,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1698,7 +1698,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 22127,
+            "value": 22221,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1712,7 +1712,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 22124,
+            "value": 22218,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1726,7 +1726,7 @@
             "offset": 24,
             "name": "Head Load Events",
             "size": 4,
-            "value": 962,
+            "value": 966,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1866,7 +1866,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 41,
+            "value": 42,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1880,7 +1880,7 @@
             "offset": 16,
             "name": "Average Short Term Temperature",
             "size": 1,
-            "value": 43,
+            "value": 42,
             "flags": {
               "value": 192,
               "string": "V--- ",

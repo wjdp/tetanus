@@ -25,8 +25,8 @@
     "exit_status": 4
   },
   "local_time": {
-    "time_t": 1790633454,
-    "asctime": "Mon Sep 28 23:10:54 2026 BST"
+    "time_t": 1790972118,
+    "asctime": "Fri Oct  2 21:15:18 2026 BST"
   },
   "device": {
     "name": "/dev/sdf",
@@ -79,7 +79,7 @@
     "passed": true
   },
   "temperature": {
-    "current": 41,
+    "current": 42,
     "drive_trip": 0
   },
   "seagate_farm_log": {

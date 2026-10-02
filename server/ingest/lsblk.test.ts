@@ -20,9 +20,9 @@ describe("lsblk parser", () => {
       wwn: "5000cca5f853b4e6",
       link: "sas",
       rotational: true,
-      zoned: null,
-      logicalBlockSize: null,
-      physicalBlockSize: null,
+      zoned: "none",
+      logicalBlockSize: 512,
+      physicalBlockSize: 4096,
       partitionTableType: "gpt",
     });
     expect(sda?.partitions).toEqual([
@@ -33,7 +33,7 @@ describe("lsblk parser", () => {
         sizeBytes: 12000128139264,
         partUuid: "5e2557d0-93da-b346-903f-a913c8e11433",
         fsType: "zfs_member",
-        mountPoints: null,
+        mountPoints: [],
         children: [],
       },
       {
@@ -43,30 +43,30 @@ describe("lsblk parser", () => {
         sizeBytes: 8388608,
         partUuid: "d05172ff-1d51-ccc5-9229-926ce1150377",
         fsType: null,
-        mountPoints: null,
+        mountPoints: [],
         children: [],
       },
     ]);
   });
 
-  it("reports mount points as unknown and keeps LVM children for an old collector", () => {
+  it("reads the mount points of the system disk through LVM", () => {
     const { data } = parse(readFixture("mars/lsblk.json"), {});
     const nvme = data.disks.find((disk) => disk.name === "nvme0n1");
     expect(nvme).toMatchObject({
       fsType: null,
-      mountPoints: null,
+      mountPoints: [],
       children: [],
     });
     const p3 = nvme?.partitions.find((part) => part.name === "nvme0n1p3");
     expect(p3?.fsType).toBe("LVM2_member");
-    expect(p3?.mountPoints).toBeNull();
+    expect(p3?.mountPoints).toEqual([]);
     expect(p3?.children).toEqual([
       {
         name: "ubuntu--vg-ubuntu--lv",
         path: "/dev/mapper/ubuntu--vg-ubuntu--lv",
         type: "lvm",
         fsType: "ext4",
-        mountPoints: null,
+        mountPoints: ["/"],
         children: [],
       },
       {
@@ -74,7 +74,7 @@ describe("lsblk parser", () => {
         path: "/dev/mapper/ubuntu--vg-ubuntu--swap",
         type: "lvm",
         fsType: "swap",
-        mountPoints: null,
+        mountPoints: ["[SWAP]"],
         children: [],
       },
     ]);

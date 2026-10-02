@@ -121,7 +121,7 @@ describe("observeZfsList", () => {
       parentId: null,
       type: "filesystem",
       mountpoint: "/vol/tank",
-      used: 73627902151696,
+      used: 74326618665936,
       compressRatio: 1.01,
       quota: null,
       refQuota: null,

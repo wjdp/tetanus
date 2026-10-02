@@ -54,8 +54,11 @@ describe("inferUsage on LVM on LUKS", () => {
 describe("inferUsage on mars", () => {
   const usage = usageByName("mars/lsblk.json");
 
-  it("is unknown for a formatted disk from a collector without mounts", () => {
-    expect(usage.get("nvme0n1")?.kind).toBe("unknown");
+  it("is a system filesystem for the boot disk", () => {
+    expect(usage.get("nvme0n1")).toMatchObject({
+      kind: "filesystem",
+      system: true,
+    });
   });
 
   it("is zfs for pool members", () => {

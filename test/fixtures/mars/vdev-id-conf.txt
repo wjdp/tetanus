@@ -18,7 +18,7 @@ alias   L4	wwn-0x5000c50455cf9165
 alias   L5      wwn-0x5000c5096a8de56c
 
 alias   Q1	wwn-0x5000c5006d431bd1
-alias   Q2	scsi-SATA_ST16000NM001G-2K_PH8Y0FJQ
+alias   Q2	wwn-0x5000c50bd5ec0ece
 alias	Q3	wwn-0x5000c5063b08b482
 alias	Q4	wwn-0x5000c50b3020c242
 

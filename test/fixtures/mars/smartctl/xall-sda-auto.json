@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790633452,
-    "asctime": "Mon Sep 28 23:10:52 2026 BST"
+    "time_t": 1790972116,
+    "asctime": "Fri Oct  2 21:15:16 2026 BST"
   },
   "device": {
     "name": "/dev/sda",
@@ -331,8 +331,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 50453,
-          "string": "50453"
+          "value": 50547,
+          "string": "50547"
         }
       },
       {
@@ -419,8 +419,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 51447,
-          "string": "51447"
+          "value": 51451,
+          "string": "51451"
         }
       },
       {
@@ -441,15 +441,15 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 51447,
-          "string": "51447"
+          "value": 51451,
+          "string": "51451"
         }
       },
       {
         "id": 194,
         "name": "Temperature_Celsius",
-        "value": 154,
-        "worst": 154,
+        "value": 158,
+        "worst": 158,
         "thresh": 0,
         "when_failed": "",
         "flags": {
@@ -463,8 +463,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 227634315306,
-          "string": "42 (Min/Max 16/53)"
+          "value": 227634315305,
+          "string": "41 (Min/Max 16/53)"
         }
       },
       {
@@ -562,11 +562,11 @@
     "threshold_percent": 5
   },
   "power_on_time": {
-    "hours": 50453
+    "hours": 50547
   },
   "power_cycle_count": 175,
   "temperature": {
-    "current": 42,
+    "current": 41,
     "power_cycle_min": 30,
     "power_cycle_max": 44,
     "lifetime_min": 16,
@@ -1072,7 +1072,7 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 42,
+      "current": 41,
       "power_cycle_min": 30,
       "power_cycle_max": 44,
       "lifetime_min": 16,
@@ -1092,38 +1092,20 @@
       "limit_max": 70
     },
     "size": 128,
-    "index": 83,
+    "index": 81,
     "table": [
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
       42,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
       42,
       42,
       42,
@@ -1132,13 +1114,24 @@
       42,
       42,
       41,
+      42,
+      42,
+      42,
+      41,
+      42,
+      42,
+      41,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
       41,
       41,
-      41,
-      41,
-      41,
-      41,
-      41,
+      42,
+      42,
+      42,
       41,
       42,
       42,
@@ -1148,18 +1141,7 @@
       42,
       42,
       41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
+      42,
       41,
       42,
       42,
@@ -1210,8 +1192,6 @@
       41,
       41,
       41,
-      42,
-      42,
       41,
       41,
       41,
@@ -1220,8 +1200,28 @@
       41,
       41,
       41,
-      42,
-      41
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      42
     ]
   },
   "ata_sct_erc": {
@@ -1259,7 +1259,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 50453,
+            "value": 50547,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1273,7 +1273,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 159278487543,
+            "value": 159512496503,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1287,7 +1287,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 909437804,
+            "value": 909851752,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1301,7 +1301,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 1255980474859,
+            "value": 1256259440923,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1315,7 +1315,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 2731109434,
+            "value": 2732799174,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1329,7 +1329,7 @@
             "offset": 56,
             "name": "Date and Time TimeStamp",
             "size": 6,
-            "value": 181631300000,
+            "value": 181969960150,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1350,7 +1350,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 47043,
+            "value": 47137,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1364,7 +1364,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 47043,
+            "value": 47137,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1378,7 +1378,7 @@
             "offset": 24,
             "name": "Head Load Events",
             "size": 4,
-            "value": 51447,
+            "value": 51451,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1476,7 +1476,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 42,
+            "value": 41,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1504,7 +1504,7 @@
             "offset": 24,
             "name": "Average Long Term Temperature",
             "size": 1,
-            "value": 42,
+            "value": 41,
             "flags": {
               "value": 224,
               "string": "VN-- ",

@@ -26,8 +26,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790633456,
-    "asctime": "Mon Sep 28 23:10:56 2026 BST"
+    "time_t": 1790972120,
+    "asctime": "Fri Oct  2 21:15:20 2026 BST"
   },
   "device": {
     "name": "/dev/sdi",
@@ -158,7 +158,7 @@
       {
         "id": 1,
         "name": "Raw_Read_Error_Rate",
-        "value": 72,
+        "value": 76,
         "worst": 64,
         "thresh": 44,
         "when_failed": "",
@@ -173,8 +173,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 15826733,
-          "string": "0/15826733"
+          "value": 42185264,
+          "string": "0/42185264"
         }
       },
       {
@@ -261,8 +261,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 474038500,
-          "string": "0/474038500"
+          "value": 476258870,
+          "string": "0/476258870"
         }
       },
       {
@@ -283,8 +283,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 26501,
-          "string": "26501"
+          "value": 26595,
+          "string": "26595"
         }
       },
       {
@@ -400,7 +400,7 @@
       {
         "id": 190,
         "name": "Airflow_Temperature_Cel",
-        "value": 59,
+        "value": 58,
         "worst": 45,
         "thresh": 0,
         "when_failed": "",
@@ -415,8 +415,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 823918633,
-          "string": "41 (Min/Max 28/49)"
+          "value": 823918634,
+          "string": "42 (Min/Max 28/49)"
         }
       },
       {
@@ -459,14 +459,14 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 6291,
-          "string": "6291"
+          "value": 6295,
+          "string": "6295"
         }
       },
       {
         "id": 194,
         "name": "Temperature_Celsius",
-        "value": 41,
+        "value": 42,
         "worst": 55,
         "thresh": 0,
         "when_failed": "",
@@ -481,8 +481,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 25769803817,
-          "string": "41 (0 6 0 0 0)"
+          "value": 25769803818,
+          "string": "42 (0 6 0 0 0)"
         }
       },
       {
@@ -591,8 +591,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 3091212517006401,
-          "string": "23617h+11m+59.729s"
+          "value": 4127781399059615,
+          "string": "23711h+16m+01.074s"
         }
       },
       {
@@ -613,8 +613,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 204954909588,
-          "string": "204954909588"
+          "value": 205371455564,
+          "string": "205371455564"
         }
       },
       {
@@ -635,8 +635,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 1443103559985,
-          "string": "1443103559985"
+          "value": 1555359090081,
+          "string": "1555359090081"
         }
       }
     ]
@@ -646,11 +646,11 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 26501
+    "hours": 26595
   },
   "power_cycle_count": 66,
   "temperature": {
-    "current": 41,
+    "current": 42,
     "power_cycle_min": 28,
     "power_cycle_max": 46,
     "lifetime_min": 12,
@@ -1302,13 +1302,13 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 41,
+      "current": 42,
       "power_cycle_min": 28,
       "power_cycle_max": 46,
       "lifetime_min": 6,
       "lifetime_max": 54,
       "under_limit_count": 0,
-      "over_limit_count": 288
+      "over_limit_count": 383
     },
     "smart_status": {
       "passed": true
@@ -1359,103 +1359,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 80,
+    "index": 47,
     "table": [
-      42,
-      42,
-      42,
-      42,
-      41,
-      41,
-      42,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      42,
-      43,
-      43,
-      43,
-      38,
-      40,
-      41,
-      42,
-      42,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      44,
-      44,
-      44,
-      44,
-      44,
-      44,
-      43,
-      44,
-      44,
-      44,
-      44,
       44,
       44,
       44,
@@ -1488,7 +1393,102 @@
       41,
       41,
       40,
-      40
+      40,
+      41,
+      41,
+      41,
+      41,
+      41,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      43,
+      43,
+      44,
+      44,
+      44,
+      45,
+      45,
+      45,
+      44,
+      44,
+      44,
+      44,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      43,
+      42,
+      43,
+      44,
+      45,
+      44,
+      45,
+      45,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      42,
+      42,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      42,
+      41,
+      41,
+      43,
+      43,
+      42,
+      43,
+      42,
+      43,
+      42,
+      43,
+      42,
+      42,
+      41,
+      41,
+      41,
+      41,
+      43,
+      42,
+      42
     ]
   },
   "ata_sct_erc": {
@@ -1526,7 +1526,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 26501,
+            "value": 26595,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1540,7 +1540,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 204923792802,
+            "value": 205340338778,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1554,7 +1554,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 984526450,
+            "value": 985189775,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1568,7 +1568,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 1443099101799,
+            "value": 1555354631895,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1582,7 +1582,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 1590713800,
+            "value": 1595003706,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1616,7 +1616,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 26494,
+            "value": 26588,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1630,7 +1630,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 23901,
+            "value": 23995,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1644,7 +1644,7 @@
             "offset": 24,
             "name": "Head Load Events",
             "size": 4,
-            "value": 6291,
+            "value": 6295,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1784,7 +1784,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 41,
+            "value": 42,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1812,7 +1812,7 @@
             "offset": 24,
             "name": "Average Long Term Temperature",
             "size": 1,
-            "value": 44,
+            "value": 43,
             "flags": {
               "value": 192,
               "string": "V--- ",

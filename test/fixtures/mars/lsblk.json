@@ -13,7 +13,13 @@
          "path": "/dev/loop0",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/core22/2437"
+         ]
       },{
          "name": "loop1",
          "type": "loop",
@@ -27,7 +33,13 @@
          "path": "/dev/loop1",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/canonical-livepatch/406"
+         ]
       },{
          "name": "loop2",
          "type": "loop",
@@ -41,7 +53,13 @@
          "path": "/dev/loop2",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/core24/1643"
+         ]
       },{
          "name": "loop3",
          "type": "loop",
@@ -55,7 +73,13 @@
          "path": "/dev/loop3",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/core24/2124"
+         ]
       },{
          "name": "loop4",
          "type": "loop",
@@ -69,7 +93,13 @@
          "path": "/dev/loop4",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/lxd/40585"
+         ]
       },{
          "name": "loop5",
          "type": "loop",
@@ -83,7 +113,13 @@
          "path": "/dev/loop5",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/lxd/40958"
+         ]
       },{
          "name": "loop6",
          "type": "loop",
@@ -97,21 +133,13 @@
          "path": "/dev/loop6",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
-      },{
-         "name": "loop7",
-         "type": "loop",
-         "size": 52535296,
-         "model": null,
-         "serial": null,
-         "wwn": null,
-         "tran": null,
-         "rota": false,
-         "maj:min": "7:7",
-         "path": "/dev/loop7",
-         "pttype": null,
-         "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/canonical-livepatch/414"
+         ]
       },{
          "name": "loop8",
          "type": "loop",
@@ -125,7 +153,13 @@
          "path": "/dev/loop8",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/snapd/27738"
+         ]
       },{
          "name": "loop9",
          "type": "loop",
@@ -139,7 +173,33 @@
          "path": "/dev/loop9",
          "pttype": null,
          "partuuid": null,
-         "fstype": "squashfs"
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/core22/2955"
+         ]
+      },{
+         "name": "loop10",
+         "type": "loop",
+         "size": 46882816,
+         "model": null,
+         "serial": null,
+         "wwn": null,
+         "tran": null,
+         "rota": false,
+         "maj:min": "7:10",
+         "path": "/dev/loop10",
+         "pttype": null,
+         "partuuid": null,
+         "fstype": "squashfs",
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [
+             "/snap/snapd/28254"
+         ]
       },{
          "name": "sda",
          "type": "disk",
@@ -154,6 +214,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sda1",
@@ -168,7 +232,11 @@
                "path": "/dev/sda1",
                "pttype": "gpt",
                "partuuid": "5e2557d0-93da-b346-903f-a913c8e11433",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sda9",
                "type": "part",
@@ -182,7 +250,11 @@
                "path": "/dev/sda9",
                "pttype": "gpt",
                "partuuid": "d05172ff-1d51-ccc5-9229-926ce1150377",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -199,6 +271,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdb1",
@@ -213,7 +289,11 @@
                "path": "/dev/sdb1",
                "pttype": "gpt",
                "partuuid": "8f51e394-a15f-538a-bb89-ee89cec3e64a",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdb9",
                "type": "part",
@@ -227,7 +307,11 @@
                "path": "/dev/sdb9",
                "pttype": "gpt",
                "partuuid": "8b21a888-e114-c9e1-b860-e0c167671bd3",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -244,6 +328,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdc1",
@@ -258,7 +346,11 @@
                "path": "/dev/sdc1",
                "pttype": "gpt",
                "partuuid": "2905d2b5-c87d-6731-88ef-c3772f04cad0",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdc9",
                "type": "part",
@@ -272,7 +364,11 @@
                "path": "/dev/sdc9",
                "pttype": "gpt",
                "partuuid": "9d902817-c4b0-96f4-9a06-3266eb2c6782",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -289,6 +385,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdd1",
@@ -303,7 +403,11 @@
                "path": "/dev/sdd1",
                "pttype": "gpt",
                "partuuid": "b611ec58-509a-9e94-99f9-fda917fb5e8c",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdd9",
                "type": "part",
@@ -317,7 +421,11 @@
                "path": "/dev/sdd9",
                "pttype": "gpt",
                "partuuid": "61207b96-eb24-b1ac-9727-ef96f4132f69",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -334,6 +442,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sde1",
@@ -348,7 +460,11 @@
                "path": "/dev/sde1",
                "pttype": "gpt",
                "partuuid": "5af66e41-6fde-d7e9-8b3e-0e1d12c24813",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sde9",
                "type": "part",
@@ -362,7 +478,11 @@
                "path": "/dev/sde9",
                "pttype": "gpt",
                "partuuid": "0a188123-2221-8a41-bb8c-57f9861d024e",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -379,6 +499,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdf1",
@@ -393,7 +517,11 @@
                "path": "/dev/sdf1",
                "pttype": "gpt",
                "partuuid": "687cd92d-4033-3aff-a344-c07e4bbd6d58",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdf9",
                "type": "part",
@@ -407,7 +535,11 @@
                "path": "/dev/sdf9",
                "pttype": "gpt",
                "partuuid": "0cfcc496-33d6-951e-9b28-eab94a196dab",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -424,6 +556,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdg1",
@@ -438,7 +574,11 @@
                "path": "/dev/sdg1",
                "pttype": "gpt",
                "partuuid": "c7b2b4e6-7976-39a1-b90e-7527be0570e3",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdg9",
                "type": "part",
@@ -452,7 +592,11 @@
                "path": "/dev/sdg9",
                "pttype": "gpt",
                "partuuid": "7a79548d-b30b-35c6-96ca-531f34bdf858",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -469,6 +613,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdh1",
@@ -483,7 +631,11 @@
                "path": "/dev/sdh1",
                "pttype": "gpt",
                "partuuid": "579f1f55-9caf-b15c-b4aa-f52a1ddd8ca0",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdh9",
                "type": "part",
@@ -497,7 +649,11 @@
                "path": "/dev/sdh9",
                "pttype": "gpt",
                "partuuid": "3e736392-e09d-7734-a967-0f869195ca6c",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -514,6 +670,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdi1",
@@ -528,7 +688,11 @@
                "path": "/dev/sdi1",
                "pttype": "gpt",
                "partuuid": "31a02658-1e90-f798-b7ca-6b5904792447",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdi9",
                "type": "part",
@@ -542,7 +706,11 @@
                "path": "/dev/sdi9",
                "pttype": "gpt",
                "partuuid": "736a9ae8-160c-9ce5-8a79-7c6740b2b540",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -559,6 +727,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdj1",
@@ -573,7 +745,11 @@
                "path": "/dev/sdj1",
                "pttype": "gpt",
                "partuuid": "ecff4c76-ea47-0e00-9dd3-02b74fc999ec",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdj9",
                "type": "part",
@@ -587,7 +763,11 @@
                "path": "/dev/sdj9",
                "pttype": "gpt",
                "partuuid": "516affd8-05bb-7ee8-bc61-c88e38ed34c5",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -604,6 +784,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdk1",
@@ -618,7 +802,11 @@
                "path": "/dev/sdk1",
                "pttype": "gpt",
                "partuuid": "6b0699f3-b212-ca9d-b4b8-5ff984038cc2",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdk9",
                "type": "part",
@@ -632,7 +820,11 @@
                "path": "/dev/sdk9",
                "pttype": "gpt",
                "partuuid": "e492aa18-b0a7-7d5e-a420-3caa28c21e3d",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -649,6 +841,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdl1",
@@ -663,7 +859,11 @@
                "path": "/dev/sdl1",
                "pttype": "gpt",
                "partuuid": "169f5c91-ecab-092c-8ff0-2e4f04f84849",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdl9",
                "type": "part",
@@ -677,7 +877,11 @@
                "path": "/dev/sdl9",
                "pttype": "gpt",
                "partuuid": "6389dd67-d5a3-b0a8-88d2-88a1a2e1b7fa",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -694,6 +898,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdm1",
@@ -708,7 +916,11 @@
                "path": "/dev/sdm1",
                "pttype": "gpt",
                "partuuid": "107cb8a9-6294-dff0-ae19-2ca6bec8c0b6",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             },{
                "name": "sdm9",
                "type": "part",
@@ -722,7 +934,11 @@
                "path": "/dev/sdm9",
                "pttype": "gpt",
                "partuuid": "fdc31089-e0be-f389-b7e6-765f3217f859",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             }
          ]
       },{
@@ -739,6 +955,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdn1",
@@ -753,7 +973,11 @@
                "path": "/dev/sdn1",
                "pttype": "gpt",
                "partuuid": "dff69cf1-c062-24dd-bda2-75ea5202f174",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdn9",
                "type": "part",
@@ -767,7 +991,11 @@
                "path": "/dev/sdn9",
                "pttype": "gpt",
                "partuuid": "2601d744-7033-52f9-9cbb-c261d998e3da",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -784,6 +1012,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdo1",
@@ -798,7 +1030,11 @@
                "path": "/dev/sdo1",
                "pttype": "gpt",
                "partuuid": "94886586-a1ca-83c7-8cef-755c5a1cd00e",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             },{
                "name": "sdo9",
                "type": "part",
@@ -812,7 +1048,11 @@
                "path": "/dev/sdo9",
                "pttype": "gpt",
                "partuuid": "88e3abd1-0885-15c7-8878-3f6ee8cd13d0",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             }
          ]
       },{
@@ -829,6 +1069,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdp1",
@@ -843,7 +1087,11 @@
                "path": "/dev/sdp1",
                "pttype": "gpt",
                "partuuid": "800058a9-3fab-d40a-8c74-0ac5cbac49b7",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             },{
                "name": "sdp9",
                "type": "part",
@@ -857,7 +1105,11 @@
                "path": "/dev/sdp9",
                "pttype": "gpt",
                "partuuid": "842c820b-039a-62f7-afb9-80dfba2b025c",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": []
             }
          ]
       },{
@@ -873,7 +1125,11 @@
          "path": "/dev/sr0",
          "pttype": null,
          "partuuid": null,
-         "fstype": null
+         "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": []
       },{
          "name": "sdq",
          "type": "disk",
@@ -888,6 +1144,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdq1",
@@ -902,7 +1162,11 @@
                "path": "/dev/sdq1",
                "pttype": "gpt",
                "partuuid": "cf43e7f6-eec8-6444-9049-dd3d887da99d",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             },{
                "name": "sdq9",
                "type": "part",
@@ -916,7 +1180,11 @@
                "path": "/dev/sdq9",
                "pttype": "gpt",
                "partuuid": "53a9a27e-acb9-4886-afac-a3de8dcf8414",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             }
          ]
       },{
@@ -933,6 +1201,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [],
          "children": [
             {
                "name": "sdr1",
@@ -947,7 +1219,11 @@
                "path": "/dev/sdr1",
                "pttype": "gpt",
                "partuuid": "00816d7c-a070-0cfc-9b0f-dde65a4b986d",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             },{
                "name": "sdr9",
                "type": "part",
@@ -961,7 +1237,11 @@
                "path": "/dev/sdr9",
                "pttype": "gpt",
                "partuuid": "dc5e4a89-a322-11a4-9880-55a3fdf6fe95",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             }
          ]
       },{
@@ -978,6 +1258,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [],
          "children": [
             {
                "name": "sds1",
@@ -992,7 +1276,11 @@
                "path": "/dev/sds1",
                "pttype": "gpt",
                "partuuid": "973fde47-31b4-9e2b-b3a1-5362d8b1347b",
-               "fstype": "zfs_member"
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             },{
                "name": "sds9",
                "type": "part",
@@ -1006,7 +1294,11 @@
                "path": "/dev/sds9",
                "pttype": "gpt",
                "partuuid": "0d4bde9d-2bdf-43fc-beee-5d755f2993f5",
-               "fstype": null
+               "fstype": null,
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": []
             }
          ]
       },{
@@ -1022,7 +1314,13 @@
          "path": "/dev/zram0",
          "pttype": null,
          "partuuid": null,
-         "fstype": null
+         "fstype": null,
+         "zoned": "none",
+         "log-sec": 4096,
+         "phy-sec": 4096,
+         "mountpoints": [
+             "[SWAP]"
+         ]
       },{
          "name": "nvme0n1",
          "type": "disk",
@@ -1037,6 +1335,10 @@
          "pttype": "gpt",
          "partuuid": null,
          "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 512,
+         "mountpoints": [],
          "children": [
             {
                "name": "nvme0n1p1",
@@ -1051,7 +1353,13 @@
                "path": "/dev/nvme0n1p1",
                "pttype": "gpt",
                "partuuid": "f1c46ea1-22ae-41a4-90e6-e755f3e8d8bd",
-               "fstype": "vfat"
+               "fstype": "vfat",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": [
+                   "/boot/efi"
+               ]
             },{
                "name": "nvme0n1p2",
                "type": "part",
@@ -1065,7 +1373,13 @@
                "path": "/dev/nvme0n1p2",
                "pttype": "gpt",
                "partuuid": "c2f5e5ec-fd10-450c-b5ec-0bb7bdad6ac9",
-               "fstype": "ext4"
+               "fstype": "ext4",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": [
+                   "/boot"
+               ]
             },{
                "name": "nvme0n1p3",
                "type": "part",
@@ -1080,6 +1394,10 @@
                "pttype": "gpt",
                "partuuid": "da3b1f15-e1e3-4c0c-86b3-430664b66568",
                "fstype": "LVM2_member",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 512,
+               "mountpoints": [],
                "children": [
                   {
                      "name": "ubuntu--vg-ubuntu--lv",
@@ -1094,7 +1412,13 @@
                      "path": "/dev/mapper/ubuntu--vg-ubuntu--lv",
                      "pttype": null,
                      "partuuid": null,
-                     "fstype": "ext4"
+                     "fstype": "ext4",
+                     "zoned": "none",
+                     "log-sec": 512,
+                     "phy-sec": 512,
+                     "mountpoints": [
+                         "/"
+                     ]
                   },{
                      "name": "ubuntu--vg-ubuntu--swap",
                      "type": "lvm",
@@ -1108,7 +1432,13 @@
                      "path": "/dev/mapper/ubuntu--vg-ubuntu--swap",
                      "pttype": null,
                      "partuuid": null,
-                     "fstype": "swap"
+                     "fstype": "swap",
+                     "zoned": "none",
+                     "log-sec": 512,
+                     "phy-sec": 512,
+                     "mountpoints": [
+                         "[SWAP]"
+                     ]
                   }
                ]
             }

@@ -1,4 +1,4 @@
-# captured 2026-09-28T22:10:16Z
+# captured 2026-10-02T20:14:34Z
 # name	exit	argv
 zfs-version	0	zfs version
 smartctl-version	0	smartctl --version
@@ -18,7 +18,7 @@ zpool-events	0	zpool events -vH
 vdev-id-conf	0	cat /etc/zfs/vdev_id.conf
 by-vdev	0	ls -l /dev/disk/by-vdev
 by-id	0	ls -l /dev/disk/by-id
-lsblk	0	lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE
+lsblk	0	lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE,ZONED,LOG-SEC,PHY-SEC,MOUNTPOINTS
 udev/b8-0	0	cat /run/udev/data/b8:0
 udev/b8-1	0	cat /run/udev/data/b8:1
 udev/b8-9	0	cat /run/udev/data/b8:9
