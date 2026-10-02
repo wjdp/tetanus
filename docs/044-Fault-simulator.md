@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: in-progress
 ---
 
 # Fault simulator
@@ -21,47 +21,47 @@ would light up the fault UI while the SMART table, vdev tree and pool state disa
 
 ### Undo log
 
-Restore must leave nothing behind: no fault, diary entry, reading, notification. Rows
-carry no provenance and `Payload` holds only the latest body per host/source/device (the
-simulation overwrites the real one), so capture every write the simulation makes and
-undo it.
+Restore must leave nothing behind: no fault, diary entry, reading, notification, nor
+anything the user added meanwhile (acknowledgements, acceptances, notes). Rows carry no
+provenance, `Payload` holds only the latest body per host/source/device (the simulation
+overwrites the real one), and faults open in the async alerts pass rather than in
+ingest. So: a global undo log, a rollback to the moment before the first simulation.
 
-- Tables `Simulation` (id, subjectType, subjectId, hostId, scenario, params, createdAt)
-  and `SimulationChange` (simulationId, table, op, rowid, before json, after json).
-- At boot, only when the simulator is enabled: drop and create `AFTER INSERT/UPDATE/DELETE`
-  triggers on every schema table (generated from the Drizzle schema via `getTableConfig`,
-  so they track schema changes; excluded: the two tables above, `__drizzle_migrations`).
-  Triggers fire only while a one-row `SimulationCapture` table names an active
-  simulation. No triggers in production unless opted in.
-- A simulation runs in one transaction: set capture, replay payloads, clear capture.
-  Fault actions the user takes on a simulated fault (acknowledge, accept, diary note)
-  are also captured: route handlers for those check whether the fault was created by a
-  simulation and run under its capture.
-- Restore applies a host's changes in reverse order, all simulations on that host (the
-  host-level sources `lsblk`, `udev`, `zpool-status` are shared between subjects, so
-  per-subject undo can't be consistent). An undo entry is skipped when the row no
-  longer matches its `after` image: a real collector run since (dev collector, demo
-  hourly tick) has superseded it.
-- No outbound alert sends for notifications created under capture; the rows still
-  appear on the alerts page until restore.
+- Tables `Simulation` (id, scenario, subjectType, subjectId, params, createdAt) and
+  `SimulationChange` (id, tableName, op, rowId, before json, after json).
+- The first simulation creates `AFTER INSERT/UPDATE/DELETE` triggers on every schema
+  table, generated from the Drizzle schema via `getTableConfig` (excluded: the two
+  tables above). Every write from then on is logged, whoever makes it: the simulation,
+  the user, a real collector run, the demo tick, another connection.
+- Restore drops the triggers, applies the log in reverse (insert → delete, update →
+  old image, delete → reinsert) with foreign keys deferred, then empties both tables.
+  One transaction. Exact, because the log is complete.
+- Cost: real data that arrived while a simulation was active is rolled back too; the
+  next collector run or demo tick brings it back. Acceptable for dev and demo.
+- While a simulation is active the alerts pass records notifications without sending
+  (error "Simulated"), as the demo does.
+- A layout banner shows while simulations are active: "N simulated faults · Restore".
 
-Works on Durable Object SQLite too (plain triggers and SQL).
+No triggers exist outside an active simulation, so zero cost otherwise. Works on
+Durable Object SQLite too (plain triggers and SQL).
 
 ### Code
 
 - `shared/simulator.ts`: scenario catalogue `{ id, label, group, subjectType,
   params: zod schema with defaults }`; the app builds menus and modal forms from it.
-- `server/services/simulator/`: one module per scenario, `applies(subject)` and
-  `mutate(payloads, subject, params) → payloads`, pure over raw bodies, unit-tested
-  against `test/fixtures/` (smartctl xall JSON, `zpool status -j`). Plus `capture.ts`
-  (triggers, capture, undo) and `run.ts` (load payloads, replay, restore).
+- `server/services/simulator/`: scenarios grouped by subject, each `applies(subject)`
+  and `mutate(payloads, subject, params) → payloads`, pure over raw bodies, unit-tested
+  against `test/fixtures/` (smartctl xall JSON, `zpool status -j`), plus an optional
+  direct write (backdating `lastSeenAt`, `CollectorRun.receivedAt`). `capture.ts`
+  (triggers, undo) and `run.ts` (load payloads, replay, run the alerts pass so faults
+  open at once, restore).
 - Routes: `GET /api/simulate/:subjectType/:id` (applicable scenarios, param choices
-  such as the pool's leaves), `POST …` `{ scenario, params }`, `POST
-  /api/simulate/hosts/:id/restore`. Bodies validated with `shared/schemas/simulate.ts`.
+  such as the pool's leaves), `POST …` `{ scenario, params }`, `GET
+  /api/simulate` (active simulations), `POST /api/simulate/restore`. Bodies validated with `shared/schemas/simulate.ts`.
 - `app/components/simulate/SimulateFaultMenu.vue`: `UDropdownMenu`, grouped; scenarios
   without params run on click; parameterised ones open `SimulateFaultModal.vue`
-  pre-filled with defaults and Run focused, so Enter runs the default. "Restore <host>"
-  at the bottom when the host has active simulations. Refreshes the page after.
+  pre-filled with defaults and Run focused, so Enter runs the default. "Restore" at the
+  bottom while any simulation is active. Refreshes the page after.
 - Placement: disk page header next to "Download diagnostics", pool page header, row
   actions in `settings/hosts.vue`.
 - Applicability: attached non-ZFS disks get every disk scenario; disks not attached to
@@ -136,17 +136,13 @@ Events
 ## Steps
 
 1. Undo log: tables and migration, trigger generation, capture, restore; unit tests
-   (insert/update/delete round trip, superseded rows skipped).
+   (insert/update/delete round trip, cascades, untouched tables).
 2. Scenario catalogue and runner; first scenarios: pending sectors, health FAILED,
    missing. Tests against fixtures.
 3. Routes and e2e test (simulate → fault open → restore → no fault, no diary, no
    readings, payload body back to the original).
 4. Menu and modal on the disk page; component tests.
 5. Pool scenarios (leaf fails, scrub errors, resilver) and pool page.
-6. Host scenarios and hosts table.
+6. Host scenarios and hosts table; layout banner.
 7. Remaining scenarios; README development section.
 
-## Questions
-
-- Fault actions taken on a simulated fault: undo them on restore (as planned), or keep
-  user-written diary notes?
