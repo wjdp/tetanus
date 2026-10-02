@@ -153,7 +153,7 @@ function detectMissing({ disks }: DetectionContext): Detection[] {
 
 function wasAcknowledgedSince(kind: FaultKind, key: string, at: Date) {
   return db
-    .select({ openedAt: fault.openedAt })
+    .select({ resolvedAt: fault.resolvedAt })
     .from(fault)
     .where(
       and(
@@ -163,7 +163,7 @@ function wasAcknowledgedSince(kind: FaultKind, key: string, at: Date) {
       ),
     )
     .all()
-    .some((row) => row.openedAt >= at);
+    .some((row) => row.resolvedAt !== null && row.resolvedAt >= at);
 }
 
 export function identityConflictKey(subjectId: number, diskIds: unknown) {

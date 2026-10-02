@@ -358,6 +358,39 @@ describe("identity-conflict", () => {
       { state: "open" },
     ]);
   });
+
+  it("stays resolved when acknowledged after the same conflict recurred", async () => {
+    const [a, b, c] = [1, 2, 3].map(
+      (n) =>
+        db
+          .insert(disk)
+          .values({ alias: `K${n}` })
+          .returning()
+          .get().id,
+    );
+    const conflict = (diskIds: number[], offsetMs: number) =>
+      addAutoEvent({
+        subjectType: "disk",
+        subjectId: a,
+        eventType: "identity-conflict",
+        title: "identity conflict",
+        data: { diskIds },
+        at: at(offsetMs),
+      });
+
+    conflict([a, b], 0);
+    await syncFaults(t0);
+    conflict([a, b, c], MINUTE_MS);
+    conflict([a, b], 2 * MINUTE_MS);
+    await syncFaults(at(3 * MINUTE_MS));
+    const pair = liveFault("identity-conflict", `${a}:${a},${b}`) as FaultRow;
+    expect(pair.openedAt).toEqual(t0);
+
+    performFaultAction(pair.id, "acknowledge", { now: at(4 * MINUTE_MS) });
+    await syncFaults(at(5 * MINUTE_MS));
+
+    expect(liveFault("identity-conflict", `${a}:${a},${b}`)).toBeUndefined();
+  });
 });
 
 describe("disk-missing", () => {
