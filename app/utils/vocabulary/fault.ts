@@ -25,3 +25,12 @@ export function faultSubjectPath(subject: FaultSubject): string {
   if (subject.type === "pool") return `/zfs/${subject.id}`;
   return "/settings/hosts";
 }
+
+export function faultDiskPath(
+  fault: Pick<FaultView, "subject" | "data">,
+): string | null {
+  const { diskId } = fault.data;
+  return fault.subject.type === "pool" && typeof diskId === "number"
+    ? `/disks/${diskId}`
+    : null;
+}

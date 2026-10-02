@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { FaultSubject } from "#shared/faults";
-import { faultGutterColour, faultHostLabel, faultSubjectPath } from "./fault";
+import {
+  faultDiskPath,
+  faultGutterColour,
+  faultHostLabel,
+  faultSubjectPath,
+} from "./fault";
 
 describe("faultGutterColour", () => {
   it.each([
@@ -40,5 +45,31 @@ describe("faultSubjectPath", () => {
     ["host", "/settings/hosts"],
   ] as const)("links a %s to %s", (type, path) => {
     expect(faultSubjectPath(subject({ type }))).toBe(path);
+  });
+});
+
+describe("faultDiskPath", () => {
+  it("links a leaf fault's disk", () => {
+    expect(
+      faultDiskPath({
+        subject: subject({ type: "pool" }),
+        data: { diskId: 4 },
+      }),
+    ).toBe("/disks/4");
+  });
+
+  it("has no disk link for an unlinked leaf or a disk subject", () => {
+    expect(
+      faultDiskPath({
+        subject: subject({ type: "pool" }),
+        data: { diskId: null },
+      }),
+    ).toBeNull();
+    expect(
+      faultDiskPath({
+        subject: subject({ type: "disk" }),
+        data: { diskId: 4 },
+      }),
+    ).toBeNull();
   });
 });

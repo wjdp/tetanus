@@ -6,7 +6,9 @@ import {
   faultTitle,
 } from "#shared/faults";
 import {
+  ENTITY_ICON,
   FAULT_GUTTER_CLASS,
+  faultDiskPath,
   faultGutterColour,
   faultHostLabel,
   faultSubjectPath,
@@ -35,6 +37,7 @@ const subjectLabel = computed(() =>
   props.fault.subject.type === "host" ? "" : props.fault.subject.label,
 );
 const subjectPath = computed(() => faultSubjectPath(props.fault.subject));
+const diskPath = computed(() => faultDiskPath(props.fault));
 const title = computed(() => faultTitle(props.fault, props.now));
 const showsUpgradeCommand = computed(
   () =>
@@ -74,6 +77,15 @@ const age = computed(() => {
           class="text-default min-w-0 after:absolute after:inset-0 focus-visible:outline-none"
         >
           {{ title }}
+        </NuxtLink>
+        <NuxtLink
+          v-if="diskPath"
+          :to="diskPath"
+          data-testid="fault-disk-link"
+          class="text-muted hover:text-highlighted relative z-10 inline-flex items-center gap-1 self-start text-xs hover:underline"
+        >
+          <UIcon :name="ENTITY_ICON.disk" class="size-3.5" />
+          Disk
         </NuxtLink>
         <p v-if="fault.note" class="text-muted text-xs" data-testid="fault-note">
           <UIcon name="i-lucide-message-square" class="me-1 size-3 align-[-1px]" />
