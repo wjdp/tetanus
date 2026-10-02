@@ -72,7 +72,7 @@ configured_url() {
 # or a temporary download from the tetanus server.
 fetch_sources() {
   local here
-  here=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd || true)
+  here=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd) || true
   if [[ -n $here && -f $here/tetanus-collect && -f $here/zed/all-tetanus.sh ]]; then
     sources=$here
     return 0
