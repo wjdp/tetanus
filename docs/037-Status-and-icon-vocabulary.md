@@ -107,7 +107,9 @@ A leaf tile's dot is the worst of its disk's SMART status and its vdev state
 signals.
 
 Error counters on a leaf: `R n W n C n` in `error` mono text, only the non-zero ones,
-only when any is non-zero. `slowIos > 0`: `S n` in `warning`.
+only when any is non-zero. `slowIos > 0`: `S n` in `warning`. The pool page's vdev
+table shows every counter: errors non-zero in `error`, slow I/Os in `warning` only at or
+over the pool's slow I/O threshold (default text below it, never with the threshold 0).
 
 ## Pool capacity and fragmentation
 
@@ -127,7 +129,8 @@ Same thresholds for the per-vdev mini bar. Change from today: 80 % becomes a war
 | --- | --- | --- |
 | running | info text and thin info bar under the pool bar; host chip `i-lucide-loader` | |
 | finished, `errors` = 0 | muted text "Last scrub <date> · 0 errors" | |
-| finished, `errors` > 0 | warning text; fault `pool-data-errors` | |
+| finished, `errors` > 0 | error text (scan panel errors, last scrub line); fault `pool-data-errors` | |
+| scrub overdue | warning text "Scrub overdue: last scrubbed 40 d ago, interval 35 d"; fault `scrub-overdue` | |
 | scrub paused over 24 h | as running; fault `scrub-paused` | |
 | running, no progress for 6 h | as running; fault `scan-stalled` (red for a resilver) | |
 | none recorded | dimmed "No scrub recorded" | |

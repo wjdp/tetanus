@@ -358,6 +358,51 @@ Part C (review fixes, four more kinds; approved 2026-10-02):
   usual severity: all four new kinds default to warning). No other trail exists for the
   new kinds, so history before part C has none.
 
+Part D (pool page, faults page):
+
+- Pool faults: `PoolFaults` reads `GET /api/faults?subject=pool:<id>` (live states)
+  through `useFaults`; the rows and action toasts moved from the faults page into
+  `FaultList`, shared by both pages. Nothing shows when the pool has no live fault.
+- Faults page: pool faults whose data carries a numeric `diskId` (`leaf-errors`,
+  `leaf-slow`, `vdev-unredundant`) get a "Disk" link beside the title
+  (`faultDiskPath`). `pool-degraded` lists several leaves, so no single link.
+- Header: "Data errors N" whenever `Pool.errors` is known, red over 0, muted at 0.
+  `PoolDamagedFiles` shows the first 10 paths with a toggle; when the list holds
+  `DAMAGED_FILES_LIMIT` entries, "+N more not listed" is `errors − listed`
+  (approximate: `error_count` is not strictly one per file). `damagedFilesError`
+  shows as "Damaged file list unavailable: …". `msgid` links to `moreinfo` after the
+  status text.
+- `DAMAGED_FILES_LIMIT`, `SCRUB_PAUSED_AFTER_MS` and `SCAN_STALLED_AFTER_MS` moved to
+  `shared/zfsState.ts` so the page and the detectors agree.
+- Scan panel: state words `running` / `paused` / `finished` / `cancelled`; duration
+  (running: so far); repaired from `processed`; errors red (037 updated: matches the
+  red `pool-data-errors` fault). Paused shows "paused since", stalled (scanning, not
+  paused, `scanProgressAt` 6 h old) "no progress since", both as info text like a
+  running scan (037). The last scrub line shows only when `Pool.lastScrub` is not the
+  current scan. "Scrub overdue" is computed client side from `Pool.scan`,
+  `lastScrub` and `firstSeenAt`, as the detector does minus its diary fallback.
+- Removal panel: state, vdev number (`removing_vdev` is a top-level vdev index, not
+  stored per vdev, so shown raw), start, completed, copied of to copy, mapping
+  memory; a progress bar while copying.
+- Vdev table: normal vdevs first, then headings `dedup`, `special`, `logs`, `cache`,
+  `spares` (`zpool status` order) by `Vdev.role` of the top-level child; type icons on
+  groups and top-level stripe devices only. `spareState` as a subtle badge. Path /
+  devid / phys path in the name cell's `title`. Alloc / size and frag columns, blank
+  when null. Slow I/Os amber at or over `slowIoThreshold` (037 updated); group and
+  root counters show like leaves.
+- History: `GET /api/pools/:id/vdevs/:vdevId/readings` (`getVdevReadings`), loaded when
+  a row is expanded (every vdev row, groups and root too). Last 30 d, opening with the
+  reading in force at the window start (re-dated to it) and closing with the vdev's
+  current counters at `lastSeenAt`, since readings are written only on change. Chart:
+  two series, errors (R + W + C summed) and slow I/Os; the row already shows the split.
+- Events tab (`PoolEventList`): `vdevGuid` resolved against the present vdev tree to the
+  leaf label and disk link, raw guid otherwise (departed vdevs are not in the tree);
+  a chevron expands the full payload, keys sorted.
+- Settings popover (gear in the header): both values pre-filled from
+  `resolvedConfig`, the default and "0 disables" in each description; save PATCHes
+  both and refreshes. `PATCH` cannot unset a field, so there is no "back to default"
+  other than typing the default.
+
 ## Open questions
 
 None. Decided 2026-10-02: `leaf-errors` resolves only by hand (or the vdev leaving the
