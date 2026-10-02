@@ -47,14 +47,31 @@ export interface ZpoolStatusVdev {
   children: string[];
 }
 
+export interface ZpoolStatusRemoval {
+  state: string;
+  removingVdev: number;
+  startTime: number;
+  endTime?: number;
+  toCopy: number;
+  copied: number;
+  mappingMemory: number;
+}
+
+export const DAMAGED_FILES_LIMIT = 100;
+
 export interface ZpoolStatusPool {
   name: string;
   guid: string;
   state: string;
   status?: string;
   action?: string;
+  msgid?: string;
+  moreinfo?: string;
   errors?: number;
+  damagedFiles?: string[];
+  damagedFilesError?: string;
   scan: ZpoolStatusScan | null;
+  removal: ZpoolStatusRemoval | null;
   vdevs: ZpoolStatusVdev[];
 }
 
@@ -187,6 +204,46 @@ function deriveType(raw: RawVdev, isTopLevelGroup: boolean): VdevType {
   return vdevType as VdevType;
 }
 
+function parseScan(rawScan: Record<string, unknown>): ZpoolStatusScan {
+  return {
+    function: requireString(rawScan.function, "scan.function"),
+    state: requireString(rawScan.state, "scan.state"),
+    startTime: toNumber(rawScan.start_time, "scan.start_time"),
+    endTime: optionalNumber(rawScan.end_time, "scan.end_time"),
+    examined: toNumber(rawScan.examined, "scan.examined"),
+    toExamine: toNumber(rawScan.to_examine, "scan.to_examine"),
+    processed: optionalNumber(rawScan.processed, "scan.processed"),
+    errors: toNumber(rawScan.errors, "scan.errors"),
+  };
+}
+
+function parseRemoval(rawRemoval: Record<string, unknown>): ZpoolStatusRemoval {
+  return {
+    state: requireString(rawRemoval.state, "removal.state"),
+    removingVdev: toNumber(rawRemoval.removing_vdev, "removal.removing_vdev"),
+    startTime: toNumber(rawRemoval.start_time, "removal.start_time"),
+    endTime: optionalNumber(rawRemoval.end_time, "removal.end_time"),
+    toCopy: toNumber(rawRemoval.to_copy, "removal.to_copy"),
+    copied: toNumber(rawRemoval.copied, "removal.copied"),
+    mappingMemory: toNumber(
+      rawRemoval.mapping_memory,
+      "removal.mapping_memory",
+    ),
+  };
+}
+
+function parseErrlist(
+  errlist: unknown,
+): Pick<ZpoolStatusPool, "damagedFiles" | "damagedFilesError"> {
+  if (typeof errlist === "string") return { damagedFilesError: errlist };
+  if (!Array.isArray(errlist)) return {};
+  return {
+    damagedFiles: errlist
+      .filter((entry): entry is string => typeof entry === "string")
+      .slice(0, DAMAGED_FILES_LIMIT),
+  };
+}
+
 function parsePool(
   name: string,
   raw: Record<string, unknown>,
@@ -279,18 +336,7 @@ function parsePool(
   }
 
   const rawScan = raw.scan_stats as Record<string, unknown> | undefined;
-  const scan: ZpoolStatusScan | null = rawScan
-    ? {
-        function: requireString(rawScan.function, "scan.function"),
-        state: requireString(rawScan.state, "scan.state"),
-        startTime: toNumber(rawScan.start_time, "scan.start_time"),
-        endTime: optionalNumber(rawScan.end_time, "scan.end_time"),
-        examined: toNumber(rawScan.examined, "scan.examined"),
-        toExamine: toNumber(rawScan.to_examine, "scan.to_examine"),
-        processed: optionalNumber(rawScan.processed, "scan.processed"),
-        errors: toNumber(rawScan.errors, "scan.errors"),
-      }
-    : null;
+  const rawRemoval = raw.removal_stats as Record<string, unknown> | undefined;
 
   return {
     name,
@@ -298,8 +344,12 @@ function parsePool(
     state: requireString(raw.state, "pool.state"),
     status: optionalString(raw.status),
     action: optionalString(raw.action),
+    msgid: optionalString(raw.msgid),
+    moreinfo: optionalString(raw.moreinfo),
     errors: optionalNumber(raw.error_count, "pool.error_count"),
-    scan,
+    ...parseErrlist(raw.errlist),
+    scan: rawScan ? parseScan(rawScan) : null,
+    removal: rawRemoval ? parseRemoval(rawRemoval) : null,
     vdevs,
   };
 }

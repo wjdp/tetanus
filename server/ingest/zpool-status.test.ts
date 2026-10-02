@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFixture } from "../../test/fixtures";
 import { ParseError } from "./parseError";
-import { parse } from "./zpool-status";
+import { DAMAGED_FILES_LIMIT, parse } from "./zpool-status";
 
 const fixture = (name: string) => readFixture(`mars/${name}`);
 
@@ -95,6 +95,73 @@ describe("zpool-status parser", () => {
     // throwing (see the comment in deriveType).
     const group = tank?.vdevs.find((v) => v.guid === "11092505927246116873");
     expect(group?.type).toBe("raidz1");
+  });
+
+  it("parses the damaged file list, msgid and moreinfo as root", () => {
+    const { data, summary } = parse(fixture("zpool-status-errlist.json"), {});
+    expect(summary).toEqual({ pools: 1, vdevs: 2, disks: 0 });
+    const [tfault] = data.pools;
+    expect(tfault).toMatchObject({
+      name: "tfault",
+      errors: 1,
+      damagedFiles: ["/tfault/victim"],
+      msgid: "ZFS-8000-8A",
+      moreinfo: "https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-8A",
+      removal: null,
+    });
+    expect(tfault?.damagedFilesError).toBeUndefined();
+    expect(tfault?.scan).toMatchObject({ errors: 1, processed: 0 });
+  });
+
+  it("parses a file vdev listed both flat and nested under the root once", () => {
+    const { data } = parse(fixture("zpool-status-errlist.json"), {});
+    const [tfault] = data.pools;
+    const root = tfault?.vdevs.find((v) => v.type === "root");
+    const leaves = tfault?.vdevs.filter((v) => v.type === "file");
+    expect(leaves).toHaveLength(1);
+    expect(leaves?.[0]).toMatchObject({
+      guid: "11428255043898652460",
+      name: "/var/tmp/tfault.img",
+      parentGuid: root?.guid,
+      checksumErrors: 6,
+    });
+    expect(root?.children).toEqual([leaves?.[0]?.guid]);
+  });
+
+  it("keeps an unreadable damaged file list as an error string", () => {
+    const { data } = parse(
+      fixture("zpool-status-errlist-unprivileged.json"),
+      {},
+    );
+    const [tfault] = data.pools;
+    expect(tfault?.damagedFilesError).toBe("Permission denied");
+    expect(tfault?.damagedFiles).toBeUndefined();
+  });
+
+  it("caps the damaged file list", () => {
+    const body = fixture("zpool-status-errlist.json").replace(
+      '"errlist":["/tfault/victim"]',
+      `"errlist":${JSON.stringify(
+        Array.from({ length: DAMAGED_FILES_LIMIT + 5 }, (_, i) => `/f${i}`),
+      )}`,
+    );
+    const [tfault] = parse(body, {}).data.pools;
+    expect(tfault?.damagedFiles).toHaveLength(DAMAGED_FILES_LIMIT);
+  });
+
+  it("parses removal_stats", () => {
+    const { data } = parse(fixture("zpool-status.json"), {});
+    const zeta = data.pools.find((p) => p.name === "zeta");
+    expect(zeta?.removal).toEqual({
+      state: "FINISHED",
+      removingVdev: 0,
+      startTime: 1762874276,
+      endTime: 1762874490,
+      toCopy: 97076903936,
+      copied: 97076903936,
+      mappingMemory: 3109920,
+    });
+    expect(data.pools.find((p) => p.name === "tank")?.removal).toBeNull();
   });
 
   it("rejects the nested vdev tree shape (no --json-flat-vdevs)", () => {
