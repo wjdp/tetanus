@@ -309,12 +309,12 @@ describe("faults page", () => {
     );
   });
 
-  it("acknowledges other kinds with a note", async () => {
+  it("acknowledges other kinds through one dialog offering accept too", async () => {
     const page = await mountPage();
 
     const pool = row(page, "vault");
     expect(pool.findAll("button").map((candidate) => candidate.text())).toEqual(
-      ["Acknowledge", "Accept"],
+      ["Acknowledge"],
     );
 
     await button(pool, "Acknowledge").trigger("click");
@@ -325,6 +325,10 @@ describe("faults page", () => {
       if (!found) throw new Error("note popover not open");
       return found;
     });
+    expect(
+      document.body.querySelector('[data-testid="fault-acknowledge-kind"]')
+        ?.textContent,
+    ).toMatch(/Acknowledge.*Accept/);
     textarea.value = "Resilvering onto the new disk";
     textarea.dispatchEvent(new Event("input"));
     document.body

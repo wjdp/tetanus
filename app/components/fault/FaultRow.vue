@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import {
-  allowedActions,
   FAULT_KIND_DEFINITIONS,
   type FaultAction,
   type FaultView,
   faultTitle,
 } from "#shared/faults";
-import type { AcceptanceKind } from "#shared/smart/status";
-import { ACCEPTANCE_KIND_VOCABULARY } from "~/components/disk/attributeRows";
 import {
   FAULT_GUTTER_CLASS,
   faultGutterColour,
@@ -22,7 +19,7 @@ const props = defineProps<{
   perform: (action: FaultAction, note?: string) => Promise<void>;
 }>();
 
-const emit = defineEmits<{ review: [kind: AcceptanceKind] }>();
+const emit = defineEmits<{ changed: [] }>();
 
 const copyToClipboard = useCopyToClipboard();
 
@@ -44,9 +41,6 @@ const showsUpgradeCommand = computed(
     !isResolved.value &&
     FAULT_KIND_DEFINITIONS[props.fault.kind].upgradeCommand === true,
 );
-const opensAcceptanceDialog = computed(
-  () => props.fault.kind === "smart-attribute",
-);
 
 const age = computed(() => {
   const { resolvedAt, openedAt } = props.fault;
@@ -55,14 +49,6 @@ const age = computed(() => {
     : `since ${formatDuration(props.now - Date.parse(openedAt))}`;
 });
 
-const noteActions = computed(() =>
-  allowedActions(props.fault).filter(
-    (action): action is AcceptanceKind => action !== "clear",
-  ),
-);
-const canClear = computed(() =>
-  allowedActions(props.fault).includes("clear"),
-);
 </script>
 
 <template>
@@ -112,34 +98,10 @@ const canClear = computed(() =>
       </span>
     </div>
 
-    <div
-      v-if="noteActions.length || canClear"
-      class="relative z-10 flex shrink-0 justify-end gap-1"
-    >
-      <template v-for="action in noteActions" :key="action">
-        <UButton
-          v-if="opensAcceptanceDialog"
-          color="neutral"
-          variant="soft"
-          size="xs"
-          :label="ACCEPTANCE_KIND_VOCABULARY[action].action"
-          @click="emit('review', action)"
-        />
-        <FaultNoteAction
-          v-else
-          :label="ACCEPTANCE_KIND_VOCABULARY[action].action"
-          :placeholder="ACCEPTANCE_KIND_VOCABULARY[action].notePlaceholder"
-          :confirm="(note) => perform(action, note)"
-        />
-      </template>
-      <UButton
-        v-if="canClear"
-        color="neutral"
-        variant="ghost"
-        size="xs"
-        label="Clear"
-        @click="perform('clear')"
-      />
-    </div>
+    <FaultActions
+      :fault="fault"
+      :perform="perform"
+      @changed="emit('changed')"
+    />
   </div>
 </template>

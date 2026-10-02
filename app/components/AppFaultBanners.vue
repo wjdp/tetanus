@@ -2,6 +2,7 @@
 import { upgradeCommand } from "#shared/collector";
 import {
   FAULT_KIND_DEFINITIONS,
+  type FaultAction,
   type FaultView,
   faultTitle,
 } from "#shared/faults";
@@ -9,7 +10,7 @@ import { faultHostLabel } from "~/utils/vocabulary";
 
 const BANNER_LIMIT = 3;
 
-const { faults, acknowledge } = useFaults(OPEN_ERRORS_QUERY);
+const { faults, perform, refresh } = useFaults(OPEN_ERRORS_QUERY);
 const copyToClipboard = useCopyToClipboard();
 const toast = useToast();
 const command = upgradeCommand(useRequestURL().origin);
@@ -20,13 +21,14 @@ const overflow = computed(() => faults.value.length - shown.value.length);
 const hasUpgradeCommand = (fault: FaultView) =>
   FAULT_KIND_DEFINITIONS[fault.kind].upgradeCommand === true;
 
-const acknowledgeFault = async (fault: FaultView) => {
-  try {
-    await acknowledge(fault.id);
-  } catch {
-    toast.add({ title: "Could not acknowledge the fault", color: "error" });
-  }
-};
+const performFor =
+  (fault: FaultView) => async (action: FaultAction, note?: string) => {
+    try {
+      await perform(fault.id, action, note);
+    } catch {
+      toast.add({ title: `Could not ${action} the fault`, color: "error" });
+    }
+  };
 </script>
 
 <template>
@@ -64,14 +66,10 @@ const acknowledgeFault = async (fault: FaultView) => {
           />
         </button>
       </div>
-      <UButton
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        icon="i-lucide-eye"
-        label="Acknowledge"
-        class="shrink-0"
-        @click="acknowledgeFault(fault)"
+      <FaultActions
+        :fault="fault"
+        :perform="performFor(fault)"
+        @changed="refresh"
       />
     </div>
     <NuxtLink

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ACCEPTANCE_KINDS, type AcceptanceKind } from "#shared/smart/status";
+import type { AcceptanceKind } from "#shared/smart/status";
 import {
   acceptanceSummary,
   type HistoryPoint,
@@ -26,8 +26,9 @@ const toast = useToast();
 const note = ref("");
 const kind = ref<AcceptanceKind>(props.kind);
 const vocabulary = computed(() => ACCEPTANCE_KIND_VOCABULARY[kind.value]);
+const KIND_ORDER: AcceptanceKind[] = ["acknowledge", "accept"];
 const kindItems = computed(() =>
-  ACCEPTANCE_KINDS.filter(
+  KIND_ORDER.filter(
     (candidate) => candidate !== props.attribute?.acceptance?.kind,
   ).map((value) => ({
     value,

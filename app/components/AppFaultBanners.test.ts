@@ -5,8 +5,13 @@ import type { FaultView } from "#shared/faults";
 import AppFaultBanners from "./AppFaultBanners.vue";
 
 const faults = ref<FaultView[]>([]);
-const acknowledge = vi.fn();
-const useFaultsMock = vi.fn((_query: unknown) => ({ faults, acknowledge }));
+const perform = vi.fn();
+const refresh = vi.fn();
+const useFaultsMock = vi.fn((_query: unknown) => ({
+  faults,
+  perform,
+  refresh,
+}));
 mockNuxtImport("useFaults", () => (query: unknown) => useFaultsMock(query));
 
 const fault = (id: number, overrides: Partial<FaultView> = {}): FaultView => ({
@@ -28,7 +33,7 @@ const fault = (id: number, overrides: Partial<FaultView> = {}): FaultView => ({
 
 beforeEach(() => {
   faults.value = [];
-  acknowledge.mockReset();
+  perform.mockReset();
 });
 
 describe("AppFaultBanners", () => {
@@ -112,7 +117,7 @@ describe("AppFaultBanners", () => {
     ).toBe(false);
   });
 
-  it("acknowledges a fault via its button", async () => {
+  it("asks for a note before acknowledging", async () => {
     faults.value = [fault(4)];
     const component = await mountSuspended(AppFaultBanners);
 
@@ -120,7 +125,26 @@ describe("AppFaultBanners", () => {
       .findAll("button")
       .find((candidate) => candidate.text() === "Acknowledge");
     await button?.trigger("click");
+    expect(perform).not.toHaveBeenCalled();
 
-    expect(acknowledge).toHaveBeenCalledWith(4);
+    const form = await vi.waitFor(() => {
+      const found = document.body.querySelector(
+        'form[aria-label="Acknowledge"]',
+      );
+      if (!found) throw new Error("note popover not open");
+      return found;
+    });
+    const textarea = form.querySelector("textarea") as HTMLTextAreaElement;
+    textarea.value = "Powered off for a move";
+    textarea.dispatchEvent(new Event("input"));
+    form.dispatchEvent(new Event("submit"));
+
+    await vi.waitFor(() =>
+      expect(perform).toHaveBeenCalledWith(
+        4,
+        "acknowledge",
+        "Powered off for a move",
+      ),
+    );
   });
 });

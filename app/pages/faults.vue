@@ -10,9 +10,6 @@ import {
   type FaultView,
   LIVE_FAULT_STATES,
 } from "#shared/faults";
-import type { AcceptanceKind } from "#shared/smart/status";
-import { ACCEPTANCE_KIND_VOCABULARY } from "~/components/disk/attributeRows";
-import type { LatestAttribute, SmartOverview } from "~/components/disk/types";
 import { ENTITY_ICON } from "~/utils/vocabulary";
 
 useSeoMeta({ title: getPageTitle("Faults") });
@@ -158,32 +155,6 @@ const performFor =
       toast.add({ title: ACTION_FAILED[action], color: "error" });
     }
   };
-
-const reviewOpen = ref(false);
-const reviewDiskId = ref(0);
-const reviewAttribute = ref<LatestAttribute | null>(null);
-const reviewKind = ref<AcceptanceKind>("acknowledge");
-
-const review = async (fault: FaultView, kind: AcceptanceKind) => {
-  const attrId = String(fault.data.attrId);
-  try {
-    const smart = await $fetch<SmartOverview>(
-      `/api/disks/${fault.subject.id}/smart`,
-      { query: { range: "7d" } },
-    );
-    const attribute = smart.attributes.find((row) => row.attrId === attrId);
-    if (!attribute) throw new Error(`No attribute ${attrId}`);
-    reviewDiskId.value = fault.subject.id;
-    reviewAttribute.value = attribute;
-    reviewKind.value = kind;
-    reviewOpen.value = true;
-  } catch {
-    toast.add({
-      title: `Could not load the attribute to ${ACCEPTANCE_KIND_VOCABULARY[kind].action.toLowerCase()}`,
-      color: "error",
-    });
-  }
-};
 </script>
 
 <template>
@@ -235,7 +206,7 @@ const review = async (fault: FaultView, kind: AcceptanceKind) => {
         :now="now"
         :upgrade-command="command"
         :perform="performFor(fault)"
-        @review="(kind) => review(fault, kind)"
+        @changed="refresh"
       />
     </div>
 
@@ -253,12 +224,4 @@ const review = async (fault: FaultView, kind: AcceptanceKind) => {
       </p>
     </div>
   </AppPanel>
-
-  <DiskAcceptFaultModal
-    v-model:open="reviewOpen"
-    :disk-id="reviewDiskId"
-    :attribute="reviewAttribute"
-    :kind="reviewKind"
-    @accepted="refresh"
-  />
 </template>
