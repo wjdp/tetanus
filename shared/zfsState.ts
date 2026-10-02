@@ -33,3 +33,9 @@ export const LEAF_VDEV_TYPES: ReadonlySet<string> = new Set([
   "file",
   "dspare",
 ]);
+
+export const DAMAGED_FILES_LIMIT = 100;
+
+const HOUR_MS = 60 * 60 * 1000;
+export const SCRUB_PAUSED_AFTER_MS = 24 * HOUR_MS;
+export const SCAN_STALLED_AFTER_MS = 6 * HOUR_MS;

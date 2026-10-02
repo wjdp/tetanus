@@ -4,6 +4,10 @@ export const poolParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const vdevParamsSchema = poolParamsSchema.extend({
+  vdevId: z.coerce.number().int().positive(),
+});
+
 export const POOL_ARCHIVED_FILTERS = ["exclude", "include", "only"] as const;
 export type PoolArchivedFilter = (typeof POOL_ARCHIVED_FILTERS)[number];
 

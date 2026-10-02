@@ -7,6 +7,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  lt,
   or,
 } from "drizzle-orm";
 import type { Media } from "#shared/hardware";
@@ -33,6 +34,7 @@ import {
   poolHistory,
   poolReading,
   vdev,
+  vdevReading,
   zfsEvent,
 } from "~~/server/database/schema";
 import type { DiaryEntryRow } from "~~/server/services/diary";
@@ -45,6 +47,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const POOL_READING_DAYS = 30;
 export const POOL_DETAIL_LIMIT = 50;
 export const POOL_DIARY_LIMIT = 100;
+export const VDEV_READING_DAYS = 30;
 
 export interface VdevDisk {
   id: number;
@@ -335,4 +338,68 @@ export function updatePoolConfig(id: number, patch: PoolConfig): PoolDetail {
     .where(eq(pool.id, id))
     .run();
   return getPool(id);
+}
+
+export interface VdevReadingPoint {
+  at: Date;
+  readErrors: number;
+  writeErrors: number;
+  checksumErrors: number;
+  slowIos: number | null;
+  state: string;
+}
+
+const readingPoint = ({
+  at,
+  readErrors,
+  writeErrors,
+  checksumErrors,
+  slowIos,
+  state,
+}: VdevReadingPoint): VdevReadingPoint => ({
+  at,
+  readErrors,
+  writeErrors,
+  checksumErrors,
+  slowIos,
+  state,
+});
+
+// Readings are stored only on change, so the window opens with the reading
+// in force at its start and closes with the vdev's current counters.
+export function getVdevReadings(
+  poolId: number,
+  vdevId: number,
+  now = new Date(),
+): { readings: VdevReadingPoint[] } {
+  const vdevRow = db
+    .select()
+    .from(vdev)
+    .where(and(eq(vdev.id, vdevId), eq(vdev.poolId, poolId)))
+    .get();
+  if (!vdevRow) throw notFound(`Vdev ${vdevId} not found in pool ${poolId}`);
+  const windowStart = new Date(now.getTime() - VDEV_READING_DAYS * DAY_MS);
+  const inForceAtStart = db
+    .select()
+    .from(vdevReading)
+    .where(and(eq(vdevReading.vdevId, vdevId), lt(vdevReading.at, windowStart)))
+    .orderBy(desc(vdevReading.at), desc(vdevReading.id))
+    .limit(1)
+    .get();
+  const inWindow = db
+    .select()
+    .from(vdevReading)
+    .where(
+      and(eq(vdevReading.vdevId, vdevId), gte(vdevReading.at, windowStart)),
+    )
+    .orderBy(asc(vdevReading.at), asc(vdevReading.id))
+    .all();
+  const readings = [
+    ...(inForceAtStart ? [{ ...inForceAtStart, at: windowStart }] : []),
+    ...inWindow,
+  ].map(readingPoint);
+  if (readings.length > 0) {
+    readings.push(readingPoint({ ...vdevRow, at: vdevRow.lastSeenAt }));
+  }
+  return { readings };
 }

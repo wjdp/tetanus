@@ -9,7 +9,12 @@ import type {
 import { isHostOffline } from "#shared/hostFreshness";
 import { resolvePoolConfig } from "#shared/schemas/pools";
 import { zfsMessage } from "#shared/zfsMessages";
-import { LEAF_VDEV_TYPES, zfsStateColour } from "#shared/zfsState";
+import {
+  LEAF_VDEV_TYPES,
+  SCAN_STALLED_AFTER_MS,
+  SCRUB_PAUSED_AFTER_MS,
+  zfsStateColour,
+} from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
   collectorRun,
@@ -52,8 +57,6 @@ export const SCAN_FINISHED_EVENTS = [
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 export const LEAF_WINDOW_MS = DAY_MS;
-export const SCRUB_PAUSED_AFTER_MS = DAY_MS;
-export const SCAN_STALLED_AFTER_MS = 6 * HOUR_MS;
 
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 

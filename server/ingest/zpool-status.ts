@@ -1,5 +1,9 @@
 import type { Parser } from "#shared/ingest";
-import { LEAF_VDEV_TYPES, type VdevRole } from "#shared/zfsState";
+import {
+  DAMAGED_FILES_LIMIT,
+  LEAF_VDEV_TYPES,
+  type VdevRole,
+} from "#shared/zfsState";
 import { ParseError } from "./parseError";
 
 export type VdevType =
@@ -65,8 +69,6 @@ export interface ZpoolStatusRemoval {
   copied: number;
   mappingMemory: number;
 }
-
-export const DAMAGED_FILES_LIMIT = 100;
 
 export interface ZpoolStatusPool {
   name: string;

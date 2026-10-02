@@ -26,6 +26,7 @@ import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import {
   getPool,
+  getVdevReadings,
   listPools,
   type VdevNode,
   ZFS_HANDLERS,
@@ -1043,6 +1044,36 @@ describe("pool queries", () => {
     const detail = getPool(tankRow?.id ?? 0);
     expect(detail.historyScope).toBe("pool");
     expect(detail.history).toHaveLength(1);
+  });
+
+  it("gives a vdev's readings over the window, opening with the one in force and closing with the current counters", () => {
+    run("zpool-status", marsStatus());
+    const errors = marsStatus();
+    Object.assign(vdevNamed(errors, "/dev/disk/by-vdev/K1-part1"), {
+      checksumErrors: 4,
+    });
+    run("zpool-status", errors, minutesAfter(60 * 24 * 40));
+    Object.assign(vdevNamed(errors, "/dev/disk/by-vdev/K1-part1"), {
+      checksumErrors: 9,
+    });
+    run("zpool-status", errors, minutesAfter(60 * 24 * 50));
+    run("zpool-status", errors, minutesAfter(60 * 24 * 51));
+    const k1 = vdevRow(K1_GUID);
+
+    const { readings } = getVdevReadings(
+      k1.poolId,
+      k1.id,
+      minutesAfter(60 * 24 * 75),
+    );
+
+    expect(readings.map((row) => [row.at, row.checksumErrors])).toEqual([
+      [minutesAfter(60 * 24 * 45), 4],
+      [minutesAfter(60 * 24 * 50), 9],
+      [minutesAfter(60 * 24 * 51), 9],
+    ]);
+    expect(() => getVdevReadings(k1.poolId + 1, k1.id)).toThrow(
+      expect.objectContaining({ statusCode: 404 }),
+    );
   });
 
   it("404s for an unknown pool", () => {

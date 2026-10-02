@@ -139,6 +139,27 @@ describe("/api/pools", () => {
     expect(detail.events).toHaveLength(50);
   });
 
+  it("gets a vdev's error and slow I/O readings", async () => {
+    const pools = await (await fetch("/api/pools")).json();
+    const k1 = flatten(pools[0].vdevs).find(
+      (node) => node.disk?.alias === "K1",
+    ) as VdevNode & { id: number };
+    const readings = (id: number, vdevId: number) =>
+      fetch(`/api/pools/${id}/vdevs/${vdevId}/readings`);
+
+    const response = await readings(pools[0].id, k1.id);
+    expect(response.status).toBe(200);
+    const { readings: rows } = await response.json();
+    expect(rows[0]).toMatchObject({
+      readErrors: expect.any(Number),
+      checksumErrors: expect.any(Number),
+      state: "ONLINE",
+    });
+
+    expect((await readings(pools[1].id, k1.id)).status).toBe(404);
+    expect((await readings(pools[0].id, 0)).status).toBe(400);
+  });
+
   it("patches a pool's config, keeping unset fields at their defaults", async () => {
     const pools = await (await fetch("/api/pools")).json();
     const patch = (body: unknown, id = pools[0].id) =>

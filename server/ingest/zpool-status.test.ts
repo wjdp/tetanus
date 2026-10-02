@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { DAMAGED_FILES_LIMIT } from "#shared/zfsState";
 import { readFixture } from "../../test/fixtures";
 import { ParseError } from "./parseError";
-import { DAMAGED_FILES_LIMIT, parse } from "./zpool-status";
+import { parse } from "./zpool-status";
 
 const fixture = (name: string) => readFixture(`mars/${name}`);
 
