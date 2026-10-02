@@ -103,6 +103,34 @@ function finishedScrub(
   };
 }
 
+function sameScanProgress(
+  previous: ZpoolStatusScan | null,
+  current: ZpoolStatusScan,
+) {
+  return (
+    previous?.state === "SCANNING" &&
+    previous.function === current.function &&
+    previous.startTime === current.startTime &&
+    previous.examined === current.examined &&
+    previous.issued === current.issued &&
+    previous.pausedAt === current.pausedAt
+  );
+}
+
+// When a running scan last moved (examined, issued or paused state), so a
+// scan that stops moving can be told from one that is slow.
+function scanProgressAt(
+  existing: PoolRow | undefined,
+  current: ZpoolStatusScan | null,
+  receivedAt: Date,
+): Date | null {
+  if (current?.state !== "SCANNING") return null;
+  if (existing?.scanProgressAt && sameScanProgress(existing.scan, current)) {
+    return existing.scanProgressAt;
+  }
+  return receivedAt;
+}
+
 const plural = (count: number, noun: string) =>
   `${count} ${noun}${count === 1 ? "" : "s"}`;
 
@@ -228,6 +256,7 @@ function upsertPool(
     damagedFiles: observed.damagedFiles ?? null,
     damagedFilesError: observed.damagedFilesError ?? null,
     scan: observed.scan,
+    scanProgressAt: scanProgressAt(existing, observed.scan, receivedAt),
     removal: observed.removal,
     ...(lastScrub && { lastScrub }),
     lastSeenAt: receivedAt,

@@ -149,6 +149,21 @@ describe("zpool-status parser", () => {
     expect(tfault?.damagedFiles).toHaveLength(DAMAGED_FILES_LIMIT);
   });
 
+  it("parses issued bytes and a paused scrub's pause time", () => {
+    const finished = parse(fixture("zpool-status-errlist.json"), {}).data
+      .pools[0];
+    expect(finished?.scan).toMatchObject({ issued: 4324864 });
+    expect(finished?.scan?.pausedAt).toBeUndefined();
+
+    const body = fixture("zpool-status-errlist.json")
+      .replace('"state":"FINISHED"', '"state":"SCANNING"')
+      .replace('"scrub_pause":0', '"scrub_pause":1790980000');
+    expect(parse(body, {}).data.pools[0]?.scan).toMatchObject({
+      state: "SCANNING",
+      pausedAt: 1790980000,
+    });
+  });
+
   it("parses removal_stats", () => {
     const { data } = parse(fixture("zpool-status.json"), {});
     const zeta = data.pools.find((p) => p.name === "zeta");

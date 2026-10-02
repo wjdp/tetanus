@@ -134,6 +134,13 @@
       "when": 1790980143136,
       "tag": "0018_vdev_role_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1790980321647,
+      "tag": "0019_pool_scan_progress",
+      "breakpoints": true
     }
   ]
 }

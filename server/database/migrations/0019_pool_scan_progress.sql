@@ -1,0 +1,1 @@
+ALTER TABLE `Pool` ADD `scanProgressAt` integer;

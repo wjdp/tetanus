@@ -452,6 +452,43 @@ describe("zpool-status fault inputs", () => {
     expect(tankRow().lastScrub).toEqual(scrub);
   });
 
+  it("tracks when a running scan last progressed", () => {
+    const running = (fields: Parameters<typeof withTankScan>[1] = {}) =>
+      withTankScan(marsStatus(), {
+        state: "SCANNING",
+        startTime: 1789400000,
+        endTime: undefined,
+        examined: 100,
+        issued: 90,
+        ...fields,
+      });
+
+    run("zpool-status", marsStatus());
+    expect(tankRow().scanProgressAt).toBeNull();
+
+    run("zpool-status", running(), minutesAfter(10));
+    run("zpool-status", running(), minutesAfter(20));
+    expect(tankRow().scanProgressAt).toEqual(minutesAfter(10));
+
+    run("zpool-status", running({ issued: 95 }), minutesAfter(30));
+    expect(tankRow().scanProgressAt).toEqual(minutesAfter(30));
+
+    run(
+      "zpool-status",
+      running({ issued: 95, pausedAt: 1789401000 }),
+      minutesAfter(40),
+    );
+    run(
+      "zpool-status",
+      running({ issued: 95, pausedAt: 1789401000 }),
+      minutesAfter(50),
+    );
+    expect(tankRow().scanProgressAt).toEqual(minutesAfter(40));
+
+    run("zpool-status", marsStatus(), minutesAfter(60));
+    expect(tankRow().scanProgressAt).toBeNull();
+  });
+
   it("records a cancelled scrub once", () => {
     run("zpool-status", marsStatus());
     const cancelled = withTankScan(marsStatus(), {

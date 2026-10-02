@@ -315,6 +315,7 @@ export const pool = sqliteTable(
     cap: integer(),
     dedup: real(),
     scan: json().$type<ZpoolStatusScan>(),
+    scanProgressAt: datetime(),
     lastScrub: json().$type<PoolLastScrub>(),
     removal: json().$type<ZpoolStatusRemoval>(),
     config: json().$type<PoolConfig>(),

@@ -34,7 +34,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 19;
+const MIGRATION_COUNT = 20;
 
 const openConnections: Database.Database[] = [];
 
@@ -151,10 +151,11 @@ describe("0009_host_collector_version", () => {
     const { db, sqlite } = open(":memory:");
     runMigrations(sqlite, db);
     sqlite.exec(`
+      ALTER TABLE Pool DROP COLUMN scanProgressAt;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 2
+            ORDER BY created_at DESC LIMIT 3
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -171,6 +172,7 @@ describe("0009_host_collector_version", () => {
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0017_fault_kind_pool_data_errors",
       "0018_vdev_role_backfill",
+      "0019_pool_scan_progress",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -215,12 +217,13 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Pool DROP COLUMN lastScrub;
       ALTER TABLE Pool DROP COLUMN removal;
       ALTER TABLE Pool DROP COLUMN config;
+      ALTER TABLE Pool DROP COLUMN scanProgressAt;
       ALTER TABLE Vdev DROP COLUMN role;
       ALTER TABLE Vdev DROP COLUMN spareState;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 10
+            ORDER BY created_at DESC LIMIT 11
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -243,6 +246,7 @@ describe("0009_host_collector_version", () => {
       "0016_vdev_role_spare_state",
       "0017_fault_kind_pool_data_errors",
       "0018_vdev_role_backfill",
+      "0019_pool_scan_progress",
     ]);
     expect(
       sqlite
@@ -263,8 +267,12 @@ describe("0018_vdev_role_backfill", () => {
     const { db, sqlite } = open(":memory:");
     runMigrations(sqlite, db);
     sqlite.exec(`
+      ALTER TABLE Pool DROP COLUMN scanProgressAt;
       DELETE FROM __drizzle_migrations
-        WHERE created_at = (SELECT MAX(created_at) FROM __drizzle_migrations);
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 2
+        );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
         VALUES (1, 1, 'p', 'tank', 'ONLINE', 0, 0);
@@ -281,6 +289,7 @@ describe("0018_vdev_role_backfill", () => {
 
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0018_vdev_role_backfill",
+      "0019_pool_scan_progress",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),

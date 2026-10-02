@@ -30,6 +30,8 @@ export interface ZpoolStatusScan {
   examined: number;
   toExamine: number;
   processed?: number;
+  issued?: number;
+  pausedAt?: number;
   errors: number;
 }
 
@@ -281,6 +283,7 @@ function resolveInheritedRoles(
 }
 
 function parseScan(rawScan: Record<string, unknown>): ZpoolStatusScan {
+  const pausedAt = optionalNumber(rawScan.scrub_pause, "scan.scrub_pause") ?? 0;
   return {
     function: requireString(rawScan.function, "scan.function"),
     state: requireString(rawScan.state, "scan.state"),
@@ -289,6 +292,8 @@ function parseScan(rawScan: Record<string, unknown>): ZpoolStatusScan {
     examined: toNumber(rawScan.examined, "scan.examined"),
     toExamine: toNumber(rawScan.to_examine, "scan.to_examine"),
     processed: optionalNumber(rawScan.processed, "scan.processed"),
+    issued: optionalNumber(rawScan.issued, "scan.issued"),
+    pausedAt: pausedAt > 0 ? pausedAt : undefined,
     errors: toNumber(rawScan.errors, "scan.errors"),
   };
 }
