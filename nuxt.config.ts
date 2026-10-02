@@ -53,6 +53,7 @@ export default defineNuxtConfig({
   nitro: {
     typescript: { tsConfig: relaxedIndexAccess() },
     experimental: { tasks: true },
+    esbuild: { options: { target: "es2022" } },
     serverAssets: [
       {
         baseName: "host",
