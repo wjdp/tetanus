@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { DiaryEventType } from "#shared/diary";
 import type { PoolLastScrub } from "#shared/schemas/pools";
+import { LEAF_VDEV_TYPES } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
   pool,
@@ -311,8 +312,6 @@ function recordVdevChanges(
   }
 }
 
-const LEAF_TYPES: ReadonlySet<string> = new Set(["disk", "file"]);
-
 type ErrorCounts = Pick<
   VdevRow,
   "readErrors" | "writeErrors" | "checksumErrors"
@@ -344,7 +343,7 @@ function recordLeafErrorChanges(
       poolId: poolRow.id,
       vdevGuid: row.guid,
       leaf: row.name,
-      role: LEAF_TYPES.has(row.type) ? row.role : "group",
+      role: LEAF_VDEV_TYPES.has(row.type) ? row.role : "group",
       diskId: row.diskId,
       from,
       to,
@@ -390,6 +389,23 @@ function recordVdevReading(row: VdevRow, receivedAt: Date) {
     .run();
 }
 
+// Vdev rows are keyed by guid alone, so a spare shared by two pools is one
+// row: the first pool to list it in an ingest keeps it, rather than the row
+// flipping between pools.
+function isSpareClaimedThisIngest(
+  existing: VdevRow | undefined,
+  poolRow: PoolRow,
+  receivedAt: Date,
+) {
+  return (
+    existing !== undefined &&
+    existing.role === "spare" &&
+    existing.present &&
+    existing.poolId !== poolRow.id &&
+    existing.lastSeenAt.getTime() === receivedAt.getTime()
+  );
+}
+
 function upsertVdevs(
   poolRow: PoolRow,
   observedVdevs: ZpoolStatusVdev[],
@@ -411,7 +427,15 @@ function upsertVdevs(
   );
 
   const idByGuid = new Map<string, number>();
-  for (const observed of observedVdevs) {
+  const owned = observedVdevs.filter(
+    (observed) =>
+      !isSpareClaimedThisIngest(
+        existingByGuid.get(observed.guid),
+        poolRow,
+        receivedAt,
+      ),
+  );
+  for (const observed of owned) {
     const existing = existingByGuid.get(observed.guid);
     const values = {
       ...vdevFields(observed),
@@ -444,7 +468,7 @@ function upsertVdevs(
     recordVdevReading(row, receivedAt);
   }
 
-  for (const observed of observedVdevs) {
+  for (const observed of owned) {
     const parentId =
       observed.parentGuid === null
         ? null

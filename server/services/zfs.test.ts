@@ -577,6 +577,43 @@ describe("zpool-status fault inputs", () => {
     expect(vdevRow("14459204147885815961").present).toBe(false);
   });
 
+  it("keeps a spare shared by two pools on the first pool to list it", () => {
+    const SPARE_GUID = "685941043871615807";
+    const status = parseZpoolStatus(
+      readFixture("mars/zpool-status-spare-avail.json"),
+      {},
+    ).data;
+    const [first] = status.pools;
+    if (!first) throw new Error("no pool");
+    const renamed = (guid: string) => (guid === SPARE_GUID ? guid : `9${guid}`);
+    status.pools.push({
+      ...first,
+      name: "tspare2",
+      guid: renamed(first.guid),
+      vdevs: first.vdevs.map((vdev) => ({
+        ...vdev,
+        guid: renamed(vdev.guid),
+        parentGuid: vdev.parentGuid && renamed(vdev.parentGuid),
+        children: vdev.children.map(renamed),
+      })),
+    });
+
+    run("zpool-status", status);
+    run("zpool-status", status, minutesAfter(10));
+
+    const firstPoolId = db
+      .select()
+      .from(pool)
+      .where(eq(pool.guid, first.guid))
+      .get()?.id;
+    expect(vdevRow(SPARE_GUID)).toMatchObject({
+      poolId: firstPoolId,
+      parentId: vdevRow(first.guid).id,
+      present: true,
+    });
+    expect(diary("vdev-left")).toEqual([]);
+  });
+
   it("records pool data errors rising but not falling", () => {
     run("zpool-status", marsStatus());
     const withErrors = (count: number) => {
