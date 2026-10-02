@@ -12,6 +12,7 @@ import {
   type PoolDegradedLeaf,
 } from "#shared/faults";
 import { healthStatus } from "#shared/smart/status";
+import { LEAF_VDEV_TYPES } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
   diaryEntry,
@@ -38,7 +39,6 @@ import {
   countsRose,
   hasLeafErrors,
   isHealthyLeafState,
-  LEAF_TYPES,
   leafErrorsSeverity,
   leafKey,
   poolDegradedWorsened,
@@ -409,7 +409,7 @@ function replayVdevEntry(context: ReplayContext, entry: DiaryEntryRow) {
     return;
   }
   if (entry.eventType !== "vdev-state-changed") return;
-  if (!leaf || !LEAF_TYPES.has(leaf.type)) return;
+  if (!leaf || !LEAF_VDEV_TYPES.has(leaf.type)) return;
   const { replay } = context;
   const { failedLeaves } = poolState(context, leaf.poolId);
   const state = text(entry.data.to);

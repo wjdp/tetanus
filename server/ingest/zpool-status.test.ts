@@ -260,6 +260,86 @@ describe("zpool-status parser", () => {
     });
   });
 
+  describe("dRAID (synthetic JSON, no captured fixture)", () => {
+    const leaf = (name: string, guid: number) => ({
+      name,
+      vdev_type: "disk",
+      guid,
+      path: name,
+      class: "normal",
+      state: "ONLINE",
+      parent: "draid2:4d:6c:1s-0",
+      read_errors: 0,
+      write_errors: 0,
+      checksum_errors: 0,
+    });
+    const body = (spareType: string) =>
+      JSON.stringify({
+        output_version: { command: "zpool status", vers_major: 0 },
+        pools: {
+          tdraid: {
+            name: "tdraid",
+            state: "ONLINE",
+            pool_guid: 100,
+            vdevs: {
+              tdraid: {
+                name: "tdraid",
+                vdev_type: "root",
+                guid: 100,
+                class: "normal",
+                state: "ONLINE",
+                read_errors: 0,
+                write_errors: 0,
+                checksum_errors: 0,
+              },
+              "draid2:4d:6c:1s-0": {
+                name: "draid2:4d:6c:1s-0",
+                vdev_type: "draid",
+                guid: 101,
+                class: "normal",
+                state: "ONLINE",
+                parent: "tdraid",
+                read_errors: 0,
+                write_errors: 0,
+                checksum_errors: 0,
+              },
+              ...Object.fromEntries(
+                [1, 2, 3, 4, 5, 6].map((n) => [
+                  `/dev/sd${n}`,
+                  leaf(`/dev/sd${n}`, 110 + n),
+                ]),
+              ),
+              "draid2-0-0": {
+                name: "draid2-0-0",
+                vdev_type: spareType,
+                guid: 120,
+                class: "spare",
+                state: "AVAIL",
+              },
+            },
+          },
+        },
+      });
+
+    it.each(["dspare", "dist-spare"])(
+      "parses a draid2 group and an available %s distributed spare",
+      (spareType) => {
+        const [pool] = parse(body(spareType), {}).data.pools;
+        const group = pool?.vdevs.find((v) => v.guid === "101");
+        expect(group).toMatchObject({ type: "draid2", role: "normal" });
+        expect(group?.children).toHaveLength(6);
+        expect(pool?.vdevs.find((v) => v.guid === "120")).toMatchObject({
+          type: "dspare",
+          role: "spare",
+          state: "AVAIL",
+          spareState: "AVAIL",
+          parentGuid: "100",
+          readErrors: 0,
+        });
+      },
+    );
+  });
+
   it("rejects the nested vdev tree shape (no --json-flat-vdevs)", () => {
     expect(() => parse(fixture("zpool-status-nested.json"), {})).toThrow(
       ParseError,

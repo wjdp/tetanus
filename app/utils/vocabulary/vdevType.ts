@@ -7,6 +7,9 @@ export const VDEV_TYPE_VOCABULARY: Record<string, VdevTypeVocabulary> = {
   raidz1: { icon: "i-lucide-layers", label: "raidz1" },
   raidz2: { icon: "i-lucide-layers", label: "raidz2" },
   raidz3: { icon: "i-lucide-layers", label: "raidz3" },
+  draid1: { icon: "i-lucide-layers", label: "draid1" },
+  draid2: { icon: "i-lucide-layers", label: "draid2" },
+  draid3: { icon: "i-lucide-layers", label: "draid3" },
   mirror: { icon: "i-lucide-copy", label: "mirror" },
   disk: { icon: "i-lucide-rows-2", label: "stripe" },
   file: { icon: "i-lucide-rows-2", label: "stripe" },
@@ -14,6 +17,7 @@ export const VDEV_TYPE_VOCABULARY: Record<string, VdevTypeVocabulary> = {
   log: { icon: "i-lucide-pen-line", label: "log" },
   cache: { icon: "i-lucide-zap", label: "cache" },
   spare: { icon: "i-lucide-life-buoy", label: "spares" },
+  dspare: { icon: "i-lucide-life-buoy", label: "distributed spare" },
   dedup: { icon: "i-lucide-git-merge", label: "dedup" },
   indirect: { icon: "i-lucide-corner-down-right", label: "indirect" },
 };

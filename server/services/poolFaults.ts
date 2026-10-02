@@ -8,7 +8,7 @@ import type {
 } from "#shared/faults";
 import { isHostOffline } from "#shared/hostFreshness";
 import { resolvePoolConfig } from "#shared/schemas/pools";
-import { zfsStateColour } from "#shared/zfsState";
+import { LEAF_VDEV_TYPES, zfsStateColour } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
   collectorRun,
@@ -43,8 +43,6 @@ export const SCAN_FINISHED_EVENTS = [
   "resilver-finished",
   "scan-finished",
 ] as const;
-
-export const LEAF_TYPES: ReadonlySet<string> = new Set(["disk", "file"]);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const LEAF_WINDOW_MS = DAY_MS;
@@ -257,7 +255,7 @@ function leafData(row: PoolRow, leaf: VdevRow): FaultData {
     poolName: row.name,
     vdevGuid: leaf.guid,
     name: leaf.name,
-    role: LEAF_TYPES.has(leaf.type) ? leaf.role : "group",
+    role: LEAF_VDEV_TYPES.has(leaf.type) ? leaf.role : "group",
     diskId: leaf.diskId,
   };
 }
@@ -542,7 +540,7 @@ export function detectPoolFaults(
       current.push({
         row,
         vdevs,
-        leaves: vdevs.filter((leaf) => LEAF_TYPES.has(leaf.type)),
+        leaves: vdevs.filter((leaf) => LEAF_VDEV_TYPES.has(leaf.type)),
         referenceAt: new Date(Math.min(now.getTime(), statusAt.getTime())),
       });
       continue;

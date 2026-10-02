@@ -1,5 +1,5 @@
 import type { Parser } from "#shared/ingest";
-import type { VdevRole } from "#shared/zfsState";
+import { LEAF_VDEV_TYPES, type VdevRole } from "#shared/zfsState";
 import { ParseError } from "./parseError";
 
 export type VdevType =
@@ -7,9 +7,13 @@ export type VdevType =
   | "raidz1"
   | "raidz2"
   | "raidz3"
+  | "draid1"
+  | "draid2"
+  | "draid3"
   | "mirror"
   | "disk"
   | "file"
+  | "dspare"
   | "spare"
   | "log"
   | "cache"
@@ -92,6 +96,8 @@ const KNOWN_VDEV_TYPES = new Set<string>([
   "replacing",
 ]);
 
+const DISTRIBUTED_SPARE_TYPES = new Set(["dspare", "dist-spare"]);
+
 // class -> type only applies to the top-level vdev of a non-normal group;
 // members of the group (leaf disks) keep their own vdev_type ("disk").
 const CLASS_TYPE: Record<string, VdevType> = {
@@ -109,8 +115,6 @@ const ROLE_BY_CLASS: Record<string, VdevRole> = {
   normal: "normal",
   ...CLASS_TYPE,
 } as Record<string, VdevRole>;
-
-const LEAF_VDEV_TYPES = new Set(["disk", "file"]);
 
 function parseJson(body: string): Record<string, unknown> {
   if (body.trim() === "") throw new ParseError("Empty zpool-status body");
@@ -201,6 +205,14 @@ function deriveType(raw: RawVdev, isTopLevelGroup: boolean): VdevType {
     // rather than reject a payload that otherwise parses fine.
     return match ? (`raidz${match[1]}` as VdevType) : "raidz1";
   }
+  if (vdevType === "draid") {
+    const name = requireString(raw.name, "vdev name");
+    // dRAID groups are named "draidN:<d>d:<c>c:<s>s-<n>"; as with raidz, -g
+    // loses the parity digit.
+    const match = /^draid([123])/.exec(name);
+    return match ? (`draid${match[1]}` as VdevType) : "draid1";
+  }
+  if (DISTRIBUTED_SPARE_TYPES.has(vdevType as string)) return "dspare";
   if (
     isTopLevelGroup &&
     !LEAF_VDEV_TYPES.has(String(vdevType)) &&

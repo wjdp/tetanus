@@ -6,6 +6,7 @@ describe("vdevTypeVocabulary", () => {
     ["raidz1", "i-lucide-layers"],
     ["raidz2", "i-lucide-layers"],
     ["raidz3", "i-lucide-layers"],
+    ["draid2", "i-lucide-layers"],
     ["mirror", "i-lucide-copy"],
     ["disk", "i-lucide-rows-2"],
     ["file", "i-lucide-rows-2"],
@@ -13,6 +14,7 @@ describe("vdevTypeVocabulary", () => {
     ["log", "i-lucide-pen-line"],
     ["cache", "i-lucide-zap"],
     ["spare", "i-lucide-life-buoy"],
+    ["dspare", "i-lucide-life-buoy"],
     ["dedup", "i-lucide-git-merge"],
     ["indirect", "i-lucide-corner-down-right"],
   ])("gives %s the %s icon", (type, icon) => {
@@ -23,7 +25,7 @@ describe("vdevTypeVocabulary", () => {
     expect(vdevTypeVocabulary("disk")?.label).toBe("stripe");
   });
 
-  it.each(["draid2", "toString"])(
+  it.each(["raidz9", "toString"])(
     "returns null for unknown type %s",
     (type) => {
       expect(vdevTypeVocabulary(type)).toBeNull();

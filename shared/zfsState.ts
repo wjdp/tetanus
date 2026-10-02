@@ -27,3 +27,9 @@ export const VDEV_ROLES = [
   "spare",
 ] as const;
 export type VdevRole = (typeof VDEV_ROLES)[number];
+
+export const LEAF_VDEV_TYPES: ReadonlySet<string> = new Set([
+  "disk",
+  "file",
+  "dspare",
+]);
