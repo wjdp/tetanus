@@ -244,12 +244,15 @@ Fault           id, kind, category (disk|zfs|host), subjectType (disk|pool|host)
                 severity (warning|error), data (json), openedAt, lastSeenAt, resolvedAt?,
                 state (open|acknowledged|accepted|resolved), stateChangedAt, note
                 unique(kind, key) where resolvedAt is null; see 036
-Pool            id, hostId (current), guid (unique), name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
-                dedup, scan (json: type, state, started, finished, examined, errors),
-                firstSeenAt, lastSeenAt, archivedAt?, archiveNote; see 047
-Vdev            id, poolId, guid, parentId?, name, type (root|raidz1|raidz2|mirror|disk|special|log|cache|spare|indirect),
-                state, readErrors, writeErrors, cksumErrors, slowIos, path?, devid?,
-                diskId?, sizeBytes?, allocBytes?, frag?, lastSeenAt
+Pool            id, hostId (current), guid (unique), name, state, status?, action?, msgid?, moreinfo?, health,
+                errors?, damagedFiles? (json), damagedFilesError?, sizeBytes, allocBytes, freeBytes, frag, cap,
+                dedup, scan (json: type, state, started, finished, examined, issued, pausedAt, errors),
+                scanProgressAt?, lastScrub? (json), removal? (json), config? (json: scrubIntervalDays,
+                slowIoThreshold), firstSeenAt, lastSeenAt, archivedAt?, archiveNote; see 046, 047
+Vdev            id, poolId, guid, parentId?, name, type (root|raidz1|raidz2|draid1-3|mirror|disk|file|dspare|special|log|cache|spare|indirect),
+                role (normal|log|cache|special|dedup|spare), state, spareState?, readErrors, writeErrors,
+                cksumErrors, slowIos, path?, devid?, physPath?, diskId?, sizeBytes?, allocBytes?, frag?,
+                present, lastSeenAt
 PoolReading     poolId, at, alloc, free, frag, cap, state
 VdevReading     vdevId, at, readErrors, writeErrors, cksumErrors, slowIos, state, alloc?, frag?
 Dataset         id, poolId, name, type, used, referenced, available, logicalUsed,

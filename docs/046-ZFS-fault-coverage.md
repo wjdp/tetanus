@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # ZFS fault coverage
@@ -401,7 +401,41 @@ Part D (pool page, faults page):
 - Settings popover (gear in the header): both values pre-filled from
   `resolvedConfig`, the default and "0 disables" in each description; save PATCHes
   both and refreshes. `PATCH` cannot unset a field, so there is no "back to default"
-  other than typing the default.
+  other than typing the default (fixed in part E).
+
+Part E (simulator, demo, docs):
+
+- Simulator payloads follow the real flat shape (fixtures `zpool-status-spare-*`):
+  spares, log and cache are top-level flat entries by `class`; `useSpare` adds
+  `spare-N` to the flat map, the spare's in-pool copy only to the nested maps, and turns
+  the flat aux entry `INUSE` / `SPARED` (checked against `zpool-status-spare-inuse.json`).
+  Cache and spare aux entries never reach the root's state; a failed log device only
+  degrades it. `settle` writes `msgid` / `moreinfo` for the derived messages that have
+  one (`HC`, `3C`, `8A`, `2Q`, `9P`; faulted, offline, removed and resilvering have
+  none) and keeps a message id it cannot derive (hostid mismatch and the like) over the
+  leaves' message. `setDataErrors` writes `errlist` paths unless the payload holds the
+  unprivileged string.
+- Scenarios assert their one fault, diffing unresolved faults on every subject before
+  and after (`scenarios/pool.test.ts`). Demo seed for most; spare in use and cache
+  failure ingest `zpool-status-spare-avail.json` as a `mars` host, since the demo has no
+  parsed spare or cache.
+- New scenarios: disk pulled, cache fails, pool vanishes, unredundant special vdev
+  (detaches a special / dedup mirror down to its first side), status message (codes
+  the catalogue does not cover), scrub repaired, group checksum errors, slow I/Os, scrub
+  paused, scan stalled (backdates `Pool.scanProgressAt`). Scrub overdue deletes the
+  pool's later `scrub-finished` entries and moves `Pool.lastScrub` back; the capture
+  restores both.
+- The demo's vault spare stays under the unparsed `spares` key (034 known gap), so
+  the demo offers no "Spare in use". Rendering it flat would turn the pulled V5 into an
+  `UNAVAIL` spare and fold the V5 `disk-missing` story into `pool-degraded`.
+- Demo: tank's `leaf-errors` on A7 is acknowledged with a note half an hour after the
+  last checksum error before the anchor (13 with the seeded RNG, not 12: acknowledging
+  at 12 would reopen before reset). `scratch` gets scrub schedule `none`, so
+  `scrub-overdue` is live from `firstSeenAt`. The seed test checks vault's resolved
+  `pool-degraded` lists V2. No part C kind fitted a story without forcing it.
+- `PATCH /api/pools/:id/config` takes `null` to remove a field (`poolConfigPatchSchema`);
+  the popover takes the raw `Pool.config`, shows an unset field empty with the default
+  as placeholder, and a reset button per set field.
 
 ## Open questions
 

@@ -107,25 +107,55 @@ Presence (`lsblk`, `udev`, `smartctl-scan`)
 
 ### Pool (`zpool-status`, `zpool-list`, `zpool-events`)
 
+Payloads are edited in the real `zpool status -j --json-flat-vdevs` shape: log, cache
+and spare devices are top-level flat entries told apart by `class`; a spare in use is a
+nested copy under `spare-N` plus its flat aux entry turned `INUSE`; `errlist`, `msgid`
+and `moreinfo` are written as ZFS writes them. Since [046](046-ZFS-fault-coverage.md)
+each scenario opens one fault (in brackets after the arrow), or none.
+
 State
 - ✱ Leaf fails: leaf [first leaf of first vdev], state [FAULTED | UNAVAIL | REMOVED |
-  OFFLINE]; pool becomes DEGRADED, or UNAVAIL past redundancy
-- ✱ Pool suspended (I/O failures past redundancy)
-- Spare in use: failed leaf [first], spare [first spare]; INUSE spare, `spare-N` vdev
+  OFFLINE]; pool becomes DEGRADED, or UNAVAIL past redundancy → `pool-degraded`, red
+  for FAULTED / UNAVAIL, amber for REMOVED / OFFLINE, leaf listed
+- ✱ Disk pulled: leaf [first with a disk]; REMOVED, disk last seen backdated →
+  `pool-degraded` alone, the leaf marked disk missing (no `disk-missing`)
+- ✱ Cache device fails: cache device [first]; UNAVAIL, pool stays ONLINE →
+  `pool-degraded`
+- ✱ Pool suspended (I/O failures past redundancy) → `pool-degraded`, red
+- ✱ Spare in use: failed leaf [first], spare [first AVAIL spare] → `pool-degraded`
+  listing the failed leaf only (the `INUSE` spare is healthy)
+- ✱ Pool vanishes: dropped from `zpool status` → `pool-missing`
+- ✱ Unredundant special vdev: mirror [first special / dedup mirror]; every side but
+  the first detached → `vdev-unredundant`
+- ✱ Status message: message [`EY` hostid mismatch | `14` | `A5` | `ER` | `K4`] →
+  `pool-status`
 
 Errors and scans
-- ✱ Scrub found errors: errors [3], repaired [64 MiB]
-- Checksum errors on a leaf: leaf [first], read/write/cksum [0/0/12]; pool still ONLINE
-- Permanent errors in files: count [2]; `errors: N data errors` status/action text
+- ✱ Scrub found errors: errors [3], repaired [64 MiB] → `pool-data-errors`
+- ✱ Scrub repaired data: leaf [first], checksum errors [6], repaired [64 MiB]; no
+  scan errors → `leaf-errors` on the leaf, nothing for the scrub
+- ✱ Checksum errors on a leaf: leaf [first], read/write/cksum [0/0/12]; pool still
+  ONLINE → `leaf-errors`, amber
+- ✱ Checksum errors on a group: group [first mirror / raidz], cksum [4] →
+  `leaf-errors` with role group, red
+- ✱ Slow I/Os: leaf [first], added [20] → `leaf-slow`
+- ✱ Permanent errors in files: count [2]; `errlist` paths, `ZFS-8000-8A` →
+  `pool-data-errors` alone
 - Resilver in progress: leaf [first], progress [40 %]
-- Scrub overdue: last scrub [60 days ago]; picked up once [017](017-Scrub-and-self-test-overdue.md) lands
+- ✱ Scrub paused: paused [30 h ago], progress [40 %] → `scrub-paused`
+- ✱ Scan stalled: scan [scrub | resilver], no progress for [8 h]; backdates
+  `Pool.scanProgressAt` → `scan-stalled`, red for a resilver
+- ✱ Scrub overdue: last scrub [60 days ago]; later `scrub-finished` entries are deleted
+  and `Pool.lastScrub` moved back (captured, so restore brings them back) →
+  `scrub-overdue`
 
 Capacity (`zpool-list`)
 - Nearly full: cap [92 %]
 - Fragmented: frag [70 %]
 
 Events
-- Error burst: leaf [first], class [`ereport.fs.zfs.checksum`], count [10]
+- Error burst: leaf [first], class [`ereport.fs.zfs.checksum`], count [10]; events
+  only, no fault
 
 ### Host (hosts table)
 
@@ -145,8 +175,12 @@ because of the product, not the simulator:
   thresholds; values change but nothing turns red.
 - Self-test failed: the row shows, but exit bit 7 feeds no status or fault.
 - smartctl exit 2 (device open failed): no identity in the output, so nothing changes.
-- Pool spares section is not parsed (INUSE/AVAIL invisible); `error_count` is not shown
-  on the pool page; no per-leaf resilvering marker.
+- ~~Pool spares section is not parsed (INUSE/AVAIL invisible); `error_count` is not
+  shown on the pool page~~: spares are parsed and `error_count` shown with the damaged
+  files since [046](046-ZFS-fault-coverage.md). Still no per-leaf resilvering marker.
+- The demo renders vault's spare under a separate `spares` key, which neither the
+  parser nor the simulator reads, so the demo offers no "Spare in use" (see
+  [034](034-Cloudflare-Workers-demo.md)).
 - Identity conflict lands on the older disk of the pair.
 - Collector silent also marks every disk on the host missing; see
   [045](045-Silent-host-does-not-make-its-disks-missing.md).

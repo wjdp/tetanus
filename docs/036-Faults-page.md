@@ -179,7 +179,7 @@ Replay per kind, oldest first:
 | `smart-health-failed` | `SmartReading.smartPassed` / `exitStatus` history through `healthStatus` (the diary cannot tell health failure from attribute failure) |
 | `disk-missing` | `state-changed` to and from `missing` |
 | `pool-degraded` | `pool-state-changed` |
-| `scan-errors` | `scrub-finished` / `resilver-finished` with `errors > 0`, resolved by the next clean one |
+| `scan-errors` | `scrub-finished` / `resilver-finished` with `errors > 0`, resolved by the next clean one (historical: now `pool-data-errors`, whose backfill is in [046](046-ZFS-fault-coverage.md)) |
 | `identity-conflict` | `identity-conflict` entries |
 | `collector-incompatible` | `collector-status-changed` |
 | any non-SMART | `fault-state-changed` for acknowledgements (none exist before this task) |

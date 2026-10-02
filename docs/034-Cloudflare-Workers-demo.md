@@ -117,11 +117,13 @@ ticking):
 
 1. `A3`: pending sectors 8, accepted at 8 six months ago, stable → accepted overlay.
 2. `A7`: reallocated sectors climbing 0 → 24 over the last 30 d, checksum ereports →
-   unaccepted failed attribute, worsening trend, diary events.
+   unaccepted failed attribute, worsening trend, diary events. Its checksum count in
+   `tank` raises `leaf-errors`, acknowledged with a note at the level reached by the
+   reset, so it reopens on the next error ([046](046-ZFS-fault-coverage.md)).
 3. `V2` failed last month and was replaced by `V6`: disk-appeared, vdev-left/joined,
    resilver, `V2` overridden `dead` with a manual diary entry.
 4. `tank` scrub in progress at reset (~40 %), completing over the next ticks; `vault`
-   scrubbed last Sunday, 0 errors.
+   scrubbed last Sunday, 0 errors; `scratch` never scrubbed, so `scrub-overdue` is live.
 5. `P1` NVMe at 87 % `percentage_used` → endurance story for [019](019-SSD-endurance.md).
 6. `V5` (hot spare) pulled a week ago → `missing`.
 7. Manual diary entries and host notes in markdown, a few per subject.
@@ -258,7 +260,10 @@ Left for the author:
   for the seed's duration.
 - `recordIngest` swallows handler errors, so `SeedReport.failures` cannot report them.
 - V5 (hot spare) is rendered under zpool status's `spares` key, which the parser ignores,
-  so it reads `missing (was spare)` rather than as a vdev member.
+  so it reads `missing (was spare)` rather than as a vdev member. Real output lists
+  spares as flat entries with `class: "spare"` (046); rendering V5 that way would make
+  the pulled spare `UNAVAIL` in vault and fold its `disk-missing` into `pool-degraded`,
+  so the story would need `zpool remove vault V5` before the pull. Not done.
 
 ## Order of work
 

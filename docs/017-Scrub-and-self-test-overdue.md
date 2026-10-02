@@ -9,17 +9,18 @@ Stub. Alert when a pool has not been scrubbed, or a disk has not run a long SMAR
 self-test, within a configurable interval. Extends Phase 8 rules
 ([004](004-Project-plan.md)).
 
+The pool half is done: `scrub-overdue` landed with
+[046](046-ZFS-fault-coverage.md) (`Pool.lastScrub`, per-pool `scrubIntervalDays`
+default 35 d, 0 disables, set from the pool page). The self-test half below is still
+planned.
+
 ## Sketch
 
-- Pool: `Pool.scan.endTime` for the last finished scrub; scrub history once stored
-  (013 findings: only the current scan is kept today). Default threshold 35 d
-  (monthly scrub plus slack); per-pool override; muted for pools that are exported
-  or read-only by design.
+- Pool: done in [046](046-ZFS-fault-coverage.md).
 - Disk: newest `SelfTest` of type long/extended; threshold default 35 d; skip disks
   not in `in-use`/`spare`.
-- Alert rule with recovery; diary `scrub-overdue` / `self-test-overdue` once on entry.
-- Surface: pool page scan panel, disk page self-tests section, inventory column
-  "last long test".
+- Alert rule with recovery; diary `self-test-overdue` once on entry.
+- Surface: disk page self-tests section, inventory column "last long test".
 
 ## Unanswered questions
 
