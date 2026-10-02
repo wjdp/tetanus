@@ -6,15 +6,17 @@ const demo = useRuntimeConfig().public.demo;
   <UDashboardGroup>
     <AppSidebar />
     <div class="flex min-w-0 flex-1 flex-col">
-      <UAlert
+      <p
         v-if="demo"
-        color="info"
-        variant="subtle"
-        icon="i-lucide-flask-conical"
-        title="Demo instance. Fake data, reset daily at 04:00 UTC. Edit anything."
-        class="rounded-none"
         data-testid="demo-banner"
-      />
+        class="bg-elevated border-default border-s-info text-muted flex items-center gap-3 border-b border-s-[3px] py-2.5 ps-4 pe-2 text-sm"
+      >
+        <UIcon
+          name="i-lucide-flask-conical"
+          class="text-info size-4 shrink-0"
+        />
+        Demo instance. Fake data, reset daily at 04:00 UTC. Edit anything.
+      </p>
       <AppFaultBanners />
       <slot />
     </div>
