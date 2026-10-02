@@ -199,7 +199,7 @@ deploy/cloudflare/
   `tetanus-demo.wjdp.uk` (zone `wjdp.uk`).
 - **Scripts.** `pnpm build:demo` (`TETANUS_TARGET=cloudflare nuxt build` + migrations
   bundle), `pnpm demo:dev` (`wrangler dev`, Miniflare supports DO SQLite locally),
-  `pnpm demo:deploy`. Workflow `demo.yml`: on push to `master` after `checks`, build and
+  `pnpm demo:deploy`. Job `demo` in `main.yml`: on push to `master` after `checks`, build and
   `wrangler deploy` with `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets.
 - **Lint/typecheck.** `deploy/cloudflare/` is Biome-checked; its own tsconfig is
   type-checked in `checks.yml`. The primary `nuxt typecheck` ignores it.
@@ -252,8 +252,6 @@ Left for the author:
   `CLOUDFLARE_ACCOUNT_ID`; `wjdp.uk` zone on that account. First push to `master` deploys.
 - Confirm the hourly tick adds readings in production (locally the seed's closing tick
   covered the current hour, so it was not observed).
-- `demo.yml` re-runs `checks.yml`, so every `master` push runs checks twice; a `demo`
-  job in `main.yml` with `needs: checks` would avoid that.
 - `build:demo` shares `.nuxt`/`.output` with the primary build and disrupts a running
   `nuxt dev`.
 - Seeding a database while `nuxt dev` writes to it gives the dev server `SQLITE_BUSY`
