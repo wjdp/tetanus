@@ -59,7 +59,15 @@ acknowledgement is attached to:
 | `disk-missing` | disk | transient | error | `diskId` | acknowledge, clear |
 | `identity-conflict` | disk | until acknowledged | error | `diskId:<sorted diskIds>` | acknowledge (resolves it) |
 | `pool-degraded` | zfs | transient | by state, 037 `zfsStateColour` | `poolId` | acknowledge, accept, clear |
-| `scan-errors` | zfs | until a clean scan | error | `poolId` | acknowledge, clear |
+| `pool-missing` | zfs | until seen again | warning | `poolId` | acknowledge, accept, clear |
+| `leaf-errors` | zfs | until resolved by hand | warning on a leaf, error on a group | `poolId:vdevGuid` | acknowledge, accept, clear, resolve |
+| `leaf-slow` | zfs | transient | warning | `poolId:vdevGuid` | acknowledge, accept, clear |
+| `pool-data-errors` | zfs | until no data errors | error | `poolId` | acknowledge, clear |
+| `scrub-overdue` | zfs | transient | warning | `poolId` | acknowledge, accept, clear |
+| `pool-status` | zfs | transient | by message id ([046](046-ZFS-fault-coverage.md)) | `poolId:msgid` | acknowledge, accept, clear |
+| `scrub-paused` | zfs | transient | warning | `poolId` | acknowledge, accept, clear |
+| `scan-stalled` | zfs | transient | warning; error for a resilver | `poolId` | acknowledge, clear |
+| `vdev-unredundant` | zfs | transient | warning | `poolId:vdevGuid` | acknowledge, accept, clear |
 | `collector-silent` | host | transient | error | `hostId` | acknowledge, clear |
 | `collector-incompatible` | host | transient | error | `hostId:version` | acknowledge, clear |
 | `collector-outdated` | host | transient | warning | `hostId:version` | acknowledge, clear |
@@ -278,7 +286,7 @@ Each of these adds a kind entry and a detector when it lands; the page needs no 
 | --- | --- | --- | --- |
 | [015 Replication health](015-Replication-health.md) | `replication-delayed` per dataset pair | transient | error past the pair's tolerance |
 | [016 Snapshot staleness](016-Snapshot-staleness.md) | `snapshot-stale` per dataset | transient | warning |
-| [017 Scrub and self-test overdue](017-Scrub-and-self-test-overdue.md) | `scrub-overdue` per pool, `self-test-overdue` per disk | transient | warning |
+| [017 Scrub and self-test overdue](017-Scrub-and-self-test-overdue.md) | `self-test-overdue` per disk (`scrub-overdue` landed with [046](046-ZFS-fault-coverage.md)) | transient | warning |
 | [018 Capacity forecast](018-Capacity-forecast.md) | `pool-filling` | transient | warning |
 | [019 SSD endurance](019-SSD-endurance.md) | `ssd-endurance-low` per disk | persistent | warning, error near the limit |
 | [020 Warranty nudge](020-Warranty-nudge.md) | `warranty-ending` per disk | transient | warning |
@@ -302,8 +310,9 @@ Each of these adds a kind entry and a detector when it lands; the page needs no 
 - "No data for" counts from the newest successful run.
 - `NavigationEntry.badge` is a key (`"faults"`) the sidebar resolves, since
   `NAVIGATION` is static. Banners and badge share one open-errors request.
-- Possible follow-up: store `severity` and `data` on `fault-*` diary entries so a
-  backfill can rebuild past rows exactly.
+- `fault-opened` entries carry `severity` (since 046 part C), which backfill uses for
+  past rows. Possible follow-up: store `data` too so a backfill can rebuild past rows
+  exactly.
 
 ## Open questions
 

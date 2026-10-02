@@ -32,11 +32,14 @@ Absorbs the pool half of [017](017-Scrub-and-self-test-overdue.md) (scrub overdu
 | leaf slow I/Os | yes (`-s`) | `Vdev.slowIos`, `VdevReading` | vdev table | none |
 | permanent data errors (`error_count`) | yes | `Pool.errors` | no | none |
 | damaged file list (`errlist`) | yes (collector is root) | not parsed | no | n/a |
-| status message id (`msgid`, `moreinfo`, e.g. `ZFS-8000-8A`) | yes | not parsed | no (status / action text only) | n/a |
+| status message id (`msgid`, `moreinfo`, e.g. `ZFS-8000-8A`) | yes | not parsed | no (status / action text only) | none; codes not covered by another kind (e.g. `EY` hostid mismatch, `K4` intent log) raise nothing |
 | scrub found unrepaired errors | yes | `Pool.scan.errors`, diary `scrub-finished` | scan panel (amber) | `scan-errors`, error |
 | scrub repaired data (`processed` > 0) | yes | `Pool.scan.processed`, not in diary | no | none |
 | scrub cancelled | yes | `Pool.scan.state` | state text | none, no diary |
 | scrub overdue / never run | derivable | current scan only; history in diary | no | none |
+| scrub paused (`scrub_pause` epoch) | yes | not parsed | no | none |
+| scrub / resilver stalled (no progress in `examined` / `issued`) | yes, per reading | current scan only, no history | no | none |
+| single-device `special` / `dedup` vdev (losing it loses the pool) | yes | `Vdev.role`, parent | topology card | none |
 | finished scan at first sighting | yes | `Pool.scan` | yes | none (no diary entry, so no `scan-errors`) |
 | pool vanishes (failed import, export) | absence | `Pool.lastSeenAt` | no | resolves its faults |
 | device removal (`removal_stats`) | yes | not parsed | no | n/a |
@@ -72,6 +75,10 @@ a new occurrence if the cause clears first.
 | `leaf-slow` (new) | pool / `poolId:vdevGuid` | slow I/Os rise ≥ pool threshold within 24 h | warning | until a 24 h window under threshold | ack, accept, clear |
 | `pool-data-errors` (replaces `scan-errors`) | pool / `poolId` | `Pool.errors` > 0, or latest finished scan `errors` > 0 | error | until both are 0 | ack, clear |
 | `scrub-overdue` (new) | pool / `poolId` | no finished scrub within the pool's interval (default 35 d); never-scrubbed pools count from `firstSeenAt` | warning | transient | ack, accept, clear |
+| `pool-status` (new, part C) | pool / `poolId:msgid` | `Pool.msgid` set and not covered by another kind's trigger (catalogue in `shared/zfsMessages.ts`) | catalogue severity; unknown codes warning | transient | ack, accept, clear |
+| `scrub-paused` (new, part C) | pool / `poolId` | `SCRUB` `SCANNING` with `scrub_pause` ≠ 0 for > 24 h | warning | transient | ack, accept, clear |
+| `scan-stalled` (new, part C) | pool / `poolId` | `SCANNING`, not paused, no change in `examined` / `issued` for ≥ 6 h | warning; error for a resilver (redundancy at risk) | transient | ack, clear |
+| `vdev-unredundant` (new, part C) | pool / `poolId:vdevGuid` | a `special` or `dedup` top-level vdev that is a single device | warning | transient | ack, accept ("intended"), clear |
 
 Notes:
 
@@ -306,6 +313,50 @@ Part B (kinds, folding, backfill, alerts, config API):
 - Demo: seed now has `leaf-errors` open on tank's A7, a resolved `leaf-errors` on
   vault's V2 (superseded by `pool-degraded`) and past `scrub-overdue` occurrences;
   `seed.test.ts` counts updated. The planned seed story (ack at 12) is left for step 9.
+
+Part C (review fixes, four more kinds; approved 2026-10-02):
+
+- `zfsStateColour` maps a spare's `AVAIL` and `INUSE` to success (was the amber
+  fallback); 037 updated.
+- Migration `0018_vdev_role_backfill` (data only): leaves under a group whose role is
+  not `normal` / `spare` take its role (recursive, present or not); leaves typed `log` /
+  `cache` by the old parser (no children) get role from type and type `disk` when
+  `path` is under `/dev/`, `file` for any other path, unchanged when `path` is null.
+  Present rows were already corrected by the next ingest; this fixes departed ones. Old
+  `l2cache` leaves parsed as plain leaves under root cannot be told apart and stay
+  `normal` until seen again.
+- dRAID: `vdev_type` `draid` parses as `draid1` / `draid2` / `draid3` from the name
+  (`draid2:4d:12c:1s-0`), `draid1` when `-g` loses it, like raidz. Distributed spares
+  (`vdev_type` `dspare`, ZFS's own word; `dist-spare` accepted too) parse as type
+  `dspare`, a leaf (`LEAF_VDEV_TYPES` in `shared/zfsState.ts`, now the one leaf set
+  for parser, topology and detectors) with role `spare`. Icons: layers / life-buoy.
+  Tested with synthetic JSON only; no captured fixture.
+- Shared spares (known limitation): `Vdev.guid` is unique, so a spare listed by two
+  pools is one row. The first pool to list it in an ingest keeps it; later pools in
+  the same ingest skip that row (no flip of `poolId`, no `vdev-left`). The second pool
+  never shows the shared spare, and if the spare goes `INUSE` there, its `spare-N`
+  group is missing that child.
+- Parser keeps `scan.issued` and `scan.pausedAt` (`scrub_pause` epoch seconds, only
+  when non-zero). New `Pool.scanProgressAt` (migration `0019_pool_scan_progress`): the
+  ingest time a `SCANNING` scan last changed `examined`, `issued`, `pausedAt`, function
+  or start; null when not scanning. A paused scan is never `scan-stalled`, and a
+  resume restarts the clock.
+- `pool-status` catalogue (`shared/zfsMessages.ts`, from the OpenZFS message list):
+  `14` warning, `A5` error, `ER` warning, `EY` warning, `K4` error. Covered (raise
+  nothing): `2Q`, `3C`, `4J`, `5E`, `6X`, `72`, `HC`, `JQ`, `MM` → `pool-degraded`;
+  `8A` → `pool-data-errors`; `9P` → `leaf-errors`. Unknown codes warning with the
+  first line of the status text as title. The feature-upgrade notice carries no
+  `msgid`, so raises nothing. Data `{ poolName, msgid, title, status, action, moreinfo }`.
+- `vdev-unredundant`: a leaf with role `special` or `dedup` whose parent is the root.
+  Single log devices are not listed. Data as `leaf-errors` (`poolName`, `vdevGuid`,
+  `name`, `role`, `diskId`).
+- None of the four fold into another kind. All four are in `POOL_FAULT_KINDS`, so a
+  silent host supersedes them; a missing pool resolves them plainly (not detected).
+- Alerts from `fault-opened`: `pool-status` and `scan-stalled` alert, `scrub-paused`
+  and `vdev-unredundant` notice. Mapping test updated.
+- `fault-opened` diary data gains `severity`; backfill replays use it (else the kind's
+  usual severity: all four new kinds default to warning). No other trail exists for the
+  new kinds, so history before part C has none.
 
 ## Open questions
 

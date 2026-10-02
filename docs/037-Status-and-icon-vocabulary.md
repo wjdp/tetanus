@@ -127,7 +127,9 @@ Same thresholds for the per-vdev mini bar. Change from today: 80 % becomes a war
 | --- | --- | --- |
 | running | info text and thin info bar under the pool bar; host chip `i-lucide-loader` | |
 | finished, `errors` = 0 | muted text "Last scrub <date> · 0 errors" | |
-| finished, `errors` > 0 | warning text; fault `scan-errors` | |
+| finished, `errors` > 0 | warning text; fault `pool-data-errors` | |
+| scrub paused over 24 h | as running; fault `scrub-paused` | |
+| running, no progress for 6 h | as running; fault `scan-stalled` (red for a resilver) | |
 | none recorded | dimmed "No scrub recorded" | |
 
 Resilver running is `info` too: it is progress, not a fault; the `DEGRADED` badge beside
