@@ -43,6 +43,7 @@ const { describeMigrations, runMigrations } = await import(
   "~~/server/database/migrate"
 );
 const { seed, tick } = await import("./seed");
+const { discardCapture } = await import("~~/server/services/simulator/capture");
 
 console.log(describeMigrations(runMigrations(sqlite, db), databasePath()));
 
@@ -70,6 +71,7 @@ function deleteAllRows() {
       `SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'`,
     )
     .get();
+  discardCapture();
   sqlite.pragma("defer_foreign_keys = ON");
   for (const table of userTables()) {
     sqlite.prepare(`DELETE FROM "${table}"`).run();

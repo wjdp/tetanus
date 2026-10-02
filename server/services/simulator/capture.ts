@@ -82,6 +82,15 @@ function stopCapture() {
   }
 }
 
+/** Stops logging and forgets the log without undoing anything, for wiping the database. */
+export function discardCapture() {
+  db.transaction(() => {
+    stopCapture();
+    db.delete(simulationChange).run();
+    db.delete(simulation).run();
+  });
+}
+
 function extracted(column: string, imageJson: string) {
   return sql`json_extract(${imageJson}, ${`$.${JSON.stringify(column)}`})`;
 }

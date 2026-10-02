@@ -7,7 +7,7 @@ import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
 import { addManualEntry } from "~~/server/services/diary";
 import { listDisks } from "~~/server/services/disks";
 import { dumpDatabase } from "~~/test/db";
-import { rollBackCapture, startCapture } from "./capture";
+import { discardCapture, rollBackCapture, startCapture } from "./capture";
 
 const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
 
@@ -50,5 +50,21 @@ describe("capture", () => {
     const before = dumpDatabase();
     expect(rollBackCapture()).toBe(0);
     expect(dumpDatabase()).toEqual(before);
+  });
+
+  it("discards the log without undoing anything", () => {
+    startCapture();
+    db.update(schema.host).set({ notes: "kept" }).run();
+    discardCapture();
+    const after = dumpDatabase();
+
+    expect(triggerCount()).toBe(0);
+    expect(rollBackCapture()).toBe(0);
+    expect(dumpDatabase()).toEqual(after);
+    expect(
+      db.select({ notes: schema.host.notes }).from(schema.host).all(),
+    ).toContainEqual({
+      notes: "kept",
+    });
   });
 });
