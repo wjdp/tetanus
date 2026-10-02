@@ -564,7 +564,7 @@ describe("pool page", () => {
     expect(payload).toContain("vdev_path/dev/disk/by-vdev/Z1-part1");
   });
 
-  it("saves the pool settings from the header popover and refreshes", async () => {
+  it("saves the pool settings from the header popover, one back to its default", async () => {
     const page = await mountSuspended(PoolPage, {
       route: "/zfs/10",
       attachTo: document.body,
@@ -583,12 +583,22 @@ describe("pool page", () => {
     if (!interval) throw new Error("no interval input");
     interval.value = "0";
     interval.dispatchEvent(new Event("input"));
+    await flushPromises();
+    form
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="pool-config-default-slowIoThreshold"]',
+      )
+      ?.click();
+    await flushPromises();
+    expect(
+      form.querySelector('[data-testid="pool-config-default-slowIoThreshold"]'),
+    ).toBeNull();
     form.dispatchEvent(new Event("submit"));
     await flushPromises();
 
     await vi.waitFor(() =>
       expect(configPatches).toEqual([
-        { scrubIntervalDays: 0, slowIoThreshold: 10 },
+        { scrubIntervalDays: 0, slowIoThreshold: null },
       ]),
     );
     page.unmount();

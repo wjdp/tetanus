@@ -23,12 +23,23 @@ export type PoolArchiveInput = z.infer<typeof poolArchiveInputSchema>;
 
 const nonNegativeInt = z.number().int().min(0);
 
+const scrubIntervalDays = nonNegativeInt.max(3650);
+const slowIoThreshold = nonNegativeInt;
+
 export const poolConfigSchema = z.strictObject({
-  scrubIntervalDays: nonNegativeInt.max(3650).optional(),
-  slowIoThreshold: nonNegativeInt.optional(),
+  scrubIntervalDays: scrubIntervalDays.optional(),
+  slowIoThreshold: slowIoThreshold.optional(),
 });
 
 export type PoolConfig = z.infer<typeof poolConfigSchema>;
+
+/** A value sets the field; `null` removes it, back to the default. */
+export const poolConfigPatchSchema = z.strictObject({
+  scrubIntervalDays: scrubIntervalDays.nullable().optional(),
+  slowIoThreshold: slowIoThreshold.nullable().optional(),
+});
+
+export type PoolConfigPatch = z.infer<typeof poolConfigPatchSchema>;
 export type ResolvedPoolConfig = Required<PoolConfig>;
 
 export const POOL_CONFIG_DEFAULTS: ResolvedPoolConfig = {

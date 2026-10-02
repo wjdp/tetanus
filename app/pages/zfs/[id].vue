@@ -121,7 +121,7 @@ const tabs = computed<TabsItem[]>(() => [
           <div class="ms-auto flex items-center gap-2">
             <PoolConfigPopover
               :pool-id="pool.id"
-              :config="pool.resolvedConfig"
+              :config="pool.config"
               @saved="refresh"
             />
             <SimulateFaultMenu

@@ -1,44 +1,68 @@
 <script setup lang="ts">
 import {
   POOL_CONFIG_DEFAULTS,
+  type PoolConfig,
+  type PoolConfigPatch,
   type ResolvedPoolConfig,
 } from "#shared/schemas/pools";
 
-const props = defineProps<{ poolId: number; config: ResolvedPoolConfig }>();
+type ConfigKey = keyof ResolvedPoolConfig;
+
+const props = defineProps<{ poolId: number; config: PoolConfig | null }>();
 const emit = defineEmits<{ saved: [] }>();
 
 const open = ref(false);
 const saving = ref(false);
-const draft = reactive<ResolvedPoolConfig>({ ...props.config });
+// An empty input is the default; `v-model.number` leaves it as "".
+const draft = reactive<Record<ConfigKey, number | "" | null>>({
+  scrubIntervalDays: null,
+  slowIoThreshold: null,
+});
 const toast = useToast();
 
+const fillDraft = () => {
+  draft.scrubIntervalDays = props.config?.scrubIntervalDays ?? null;
+  draft.slowIoThreshold = props.config?.slowIoThreshold ?? null;
+};
+
 watch(open, (isOpen) => {
-  if (isOpen) Object.assign(draft, props.config);
+  if (isOpen) fillDraft();
 });
 
 const FIELDS = [
   {
     key: "scrubIntervalDays",
     label: "Scrub interval (days)",
-    description: `Scrub overdue after this many days. 0 disables. Default ${POOL_CONFIG_DEFAULTS.scrubIntervalDays}.`,
+    description: "Scrub overdue after this many days. 0 disables.",
   },
   {
     key: "slowIoThreshold",
     label: "Slow I/O threshold (per 24 h)",
-    description: `A leaf gaining this many slow I/Os in 24 h is a fault. 0 disables. Default ${POOL_CONFIG_DEFAULTS.slowIoThreshold}.`,
+    description:
+      "A leaf gaining this many slow I/Os in 24 h is a fault. 0 disables.",
   },
 ] as const satisfies {
-  key: keyof ResolvedPoolConfig;
+  key: ConfigKey;
   label: string;
   description: string;
 }[];
 
+const isDefault = (key: ConfigKey) =>
+  draft[key] === null || draft[key] === "";
+
+const patchValue = (key: ConfigKey) =>
+  isDefault(key) ? null : Number(draft[key]);
+
 const save = async () => {
   saving.value = true;
   try {
+    const body: PoolConfigPatch = {
+      scrubIntervalDays: patchValue("scrubIntervalDays"),
+      slowIoThreshold: patchValue("slowIoThreshold"),
+    };
     await $fetch(`/api/pools/${props.poolId}/config`, {
       method: "PATCH",
-      body: { ...draft },
+      body,
     });
     open.value = false;
     emit("saved");
@@ -78,9 +102,23 @@ const save = async () => {
             type="number"
             min="0"
             step="1"
-            required
+            :placeholder="`Default (${POOL_CONFIG_DEFAULTS[field.key]})`"
             class="w-full"
-          />
+            :ui="{ trailing: 'pe-1' }"
+          >
+            <template v-if="!isDefault(field.key)" #trailing>
+              <UButton
+                color="neutral"
+                variant="link"
+                size="xs"
+                icon="i-lucide-rotate-ccw"
+                :aria-label="`Use the default ${field.label.toLowerCase()}`"
+                title="Use default"
+                :data-testid="`pool-config-default-${field.key}`"
+                @click="draft[field.key] = null"
+              />
+            </template>
+          </UInput>
         </UFormField>
         <UButton
           type="submit"

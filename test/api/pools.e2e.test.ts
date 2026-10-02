@@ -160,7 +160,7 @@ describe("/api/pools", () => {
     expect((await readings(pools[0].id, 0)).status).toBe(400);
   });
 
-  it("patches a pool's config, keeping unset fields at their defaults", async () => {
+  it("patches a pool's config, keeping unset fields at their defaults and null resetting one", async () => {
     const pools = await (await fetch("/api/pools")).json();
     const patch = (body: unknown, id = pools[0].id) =>
       fetch(`/api/pools/${id}/config`, {
@@ -179,6 +179,13 @@ describe("/api/pools", () => {
     const second = await (await patch({ slowIoThreshold: 25 })).json();
     expect(second.resolvedConfig).toEqual({
       scrubIntervalDays: 0,
+      slowIoThreshold: 25,
+    });
+
+    const reset = await (await patch({ scrubIntervalDays: null })).json();
+    expect(reset.config).toEqual({ slowIoThreshold: 25 });
+    expect(reset.resolvedConfig).toEqual({
+      scrubIntervalDays: 35,
       slowIoThreshold: 25,
     });
 

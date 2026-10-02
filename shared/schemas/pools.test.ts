@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   POOL_CONFIG_DEFAULTS,
   poolArchiveInputSchema,
+  poolConfigPatchSchema,
   poolConfigSchema,
   poolsQuerySchema,
   resolvePoolConfig,
@@ -29,6 +30,17 @@ describe("poolConfigSchema", () => {
       false,
     );
     expect(poolConfigSchema.safeParse({ other: 1 }).success).toBe(false);
+  });
+});
+
+describe("poolConfigPatchSchema", () => {
+  it("takes null to return a field to its default", () => {
+    expect(poolConfigPatchSchema.parse({ scrubIntervalDays: null })).toEqual({
+      scrubIntervalDays: null,
+    });
+    expect(
+      poolConfigPatchSchema.safeParse({ slowIoThreshold: -1 }).success,
+    ).toBe(false);
   });
 });
 

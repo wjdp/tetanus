@@ -15,6 +15,7 @@ import { resolveModelShort } from "#shared/model";
 import {
   type PoolArchivedFilter,
   type PoolConfig,
+  type PoolConfigPatch,
   type ResolvedPoolConfig,
   resolvePoolConfig,
 } from "#shared/schemas/pools";
@@ -330,13 +331,19 @@ export function getPool(id: number, now = new Date()): PoolDetail {
   };
 }
 
-export function updatePoolConfig(id: number, patch: PoolConfig): PoolDetail {
+export function updatePoolConfig(
+  id: number,
+  patch: PoolConfigPatch,
+): PoolDetail {
   const row = db.select().from(pool).where(eq(pool.id, id)).get();
   if (!row) throw notFound(`Pool ${id} not found`);
-  db.update(pool)
-    .set({ config: { ...row.config, ...patch } })
-    .where(eq(pool.id, id))
-    .run();
+  const config: PoolConfig = { ...row.config };
+  for (const key of Object.keys(patch) as (keyof PoolConfigPatch)[]) {
+    const value = patch[key];
+    if (value === null) delete config[key];
+    else if (value !== undefined) config[key] = value;
+  }
+  db.update(pool).set({ config }).where(eq(pool.id, id)).run();
   return getPool(id);
 }
 
