@@ -51,3 +51,16 @@ export interface SimulatorStatus {
 export interface SubjectScenarios extends SimulatorStatus {
   scenarios: ScenarioView[];
 }
+
+/** On in dev and the demo; elsewhere only with `NUXT_PUBLIC_FAULT_SIMULATOR=true`. */
+export function simulatorEnabled({
+  dev,
+  demo,
+  faultSimulator,
+}: {
+  dev: boolean;
+  demo: boolean;
+  faultSimulator: boolean;
+}): boolean {
+  return dev || demo || faultSimulator;
+}

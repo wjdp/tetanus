@@ -35,6 +35,7 @@ export default defineNuxtConfig({
     public: {
       version: version + (process.env.VERSION_SUFFIX ?? ""),
       demo: false,
+      faultSimulator: false,
     },
   },
   fonts: {

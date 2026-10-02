@@ -1,3 +1,5 @@
+import { simulatorEnabled } from "#shared/simulator";
+
 export function isDemo(): boolean {
   return useRuntimeConfig().public.demo === true;
 }
@@ -18,4 +20,16 @@ export function presentSettings<
       notifications: { pushover: null, webhook: null },
     },
   };
+}
+
+export function requireSimulator() {
+  const { demo, faultSimulator } = useRuntimeConfig().public;
+  const enabled = simulatorEnabled({
+    dev: import.meta.dev,
+    demo: demo === true,
+    faultSimulator: faultSimulator === true,
+  });
+  if (!enabled) {
+    throw createError({ statusCode: 404, statusMessage: "Not found" });
+  }
 }
