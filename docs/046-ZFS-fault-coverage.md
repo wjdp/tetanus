@@ -68,7 +68,7 @@ a new occurrence if the cause clears first.
 | --- | --- | --- | --- | --- | --- |
 | `pool-degraded` (broadened) | pool / `poolId` | pool ≠ `ONLINE`, or any leaf (incl. log, cache, special, spare) ≠ `ONLINE` (spares: ≠ `AVAIL`/`INUSE`) | worst `zfsStateColour` of pool and listed leaves: `DEGRADED` pool with `OFFLINE` leaf amber; any `FAULTED`, `UNAVAIL`, `SUSPENDED` red | transient | ack, accept, clear |
 | `pool-missing` (new) | pool / `poolId` | pool absent from a fresh `zpool-status` on a reporting host | warning | until seen again | ack, accept, clear |
-| `leaf-errors` (new) | pool / `poolId:vdevGuid` | `ONLINE` leaf with any of R / W / C > 0 | error | until counters reset (`zpool clear`); ack level-based, reopens on rise | ack, accept, clear |
+| `leaf-errors` (new) | pool / `poolId:vdevGuid` | `ONLINE` leaf, or any group vdev (mirror, raidz, root), with any of R / W / C > 0 | warning on a leaf; error on a group (unrecoverable reconstruction) | until resolved by hand or the vdev leaves the pool; counters falling (reboot, import, `zpool clear`) never resolve it; ack level-based on the running total of rises | ack, accept, clear, resolve |
 | `leaf-slow` (new) | pool / `poolId:vdevGuid` | slow I/Os rise ≥ pool threshold within 24 h | warning | until a 24 h window under threshold | ack, accept, clear |
 | `pool-data-errors` (replaces `scan-errors`) | pool / `poolId` | `Pool.errors` > 0, or latest finished scan `errors` > 0 | error | until both are 0 | ack, clear |
 | `scrub-overdue` (new) | pool / `poolId` | no finished scrub within the pool's interval (default 35 d); never-scrubbed pools count from `firstSeenAt` | warning | transient | ack, accept, clear |
@@ -91,7 +91,12 @@ Notes:
   scan entries to the new kind.
 - `leaf-errors` title `A7 in tank: R 0 W 0 C 12, +4 in 24 h` (delta from
   `VdevReading`). Level-based ack as [042](042-Acknowledge-faults.md), stored on the
-  fault (`data.acknowledgedCounts`) since `FaultAcceptance` is SMART-keyed.
+  fault (`data.acknowledgedCounts`) since `FaultAcceptance` is SMART-keyed. Counters
+  reset on reboot and import, indistinguishable from `zpool clear`, so a rise is any
+  increase over the previous reading, summed into `data.total`; a drop is a new
+  baseline. The acknowledged level is `data.total` at the click; a quiet row reopens
+  when `data.total` passes it. Severity amber: a leaf ZFS has failed folds into
+  `pool-degraded`, which carries the red.
 - `pool-missing` for a deliberate export: accept. It stays accepted until the pool is
   seen again; no forget-pool action in this task.
 - Not faults: resilver running (info, 037), spare `INUSE` (listed in `pool-degraded`),
@@ -251,7 +256,59 @@ Part A (ingest, data, topology):
 - The simulator models spares as a separate `spares` section, unlike real output; align
   it with the flat-map shape in the simulator step.
 
+Part B (kinds, folding, backfill, alerts, config API):
+
+- Pool detectors live in `server/services/poolFaults.ts`. `detectFaults` returns
+  `{ detections, superseded }`: a supersession names a subject, kinds and optional key,
+  and a live row it matches resolves with diary `fault-resolved.data.supersededBy`
+  (`{ kind, key }`). Order: `collector-silent` hosts → pools (missing, degraded) →
+  leaves and `disk-missing`.
+- `pool-degraded` lists failed leaves only (any role). A spare is healthy at `AVAIL`
+  (aux) or `ONLINE` (in use), so `INUSE` spares are not listed (review decision;
+  overrides the "spare in use: … `INUSE` spare listed" simulator row). Reopens a quiet
+  row on severity rise, a new listed leaf, or a counter rise on a listed leaf.
+- `pool-missing` is not raised for a host that is `collector-silent` or offline
+  intermittent; pools of a silent host raise nothing and live pool faults resolve as
+  superseded by `collector-silent`. Missing pools also resolve `pool-data-errors` and
+  `scrub-overdue` (plainly, no supersession: no current data).
+- `leaf-errors` covers group vdevs too (`data.role: "group"`, red) and the topology
+  now writes `leaf-errors-changed` for groups (data gains `role`). Lifetime
+  `until-resolved`; new action `resolve` (`POST /api/faults/:id/resolve`, a "Resolve"
+  button in `FaultActions`), offered on `leaf-errors` only. After a hand resolution a
+  new occurrence opens only on a rise since then. Data: `read`, `write`, `checksum`
+  (current), `total` (summed rises), `rise24h`, `acknowledgedCounts` while quiet.
+- `leaf-slow` uses the same summed-rise rule for `slowIos` over 24 h, on leaves not
+  listed by `pool-degraded`.
+- `pool-data-errors` data `{ poolName, dataErrors, scanErrors, function, finishedAt }`;
+  latest finished scan from the diary as before. Reopens a quiet row on a data-error
+  rise or a new scan with errors. No accept (as the table).
+- `scrub-overdue` takes the newest of `Pool.lastScrub.endAt`, the latest
+  `scrub-finished` entry and a finished `SCRUB` in `Pool.scan`. Time-windowed
+  detectors judge as of `min(now, host's latest zpool-status)`.
+- Migration `0017_fault_kind_pool_data_errors` (custom SQL): renames `Fault.kind`
+  (data gains `scanErrors` from `errors`, `dataErrors` 0), `fault-*` diary
+  `data.kind` and `Notification.rule`.
+- Backfill: `vdev-state-changed` (vdev subject) drives `pool-degraded` leaves with
+  `pool-state-changed`; `leaf-errors-changed` → `leaf-errors` (summed rises), resolved
+  by `vdev-left` or a replayed hand resolution; `pool-data-errors-changed` and scan
+  entries → `pool-data-errors`. A clean scan resets the replayed data-error count (the
+  only trail of it clearing); the final sync reopens from `Pool.errors` if not.
+  `fault-opened` replays seed gap kinds with their kind's severity.
+- Alerts: new severity `notice` (Pushover priority -1) for `leaf-slow`.
+  `pool-missing`, `scrub-overdue` and `leaf-slow` alert from their `fault-opened`
+  entry. `vdev-state-changed` data gains `role` and `poolState`; the `pool-degraded`
+  rule fires on a vdev entering a state other than `ONLINE` / `AVAIL` while
+  `poolState` is `ONLINE`, on the pool subject. Entries from before this carry no
+  `poolState` and never alert. `pool-data-errors` fires on any `*-finished` with
+  errors (now `scan-finished` too) and on `pool-data-errors-changed`.
+- `PATCH /api/pools/:id/config` merges the body into `Pool.config` and returns the
+  pool detail; it queues `alerts:tick` so faults resync.
+- Demo: seed now has `leaf-errors` open on tank's A7, a resolved `leaf-errors` on
+  vault's V2 (superseded by `pool-degraded`) and past `scrub-overdue` occurrences;
+  `seed.test.ts` counts updated. The planned seed story (ack at 12) is left for step 9.
+
 ## Open questions
 
-None. Decided 2026-10-02: `-j -v` carries `errlist` (key present on `tfault`), so parse it (array of paths as root, the string `"Permission denied"` otherwise); `pool-missing` warning; slow I/O default 10 per 24 h, tune once
+None. Decided 2026-10-02: `leaf-errors` resolves only by hand (or the vdev leaving the
+pool), amber on leaves, red on groups, group counters included; `-j -v` carries `errlist` (key present on `tfault`), so parse it (array of paths as root, the string `"Permission denied"` otherwise); `pool-missing` warning; slow I/O default 10 per 24 h, tune once
 mars has data; SMART faults stay separate from pool faults.
