@@ -792,6 +792,7 @@ function hosts(timeline: Timeline): HostModel[] {
       installedAt: BENCH_BUILT,
       intermittent: true,
       lastRunAt: timeline.benchLastRunAt,
+      collectorVersion: "0.3.0",
     }),
   ];
 }

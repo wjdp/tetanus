@@ -36,7 +36,8 @@ import type {
 import { createWorld, type DemoWorld } from "./world";
 import { renderZfs } from "./zfs";
 
-export const DEMO_PRODUCER = `tetanus-collect/${COLLECTOR_VERSION}`;
+export const demoProducer = (host: HostModel) =>
+  `tetanus-collect/${host.collectorVersion ?? COLLECTOR_VERSION}`;
 
 const DAILY_FOR_MS = 90 * DAY_MS;
 
@@ -107,18 +108,18 @@ type ReplayAction = { at: Date; apply: () => unknown };
 function ingestTally() {
   const tally: IngestTally = { count: {}, renderMs: 0, ingestMs: {} };
   const failures: string[] = [];
-  function ingest(hostName: HostName, render: () => HostPayload[], at: Date) {
+  function ingest(host: HostModel, render: () => HostPayload[], at: Date) {
     const renderStartedAt = performance.now();
     const payloads = render();
     tally.renderMs += performance.now() - renderStartedAt;
     for (const { source, meta, body } of payloads) {
       const startedAt = performance.now();
       const outcome = recordIngest({
-        hostName,
+        hostName: host.name,
         source,
         meta,
         body,
-        producer: DEMO_PRODUCER,
+        producer: demoProducer(host),
         receivedAt: at,
       });
       tally.ingestMs[source] =
@@ -126,7 +127,7 @@ function ingestTally() {
       tally.count[source] = (tally.count[source] ?? 0) + 1;
       if (!outcome.ok) {
         failures.push(
-          `${hostName} ${source} at ${at.toISOString()}: ${outcome.error}`,
+          `${host.name} ${source} at ${at.toISOString()}: ${outcome.error}`,
         );
       }
     }
@@ -532,7 +533,7 @@ export async function* seedSteps(
       if (isSwitchedOff(host, instant.at)) continue;
       const isHostsLast = isLast || isHostsLastRun(host, instant.at);
       ingest(
-        host.name,
+        host,
         () =>
           trim(
             host.name,
@@ -608,7 +609,7 @@ export async function tick(now: Date): Promise<TickReport> {
       skipped.push(host.name);
       continue;
     }
-    ingest(host.name, () => hostPayloadsAt(world, host, at, "all", true), at);
+    ingest(host, () => hostPayloadsAt(world, host, at, "all", true), at);
   }
   await listDisks(at);
   return { at, ingests: tally(), failures, skipped };

@@ -60,6 +60,8 @@ export interface HostModel {
   intermittent?: boolean;
   /** Switched off after this run: the host posts nothing later. */
   lastRunAt?: Date;
+  /** `tetanus-collect` version in the producer header; the current one when unset. */
+  collectorVersion?: string;
 }
 
 export type Vendor = "seagate" | "wd" | "samsung" | "intel" | "crucial";
