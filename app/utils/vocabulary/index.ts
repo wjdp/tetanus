@@ -3,6 +3,7 @@ export * from "./colour";
 export * from "./deviceStatus";
 export * from "./diaryEvent";
 export * from "./entity";
+export * from "./fault";
 export * from "./lifecycle";
 export * from "./media";
 export * from "./usage";

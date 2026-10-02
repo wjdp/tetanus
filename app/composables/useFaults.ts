@@ -1,86 +1,81 @@
-import {
-  collectorStatus,
-  MIN_COLLECTOR_VERSION,
-  upgradeCommand,
-} from "#shared/collector";
-import type { Fault } from "#shared/faults";
+import type { FaultAction, FaultCounts, FaultsResponse } from "#shared/faults";
 
-const DISMISSED_STORAGE_KEY = "tetanus:dismissedFaults";
+export const FAULTS_POLL_MS = 30_000;
 
-function readDismissed(): Set<string> {
-  try {
-    const raw = localStorage.getItem(DISMISSED_STORAGE_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
+export interface FaultsQuery {
+  state?: string;
+  category?: string;
+  severity?: string;
+  host?: string;
+  subject?: string;
 }
 
-function writeDismissed(ids: Set<string>) {
-  try {
-    localStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify([...ids]));
-  } catch {
-    // Private browsing or a full quota: dismissals just don't persist.
-  }
-}
+export const OPEN_ERRORS_QUERY: FaultsQuery = {
+  state: "open",
+  severity: "error",
+};
 
-export function useFaults() {
-  const { data: hosts } = useFetch("/api/hosts", { default: () => [] });
-  const cadences = useRuntimeConfig().public.demo ? DEMO_CADENCES : undefined;
-  const dismissed = useState<Set<string>>("faults-dismissed", () => new Set());
-  const serverUrl = useRequestURL().origin;
+const EMPTY_COUNTS: FaultCounts = {
+  open: 0,
+  acknowledged: 0,
+  accepted: 0,
+  resolved: 0,
+};
 
+const emptyResponse = (): FaultsResponse => ({
+  faults: [],
+  counts: { ...EMPTY_COUNTS },
+  badge: 0,
+});
+
+const ACTION_REQUEST: Record<
+  FaultAction,
+  { path: string; method: "POST" | "DELETE" }
+> = {
+  acknowledge: { path: "acknowledge", method: "POST" },
+  accept: { path: "accept", method: "POST" },
+  clear: { path: "acknowledgement", method: "DELETE" },
+};
+
+export function useFaults(query: MaybeRefOrGetter<FaultsQuery> = {}) {
+  const { data, refresh, status } = useFetch<FaultsResponse>("/api/faults", {
+    query: computed(() => toValue(query)),
+    default: emptyResponse,
+  });
+
+  let pollHandle: ReturnType<typeof setInterval> | undefined;
   onMounted(() => {
-    dismissed.value = readDismissed();
+    pollHandle = setInterval(refresh, FAULTS_POLL_MS);
+  });
+  onUnmounted(() => {
+    if (pollHandle) clearInterval(pollHandle);
   });
 
-  const faults = computed<Fault[]>(() => {
-    const now = Date.now();
-    const result: Fault[] = [];
-    for (const host of hosts.value ?? []) {
-      const version = host.collectorVersion;
-      const incompatibleId = `collector-incompatible:${host.name}:${version}`;
-      if (
-        version &&
-        collectorStatus(version) === "incompatible" &&
-        !dismissed.value.has(incompatibleId)
-      ) {
-        result.push({
-          id: incompatibleId,
-          host: host.name,
-          title: `Collector ${version} is too old; ${MIN_COLLECTOR_VERSION} or later is needed`,
-          command: upgradeCommand(serverUrl),
-        });
-      }
+  useSseClient().onMessage("faults", () => refresh());
 
-      if (isHostOffline(host, now, cadences)) continue;
-      const groups = allGroupFreshness(host.lastRuns, now, cadences);
-      if (!isEveryGroupSilent(groups)) continue;
+  const faults = computed(() => data.value?.faults ?? []);
+  const counts = computed(() => data.value?.counts ?? EMPTY_COUNTS);
+  const badge = computed(() => data.value?.badge ?? 0);
 
-      const id = `collector-silent:${host.name}`;
-      if (dismissed.value.has(id)) continue;
-
-      const ages = groups
-        .map((group) => group.ageMs)
-        .filter((ageMs): ageMs is number => ageMs !== null);
-      const worstAgeMs =
-        ages.length > 0
-          ? Math.max(...ages)
-          : now - new Date(host.lastSeenAt).getTime();
-
-      result.push({
-        id,
-        host: host.name,
-        title: `No data for ${formatDuration(worstAgeMs)}`,
-      });
-    }
-    return result;
-  });
-
-  const dismiss = (id: string) => {
-    dismissed.value = new Set(dismissed.value).add(id);
-    writeDismissed(dismissed.value);
+  const perform = async (id: number, action: FaultAction, note?: string) => {
+    const { path, method } = ACTION_REQUEST[action];
+    await $fetch(`/api/faults/${id}/${path}`, {
+      method,
+      ...(method === "POST" ? { body: note ? { note } : {} } : {}),
+    });
+    await refresh();
   };
 
-  return { faults, dismiss };
+  return {
+    faults,
+    counts,
+    badge,
+    status,
+    refresh,
+    perform,
+    acknowledge: (id: number, note?: string) =>
+      perform(id, "acknowledge", note),
+    accept: (id: number, note?: string) => perform(id, "accept", note),
+    clear: (id: number) => perform(id, "clear"),
+  };
 }

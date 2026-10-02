@@ -1,120 +1,101 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { flushPromises } from "@vue/test-utils";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { clearNuxtData } from "#app";
-import { useFaults } from "./useFaults";
+import type { FaultsResponse } from "#shared/faults";
+import { emitSseEvent, FakeEventSource } from "~~/test/fakeEventSource";
+import { type FaultsQuery, useFaults } from "./useFaults";
 
-const now = Date.now();
-const run = (ageMs: number) => ({
-  receivedAt: new Date(now - ageMs).toISOString(),
-  ok: true,
-  error: null,
-  device: null,
+const response = (badge: number): FaultsResponse => ({
+  faults: [],
+  counts: { open: badge, acknowledged: 1, accepted: 0, resolved: 2 },
+  badge,
 });
 
-const host = (
-  lastRuns: Record<string, ReturnType<typeof run>>,
-  collectorVersion: string | null = "0.3.1",
-  intermittent = false,
-) => ({
-  id: 1,
-  name: "mars",
-  displayName: null,
-  toolVersions: {},
-  collectorVersion,
-  collectorStatus: "current",
-  healthchecksUrl: null,
-  intermittent,
-  position: 0,
-  notes: "",
-  firstSeenAt: new Date(now - 10 * 24 * 60 * 60_000).toISOString(),
-  lastSeenAt: new Date(now - 5 * 60 * 60_000).toISOString(),
-  lastRuns,
+const listRequests: Record<string, unknown>[] = [];
+let badge = 1;
+registerEndpoint("/api/faults", (event) => {
+  listRequests.push(
+    Object.fromEntries(new URL(event.path, "http://x").searchParams),
+  );
+  return response(badge);
 });
 
-const FaultsProbe = defineComponent({
-  setup() {
-    const { faults } = useFaults();
-    return () => h("pre", JSON.stringify(faults.value));
-  },
+const actionRequests: string[] = [];
+const recordAction = (label: string) => (event: { method: string }) => {
+  actionRequests.push(`${event.method} ${label}`);
+  return {};
+};
+registerEndpoint("/api/faults/7/acknowledge", {
+  method: "POST",
+  handler: recordAction("acknowledge"),
+});
+registerEndpoint("/api/faults/7/accept", {
+  method: "POST",
+  handler: recordAction("accept"),
+});
+registerEndpoint("/api/faults/7/acknowledgement", {
+  method: "DELETE",
+  handler: recordAction("acknowledgement"),
 });
 
-// registerEndpoint's handler is re-read on every request, but a second call
-// for the same URL does not replace the first within one test file, so both
-// scenarios share one endpoint and switch on a mutable fixture instead.
-let hosts: unknown[] = [];
-registerEndpoint("/api/hosts", () => hosts);
+const mountProbe = async (query: FaultsQuery = {}) => {
+  let api!: ReturnType<typeof useFaults>;
+  const Probe = defineComponent({
+    setup() {
+      api = useFaults(query);
+      return () => h("pre", `${api.badge.value} ${api.counts.value.resolved}`);
+    },
+  });
+  const component = await mountSuspended(Probe);
+  await flushPromises();
+  return { component, api };
+};
 
 beforeEach(() => {
-  localStorage.clear();
+  FakeEventSource.install();
   clearNuxtData();
+  listRequests.length = 0;
+  actionRequests.length = 0;
+  badge = 1;
 });
 
 describe("useFaults", () => {
-  it("raises one fault for a host whose every group is stale", async () => {
-    hosts = [host({ versions: run(5 * 60 * 60_000) })];
+  it("exposes the badge and counts from the API", async () => {
+    const { component } = await mountProbe();
 
-    const component = await mountSuspended(FaultsProbe);
-    await flushPromises();
-
-    expect(component.text()).toContain("collector-silent:mars");
-    expect(component.text()).toContain('"host":"mars"');
-    expect(component.text()).toContain("No data for");
+    expect(component.text()).toBe("1 2");
   });
 
-  it("raises no silent fault for an offline intermittent host", async () => {
-    hosts = [host({ versions: run(5 * 60 * 60_000) }, "0.3.1", true)];
+  it("passes the query through", async () => {
+    await mountProbe({ state: "open", severity: "error" });
 
-    const component = await mountSuspended(FaultsProbe);
-    await flushPromises();
-
-    expect(component.text()).toBe("[]");
+    expect(listRequests.at(-1)).toEqual({ state: "open", severity: "error" });
   });
 
-  it("still raises an incompatible fault for an offline host", async () => {
-    hosts = [host({ versions: run(5 * 60 * 60_000) }, "0.2.0", true)];
+  it("refreshes on the SSE faults event", async () => {
+    const { component } = await mountProbe();
+    badge = 3;
 
-    const component = await mountSuspended(FaultsProbe);
-    await flushPromises();
-
-    expect(component.text()).toContain("collector-incompatible:mars:0.2.0");
-    expect(component.text()).not.toContain("collector-silent");
+    emitSseEvent("faults", { at: new Date().toISOString() });
+    await vi.waitFor(() => expect(component.text()).toBe("3 2"));
   });
 
-  it("raises no fault when a group is fresh", async () => {
-    hosts = [host({ versions: run(60_000) })];
+  it("calls the action endpoints, then refreshes", async () => {
+    const { api } = await mountProbe();
+    const before = listRequests.length;
 
-    const component = await mountSuspended(FaultsProbe);
-    await flushPromises();
+    await api.acknowledge(7, "looking");
+    await api.accept(7);
+    await api.clear(7);
 
-    expect(component.text()).toBe("[]");
+    expect(actionRequests).toEqual([
+      "POST acknowledge",
+      "POST accept",
+      "DELETE acknowledgement",
+    ]);
+    expect(listRequests.length).toBe(before + 3);
   });
-
-  it("raises a fault for an incompatible collector", async () => {
-    hosts = [host({ versions: run(60_000) }, "0.2.0")];
-
-    const component = await mountSuspended(FaultsProbe);
-    await flushPromises();
-
-    expect(component.text()).toContain("collector-incompatible:mars:0.2.0");
-    expect(component.text()).toContain('"host":"mars"');
-    expect(component.text()).toContain(
-      "Collector 0.2.0 is too old; 0.3.0 or later is needed",
-    );
-    expect(component.text()).toContain("/host/install.sh | sudo bash");
-  });
-
-  it.each(["0.3.0", null])(
-    "raises no fault for collector %s",
-    async (version) => {
-      hosts = [host({ versions: run(60_000) }, version)];
-
-      const component = await mountSuspended(FaultsProbe);
-      await flushPromises();
-
-      expect(component.text()).toBe("[]");
-    },
-  );
 });
