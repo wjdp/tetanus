@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import type { Media } from "#shared/hardware";
 import { resolveModelShort } from "#shared/model";
 import {
+  type PoolConfig,
   type ResolvedPoolConfig,
   resolvePoolConfig,
 } from "#shared/schemas/pools";
@@ -300,4 +301,14 @@ export function getPool(id: number, now = new Date()): PoolDetail {
     ...historyFor(row.pool),
     events: recentEvents(row.pool.guid),
   };
+}
+
+export function updatePoolConfig(id: number, patch: PoolConfig): PoolDetail {
+  const row = db.select().from(pool).where(eq(pool.id, id)).get();
+  if (!row) throw notFound(`Pool ${id} not found`);
+  db.update(pool)
+    .set({ config: { ...row.config, ...patch } })
+    .where(eq(pool.id, id))
+    .run();
+  return getPool(id);
 }

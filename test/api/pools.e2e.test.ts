@@ -139,6 +139,33 @@ describe("/api/pools", () => {
     expect(detail.events).toHaveLength(50);
   });
 
+  it("patches a pool's config, keeping unset fields at their defaults", async () => {
+    const pools = await (await fetch("/api/pools")).json();
+    const patch = (body: unknown, id = pools[0].id) =>
+      fetch(`/api/pools/${id}/config`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    const response = await patch({ scrubIntervalDays: 0 });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      config: { scrubIntervalDays: 0 },
+      resolvedConfig: { scrubIntervalDays: 0, slowIoThreshold: 10 },
+    });
+
+    const second = await (await patch({ slowIoThreshold: 25 })).json();
+    expect(second.resolvedConfig).toEqual({
+      scrubIntervalDays: 0,
+      slowIoThreshold: 25,
+    });
+
+    expect((await patch({ scrubIntervalDays: -1 })).status).toBe(400);
+    expect((await patch({ colour: "red" })).status).toBe(400);
+    expect((await patch({}, 99999)).status).toBe(404);
+  });
+
   it("404s for a missing pool", async () => {
     expect((await fetch("/api/pools/99999")).status).toBe(404);
   });
