@@ -86,5 +86,7 @@ modal.
    by name pattern (e.g. `t*`) that archives new matching pools on first sight?
 2. Hard delete as well (cascade vdevs, readings, datasets, snapshots, diary), offered
    only for archived pools? Archive alone keeps the database growing with junk.
-3. Order against 046: land this first (small, and `pool-missing` would immediately
-   fire for `tfault` / `tspare`), or after?
+
+Decided 2026-10-02: land on the `fault-simulator` branch after 046 part B and before
+the branch is merged or deployed, so `pool-missing` never fires for `tfault` /
+`tspare` on mars.
