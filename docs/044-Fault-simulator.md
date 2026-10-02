@@ -47,25 +47,26 @@ Durable Object SQLite too (plain triggers and SQL).
 
 ### Code
 
-- `shared/simulator.ts`: scenario catalogue `{ id, label, group, subjectType,
-  params: zod schema with defaults }`; the app builds menus and modal forms from it.
-- `server/services/simulator/`: scenarios grouped by subject, each `applies(subject)`
-  and `mutate(payloads, subject, params) → payloads`, pure over raw bodies, unit-tested
-  against `test/fixtures/` (smartctl xall JSON, `zpool status -j`), plus an optional
-  direct write (backdating `lastSeenAt`, `CollectorRun.receivedAt`). `capture.ts`
-  (triggers, undo) and `run.ts` (load payloads, replay, run the alerts pass so faults
-  open at once, restore).
-- Routes: `GET /api/simulate/:subjectType/:id` (applicable scenarios, param choices
-  such as the pool's leaves), `POST …` `{ scenario, params }`, `GET
-  /api/simulate` (active simulations), `POST /api/simulate/restore`. Bodies validated with `shared/schemas/simulate.ts`.
-- `app/components/simulate/SimulateFaultMenu.vue`: `UDropdownMenu`, grouped; scenarios
-  without params run on click; parameterised ones open `SimulateFaultModal.vue`
-  pre-filled with defaults and Run focused, so Enter runs the default. "Restore" at the
-  bottom while any simulation is active. Refreshes the page after.
-- Placement: disk page header next to "Download diagnostics", pool page header, row
-  actions in `settings/hosts.vue`.
-- Applicability: attached non-ZFS disks get every disk scenario; disks not attached to
-  a host (inventory-only, disposed) get no menu.
+- `shared/simulator.ts`: API types (`ScenarioView`, `ScenarioParam` number/select,
+  `SimulatorStatus`) and `simulatorEnabled`. Params and their defaults come from the
+  server per subject (current raw value + 1, the host's thresholds, the pool's leaves).
+- `server/services/simulator/`: `capture.ts` (triggers, roll back, discard),
+  `payloads.ts` (latest stored body with the meta and producer it came with),
+  `subjects.ts`, `run.ts` (list scenarios for a subject, validate params, replay under
+  capture, run the alerts pass so faults open at once, restore), helpers editing raw
+  bodies (`smartctl.ts`, `zpool.ts`), and `scenarios/` by subject: `disk.ts`,
+  `presence.ts`, `pool.ts`, `host.ts`. A scenario is `{ id, label, group, subjectType,
+  applies?, params?, plan }`; `plan` returns edited payload copies to replay plus an
+  optional direct write (backdating `lastSeenAt`, `CollectorRun.receivedAt`).
+- Routes under `/api/simulate`: `GET` (active simulations), `GET|POST
+  /:subjectType/:id` (scenarios offered; run one with `{ scenario, params }`), `POST
+  /restore`. 404 when the simulator is off.
+- App: `useSimulator`, `SimulateFaultMenu` (scenarios without params run on click,
+  others open `SimulateFaultModal` pre-filled with defaults; Enter submits),
+  `AppSimulationBanner` in the layout. Menu in the disk page header, pool page header
+  and a column of the hosts table.
+- Disks out of service (sold, retired, dead) or with no host get no scenarios.
+- `pnpm demo:seed --reset` discards an active capture before wiping.
 
 Gating: `runtimeConfig.public.faultSimulator`, on when `import.meta.dev` or demo;
 `NUXT_PUBLIC_FAULT_SIMULATOR=true` opts in elsewhere. Routes 404 when off. In the demo
