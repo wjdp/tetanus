@@ -1,8 +1,13 @@
-import { eq, isNotNull } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { SMART_POLICY_VERSION } from "#shared/smart/classification";
 import type { SmartProtocol } from "#shared/smart/metadata";
 import { db } from "~~/server/database/client";
-import { disk, setting, smartAttribute } from "~~/server/database/schema";
+import {
+  disk,
+  setting,
+  smartAttribute,
+  smartReading,
+} from "~~/server/database/schema";
 import {
   attributesOfReading,
   diskProtocol,
@@ -88,17 +93,26 @@ export function reapplySmartPolicy(now = new Date()): SmartPolicyOutcome {
   return db.transaction(() => {
     const outcome: SmartPolicyOutcome = { disks: 0, changed: 0 };
     const disks = db
-      .select({ id: disk.id })
+      .select({ id: disk.id, latestReadingAt: disk.latestReadingAt })
       .from(disk)
-      .where(isNotNull(disk.latestReadingAt))
+      .where(
+        inArray(
+          disk.id,
+          db.selectDistinct({ diskId: smartReading.diskId }).from(smartReading),
+        ),
+      )
       .all();
-    for (const { id } of disks) {
+    for (const { id, latestReadingAt } of disks) {
       const reading = latestReading(id);
       if (!reading) continue;
       const stored = attributesOfReading(reading.id);
       const protocol = protocolOf(id, stored);
       if (!protocol) continue;
       reevaluateAttributes(reading, protocol, stored);
+      if (latestReadingAt === null) {
+        outcome.disks += 1;
+        continue;
+      }
       const before = latestStatusOf(id);
       recomputeLatestStatus(id, now, "policy");
       outcome.disks += 1;

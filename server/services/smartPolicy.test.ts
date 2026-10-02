@@ -135,6 +135,22 @@ describe("reapplySmartPolicy", () => {
     expect(events(diskId, "attribute-status-changed")).toHaveLength(0);
   });
 
+  it("re-evaluates a disk known only from imported readings", () => {
+    ingestSdb(withAttributeRaw(withAttributeRaw(SDB, 197, 0), 198, 0));
+    const diskId = sdb().id;
+    const fresh = storedAttribute(diskId, "4");
+    applyOldPolicy(diskId);
+    db.update(disk)
+      .set({ latestReadingAt: null, latestStatus: "unknown" })
+      .where(eq(disk.id, diskId))
+      .run();
+
+    expect(reapplySmartPolicy(at(HOUR_MS))).toEqual({ disks: 1, changed: 0 });
+
+    expect(storedAttribute(diskId, "4")).toEqual(fresh);
+    expect(sdb().latestStatus).toBe("unknown");
+  });
+
   it("leaves freshly evaluated readings untouched", () => {
     ingestSdb(SDB);
     const diskId = sdb().id;
