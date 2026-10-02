@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
+import { boundStorage } from "./bridge";
 import bundle from "./migrations";
 
 export type MigrationReport = {
@@ -21,6 +22,14 @@ function lastAppliedMillis(storage: DurableObjectStorage): number | undefined {
     )
     .toArray();
   return row?.millis ?? undefined;
+}
+
+export function latestAppliedMigration(_sqlite?: unknown): string | null {
+  const last = lastAppliedMillis(boundStorage());
+  if (last === undefined) return null;
+  return (
+    bundle.journal.entries.find((entry) => entry.when === last)?.tag ?? null
+  );
 }
 
 function pendingMigrations(storage: DurableObjectStorage) {
