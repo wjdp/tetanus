@@ -133,7 +133,7 @@ the stronger form because it still counts towards disk status.
 
 | display status | colour | shape / icon | value cell | row tint |
 | --- | --- | --- | --- | --- |
-| `acknowledged` | warning | filled dot; `i-lucide-eye` | "acknowledged at 16" | `bg-warning/5` |
+| `acknowledged` | warning | filled dot; `i-lucide-eye`; label `ack` | "ack at 16" | `bg-warning/5` |
 | `accepted` | warning | hollow dot; `i-lucide-shield-check` | "accepted at 16" | `bg-elevated/40` (as today) |
 
 `accepted` is unchanged. Acknowledged takes the filled dot: per 037's grammar, filled

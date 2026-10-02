@@ -118,6 +118,7 @@ export const ATTRIBUTE_STATUS_DOT: Record<
 export interface AcceptanceKindVocabulary {
   action: string;
   verb: string;
+  short: string;
   noun: string;
   icon: string;
   description: string;
@@ -131,6 +132,7 @@ export const ACCEPTANCE_KIND_VOCABULARY: Record<
   acknowledge: {
     action: "Acknowledge",
     verb: "acknowledged",
+    short: "ack",
     noun: "acknowledgement",
     icon: "i-lucide-eye",
     description:
@@ -140,12 +142,21 @@ export const ACCEPTANCE_KIND_VOCABULARY: Record<
   accept: {
     action: "Accept",
     verb: "accepted",
+    short: "accepted",
     noun: "acceptance",
     icon: "i-lucide-shield-check",
     description:
       "Normal for this disk: stops counting towards its status. Back to its real status if the value rises.",
     notePlaceholder: "Why this is acceptable (optional)",
   },
+};
+
+export const ATTRIBUTE_STATUS_LABEL: Record<AttributeDisplayStatus, string> = {
+  passed: "passed",
+  warning: "warning",
+  failed: "failed",
+  acknowledged: ACCEPTANCE_KIND_VOCABULARY.acknowledge.short,
+  accepted: ACCEPTANCE_KIND_VOCABULARY.accept.short,
 };
 
 export type AttributeTrend = "new" | "stable" | "worsening" | "improving";

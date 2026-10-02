@@ -95,17 +95,20 @@ const isCovered = (attribute: LatestAttribute) =>
 const coveredVocabulary = (attribute: LatestAttribute) =>
   ACCEPTANCE_KIND_VOCABULARY[attribute.acceptance?.kind ?? "accept"];
 
-const acceptedAt = (attribute: LatestAttribute) => {
-  const { verb } = coveredVocabulary(attribute);
-  return attribute.acceptance
-    ? `${verb} at ${attribute.acceptance.acceptedValue.toLocaleString("en-GB")}`
-    : verb;
-};
-
-const acceptanceTooltip = (attribute: LatestAttribute) =>
+const coveredAt = (attribute: LatestAttribute, word: string) =>
   attribute.acceptance
-    ? `${acceptedAt(attribute)} on ${formatDate(attribute.acceptance.acceptedAt)}`
-    : acceptedAt(attribute);
+    ? `${word} at ${attribute.acceptance.acceptedValue.toLocaleString("en-GB")}`
+    : word;
+
+const acceptedAt = (attribute: LatestAttribute) =>
+  coveredAt(attribute, coveredVocabulary(attribute).short);
+
+const acceptanceTooltip = (attribute: LatestAttribute) => {
+  const full = coveredAt(attribute, coveredVocabulary(attribute).verb);
+  return attribute.acceptance
+    ? `${full} on ${formatDate(attribute.acceptance.acceptedAt)}`
+    : full;
+};
 
 const formatValue = (attribute: LatestAttribute) => {
   const unit = attribute.metadata?.transformValueUnit;

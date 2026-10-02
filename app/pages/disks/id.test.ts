@@ -313,7 +313,9 @@ describe("disk page", () => {
     expect(rows[0]).toContain("Acknowledge");
     expect(rows[0]).not.toMatch(/Accept|Clear/);
     expect(rows[1]).toContain("Offline Uncorrectable");
-    expect(rows[1]).toContain("acknowledged at 18");
+    expect(rows[1]).toMatch(/^ack\d/);
+    expect(rows[1]).toContain("ack at 18");
+    expect(rows[1]).not.toContain("acknowledged");
     expect(rows[1]).not.toContain("Acknowledge");
     expect(rows[1]).toContain("Accept");
     expect(rows[1]).toContain("Clear");

@@ -54,7 +54,7 @@ Per row in the attribute table and the accept dialog.
 | `passed` | neutral | no dot | row text default |
 | `warning` | warning | filled dot | |
 | `failed` | error | filled dot | |
-| `acknowledged` | warning | filled dot; `i-lucide-eye` beside the acknowledged value | "acknowledged at 16" in the value cell; still a fault, the disk is amber ([042](042-Acknowledge-faults.md)) |
+| `acknowledged` | warning | filled dot; `i-lucide-eye` beside the acknowledged value | labelled `ack`, "ack at 16" in the value cell (full word in the tooltip); still a fault, the disk is amber ([042](042-Acknowledge-faults.md)) |
 | `accepted` | warning | hollow dot; `i-lucide-shield-check` beside the accepted value | "accepted at 16" in the value cell; still amber so the reader knows it is a fault being watched |
 
 Trend chip next to a non-passed attribute: `new` info, `worsening` warning, `stable`

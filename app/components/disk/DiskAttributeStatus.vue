@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AttributeDisplayStatus } from "#shared/smart/status";
-import { ATTRIBUTE_STATUS_DOT } from "./attributeRows";
+import { ATTRIBUTE_STATUS_DOT, ATTRIBUTE_STATUS_LABEL } from "./attributeRows";
 
 const props = defineProps<{ status: AttributeDisplayStatus }>();
 
@@ -14,6 +14,6 @@ const dot = computed(() => ATTRIBUTE_STATUS_DOT[props.status]);
     data-testid="attribute-status"
   >
     <TopologyStatusDot v-if="dot" :colour="dot.colour" :shape="dot.shape" />
-    {{ status }}
+    {{ ATTRIBUTE_STATUS_LABEL[status] }}
   </span>
 </template>
