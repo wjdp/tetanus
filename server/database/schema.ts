@@ -36,6 +36,10 @@ import type {
 import type { Inventory } from "../../shared/inventory-fields";
 import type { SettingsConfig } from "../../shared/schemas/settings";
 import type {
+  SimulationParams,
+  SimulationSubjectType,
+} from "../../shared/simulator";
+import type {
   AcceptanceKind,
   AttributeStatus,
   DeviceStatus,
@@ -596,3 +600,21 @@ export const fault = sqliteTable(
     ),
   ],
 );
+
+export const simulation = sqliteTable("Simulation", {
+  id: autoIncrementId(),
+  scenario: text().notNull(),
+  subjectType: text().$type<SimulationSubjectType>().notNull(),
+  subjectId: integer().notNull(),
+  params: json().$type<SimulationParams>().notNull().default({}),
+  createdAt: datetime().notNull(),
+});
+
+export const simulationChange = sqliteTable("SimulationChange", {
+  id: autoIncrementId(),
+  tableName: text().notNull(),
+  op: text().$type<"insert" | "update" | "delete">().notNull(),
+  rowId: integer().notNull(),
+  before: text(),
+  after: text(),
+});
