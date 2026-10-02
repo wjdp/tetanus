@@ -29,12 +29,17 @@ import {
 import { listDisks } from "~~/server/services/disks";
 import { syncFaults } from "~~/server/services/faults";
 import { getSettings, setAlertCursor } from "~~/server/services/settings";
+import { simulationActive } from "~~/server/services/simulator/capture";
 import { isDemo } from "~~/server/utils/demo";
 
 export type NotificationRow = typeof notification.$inferSelect;
 
 export const DEFAULT_NOTIFICATION_LIMIT = 50;
 const DEMO_SEND_ERROR = "Disabled in the demo";
+const SIMULATED_SEND: SendResult = {
+  ok: false,
+  error: "Not sent: a fault simulation is active",
+};
 export const RETRY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface AlertsPassSummary {
@@ -203,24 +208,24 @@ export async function runAlertsPass(
   if (channels.length === 0) return { ...summary, retried: 0 };
 
   const context = alertContext();
-  const retried = await retryFailed(
-    now,
-    config.notifications,
-    channels,
-    context,
-    fetchImpl,
-  );
+  const simulating = simulationActive();
+  const retried = simulating
+    ? 0
+    : await retryFailed(
+        now,
+        config.notifications,
+        channels,
+        context,
+        fetchImpl,
+      );
   const alerts = deriveAlerts(entries, context);
   summary.alerts = alerts.length;
   for (const alert of alerts) {
     for (const channel of channels) {
       if (hasBeenSent(alert.dedupeKey, channel)) continue;
-      const result = await sendToChannel(
-        channel,
-        config.notifications,
-        alert,
-        fetchImpl,
-      );
+      const result = simulating
+        ? SIMULATED_SEND
+        : await sendToChannel(channel, config.notifications, alert, fetchImpl);
       recordNotification(alert, channel, result, now);
       if (result.ok) summary.sent += 1;
       else summary.failed += 1;

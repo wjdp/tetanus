@@ -1,4 +1,4 @@
-import { asc, is, sql } from "drizzle-orm";
+import { asc, count, is, sql } from "drizzle-orm";
 import { getTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
 import { db } from "~~/server/database/client";
 import * as schema from "~~/server/database/schema";
@@ -60,6 +60,10 @@ function createTriggerSql(table: CapturedTable, op: (typeof OPS)[number]) {
   INSERT INTO "SimulationChange" ("tableName", "op", "rowId", "before", "after")
   VALUES (${literal(table.name)}, ${literal(op)}, ${row}.rowid, ${before}, ${after});
 END`;
+}
+
+export function simulationActive(): boolean {
+  return (db.select({ n: count() }).from(simulation).get()?.n ?? 0) > 0;
 }
 
 /** Starts logging every write to every table; idempotent. */

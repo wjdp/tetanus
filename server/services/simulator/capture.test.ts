@@ -1,5 +1,4 @@
 import { eq, sql } from "drizzle-orm";
-import { getTableConfig } from "drizzle-orm/sqlite-core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "~~/server/database/client";
 import * as schema from "~~/server/database/schema";
@@ -7,21 +6,10 @@ import { seed, tick } from "~~/server/demo/seed";
 import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
 import { addManualEntry } from "~~/server/services/diary";
 import { listDisks } from "~~/server/services/disks";
-import { rollBackCapture, schemaTables, startCapture } from "./capture";
+import { dumpDatabase } from "~~/test/db";
+import { rollBackCapture, startCapture } from "./capture";
 
 const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
-
-function dumpDatabase() {
-  return schemaTables()
-    .map((table) => getTableConfig(table).name)
-    .sort()
-    .map((name) => ({
-      name,
-      rows: db.all(
-        sql.raw(`SELECT rowid AS __rowid, * FROM "${name}" ORDER BY rowid`),
-      ),
-    }));
-}
 
 function triggerCount() {
   return (
