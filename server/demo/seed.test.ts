@@ -1,11 +1,13 @@
 import { count } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
+import { FAULT_STATES, type FaultKind } from "#shared/faults";
 import { isHostOffline } from "#shared/hostFreshness";
 import { db } from "~~/server/database/client";
 import { dataset, smartReading } from "~~/server/database/schema";
 import { listNotifications } from "~~/server/services/alerts/dispatch";
 import { listDiary } from "~~/server/services/diary";
 import { type DiskSummary, listDisks } from "~~/server/services/disks";
+import { listFaults } from "~~/server/services/faults";
 import { listHosts } from "~~/server/services/hosts";
 import { latestAttributes } from "~~/server/services/smart";
 import { listPools } from "~~/server/services/zfs/queries";
@@ -15,7 +17,7 @@ import { createWorld } from "./world";
 
 // A full replay takes over a minute; the short one keeps every story instant.
 const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
-const { stories } = createWorld(DEMO_EPOCH);
+const { stories, timeline } = createWorld(DEMO_EPOCH);
 
 let report: SeedReport;
 let disks: DiskSummary[];
@@ -33,6 +35,19 @@ const poolNamed = (hostName: string, name: string) =>
   listPools().find(
     (candidate) => candidate.host.name === hostName && candidate.name === name,
   );
+const allFaults = () => listFaults({ state: [...FAULT_STATES] });
+const faultOf = (kind: FaultKind, label: string, attrId?: string) => {
+  const found = allFaults().faults.filter(
+    (candidate) =>
+      candidate.kind === kind &&
+      candidate.subject.label === label &&
+      (attrId === undefined || candidate.data.attrId === attrId),
+  );
+  if (found.length !== 1) {
+    throw new Error(`${found.length} ${kind} faults on ${label}`);
+  }
+  return found[0];
+};
 const readingCount = () =>
   db.select({ n: count() }).from(smartReading).get()?.n ?? 0;
 
@@ -186,6 +201,88 @@ describe("seed", () => {
         .filter((entry) => entry.title.startsWith("missing"));
       expect(wentMissing).toEqual([]);
     }
+  });
+
+  describe("faults", () => {
+    it("counts four live, one accepted and six resolved", () => {
+      const { counts } = allFaults();
+      expect(counts).toEqual({
+        open: 2,
+        acknowledged: 2,
+        accepted: 1,
+        resolved: 6,
+      });
+      expect(
+        allFaults().faults.filter((row) => row.kind === "collector-silent"),
+      ).toEqual([]);
+    });
+
+    it("A7's acknowledgement was superseded, so its fault is open again", () => {
+      expect(faultOf("smart-attribute", "A7", "5")).toMatchObject({
+        state: "open",
+        severity: "error",
+      });
+    });
+
+    it("A12 is acknowledged and A3 accepted", () => {
+      expect(faultOf("smart-attribute", "A12", "197")).toMatchObject({
+        state: "acknowledged",
+        note: "Long self-test queued; watching it.",
+      });
+      expect(faultOf("smart-attribute", "A3", "197")).toMatchObject({
+        state: "accepted",
+      });
+    });
+
+    it("V5 went missing, then was acknowledged with a note", () => {
+      const [acknowledgement] = stories.seeds.faultActions;
+      const missing = faultOf("disk-missing", "V5");
+      expect(missing).toMatchObject({
+        state: "acknowledged",
+        note: "Pulled for RMA",
+        resolvedAt: null,
+        stateChangedAt: acknowledgement?.at.toISOString(),
+      });
+      expect(Date.parse(missing.openedAt)).toBeGreaterThan(
+        timeline.v5PulledAt.getTime(),
+      );
+      const events = listDiary({
+        subjectType: "disk",
+        subjectId: diskByAlias("V5").id,
+      }).map((entry) => entry.eventType);
+      expect(events).toContain("fault-opened");
+      expect(events).toContain("fault-state-changed");
+    });
+
+    it("V2 failed SMART health, then left service dead", () => {
+      const failed = faultOf("smart-health-failed", "V2");
+      expect(failed).toMatchObject({
+        state: "resolved",
+        openedAt: timeline.v2SmartFailedAt.toISOString(),
+      });
+      expect(Date.parse(failed.resolvedAt ?? "")).toBeGreaterThanOrEqual(
+        timeline.v2DeclaredDeadAt.getTime(),
+      );
+    });
+
+    it("vault was degraded until the resilver finished", () => {
+      expect(faultOf("pool-degraded", "vault")).toMatchObject({
+        state: "resolved",
+        openedAt: timeline.v2FaultedAt.toISOString(),
+        resolvedAt: timeline.vaultResilverEnd.toISOString(),
+      });
+    });
+
+    it("bench runs an outdated collector", () => {
+      expect(
+        listHosts().find((row) => row.name === "bench")?.collectorStatus,
+      ).toBe("outdated");
+      expect(faultOf("collector-outdated", "bench")).toMatchObject({
+        state: "open",
+        severity: "warning",
+        data: { version: "0.3.0" },
+      });
+    });
   });
 
   it("tick adds one reading per present disk an hour later, once", async () => {
