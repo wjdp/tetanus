@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Fault simulator
@@ -133,6 +133,23 @@ Events
   back (captured, so restore moves it forward)
 - ✱ Collector outdated: version [previous minor]; replays `versions` with that producer
 - ✱ Collector incompatible: version [below minimum]
+
+## Gaps found while building
+
+The simulator shows the app as it is; these scenarios show less than their label
+because of the product, not the simulator:
+
+- UDMA CRC errors: 199 is classed context, never fails, opens no fault.
+- Command timeouts: fail only above a 10 % failure rate; default raised to 120.
+- SSD wear-out at 98 %: NVMe fails only above 100, SATA wear attributes have no
+  thresholds; values change but nothing turns red.
+- Self-test failed: the row shows, but exit bit 7 feeds no status or fault.
+- smartctl exit 2 (device open failed): no identity in the output, so nothing changes.
+- Pool spares section is not parsed (INUSE/AVAIL invisible); `error_count` is not shown
+  on the pool page; no per-leaf resilvering marker.
+- Identity conflict lands on the older disk of the pair.
+- Collector silent also marks every disk on the host missing; see
+  [045](045-Silent-host-does-not-make-its-disks-missing.md).
 
 ## Steps
 
