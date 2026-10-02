@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Faults page
@@ -289,6 +289,21 @@ Each of these adds a kind entry and a detector when it lands; the page needs no 
 - Snooze until a date.
 - Alerts driven from fault transitions (see §Alerts).
 - Notifications on acknowledge or accept.
+
+## As built
+
+- Clear (back to `open`) is offered on every kind except `identity-conflict`.
+- Backfill also replays `fault-opened` / `fault-resolved` (keeps acknowledgements of
+  gap kinds across re-runs), `override-set` to `dead | retired | sold`, and
+  `collector-outdated` from `collector-status-changed`. Replayed rows for past
+  occurrences carry today's names (pool name); live rows are corrected by the final sync.
+- `smart-health-failed` writes no diary entry on open or resolve; its acknowledgement
+  does (`fault-state-changed`), as nothing else records it.
+- "No data for" counts from the newest successful run.
+- `NavigationEntry.badge` is a key (`"faults"`) the sidebar resolves, since
+  `NAVIGATION` is static. Banners and badge share one open-errors request.
+- Possible follow-up: store `severity` and `data` on `fault-*` diary entries so a
+  backfill can rebuild past rows exactly.
 
 ## Open questions
 
