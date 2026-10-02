@@ -7,9 +7,15 @@ status: todo
 
 Review of every ZFS failure mode against what tetanus detects, and the faults that
 should exist. Today only two ZFS kinds exist ([036](036-Faults-page.md)):
-`pool-degraded` (warning for `DEGRADED`) and `scan-errors`. A `FAULTED` leaf, leaf
-error counters and permanent data errors raise nothing of their own; a degraded pool is
-amber.
+`pool-degraded` and `scan-errors`. A `FAULTED` leaf raises nothing red, leaf error
+counters and permanent data errors raise nothing, and a scrub can be years old
+unnoticed.
+
+Principle: **no near-duplicates.** A pulled disk should not show `disk-missing`, a
+leaf `REMOVED` fault and `pool degraded`: three rows restating one observation. Faults
+that restate the same observation fold into one (§Folding). Faults that are different
+evidence stay separate even when related: a disk failing SMART and the pool it
+degrades are two faults.
 
 Absorbs the pool half of [017](017-Scrub-and-self-test-overdue.md) (scrub overdue);
 017 keeps the SMART self-test half.
@@ -18,158 +24,199 @@ Absorbs the pool half of [017](017-Scrub-and-self-test-overdue.md) (scrub overdu
 
 | condition | collected | stored | shown on `/zfs/:id` | fault |
 | --- | --- | --- | --- | --- |
-| pool `DEGRADED` / `OFFLINE` / `REMOVED` | yes | `Pool.state` | badge (amber) | `pool-degraded`, warning |
+| pool `DEGRADED` / `OFFLINE` / `REMOVED` | yes | `Pool.state` | badge (amber) | `pool-degraded`, warning: on the faults page, but not in the banner or nav badge (open errors only) |
 | pool `FAULTED` / `UNAVAIL` / `SUSPENDED` | yes | `Pool.state` | badge (red) | `pool-degraded`, error |
-| leaf `FAULTED` / `UNAVAIL` / `REMOVED` / `OFFLINE` | yes | `Vdev.state`, `VdevReading` | vdev table | none (only via pool state) |
+| leaf `FAULTED` / `UNAVAIL` / `REMOVED` / `OFFLINE` | yes | `Vdev.state`, `VdevReading` | vdev table | none of its own; only the pool's state |
 | cache / log / spare leaf failed, pool `ONLINE` | log, cache yes; spares no | partly | partly | none |
 | leaf read / write / checksum errors | yes | `Vdev.*Errors`, `VdevReading` (on change) | vdev table, current value only | none |
-| leaf slow I/Os | yes (`-s`) | `Vdev.slowIos` | vdev table | none |
+| leaf slow I/Os | yes (`-s`) | `Vdev.slowIos`, `VdevReading` | vdev table | none |
 | permanent data errors (`error_count`) | yes | `Pool.errors` | no | none |
+| damaged file list (`errlist`) | yes (collector is root) | not parsed | no | n/a |
+| status message id (`msgid`, `moreinfo`, e.g. `ZFS-8000-8A`) | yes | not parsed | no (status / action text only) | n/a |
 | scrub found unrepaired errors | yes | `Pool.scan.errors`, diary `scrub-finished` | scan panel (amber) | `scan-errors`, error |
-| scrub repaired data (`processed` > 0, errors 0) | yes | `Pool.scan.processed`, not in diary | no | none |
+| scrub repaired data (`processed` > 0) | yes | `Pool.scan.processed`, not in diary | no | none |
 | scrub cancelled | yes | `Pool.scan.state` | state text | none, no diary |
-| scrub overdue / never run | derivable | current scan only; history via diary | no | none |
-| first sighting of a finished scan | yes | `Pool.scan` | yes | none (no diary entry, so no `scan-errors`) |
+| scrub overdue / never run | derivable | current scan only; history in diary | no | none |
+| finished scan at first sighting | yes | `Pool.scan` | yes | none (no diary entry, so no `scan-errors`) |
 | pool vanishes (failed import, export) | absence | `Pool.lastSeenAt` | no | resolves its faults |
 | device removal (`removal_stats`) | yes | not parsed | no | n/a |
 | spares section (`AVAIL` / `INUSE` / `UNAVAIL`) | yes | not parsed (044 gaps) | no | none |
-| `zpool events` ereports (checksum, io, data, delay, deadman) | yes | `ZfsEvent` | class, eid, vdev guid | none |
-| `zed-event` | yes | `ZfsEvent` | as above | none |
+| `zpool events` / ZED ereports | yes | `ZfsEvent` | class, eid, raw vdev guid | none |
+
+## Folding
+
+Only where one fault restates another; the folded fault is not opened and its facts go
+in the remaining fault's `data`:
+
+1. `collector-silent` (host) suppresses everything on the host (as
+   [045](045-Silent-host-does-not-make-its-disks-missing.md)).
+2. `pool-missing` suppresses `pool-degraded`, `disk-missing` and leaf faults for its
+   member disks.
+3. `pool-degraded` suppresses `disk-missing` for disks whose leaf it lists, and
+   `leaf-errors` / `leaf-slow` for those leaves (their counters go in its data).
+4. `leaf-errors`, `leaf-slow`, `pool-data-errors`, `scrub-overdue`: independent.
+
+Not folded, because they are different evidence: SMART faults on a leaf's disk
+(the drive's own view, persistent), `pool-data-errors` (damaged data, not device
+state), `scrub-overdue`. A suppressed fault is not opened; one already live when its
+cause appears resolves (diary `fault-resolved` with `data.supersededBy`), and reopens as
+a new occurrence if the cause clears first.
 
 ## Proposed faults
 
 | kind | subject / key | trigger | severity | lifetime | actions |
 | --- | --- | --- | --- | --- | --- |
-| `pool-degraded` (changed) | pool / `poolId` | state ≠ `ONLINE` | **error** for every non-`ONLINE` state | transient | ack, accept, clear |
-| `leaf-state` (new) | pool / `poolId:vdevGuid` | leaf (disk / file, incl. log, cache, spare members) state ≠ `ONLINE`, spares ≠ `AVAIL`/`INUSE` | error: `FAULTED`, `UNAVAIL`, `REMOVED`; warning: `OFFLINE` | transient | ack, accept, clear |
-| `leaf-errors` (new) | pool / `poolId:vdevGuid` | any of R / W / C > 0 | error | until counters reset (`zpool clear`); ack level-based, reopens on rise | ack, accept, clear |
-| `pool-data-errors` (new) | pool / `poolId` | `Pool.errors` > 0 | error | until 0; reopens on rise | ack, clear |
-| `scan-errors` (changed) | pool / `poolId` | latest finished scan: errors > 0 → error; repaired bytes > 0 → warning | as left | until a clean scan | ack, clear |
-| `scrub-overdue` (new) | pool / `poolId` | no finished scrub within threshold (default 35 d), or none since first seen + threshold | warning | transient | ack, accept, clear |
-| `pool-vanished` (new, see Q2) | pool / `poolId` | pool absent from a fresh `zpool-status` on a reporting host | warning | until seen again or disposed | ack, accept, clear |
+| `pool-degraded` (broadened) | pool / `poolId` | pool ≠ `ONLINE`, or any leaf (incl. log, cache, special, spare) ≠ `ONLINE` (spares: ≠ `AVAIL`/`INUSE`) | worst `zfsStateColour` of pool and listed leaves: `DEGRADED` pool with `OFFLINE` leaf amber; any `FAULTED`, `UNAVAIL`, `SUSPENDED` red | transient | ack, accept, clear |
+| `pool-missing` (new) | pool / `poolId` | pool absent from a fresh `zpool-status` on a reporting host | warning | until seen again | ack, accept, clear |
+| `leaf-errors` (new) | pool / `poolId:vdevGuid` | `ONLINE` leaf with any of R / W / C > 0 | error | until counters reset (`zpool clear`); ack level-based, reopens on rise | ack, accept, clear |
+| `leaf-slow` (new) | pool / `poolId:vdevGuid` | slow I/Os rise ≥ pool threshold within 24 h | warning | until a 24 h window under threshold | ack, accept, clear |
+| `pool-data-errors` (replaces `scan-errors`) | pool / `poolId` | `Pool.errors` > 0, or latest finished scan `errors` > 0 | error | until both are 0 | ack, clear |
+| `scrub-overdue` (new) | pool / `poolId` | no finished scrub within the pool's interval (default 35 d); never-scrubbed pools count from `firstSeenAt` | warning | transient | ack, accept, clear |
 
-Not faults: resilver running (info, 037), spare `INUSE` (info; `leaf-state` on the
-failed leaf carries it), slow I/Os (shown only; see Q3), fragmentation, ereports
-(counters already cover them; shown in detail instead).
+Notes:
 
-`leaf-errors` data: `{ leaf, diskId, read, write, checksum, delta24h }` from
-`VdevReading`; title `A7 in tank: R 0 W 0 C 12, +4 in 24 h`. Level-based ack as
-[042](042-Acknowledge-faults.md): stores acknowledged totals, reopens when any rises.
-Store on the fault row (`data.acknowledgedAt`) rather than `FaultAcceptance`, which is
-SMART-keyed.
-
-`leaf-state` and `leaf-errors` link to the disk page when `Vdev.diskId` is set; subject
-stays the pool, since an `UNAVAIL` leaf often has no resolvable disk.
+- `pool-degraded` keeps its kind name; title from data: `Pool tank DEGRADED: K3
+  FAULTED` / `Pool zeta: cache C1 UNAVAIL` / `… K3 REMOVED (disk missing)`. Data:
+  `{ state, poolName, leaves: [{ vdevGuid, name, state, role, diskId, diskMissing,
+  read, write, checksum }] }`. Reopens an acknowledged or accepted row on a severity
+  rise (as today) **or a new leaf in the list**.
+- Pool badge colour unchanged: `DEGRADED` stays amber, red reserved for `FAULTED`,
+  `UNAVAIL`, `SUSPENDED`. A `FAULTED` leaf makes the fault red while the pool badge
+  stays amber.
+- Repaired-but-no-errors scrubs are not their own fault: repairs come from checksum
+  errors, which `leaf-errors` already raises on the leaf that caused them. Shown on the
+  scan panel.
+- `pool-data-errors` merges `scan-errors` and `error_count`, which describe the same
+  damaged data. Data migration renames live `scan-errors` rows; backfill maps old
+  scan entries to the new kind.
+- `leaf-errors` title `A7 in tank: R 0 W 0 C 12, +4 in 24 h` (delta from
+  `VdevReading`). Level-based ack as [042](042-Acknowledge-faults.md), stored on the
+  fault (`data.acknowledgedCounts`) since `FaultAcceptance` is SMART-keyed.
+- `pool-missing` for a deliberate export: accept. It stays accepted until the pool is
+  seen again; no forget-pool action in this task.
+- Not faults: resilver running (info, 037), spare `INUSE` (listed in `pool-degraded`),
+  fragmentation, ereports (counters cover them; shown in detail).
 
 ## Changes
 
-### Severity
+### Per-pool config
 
-- `ZFS_STATE_COLOUR.DEGRADED` → `error`. `OFFLINE` and `REMOVED` stay warning as leaf
-  colours (administrative / transient), but pool-level any non-`ONLINE` is an error.
-  `poolSeverity` returns error unconditionally; drop the `zfsStateColour` dependency.
-- 037 ZFS state and scan tables updated; `scan-errors` with unrepaired errors red, not
-  amber, on the scan panel.
+`Pool.config` json (zod schema in `shared/schemas/pools.ts`): `scrubIntervalDays`
+(default 35, 0 disables), `slowIoThreshold` (default 10 per 24 h, 0 disables). Edited
+on the pool page (settings popover in the header). `PATCH /api/pools/:id/config`.
+Defaults in `shared/` so client and server agree.
 
 ### Ingest / parse (`server/ingest/zpool-status.ts`)
 
-- Parse `spares` (and check `l2cache`) under `--json-flat-vdevs`; spares get
-  `type: "spare"` leaves with `AVAIL` / `INUSE` / `UNAVAIL`.
-- Parse `removal_stats` (state, vdev, copied, to_copy, end time, mapping memory) to
+- Parse spares (and check `l2cache`) under `--json-flat-vdevs`; spare leaves get
+  `AVAIL` / `INUSE` / `UNAVAIL`. Capture a fixture from a pool with a spare (file-backed
+  pool on mars is enough).
+- Parse `errlist` to `Pool.damagedFiles` (string array, capped at 100; a string value
+  such as `"Permission denied"` stored as `damagedFilesError`). Fixtures
+  `test/fixtures/mars/zpool-status-errlist.json` (root) and
+  `zpool-status-errlist-unprivileged.json`, from the author's `tfault` test pool (file
+  vdev, `error_count` 1, cksum 6, scrub `errors` 1).
+- Parse `msgid` and `moreinfo` to `Pool.msgid`, `Pool.moreinfo`.
+- Parse `removal_stats` (state, vdev, copied, to_copy, start / end, mapping memory) to
   `Pool.removal` json.
-- Keep `scan.processed` (already parsed) in diary `*-finished` data as `repairedBytes`.
+- Diary `*-finished` data gains `repairedBytes` (`processed`), `startTime`.
 - Diary `scrub-cancelled` on transition to `CANCELED`.
-- First sighting with a finished scan writes the `*-finished` entry, so `scan-errors`
-  and overdue work for pools tetanus has just met.
+- First sighting with a finished scan writes its `*-finished` entry.
 
 ### Data
 
-- `Pool.lastScrubAt`, `Pool.lastScrubErrors`, `Pool.lastScrubRepaired`: updated when a
-  `SCRUB` finishes, so a later resilver replacing `Pool.scan` does not lose them.
-  Migration `pool_last_scrub`.
-- `Pool.scrubIntervalDays` nullable override (null → setting default 35; 0 disables).
-- Diary `leaf-errors-changed` on 0 → n and on rise (one per ingest, not per counter),
-  `data: { vdevGuid, from, to }`; `pool-data-errors-changed` likewise. Feeds alerts and
-  backfill.
+- `Pool.damagedFiles` json, `damagedFilesError`, `msgid`, `moreinfo`.
+- `Pool.lastScrub` json `{ endAt, errors, repairedBytes, durationS }`, written when a
+  `SCRUB` finishes, so a resilver replacing `Pool.scan` keeps it.
+- `Pool.config`, `Pool.removal`.
+- One migration `pool_scrub_config_removal`; data step renames `scan-errors` →
+  `pool-data-errors` in `Fault` and `scan-errors` alert rule references.
+- Diary `leaf-errors-changed` on 0 → n and on rise (one per leaf per ingest, data
+  `{ poolId, vdevGuid, from, to }`); `pool-data-errors-changed` likewise. Feed alerts
+  and backfill.
 
 ### Faults (`server/services/faults.ts`, `shared/faults.ts`)
 
-- Detectors over `currentPools()` plus their present leaves.
-- Kind definitions as table above; `FAULT_KINDS` order: pool kinds together.
-- Backfill replay: `vdev-state-changed` → `leaf-state`; `leaf-errors-changed` →
-  `leaf-errors`; scan entries with `repairedBytes`. Gaps start at final sync.
+- Detectors run in cause order and pass a suppression set down (host → pool → leaf /
+  disk). `disk-missing` detector consults it; that also fixes the triple fault for a
+  pulled pool disk.
+- Kind definitions per the table; `scan-errors` removed from `FAULT_KINDS`.
+- Reopen rule for `pool-degraded` extended to leaf set growth.
+- Backfill: `vdev-state-changed` into `pool-degraded` leaves; `leaf-errors-changed`
+  → `leaf-errors`; `pool-missing` has no trail (gap, starts at final sync).
 
 ### Alerts (`server/services/alerts/rules.ts`)
 
-- `pool-degraded` rule severity follows fault severity (now always alert).
-- New rules: `leaf-faulted` (`vdev-state-changed` to a bad state), `leaf-errors`
-  (`leaf-errors-changed`), `pool-data-errors`, `scrub-overdue` (on fault open).
-- Update the rule ↔ kind mapping test.
+- `pool-degraded`: also fires on `vdev-state-changed` to a bad state when the pool stays
+  `ONLINE` (cache / spare / log).
+- New: `leaf-errors`, `pool-data-errors` (replaces `scan-errors`), `pool-missing`,
+  `scrub-overdue`, `leaf-slow` (notice severity).
+- Rule ↔ kind mapping test updated.
 
 ### Pool page (`app/pages/zfs/[id].vue`)
 
-Collected but not shown today, to add:
+Collected but not shown today:
 
-- `Pool.errors`: "Data errors: N" in header, red when > 0.
-- Scan panel: repaired bytes, duration, last scrub (from `lastScrubAt`) separate from
-  current scan, "overdue" warning text, cancelled state.
+- Live faults for the pool above the panels (faults list filtered by subject).
+- `Pool.errors`: "Data errors N" in the header, red when > 0, with the damaged file
+  list (collapsed past 10).
+- `msgid` as a link to `moreinfo` beside the status text.
+- Scan panel: repaired bytes, duration, last scrub (from `lastScrub`) beside the
+  current scan, "Scrub overdue" warning text with the interval, cancelled state.
 - Removal panel when `Pool.removal` present (the `remove:` block).
-- Vdev table: path / devid on hover, per-vdev alloc / size / frag (stored, unused),
-  spares rows.
-- Error counter history from `VdevReading`: sparkline or expandable row per leaf.
-- Events tab: resolve `vdevGuid` to leaf name / disk; expand row to `payload`
-  (`zio_err`, `zio_offset`, `vdev_path`, delay ms).
-- Live faults for the pool at the top (reuse faults list component, filter
-  `subject`).
+- Vdev table: spares rows; path / devid / phys path on hover; per-vdev alloc / size /
+  frag (stored, unused); slow I/Os amber over threshold.
+- Error and slow I/O history per leaf from `VdevReading` (expandable row with a small
+  chart).
+- Events tab: resolve `vdevGuid` to leaf name and disk link; expand a row to its
+  `payload` (`zio_err`, `zio_offset`, `vdev_path`, delay).
+- Config popover (§Per-pool config).
 
 ### Simulator
 
-Each 044 pool scenario now opens a fault; tests assert it:
+Each 044 pool scenario asserts its single fault:
 
 | scenario | fault |
 | --- | --- |
-| leaf fails | `pool-degraded` error + `leaf-state` |
-| pool suspended | `pool-degraded` error |
-| spare in use | `pool-degraded` + `leaf-state` (failed leaf) |
-| scrub found errors | `scan-errors` error |
+| leaf fails `FAULTED` / `UNAVAIL` | `pool-degraded` red, leaf listed |
+| leaf fails `OFFLINE` / `REMOVED` | `pool-degraded` amber |
+| pool suspended | `pool-degraded` red |
+| spare in use | `pool-degraded`, failed leaf and `INUSE` spare listed |
+| scrub found errors | `pool-data-errors` |
 | checksum errors on a leaf | `leaf-errors` |
 | permanent errors | `pool-data-errors` |
 | scrub overdue | `scrub-overdue` |
-| error burst | none (events only); counters scenario covers it |
+| error burst | none (events only) |
 
-New scenario: scrub repaired data, no errors → `scan-errors` warning.
+New scenarios: cache device fails on an `ONLINE` pool (`pool-degraded`); pool vanishes
+(`pool-missing`); slow I/Os (`leaf-slow`); pulled disk (`pool-degraded` only, no
+`disk-missing`).
 
 ### Demo
 
-Seed: one leaf with checksum errors acknowledged at 12; one pool with a scrub overdue;
-vault `DEGRADED` story now red.
+Seed: a leaf with checksum errors acknowledged at 12; a pool with a scrub overdue;
+vault `DEGRADED` story lists its leaf.
+
+### Docs on landing
+
+037 ZFS state (fault severity vs badge colour) and scan tables; 036 kinds table and
+future kinds (017 scrub row); 044 gaps; 017 pool half done.
 
 ## Steps
 
-1. Severity change (`ZFS_STATE_COLOUR`, `poolSeverity`), 037 update, tests.
-2. Parser: spares, `removal_stats`; fixtures from simulator payloads where none
-   captured.
-3. Migration `pool_last_scrub`; topology writes last scrub, first-sighting scan entry,
-   `scrub-cancelled`, `leaf-errors-changed`, `pool-data-errors-changed`.
-4. Fault kinds and detectors: `leaf-state`, `leaf-errors`, `pool-data-errors`,
-   `scan-errors` repaired, `scrub-overdue`; backfill; tests.
-5. Alert rules and mapping test.
-6. Pool page additions; component tests.
-7. Simulator assertions and new scenario; demo seed.
-8. Mark 017 pool half done; 044 gaps updated.
+1. Parser: spares, `removal_stats`; fixtures.
+2. Migration: `Pool.lastScrub`, `config`, `removal`; `scan-errors` rename.
+3. Topology: last scrub, first-sighting scan entry, `scrub-cancelled`,
+   `leaf-errors-changed`, `pool-data-errors-changed`.
+4. Folding in sync; `disk-missing` suppression; tests.
+5. Kinds: broadened `pool-degraded`, `pool-missing`, `leaf-errors`, `leaf-slow`,
+   `pool-data-errors`, `scrub-overdue`; backfill; tests.
+6. Pool config API and popover.
+7. Alert rules and mapping test.
+8. Pool page additions; component tests.
+9. Simulator assertions and new scenarios; demo seed; docs.
 
-## Unanswered questions
+## Open questions
 
-1. `leaf-state` and `leaf-errors` subject: pool (proposed, works for unresolvable
-   leaves) or disk (shows on the disk page, follows the disk across pools)?
-2. `pool-vanished`: wanted? A failed import looks the same as a deliberate
-   `zpool export`; accept would cover the export case.
-3. Slow I/Os: fault (warning above N per day) or display only?
-4. A pulled disk gives `disk-missing` + `leaf-state` + `pool-degraded`, three red
-   faults for one event. Fine, or nest `leaf-state` under `pool-degraded` (one fault,
-   leaves listed in data)? Nesting loses cache / spare failures on an `ONLINE` pool.
-5. `leaf-errors` threshold: any non-zero (proposed), or let a single historic checksum
-   error be accepted and only rises reopen? (Accept covers this.)
-6. Scrub overdue default 35 d OK? Per-pool override in pool page or settings page?
-7. Does `zpool status -j -v` include the permanent-error file list on our OpenZFS
-   version? If so, parse and show it.
+None. Decided 2026-10-02: `-j -v` carries `errlist` (key present on `tfault`), so parse it (array of paths as root, the string `"Permission denied"` otherwise); `pool-missing` warning; slow I/O default 10 per 24 h, tune once
+mars has data; SMART faults stay separate from pool faults.
