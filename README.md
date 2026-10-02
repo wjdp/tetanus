@@ -18,6 +18,10 @@ Node 24 and pnpm 12. `pnpm install`, then:
 
 The demo fleet is three hosts: `atlas` (main NAS: `tank` of two six-wide raidz2 vdevs plus a special mirror, an `rpool` mirror and a single-NVMe `scratch`), `styx` (backup box: `vault` raidz1 with replicas of tank's datasets) and `pip` (mini PC: NVMe `rpool` mirror and a LUKS/ext4 disk outside ZFS). Stories to look at: A3's pending sectors accepted, A7's reallocated sectors climbing with checksum errors, V2 failed and replaced by V6, `tank` mid-scrub, P1 near the end of its rated endurance, V5 (vault's hot spare) pulled and missing, three sold/retired/dead disks in the inventory, and a few alert notifications in Settings › Alerts.
 
+### Fault simulator
+
+In dev and the demo, the disk page, pool page and hosts table have a "Simulate fault" menu (flask icon) that injects a fake fault through the real ingest path: pending sectors, SMART health failed, a degraded pool, a silent collector and so on. Scenarios with parameters open a form with defaults; Enter runs them. While a simulation is active every database write is logged, and Restore (in the menu or the banner) rolls the whole database back to before the first simulation, including anything else that changed since. Alerts are recorded but not sent meanwhile. Elsewhere it is off; `NUXT_PUBLIC_FAULT_SIMULATOR=true` turns it on, but only on a database you can afford to roll back. See [044](docs/044-Fault-simulator.md).
+
 ### Cloudflare demo
 
 The public demo runs the same app in a Durable Object (see [034](docs/034-Cloudflare-Workers-demo.md)), reseeded daily at 04:15 UTC and ticked hourly.
