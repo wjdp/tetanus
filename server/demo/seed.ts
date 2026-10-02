@@ -20,6 +20,7 @@ import {
   PRESENT_WINDOW_MS,
   updateDisk,
 } from "~~/server/services/disks";
+import { syncFaults } from "~~/server/services/faults";
 import { reorderHosts, updateHost } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import { ensureSettings, setAlertCursor } from "~~/server/services/settings";
@@ -448,7 +449,7 @@ function insertStoryNotifications(world: DemoWorld): number {
 async function applyFinishingTouches(world: DemoWorld, now: Date) {
   const { fleet, stories } = world;
   const { seeds } = stories;
-  await listDisks(now);
+  await syncFaults(now, await listDisks(now));
   for (const host of fleet.hosts) {
     updateHost(hostIdOf(host.name), {
       displayName: seeds.hostDisplayNames[host.name],
@@ -544,7 +545,7 @@ export async function* seedSteps(
       );
       markIntermittentOnFirstRun(host);
     }
-    await listDisks(instant.at);
+    await syncFaults(instant.at, await listDisks(instant.at));
     yield { done: index + 1, total, at: instant.at };
   }
   await applyActionsUntil(lastHour);
@@ -611,7 +612,7 @@ export async function tick(now: Date): Promise<TickReport> {
     }
     ingest(host, () => hostPayloadsAt(world, host, at, "all", true), at);
   }
-  await listDisks(at);
+  await syncFaults(at, await listDisks(at));
   return { at, ingests: tally(), failures, skipped };
 }
 
