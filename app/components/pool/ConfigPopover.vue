@@ -14,15 +14,15 @@ const emit = defineEmits<{ saved: [] }>();
 const open = ref(false);
 const saving = ref(false);
 // An empty input is the default; `v-model.number` leaves it as "".
-const draft = reactive<Record<ConfigKey, number | "" | null>>({
-  scrubIntervalDays: null,
-  slowIoThreshold: null,
+const draft = reactive<Record<ConfigKey, number | "">>({
+  scrubIntervalDays: "",
+  slowIoThreshold: "",
 });
 const toast = useToast();
 
 const fillDraft = () => {
-  draft.scrubIntervalDays = props.config?.scrubIntervalDays ?? null;
-  draft.slowIoThreshold = props.config?.slowIoThreshold ?? null;
+  draft.scrubIntervalDays = props.config?.scrubIntervalDays ?? "";
+  draft.slowIoThreshold = props.config?.slowIoThreshold ?? "";
 };
 
 watch(open, (isOpen) => {
@@ -47,8 +47,7 @@ const FIELDS = [
   description: string;
 }[];
 
-const isDefault = (key: ConfigKey) =>
-  draft[key] === null || draft[key] === "";
+const isDefault = (key: ConfigKey) => draft[key] === "";
 
 const patchValue = (key: ConfigKey) =>
   isDefault(key) ? null : Number(draft[key]);
@@ -115,7 +114,7 @@ const save = async () => {
                 :aria-label="`Use the default ${field.label.toLowerCase()}`"
                 title="Use default"
                 :data-testid="`pool-config-default-${field.key}`"
-                @click="draft[field.key] = null"
+                @click="draft[field.key] = ''"
               />
             </template>
           </UInput>
