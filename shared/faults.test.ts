@@ -8,7 +8,9 @@ import {
 } from "#shared/faults";
 
 type AlertingRule = {
-  [Rule in AlertRule]: (typeof ALERT_RULES)[Rule]["severity"] extends "alert"
+  [Rule in AlertRule]: (typeof ALERT_RULES)[Rule]["severity"] extends
+    | "alert"
+    | "notice"
     ? Rule
     : never;
 }[AlertRule];
@@ -24,7 +26,11 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "disk-failed": null,
   "disk-missing": "disk-missing",
   "pool-degraded": "pool-degraded",
-  "scan-errors": "scan-errors",
+  "pool-missing": "pool-missing",
+  "pool-data-errors": "pool-data-errors",
+  "leaf-errors": "leaf-errors",
+  "leaf-slow": "leaf-slow",
+  "scrub-overdue": "scrub-overdue",
   "identity-conflict": "identity-conflict",
   "collector-incompatible": "collector-incompatible",
 };
@@ -40,7 +46,7 @@ const now = Date.parse("2026-09-10T10:00:00Z");
 describe("alert rules and fault kinds", () => {
   it("maps every alerting rule", () => {
     const alerting = Object.entries(ALERT_RULES)
-      .filter(([, rule]) => rule.severity === "alert")
+      .filter(([, rule]) => rule.severity !== "recovery")
       .map(([name]) => name);
     expect(Object.keys(FAULT_KIND_OF_ALERT_RULE).sort()).toEqual(
       alerting.sort(),
@@ -79,9 +85,77 @@ describe("faultTitle", () => {
       "Pool vault DEGRADED",
     ],
     [
-      "scan-errors",
-      { poolName: "vault", function: "SCRUB", errors: 1 },
-      "Pool vault scrub found 1 error",
+      "pool-degraded",
+      {
+        poolName: "tank",
+        state: "DEGRADED",
+        leaves: [
+          { name: "/dev/disk/by-vdev/K3", role: "normal", state: "FAULTED" },
+        ],
+      },
+      "Pool tank DEGRADED: K3 FAULTED",
+    ],
+    [
+      "pool-degraded",
+      {
+        poolName: "zeta",
+        state: "ONLINE",
+        leaves: [{ name: "C1", role: "cache", state: "UNAVAIL" }],
+      },
+      "Pool zeta: cache C1 UNAVAIL",
+    ],
+    [
+      "pool-degraded",
+      {
+        poolName: "tank",
+        state: "DEGRADED",
+        leaves: [
+          { name: "K3", role: "normal", state: "REMOVED", diskMissing: true },
+        ],
+      },
+      "Pool tank DEGRADED: K3 REMOVED (disk missing)",
+    ],
+    [
+      "pool-missing",
+      { poolName: "tank", lastSeenAt: "2026-09-07T10:00:00Z" },
+      "Pool tank missing, last seen 3 d ago",
+    ],
+    [
+      "leaf-errors",
+      {
+        poolName: "tank",
+        name: "A7",
+        read: 0,
+        write: 0,
+        checksum: 12,
+        rise24h: 4,
+      },
+      "A7 in tank: R 0 W 0 C 12, +4 in 24 h",
+    ],
+    [
+      "leaf-slow",
+      { poolName: "tank", name: "A7", rise24h: 14 },
+      "A7 in tank: 14 slow I/Os in 24 h",
+    ],
+    [
+      "pool-data-errors",
+      { poolName: "vault", function: "SCRUB", scanErrors: 1, dataErrors: 0 },
+      "Pool vault: scrub found 1 error",
+    ],
+    [
+      "pool-data-errors",
+      { poolName: "vault", scanErrors: 0, dataErrors: 3 },
+      "Pool vault: 3 data errors",
+    ],
+    [
+      "scrub-overdue",
+      { poolName: "tank", lastScrubAt: "2026-07-20T10:00:00Z" },
+      "Pool tank last scrubbed 52 d ago",
+    ],
+    [
+      "scrub-overdue",
+      { poolName: "tank", lastScrubAt: null },
+      "Pool tank never scrubbed",
     ],
     [
       "collector-silent",
@@ -128,5 +202,8 @@ describe("allowedActions", () => {
     expect(
       allowedActions({ kind: "identity-conflict", state: "open" }),
     ).toEqual(["acknowledge"]);
+    expect(
+      allowedActions({ kind: "leaf-errors", state: "acknowledged" }),
+    ).toEqual(["accept", "clear", "resolve"]);
   });
 });

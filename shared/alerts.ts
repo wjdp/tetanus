@@ -1,4 +1,4 @@
-export const ALERT_SEVERITIES = ["alert", "recovery"] as const;
+export const ALERT_SEVERITIES = ["alert", "notice", "recovery"] as const;
 export type AlertSeverity = (typeof ALERT_SEVERITIES)[number];
 
 export const ALERT_RULES = {
@@ -17,7 +17,11 @@ export const ALERT_RULES = {
   "disk-reappeared": { label: "Disk reappeared", severity: "recovery" },
   "pool-degraded": { label: "Pool degraded", severity: "alert" },
   "pool-recovered": { label: "Pool recovered", severity: "recovery" },
-  "scan-errors": { label: "Scan found errors", severity: "alert" },
+  "pool-missing": { label: "Pool missing", severity: "alert" },
+  "pool-data-errors": { label: "Pool data errors", severity: "alert" },
+  "leaf-errors": { label: "Device errors", severity: "alert" },
+  "leaf-slow": { label: "Slow I/Os", severity: "notice" },
+  "scrub-overdue": { label: "Scrub overdue", severity: "alert" },
   "identity-conflict": { label: "Disk identity conflict", severity: "alert" },
   "collector-incompatible": {
     label: "Collector incompatible",

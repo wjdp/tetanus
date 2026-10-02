@@ -67,6 +67,18 @@ describe("sendPushover", () => {
     ).toBe("0");
   });
 
+  it("sends notices quietly", async () => {
+    const fetchMock = fakeFetch(() => Response.json({ status: 1 }));
+    await sendPushover(
+      config,
+      { ...notification, severity: "notice" },
+      fetchMock,
+    );
+    expect(
+      (lastCall(fetchMock).init.body as URLSearchParams).get("priority"),
+    ).toBe("-1");
+  });
+
   it("reports the HTTP status and body of a rejection", async () => {
     const fetchMock = fakeFetch(
       () => new Response('{"errors":["user key is invalid"]}', { status: 400 }),

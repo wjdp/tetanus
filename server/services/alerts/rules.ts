@@ -47,6 +47,7 @@ interface Match {
   rule: AlertRule;
   value: string;
   detail: string;
+  subject?: { type: DiarySubjectType; id: number };
 }
 
 type Data = Record<string, unknown>;
@@ -140,6 +141,23 @@ function matchDiskEntry(
   }
 }
 
+// Kinds whose condition has no diary event of its own: they alert when the
+// fault opens.
+const FAULT_OPENED_RULES = new Set<AlertRule>([
+  "pool-missing",
+  "scrub-overdue",
+  "leaf-slow",
+]);
+
+function isFaultOpenedRule(kind: unknown): kind is AlertRule {
+  return FAULT_OPENED_RULES.has(kind as AlertRule);
+}
+
+function counts(value: unknown) {
+  const { read, write, checksum } = (value ?? {}) as Data;
+  return `${text(read)}/${text(write)}/${text(checksum)}`;
+}
+
 function matchPoolEntry(entry: DiaryEntryRow, data: Data): Match | null {
   const { from, to } = data;
   switch (entry.eventType) {
@@ -150,18 +168,55 @@ function matchPoolEntry(entry: DiaryEntryRow, data: Data): Match | null {
         detail: `${text(to)} (was ${text(from)})`,
       };
     case "scrub-finished":
-    case "resilver-finished": {
+    case "resilver-finished":
+    case "scan-finished": {
       const errors = Number(data.errors);
       if (!(errors > 0)) return null;
       return {
-        rule: "scan-errors",
-        value: String(errors),
+        rule: "pool-data-errors",
+        value: `scan:${errors}`,
         detail: `${text(data.function).toLowerCase()} finished with ${plural(errors, "error")}`,
       };
     }
+    case "pool-data-errors-changed":
+      return {
+        rule: "pool-data-errors",
+        value: `data:${text(to)}`,
+        detail: `${plural(Number(to), "data error")} (was ${text(from)})`,
+      };
+    case "leaf-errors-changed":
+      return {
+        rule: "leaf-errors",
+        value: `${text(data.vdevGuid)}:${counts(to)}`,
+        detail: entry.title,
+      };
+    case "fault-opened":
+      if (!isFaultOpenedRule(data.kind)) return null;
+      return {
+        rule: data.kind,
+        value: text(data.key),
+        detail: entry.title.replace(/^fault: /, ""),
+      };
     default:
       return null;
   }
+}
+
+const HEALTHY_VDEV_STATES = new Set(["ONLINE", "AVAIL"]);
+
+// A pool that goes non-ONLINE alerts through pool-state-changed; a failed
+// log, cache or spare leaves the pool ONLINE and alerts here, on the pool.
+function matchVdevEntry(entry: DiaryEntryRow, data: Data): Match | null {
+  if (entry.eventType !== "vdev-state-changed") return null;
+  const poolId = Number(data.poolId);
+  if (!Number.isInteger(poolId) || data.poolState !== "ONLINE") return null;
+  if (HEALTHY_VDEV_STATES.has(text(data.to))) return null;
+  return {
+    rule: "pool-degraded",
+    value: `${entry.subjectId}:${text(data.to)}`,
+    detail: entry.title,
+    subject: { type: "pool", id: poolId },
+  };
 }
 
 function matchHostEntry(entry: DiaryEntryRow, data: Data): Match | null {
@@ -198,15 +253,15 @@ export function diskLabel(
 }
 
 function describeSubject(
-  entry: DiaryEntryRow,
+  subjectType: DiarySubjectType,
   subjectId: number,
   context: AlertContext,
 ) {
-  if (entry.subjectType === "host") {
+  if (subjectType === "host") {
     const hostName = context.host(subjectId)?.name ?? `host ${subjectId}`;
     return { host: hostName, subject: withHost(hostName, "collector") };
   }
-  if (entry.subjectType === "pool") {
+  if (subjectType === "pool") {
     const found = context.pool(subjectId);
     const hostName = found?.hostName ?? null;
     return {
@@ -232,6 +287,7 @@ function matchEntry(
   }
   if (entry.subjectType === "pool") return matchPoolEntry(entry, entry.data);
   if (entry.subjectType === "host") return matchHostEntry(entry, entry.data);
+  if (entry.subjectType === "vdev") return matchVdevEntry(entry, entry.data);
   return null;
 }
 
@@ -243,24 +299,22 @@ export function deriveAlert(
   const match = matchEntry(entry, entry.subjectId, context);
   if (!match) return null;
   const { label: title, severity } = ALERT_RULES[match.rule];
-  const { host, subject } = describeSubject(entry, entry.subjectId, context);
+  const subjectType = match.subject?.type ?? entry.subjectType;
+  const subjectId = match.subject?.id ?? entry.subjectId;
+  const { host, subject } = describeSubject(subjectType, subjectId, context);
   return {
     rule: match.rule,
     severity,
-    subjectType: entry.subjectType,
-    subjectId: entry.subjectId,
+    subjectType,
+    subjectId,
     host,
     subject,
     title,
     message: `${subject}: ${match.detail}`,
     at: entry.at,
-    dedupeKey: [
-      match.rule,
-      entry.subjectType,
-      entry.subjectId,
-      match.value,
-      entry.id,
-    ].join(":"),
+    dedupeKey: [match.rule, subjectType, subjectId, match.value, entry.id].join(
+      ":",
+    ),
     diaryEntryId: entry.id,
   };
 }

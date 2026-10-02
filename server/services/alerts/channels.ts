@@ -67,8 +67,15 @@ async function post(
   }
 }
 
+const PUSHOVER_PRIORITY: Record<NotificationSeverity, number> = {
+  alert: 1,
+  notice: -1,
+  recovery: 0,
+  test: 0,
+};
+
 export function pushoverPriority(severity: NotificationSeverity) {
-  return severity === "alert" ? 1 : 0;
+  return PUSHOVER_PRIORITY[severity];
 }
 
 export function sendPushover(

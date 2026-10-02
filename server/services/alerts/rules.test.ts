@@ -30,6 +30,13 @@ function entry(
 const poolEntry = (eventType: string, data: Record<string, unknown>) =>
   entry(eventType, data, { subjectType: "pool", subjectId: 5 });
 
+const vdevEntry = (data: Record<string, unknown>) =>
+  entry("vdev-state-changed", data, {
+    subjectType: "vdev",
+    subjectId: 11,
+    title: "C1 UNAVAIL (was ONLINE)",
+  });
+
 const hostEntry = (from: string, to: string, version = "0.2.0") =>
   entry(
     "collector-status-changed",
@@ -123,14 +130,60 @@ describe("deriveAlert", () => {
     [
       "scrub errors",
       poolEntry("scrub-finished", { function: "SCRUB", errors: 3 }),
-      "scan-errors",
-      "3",
+      "pool-data-errors",
+      "scan:3",
     ],
     [
       "resilver errors",
       poolEntry("resilver-finished", { function: "RESILVER", errors: 1 }),
-      "scan-errors",
-      "1",
+      "pool-data-errors",
+      "scan:1",
+    ],
+    [
+      "permanent data errors",
+      poolEntry("pool-data-errors-changed", { from: 0, to: 2 }),
+      "pool-data-errors",
+      "data:2",
+    ],
+    [
+      "leaf errors",
+      poolEntry("leaf-errors-changed", {
+        vdevGuid: "77",
+        from: { read: 0, write: 0, checksum: 0 },
+        to: { read: 0, write: 0, checksum: 12 },
+      }),
+      "leaf-errors",
+      "77:0/0/12",
+    ],
+    [
+      "a missing pool",
+      poolEntry("fault-opened", {
+        faultId: 1,
+        kind: "pool-missing",
+        key: "5",
+      }),
+      "pool-missing",
+      "5",
+    ],
+    [
+      "an overdue scrub",
+      poolEntry("fault-opened", {
+        faultId: 2,
+        kind: "scrub-overdue",
+        key: "5",
+      }),
+      "scrub-overdue",
+      "5",
+    ],
+    [
+      "slow I/Os",
+      poolEntry("fault-opened", {
+        faultId: 3,
+        kind: "leaf-slow",
+        key: "5:77",
+      }),
+      "leaf-slow",
+      "5:77",
     ],
     [
       "identity conflict",
@@ -212,6 +265,45 @@ describe("deriveAlert", () => {
       "a clean scrub",
       poolEntry("scrub-finished", { function: "SCRUB", errors: 0 }),
     ],
+    [
+      "a fault opening that has its own alert",
+      poolEntry("fault-opened", {
+        faultId: 4,
+        kind: "pool-degraded",
+        key: "5",
+      }),
+    ],
+    [
+      "a leaf failing while the pool degrades (pool-state-changed alerts)",
+      vdevEntry({
+        poolId: 5,
+        poolState: "DEGRADED",
+        from: "ONLINE",
+        to: "FAULTED",
+      }),
+    ],
+    [
+      "a spare going into use",
+      vdevEntry({
+        poolId: 5,
+        poolState: "ONLINE",
+        from: "AVAIL",
+        to: "ONLINE",
+      }),
+    ],
+    [
+      "a spare coming back available",
+      vdevEntry({
+        poolId: 5,
+        poolState: "ONLINE",
+        from: "ONLINE",
+        to: "AVAIL",
+      }),
+    ],
+    [
+      "a vdev entry from before pool state was recorded",
+      vdevEntry({ poolId: 5, from: "ONLINE", to: "UNAVAIL" }),
+    ],
     ["a collector going out of date", hostEntry("current", "outdated")],
     ["a collector upgraded to current", hostEntry("outdated", "current")],
     ["an unrelated event", entry("disk-appeared", {})],
@@ -273,6 +365,41 @@ describe("deriveAlert", () => {
       subject: "mars · tank",
       message: "mars · tank: scrub finished with 1 error",
     });
+  });
+
+  it("raises pool-degraded on the pool when a cache leaf fails on an ONLINE pool", () => {
+    expect(
+      deriveAlert(
+        vdevEntry({
+          poolId: 5,
+          poolState: "ONLINE",
+          from: "ONLINE",
+          to: "UNAVAIL",
+        }),
+        context,
+      ),
+    ).toMatchObject({
+      rule: "pool-degraded",
+      severity: "alert",
+      subjectType: "pool",
+      subjectId: 5,
+      subject: "mars · tank",
+      message: "mars · tank: C1 UNAVAIL (was ONLINE)",
+      dedupeKey: "pool-degraded:pool:5:11:UNAVAIL:7",
+    });
+  });
+
+  it("sends slow I/Os as a notice", () => {
+    expect(
+      deriveAlert(
+        poolEntry("fault-opened", {
+          faultId: 3,
+          kind: "leaf-slow",
+          key: "5:77",
+        }),
+        context,
+      )?.severity,
+    ).toBe("notice");
   });
 
   it("marks recoveries", () => {
