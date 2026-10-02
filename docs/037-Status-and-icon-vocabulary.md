@@ -65,6 +65,9 @@ neutral, `improving` success. Text only, no dot (`attributeTrendColour`).
 Icon per state. The icon is the state's identity in rail group headers, the Disks table
 state column, the disk page badge, and diary `state-changed` entries. Override shown as
 the same badge with an `outline` variant and title "set by hand".
+State judged as of an old scan (host silent, `stateAsOf` set) shown as the same badge
+at reduced opacity with title "as of last scan 9 d ago"
+([045](045-Silent-host-does-not-make-its-disks-missing.md)). Override wins.
 
 | state | colour | icon | label | rail group |
 | --- | --- | --- | --- | --- |

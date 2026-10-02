@@ -25,6 +25,7 @@ export interface InventoryDisk {
   hostName: string | null;
   state: EffectiveDiskState;
   stateOverride: StateOverride | null;
+  stateAsOf: string | null;
   latestStatus: DeviceStatus;
   latestTemp: number | null;
   tempThresholds: TemperatureThresholds;

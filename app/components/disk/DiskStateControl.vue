@@ -53,7 +53,11 @@ const setOverride = async (value: string) => {
 
 <template>
   <div class="flex flex-wrap items-center gap-2">
-    <LifecycleBadge :state="disk.state" :overridden="!!disk.stateOverride" />
+    <LifecycleBadge
+      :state="disk.state"
+      :overridden="!!disk.stateOverride"
+      :as-of="disk.stateAsOf"
+    />
     <span v-if="disk.stateOverride" class="text-dimmed text-xs">
       inferred {{ disk.inferredState }}
     </span>

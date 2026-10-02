@@ -13,6 +13,7 @@ const disk = (overrides: Partial<InventoryDisk>): InventoryDisk => ({
   hostName: "mars",
   state: "in-use",
   stateOverride: null,
+  stateAsOf: null,
   latestStatus: "passed",
   latestTemp: 34,
   tempThresholds: { warning: 45, error: 55 },

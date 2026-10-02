@@ -95,6 +95,7 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
               <LifecycleBadge
                 :state="disk.state"
                 :overridden="disk.stateOverride !== null"
+                :as-of="disk.stateAsOf"
                 size="sm"
               />
             </div>

@@ -16,6 +16,7 @@ const disk = (
   hostName: null,
   state: "in-use",
   stateOverride: null,
+  stateAsOf: null,
   latestStatus: "passed",
   latestTemp: null,
   tempThresholds: TEMPERATURE_DEFAULTS.hdd,

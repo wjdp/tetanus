@@ -180,6 +180,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
       <LifecycleBadge
         :state="row.original.state"
         :overridden="row.original.stateOverride !== null"
+        :as-of="row.original.stateAsOf"
         size="sm"
       />
     </template>
