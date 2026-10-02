@@ -35,4 +35,12 @@ describe("scanProgress", () => {
       null,
     );
   });
+
+  it("gives no estimate while paused", () => {
+    const now = running.startTime * 1000 + HOUR_MS;
+    expect(
+      scanProgress({ ...running, pausedAt: running.startTime + 60 }, now)
+        .msLeft,
+    ).toBe(null);
+  });
 });

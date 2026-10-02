@@ -110,7 +110,20 @@ const tabs = computed<TabsItem[]>(() => [
           <span class="text-muted">
             on {{ pool.host.displayName || pool.host.name }}
           </span>
+          <span
+            v-if="pool.errors !== null"
+            class="tabular text-sm"
+            :class="pool.errors > 0 ? 'text-error' : 'text-muted'"
+            data-testid="pool-data-errors"
+          >
+            Data errors {{ pool.errors }}
+          </span>
           <div class="ms-auto flex items-center gap-2">
+            <PoolConfigPopover
+              :pool-id="pool.id"
+              :config="pool.resolvedConfig"
+              @saved="refresh"
+            />
             <SimulateFaultMenu
               subject-type="pool"
               :subject-id="pool.id"
@@ -155,13 +168,32 @@ const tabs = computed<TabsItem[]>(() => [
           />
         </div>
         <div
-          v-if="pool.status || pool.action"
+          v-if="pool.status || pool.action || pool.msgid"
           class="text-muted flex flex-col gap-1 text-sm whitespace-pre-line"
         >
-          <p v-if="pool.status">{{ pool.status.trim() }}</p>
+          <p v-if="pool.status || pool.msgid">
+            <template v-if="pool.status">{{ pool.status.trim() }}</template>
+            <ULink
+              v-if="pool.msgid"
+              :to="pool.moreinfo ?? undefined"
+              target="_blank"
+              class="ms-2 font-mono text-xs whitespace-nowrap"
+              data-testid="pool-msgid"
+            >
+              {{ pool.msgid }}
+            </ULink>
+          </p>
           <p v-if="pool.action" class="text-dimmed">{{ pool.action.trim() }}</p>
         </div>
+        <PoolDamagedFiles
+          v-if="pool.errors && (pool.damagedFiles?.length || pool.damagedFilesError)"
+          :errors="pool.errors"
+          :files="pool.damagedFiles"
+          :list-error="pool.damagedFilesError"
+        />
       </header>
+
+      <PoolFaults :pool-id="pool.id" :now="now" />
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section
@@ -213,7 +245,17 @@ const tabs = computed<TabsItem[]>(() => [
           <ChartsTimeSeriesChart :series="capacitySeries" unit="TB" />
         </section>
 
-        <PoolScanPanel :scan="pool.scan" :now="now" />
+        <div class="flex flex-col gap-4">
+          <PoolScanPanel
+            :scan="pool.scan"
+            :last-scrub="pool.lastScrub"
+            :scan-progress-at="pool.scanProgressAt"
+            :first-seen-at="pool.firstSeenAt"
+            :scrub-interval-days="pool.resolvedConfig.scrubIntervalDays"
+            :now="now"
+          />
+          <PoolRemovalPanel v-if="pool.removal" :removal="pool.removal" />
+        </div>
       </div>
 
       <UTabs
@@ -223,7 +265,11 @@ const tabs = computed<TabsItem[]>(() => [
         class="w-full"
       >
         <template #vdevs>
-          <PoolVdevTreeTable :root="pool.vdevs" />
+          <PoolVdevTreeTable
+            :pool-id="pool.id"
+            :root="pool.vdevs"
+            :slow-io-threshold="pool.resolvedConfig.slowIoThreshold"
+          />
         </template>
 
         <template #datasets>
@@ -242,27 +288,7 @@ const tabs = computed<TabsItem[]>(() => [
         </template>
 
         <template #events>
-          <p v-if="pool.events.length === 0" class="text-dimmed py-4 text-sm">
-            No events recorded for this pool.
-          </p>
-          <ul v-else class="divide-default flex flex-col divide-y">
-            <li
-              v-for="event in pool.events"
-              :key="event.id"
-              class="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2 text-sm"
-            >
-              <span class="text-muted tabular">
-                {{ formatTimestamp(event.at) }}
-              </span>
-              <span class="text-highlighted font-mono">{{ event.class }}</span>
-              <span class="text-dimmed tabular font-mono text-xs">
-                eid {{ event.eid ?? "—" }}
-              </span>
-              <span v-if="event.vdevGuid" class="text-dimmed font-mono text-xs">
-                vdev {{ event.vdevGuid }}
-              </span>
-            </li>
-          </ul>
+          <PoolEventList :events="pool.events" :root="pool.vdevs" />
         </template>
 
         <template #history>
