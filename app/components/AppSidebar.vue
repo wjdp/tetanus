@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from "@nuxt/ui";
+import type { BadgeProps, NavigationMenuItem } from "@nuxt/ui";
 import { APP_NAME } from "#shared/app";
+import type { NavigationBadge } from "~/utils/navigation";
 
 const { version } = useRuntimeConfig().public;
 
@@ -15,10 +16,26 @@ const searchLinks: NavigationMenuItem[] = [
   },
 ];
 
-const mainLinks: NavigationMenuItem[] = NAVIGATION.map((entry) => ({
-  ...entry,
-  exact: entry.to === "/",
+const { badge: faultBadge } = useFaults(OPEN_ERRORS_QUERY);
+
+const badgeCounts = computed<Record<NavigationBadge, number>>(() => ({
+  faults: faultBadge.value,
 }));
+
+const toBadge = (name: NavigationBadge | undefined): BadgeProps | undefined => {
+  const count = name ? badgeCounts.value[name] : 0;
+  return count > 0
+    ? { label: String(count), color: "error", variant: "solid", size: "sm" }
+    : undefined;
+};
+
+const mainLinks = computed<NavigationMenuItem[]>(() =>
+  NAVIGATION.map(({ badge, ...entry }) => ({
+    ...entry,
+    badge: toBadge(badge),
+    exact: entry.to === "/",
+  })),
+);
 
 const navLinkUi = {
   link: "px-2 data-[active]:text-highlighted data-[active]:before:bg-accented",

@@ -2,14 +2,22 @@ import { describe, expect, it } from "vitest";
 import { NAVIGATION, SETTINGS_NAVIGATION } from "./navigation";
 
 describe("NAVIGATION", () => {
-  it("lists the five top-level pages in sidebar order", () => {
+  it("lists the six top-level pages in sidebar order", () => {
     expect(NAVIGATION.map(({ label, to }) => [label, to])).toEqual([
       ["Topology", "/"],
+      ["Faults", "/faults"],
       ["Disks", "/disks"],
       ["ZFS", "/zfs"],
       ["Diary", "/diary"],
       ["Settings", "/settings"],
     ]);
+  });
+
+  it("badges Faults with the fault count", () => {
+    expect(NAVIGATION.find(({ to }) => to === "/faults")).toMatchObject({
+      icon: "i-lucide-siren",
+      badge: "faults",
+    });
   });
 });
 

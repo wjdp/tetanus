@@ -17,6 +17,20 @@ registerEndpoint("/api/datasets", () => ({
 }));
 
 describe("AppCommandPalette", () => {
+  it("offers the faults page with the siren icon", async () => {
+    useCommandPalette().open();
+    await mountSuspended(AppCommandPalette, { attachTo: document.body });
+
+    const option = await vi.waitFor(() => {
+      const found = [...document.body.querySelectorAll('[role="option"]')].find(
+        (item) => item.textContent?.trim() === "Faults",
+      );
+      if (!found) throw new Error("Faults option not rendered");
+      return found;
+    });
+    expect(option.innerHTML).toContain("siren");
+  });
+
   it("lists datasets matching the search term", async () => {
     useCommandPalette().open();
     await mountSuspended(AppCommandPalette, { attachTo: document.body });
