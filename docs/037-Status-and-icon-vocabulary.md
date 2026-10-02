@@ -270,6 +270,8 @@ without colour. Manual entries `i-lucide-pencil`.
 | `acknowledgement-superseded`, `acknowledgement-cleared` | `i-lucide-eye-off` |
 | `disk-appeared` | `i-lucide-plug-zap` |
 | `moved-host`, `pool-moved` | `i-lucide-move-right` |
+| `pool-archived` | `i-lucide-archive` |
+| `pool-unarchived` | `i-lucide-archive-restore` |
 | `vdev-joined`, `vdev-left`, `vdev-state-changed` | the vdev type icon |
 | `pool-state-changed` | `i-lucide-database` |
 | `scrub-finished`, `resilver-finished`, `scan-finished`, `scrub-cancelled` | `i-lucide-scan-line` |

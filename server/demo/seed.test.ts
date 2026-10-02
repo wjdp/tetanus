@@ -166,6 +166,30 @@ describe("seed", () => {
     });
   });
 
+  it("archives atlas's tfault test pool, hidden by default and raising nothing", () => {
+    const [seedPool] = stories.seeds.archivedPools;
+    expect(poolNamed("atlas", "tfault")).toBeUndefined();
+    const archived = listPools("only");
+    expect(archived).toMatchObject([
+      {
+        name: "tfault",
+        host: { name: "atlas" },
+        archivedAt: seedPool?.archivedAt,
+        archiveNote: seedPool?.note,
+        vdevs: {
+          children: [
+            { type: "mirror", children: [{ type: "file" }, { type: "file" }] },
+          ],
+        },
+      },
+    ]);
+    expect(
+      allFaults().faults.filter(
+        (candidate) => candidate.subject.label === "tfault",
+      ),
+    ).toEqual([]);
+  });
+
   it("inserts the story alerts exactly as the rules would have", () => {
     const notifications = listNotifications();
     expect(notifications.map((row) => row.rule).sort()).toEqual([

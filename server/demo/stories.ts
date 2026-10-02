@@ -15,6 +15,7 @@ import {
 } from "./timeline";
 import type {
   AcceptanceSeed,
+  ArchivedPoolSeed,
   DatasetModel,
   DiskModel,
   FaultActionSeed,
@@ -921,6 +922,7 @@ export interface Seeds {
   faultActions: FaultActionSeed[];
   overrides: OverrideSeed[];
   notifications: NotificationSeed[];
+  archivedPools: ArchivedPoolSeed[];
 }
 
 function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
@@ -1114,6 +1116,17 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
         kind: "acknowledge",
         note: "Long self-test queued; watching it.",
         at: timeline.a12AcknowledgedAt,
+      },
+    ],
+    archivedPools: [
+      {
+        host: "atlas",
+        name: "tfault",
+        files: ["/var/tmp/tfault-a.img", "/var/tmp/tfault-b.img"],
+        createdAt: days(-9),
+        lastSeenAt: hours(2, days(-9)),
+        archivedAt: hours(3, days(-9)),
+        note: "File-backed test pool for fault fixtures; destroyed.",
       },
     ],
     faultActions: [

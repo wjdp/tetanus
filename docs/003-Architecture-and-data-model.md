@@ -45,7 +45,9 @@ name is derived from the app-name constant like the script and unit names, with 
 prefix (RFC 6648).
 
 Pool GUIDs are global: a pool exported from one host and imported on another is the same
-`Pool` row with `hostId` moved. Event ids (`eid`) are per host.
+`Pool` row with `hostId` moved. Event ids (`eid`) are per host. An archived pool
+(`Pool.archivedAt`, [047](047-Archive-pools.md)) keeps ingesting quietly but is hidden
+from lists, raises no faults and sends no alerts; seeing it again does not unarchive it.
 
 Sources (v1):
 
@@ -244,7 +246,7 @@ Fault           id, kind, category (disk|zfs|host), subjectType (disk|pool|host)
                 unique(kind, key) where resolvedAt is null; see 036
 Pool            id, hostId (current), guid (unique), name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
                 dedup, scan (json: type, state, started, finished, examined, errors),
-                firstSeenAt, lastSeenAt
+                firstSeenAt, lastSeenAt, archivedAt?, archiveNote; see 047
 Vdev            id, poolId, guid, parentId?, name, type (root|raidz1|raidz2|mirror|disk|special|log|cache|spare|indirect),
                 state, readErrors, writeErrors, cksumErrors, slowIos, path?, devid?,
                 diskId?, sizeBytes?, allocBytes?, frag?, lastSeenAt

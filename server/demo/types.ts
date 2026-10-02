@@ -345,6 +345,21 @@ export interface FaultActionSeed {
   at: Date;
 }
 
+/**
+ * A short-lived file-backed test pool, like those built to capture fixtures: inserted
+ * directly as last seen at `lastSeenAt` (it never reaches a `zpool-status`), then
+ * `archivePool(id, note, archivedAt)`.
+ */
+export interface ArchivedPoolSeed {
+  host: HostName;
+  name: string;
+  files: string[];
+  createdAt: Date;
+  lastSeenAt: Date;
+  archivedAt: Date;
+  note: string;
+}
+
 /** For `updateDisk(id, { stateOverride, notes }, at)`. Inventory goes through `DiskModel.inventory`. */
 export interface OverrideSeed {
   alias: string;

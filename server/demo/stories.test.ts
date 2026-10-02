@@ -281,8 +281,14 @@ describe("ZFS instants", () => {
 
 describe("seeds", () => {
   it("backdates everything to before the anchor", () => {
-    const { manualDiary, acceptances, faultActions, overrides, notifications } =
-      stories.seeds;
+    const {
+      manualDiary,
+      acceptances,
+      faultActions,
+      overrides,
+      notifications,
+      archivedPools,
+    } = stories.seeds;
     for (const seed of [
       ...manualDiary,
       ...acceptances,
@@ -291,6 +297,10 @@ describe("seeds", () => {
       ...notifications,
     ]) {
       expect(seed.at < DEMO_EPOCH, JSON.stringify(seed)).toBe(true);
+    }
+    for (const seed of archivedPools) {
+      expect(seed.lastSeenAt < seed.archivedAt).toBe(true);
+      expect(seed.archivedAt < DEMO_EPOCH, JSON.stringify(seed)).toBe(true);
     }
   });
 });

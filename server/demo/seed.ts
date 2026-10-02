@@ -10,6 +10,7 @@ import {
   host as hostTable,
   notification,
   pool as poolTable,
+  vdev as vdevTable,
 } from "~~/server/database/schema";
 import { acceptFault } from "~~/server/services/acceptance";
 import { alertContext } from "~~/server/services/alerts/dispatch";
@@ -25,9 +26,12 @@ import { performFaultAction, syncFaults } from "~~/server/services/faults";
 import { reorderHosts, updateHost } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import { ensureSettings, setAlertCursor } from "~~/server/services/settings";
+import { archivePool } from "~~/server/services/zfs";
+import { guidFor } from "./prng";
 import { renderSmart } from "./smart";
 import { addMs, DAY_MS, HOUR_MS, resetAnchor } from "./timeline";
 import type {
+  ArchivedPoolSeed,
   DiskModel,
   FaultActionSeed,
   HostModel,
@@ -397,6 +401,56 @@ function liveFaultIdOf(
   return row.id;
 }
 
+function insertArchivedPool(seed: ArchivedPoolSeed) {
+  const guid = (part: string) =>
+    guidFor(`archived-pool:${seed.host}/${seed.name}/${part}`);
+  const seen = { lastSeenAt: seed.lastSeenAt, state: "ONLINE" };
+  const row = db
+    .insert(poolTable)
+    .values({
+      ...seen,
+      hostId: hostIdOf(seed.host),
+      guid: guid("pool"),
+      name: seed.name,
+      health: "ONLINE",
+      firstSeenAt: seed.createdAt,
+    })
+    .returning()
+    .get();
+  const insertVdev = (
+    values: Omit<
+      typeof vdevTable.$inferInsert,
+      "poolId" | "lastSeenAt" | "state"
+    >,
+  ) =>
+    db
+      .insert(vdevTable)
+      .values({ ...seen, ...values, poolId: row.id })
+      .returning()
+      .get();
+  const root = insertVdev({
+    guid: guid("root"),
+    name: seed.name,
+    type: "root",
+  });
+  const mirror = insertVdev({
+    guid: guid("mirror-0"),
+    name: "mirror-0",
+    type: "mirror",
+    parentId: root.id,
+  });
+  for (const path of seed.files) {
+    insertVdev({
+      guid: guid(path),
+      name: path,
+      type: "file",
+      path,
+      parentId: mirror.id,
+    });
+  }
+  archivePool(row.id, seed.note, seed.archivedAt);
+}
+
 function replayActions(world: DemoWorld): ReplayAction[] {
   const { seeds, disk } = world.stories;
   return [
@@ -421,6 +475,12 @@ function replayActions(world: DemoWorld): ReplayAction[] {
             note: seed.note,
             now: seed.at,
           }),
+      }),
+    ),
+    ...seeds.archivedPools.map(
+      (seed): ReplayAction => ({
+        at: seed.archivedAt,
+        apply: () => insertArchivedPool(seed),
       }),
     ),
     ...seeds.overrides.map(
