@@ -462,6 +462,69 @@ describe("backfillFaults", () => {
     expect(withoutIds(faultRows())).toEqual(first);
   });
 
+  it("replays kinds with no trail of their own at their recorded severity", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const poolId = db
+      .insert(pool)
+      .values({
+        hostId: mars.id,
+        guid: "1",
+        name: "vault",
+        state: "ONLINE",
+        firstSeenAt: t0,
+        lastSeenAt: t0,
+      })
+      .returning()
+      .get().id;
+    const statusKey = `${poolId}:ZFS-8000-K4`;
+    const opened = (kind: string, key: string, extra = {}) => ({
+      faultId: 0,
+      kind,
+      key,
+      ...extra,
+    });
+    event(
+      "pool",
+      poolId,
+      "fault-opened",
+      opened("pool-status", statusKey, { severity: "error" }),
+      0,
+    );
+    event(
+      "pool",
+      poolId,
+      "fault-resolved",
+      opened("pool-status", statusKey),
+      HOUR_MS,
+    );
+    event(
+      "pool",
+      poolId,
+      "fault-opened",
+      opened("scan-stalled", String(poolId)),
+      2 * HOUR_MS,
+    );
+    event(
+      "pool",
+      poolId,
+      "fault-resolved",
+      opened("scan-stalled", String(poolId)),
+      3 * HOUR_MS,
+    );
+
+    await backfillFaults(at(4 * HOUR_MS));
+
+    expect(only("pool-status")).toMatchObject({
+      severity: "error",
+      state: "resolved",
+      data: { msgid: "ZFS-8000-K4" },
+    });
+    expect(only("scan-stalled")).toMatchObject({
+      severity: "warning",
+      state: "resolved",
+    });
+  });
+
   it("reproduces what live sync recorded, and a re-run gives the same rows", async () => {
     const passing = withAttributeRaw(withAttributeRaw(SDB, 198, 0), 197, 0);
     const ingest = async (body: string, offsetMs: number) => {

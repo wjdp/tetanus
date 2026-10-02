@@ -8,6 +8,7 @@ import type {
 } from "#shared/faults";
 import { isHostOffline } from "#shared/hostFreshness";
 import { resolvePoolConfig } from "#shared/schemas/pools";
+import { zfsMessage } from "#shared/zfsMessages";
 import { LEAF_VDEV_TYPES, zfsStateColour } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
@@ -34,6 +35,10 @@ export const POOL_FAULT_KINDS = [
   "leaf-slow",
   "pool-data-errors",
   "scrub-overdue",
+  "pool-status",
+  "scrub-paused",
+  "scan-stalled",
+  "vdev-unredundant",
 ] as const satisfies readonly FaultKind[];
 
 const LEAF_FAULT_KINDS: FaultKind[] = ["leaf-errors", "leaf-slow"];
@@ -44,8 +49,11 @@ export const SCAN_FINISHED_EVENTS = [
   "scan-finished",
 ] as const;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 export const LEAF_WINDOW_MS = DAY_MS;
+export const SCRUB_PAUSED_AFTER_MS = DAY_MS;
+export const SCAN_STALLED_AFTER_MS = 6 * HOUR_MS;
 
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
@@ -489,6 +497,106 @@ function detectScrubOverdue(
   ];
 }
 
+// Codes another kind raises from the pool or vdev state produce nothing here.
+function detectPoolStatus({ row }: PoolScope): Detection[] {
+  if (!row.msgid) return [];
+  const message = zfsMessage(row.msgid);
+  if (message && "coveredBy" in message) return [];
+  return [
+    {
+      kind: "pool-status",
+      key: `${row.id}:${row.msgid}`,
+      subjectId: row.id,
+      severity: message?.severity ?? "warning",
+      data: {
+        poolName: row.name,
+        msgid: row.msgid,
+        title: message?.title ?? null,
+        status: row.status,
+        action: row.action,
+        moreinfo: row.moreinfo,
+      },
+    },
+  ];
+}
+
+const isScanning = (row: PoolRow) => row.scan?.state === "SCANNING";
+
+function detectScrubPaused({ row, referenceAt }: PoolScope): Detection[] {
+  const { scan } = row;
+  if (!scan || !isScanning(row) || scan.function.toUpperCase() !== "SCRUB") {
+    return [];
+  }
+  if (!scan.pausedAt) return [];
+  const pausedAt = new Date(scan.pausedAt * 1000);
+  if (referenceAt.getTime() - pausedAt.getTime() <= SCRUB_PAUSED_AFTER_MS) {
+    return [];
+  }
+  return [
+    {
+      kind: "scrub-paused",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: "warning",
+      data: { poolName: row.name, pausedAt: iso(pausedAt) },
+    },
+  ];
+}
+
+// A resilver that stops leaves the pool short of redundancy: red.
+function detectScanStalled({ row, referenceAt }: PoolScope): Detection[] {
+  const { scan, scanProgressAt } = row;
+  if (!scan || !isScanning(row) || scan.pausedAt || !scanProgressAt) {
+    return [];
+  }
+  if (
+    referenceAt.getTime() - scanProgressAt.getTime() <
+    SCAN_STALLED_AFTER_MS
+  ) {
+    return [];
+  }
+  const isResilver = scan.function.toUpperCase() === "RESILVER";
+  return [
+    {
+      kind: "scan-stalled",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: isResilver ? "error" : "warning",
+      data: {
+        poolName: row.name,
+        function: scan.function,
+        progressAt: iso(scanProgressAt),
+        examined: scan.examined,
+        issued: scan.issued ?? null,
+        toExamine: scan.toExamine,
+      },
+    },
+  ];
+}
+
+const UNREDUNDANT_ROLES: ReadonlySet<string> = new Set(["special", "dedup"]);
+
+// Losing a single-device special or dedup vdev loses the pool; a single log
+// device is survivable, so it is not listed.
+function detectVdevUnredundant({ row, vdevs, leaves }: PoolScope): Detection[] {
+  const rootIds = new Set(
+    vdevs.filter((candidate) => candidate.type === "root").map(({ id }) => id),
+  );
+  return leaves.flatMap((leaf): Detection[] => {
+    if (!UNREDUNDANT_ROLES.has(leaf.role)) return [];
+    if (leaf.parentId === null || !rootIds.has(leaf.parentId)) return [];
+    return [
+      {
+        kind: "vdev-unredundant",
+        key: leafKey(row.id, leaf.guid),
+        subjectId: row.id,
+        severity: "warning",
+        data: leafData(row, leaf),
+      },
+    ];
+  });
+}
+
 function memberDiskIds(vdevs: VdevRow[]) {
   return vdevs.flatMap((row) => (row.diskId === null ? [] : [row.diskId]));
 }
@@ -611,6 +719,10 @@ export function detectPoolFaults(
       ...detectLeafSlow(unlisted),
       ...detectPoolDataErrors(scope, latestScans.get(row.id)),
       ...detectScrubOverdue(scope, latestScrubs.get(row.id)),
+      ...detectPoolStatus(scope),
+      ...detectScrubPaused(scope),
+      ...detectScanStalled(scope),
+      ...detectVdevUnredundant(scope),
     );
   }
   return { detections, superseded };

@@ -263,6 +263,7 @@ describe("collector versions", () => {
 interface VdevSpec {
   guid: string;
   name: string;
+  parentId?: number | null;
   state?: string;
   type?: string;
   role?: VdevRole;
@@ -871,6 +872,172 @@ describe("scrub-overdue", () => {
     seenAt(200 * DAY_MS);
     await syncFaults(at(200 * DAY_MS));
     expect(liveFault("scrub-overdue", String(vault.id))).toBeUndefined();
+  });
+});
+
+function setPool(poolId: number, fields: Partial<typeof pool.$inferInsert>) {
+  db.update(pool).set(fields).where(eq(pool.id, poolId)).run();
+}
+
+const scanning = (fields: Partial<NonNullable<FaultPoolScan>> = {}) => ({
+  function: "SCRUB",
+  state: "SCANNING",
+  startTime: t0.getTime() / 1000,
+  examined: 100,
+  toExamine: 1000,
+  issued: 90,
+  errors: 0,
+  ...fields,
+});
+
+type FaultPoolScan = (typeof pool.$inferSelect)["scan"];
+
+describe("pool-status", () => {
+  async function withMsgid(msgid: string | null, offsetMs = 0) {
+    const mars = upsertHostByName("mars", t0);
+    const vault =
+      db.select().from(pool).get() ?? insertPool(mars.id, "ONLINE", t0);
+    setPool(vault.id, {
+      msgid,
+      status: "Something new happened.\n\tMore detail.\n",
+    });
+    observePool(vault.id, mars.id, "ONLINE", at(offsetMs));
+    await syncFaults(at(offsetMs));
+    return vault;
+  }
+
+  it("raises catalogued codes at their severity and resolves when the code clears", async () => {
+    const vault = await withMsgid("ZFS-8000-EY");
+    expect(liveFault("pool-status", `${vault.id}:ZFS-8000-EY`)).toMatchObject({
+      severity: "warning",
+      data: { msgid: "ZFS-8000-EY", title: "ZFS label hostid mismatch" },
+    });
+
+    await withMsgid("ZFS-8000-K4", MINUTE_MS);
+    expect(liveFault("pool-status", `${vault.id}:ZFS-8000-K4`)).toMatchObject({
+      severity: "error",
+    });
+    expect(liveFault("pool-status", `${vault.id}:ZFS-8000-EY`)).toBeUndefined();
+
+    await withMsgid(null, 2 * MINUTE_MS);
+    expect(liveKinds()).not.toContain("pool-status");
+  });
+
+  it("raises an unknown code as a warning with the status text", async () => {
+    const vault = await withMsgid("ZFS-8000-ZZ");
+    expect(liveFault("pool-status", `${vault.id}:ZFS-8000-ZZ`)).toMatchObject({
+      severity: "warning",
+      data: {
+        title: null,
+        status: "Something new happened.\n\tMore detail.\n",
+      },
+    });
+  });
+
+  it.each(["ZFS-8000-8A", "ZFS-8000-2Q", "ZFS-8000-9P"])(
+    "leaves %s to the kind that covers it",
+    async (msgid) => {
+      await withMsgid(msgid);
+      expect(faultsOf("pool-status")).toEqual([]);
+    },
+  );
+});
+
+describe("scrub-paused", () => {
+  it("opens for a scrub paused over 24 h", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    setPool(vault.id, {
+      scan: scanning({ pausedAt: t0.getTime() / 1000 }),
+      scanProgressAt: t0,
+    });
+
+    observePool(vault.id, mars.id, "ONLINE", at(DAY_MS));
+    await syncFaults(at(DAY_MS));
+    expect(faultsOf("scrub-paused")).toEqual([]);
+
+    observePool(vault.id, mars.id, "ONLINE", at(DAY_MS + HOUR_MS));
+    await syncFaults(at(DAY_MS + HOUR_MS));
+    expect(liveFault("scrub-paused", String(vault.id))).toMatchObject({
+      severity: "warning",
+      data: { poolName: "vault", pausedAt: t0.toISOString() },
+    });
+    expect(liveKinds()).not.toContain("scan-stalled");
+
+    setPool(vault.id, { scan: scanning(), scanProgressAt: at(DAY_MS) });
+    observePool(vault.id, mars.id, "ONLINE", at(DAY_MS + 2 * HOUR_MS));
+    await syncFaults(at(DAY_MS + 2 * HOUR_MS));
+    expect(faultsOf("scrub-paused")).toMatchObject([{ state: "resolved" }]);
+  });
+});
+
+describe("scan-stalled", () => {
+  it("opens after 6 h without progress, red for a resilver", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "DEGRADED", t0);
+    setPool(vault.id, { scan: scanning(), scanProgressAt: t0 });
+
+    observePool(vault.id, mars.id, "ONLINE", at(5 * HOUR_MS));
+    await syncFaults(at(5 * HOUR_MS));
+    expect(faultsOf("scan-stalled")).toEqual([]);
+
+    observePool(vault.id, mars.id, "ONLINE", at(6 * HOUR_MS));
+    await syncFaults(at(6 * HOUR_MS));
+    expect(liveFault("scan-stalled", String(vault.id))).toMatchObject({
+      severity: "warning",
+      data: { function: "SCRUB", progressAt: t0.toISOString(), examined: 100 },
+    });
+
+    setPool(vault.id, { scan: scanning({ function: "RESILVER" }) });
+    observePool(vault.id, mars.id, "DEGRADED", at(7 * HOUR_MS));
+    await syncFaults(at(7 * HOUR_MS));
+    expect(liveFault("scan-stalled", String(vault.id))?.severity).toBe("error");
+
+    setPool(vault.id, { scanProgressAt: at(8 * HOUR_MS) });
+    observePool(vault.id, mars.id, "DEGRADED", at(8 * HOUR_MS));
+    await syncFaults(at(8 * HOUR_MS));
+    expect(liveFault("scan-stalled", String(vault.id))).toBeUndefined();
+  });
+});
+
+describe("vdev-unredundant", () => {
+  it("opens for a single-device special or dedup vdev, not a log or a mirror", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    const root = insertVdev(vault.id, {
+      guid: "1",
+      name: "vault",
+      type: "root",
+    });
+    const mirror = insertVdev(vault.id, {
+      guid: "2",
+      name: "mirror-1",
+      type: "special",
+      role: "special",
+      parentId: root.id,
+    });
+    for (const [guid, name, role, parentId] of [
+      ["3", "S1", "special", root.id],
+      ["4", "D1", "dedup", root.id],
+      ["5", "L1", "log", root.id],
+      ["6", "M1", "special", mirror.id],
+    ] as const) {
+      insertVdev(vault.id, { guid, name, role, parentId });
+    }
+
+    await syncFaults(t0);
+
+    expect(
+      faultsOf("vdev-unredundant").map((row) => [row.key, row.data.role]),
+    ).toEqual([
+      [`${vault.id}:3`, "special"],
+      [`${vault.id}:4`, "dedup"],
+    ]);
+    expect(liveFault("vdev-unredundant", `${vault.id}:3`)).toMatchObject({
+      severity: "warning",
+      data: { name: "S1", poolName: "vault" },
+    });
   });
 });
 

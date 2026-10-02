@@ -147,6 +147,10 @@ const FAULT_OPENED_RULES = new Set<AlertRule>([
   "pool-missing",
   "scrub-overdue",
   "leaf-slow",
+  "pool-status",
+  "scrub-paused",
+  "scan-stalled",
+  "vdev-unredundant",
 ]);
 
 function isFaultOpenedRule(kind: unknown): kind is AlertRule {

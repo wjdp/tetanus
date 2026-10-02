@@ -3,6 +3,7 @@ import type { DiaryEventType } from "#shared/diary";
 import {
   FAULT_KIND_DEFINITIONS,
   FAULT_KINDS,
+  FAULT_SEVERITIES,
   FAULT_SEVERITY_RANK,
   type FaultData,
   type FaultKind,
@@ -92,6 +93,10 @@ const WARNING_KINDS = new Set<FaultKind>([
   "pool-missing",
   "leaf-slow",
   "scrub-overdue",
+  "pool-status",
+  "scrub-paused",
+  "scan-stalled",
+  "vdev-unredundant",
 ]);
 const SETTABLE_STATES = new Set<FaultState>([
   "open",
@@ -601,10 +606,22 @@ function replayHostEntry(
   );
 }
 
+// Entries since severity was written carry it; older ones fall back to the
+// kind's usual severity.
+function openedSeverity(kind: FaultKind, recorded: unknown): FaultSeverity {
+  if (FAULT_SEVERITIES.includes(recorded as FaultSeverity)) {
+    return recorded as FaultSeverity;
+  }
+  return WARNING_KINDS.has(kind) ? "warning" : "error";
+}
+
 function dataFromKey(kind: FaultKind, key: string): FaultData {
   const afterColon = key.slice(key.indexOf(":") + 1);
   if (COLLECTOR_VERSION_KINDS.includes(kind)) return { version: afterColon };
-  if (LEAF_FAULT_KINDS.includes(kind)) return { vdevGuid: afterColon };
+  if (LEAF_FAULT_KINDS.includes(kind) || kind === "vdev-unredundant") {
+    return { vdevGuid: afterColon };
+  }
+  if (kind === "pool-status") return { msgid: afterColon };
   return {};
 }
 
@@ -626,7 +643,7 @@ function replayFaultEntry(context: ReplayContext, entry: DiaryEntryRow) {
           kind,
           key,
           subjectId: entry.subjectId,
-          severity: WARNING_KINDS.has(kind) ? "warning" : "error",
+          severity: openedSeverity(kind, data.severity),
           data: dataFromKey(kind, key),
         },
         at,

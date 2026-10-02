@@ -186,6 +186,46 @@ describe("deriveAlert", () => {
       "5:77",
     ],
     [
+      "a pool status message",
+      poolEntry("fault-opened", {
+        faultId: 4,
+        kind: "pool-status",
+        key: "5:ZFS-8000-EY",
+      }),
+      "pool-status",
+      "5:ZFS-8000-EY",
+    ],
+    [
+      "a paused scrub",
+      poolEntry("fault-opened", {
+        faultId: 5,
+        kind: "scrub-paused",
+        key: "5",
+      }),
+      "scrub-paused",
+      "5",
+    ],
+    [
+      "a stalled scan",
+      poolEntry("fault-opened", {
+        faultId: 6,
+        kind: "scan-stalled",
+        key: "5",
+      }),
+      "scan-stalled",
+      "5",
+    ],
+    [
+      "a single-device special vdev",
+      poolEntry("fault-opened", {
+        faultId: 7,
+        kind: "vdev-unredundant",
+        key: "5:88",
+      }),
+      "vdev-unredundant",
+      "5:88",
+    ],
+    [
       "identity conflict",
       entry("identity-conflict", { diskIds: [3, 9], keys: [] }),
       "identity-conflict",

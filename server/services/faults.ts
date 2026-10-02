@@ -408,7 +408,9 @@ function openFault(detection: Detection, now: Date): FaultRow {
     .returning()
     .get();
   if (!DIARY_SILENT_KINDS.has(row.kind)) {
-    writeFaultEvent(row, "fault-opened", null, now);
+    writeFaultEvent(row, "fault-opened", null, now, {
+      severity: row.severity,
+    });
   }
   return row;
 }

@@ -22,6 +22,10 @@ export const ALERT_RULES = {
   "leaf-errors": { label: "Device errors", severity: "alert" },
   "leaf-slow": { label: "Slow I/Os", severity: "notice" },
   "scrub-overdue": { label: "Scrub overdue", severity: "alert" },
+  "pool-status": { label: "Pool status", severity: "alert" },
+  "scrub-paused": { label: "Scrub paused", severity: "notice" },
+  "scan-stalled": { label: "Scan stalled", severity: "alert" },
+  "vdev-unredundant": { label: "Single-device vdev", severity: "notice" },
   "identity-conflict": { label: "Disk identity conflict", severity: "alert" },
   "collector-incompatible": {
     label: "Collector incompatible",

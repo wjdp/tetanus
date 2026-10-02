@@ -31,6 +31,10 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "leaf-errors": "leaf-errors",
   "leaf-slow": "leaf-slow",
   "scrub-overdue": "scrub-overdue",
+  "pool-status": "pool-status",
+  "scrub-paused": "scrub-paused",
+  "scan-stalled": "scan-stalled",
+  "vdev-unredundant": "vdev-unredundant",
   "identity-conflict": "identity-conflict",
   "collector-incompatible": "collector-incompatible",
 };
@@ -156,6 +160,44 @@ describe("faultTitle", () => {
       "scrub-overdue",
       { poolName: "tank", lastScrubAt: null },
       "Pool tank never scrubbed",
+    ],
+    [
+      "pool-status",
+      {
+        poolName: "tank",
+        msgid: "ZFS-8000-EY",
+        title: "ZFS label hostid mismatch",
+      },
+      "Pool tank: ZFS-8000-EY ZFS label hostid mismatch",
+    ],
+    [
+      "pool-status",
+      {
+        poolName: "tank",
+        msgid: "ZFS-8000-ZZ",
+        title: null,
+        status: "Something new happened.\n\tMore detail.\n",
+      },
+      "Pool tank: ZFS-8000-ZZ Something new happened.",
+    ],
+    [
+      "scrub-paused",
+      { poolName: "tank", pausedAt: "2026-09-08T10:00:00Z" },
+      "Pool tank scrub paused for 2 d",
+    ],
+    [
+      "scan-stalled",
+      {
+        poolName: "vault",
+        function: "RESILVER",
+        progressAt: "2026-09-10T03:00:00Z",
+      },
+      "Pool vault resilver stalled for 7 h",
+    ],
+    [
+      "vdev-unredundant",
+      { poolName: "tank", name: "/dev/disk/by-vdev/S1-part1", role: "special" },
+      "special S1-part1 in tank is a single device",
     ],
     [
       "collector-silent",

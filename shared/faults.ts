@@ -39,6 +39,10 @@ export const FAULT_KINDS = [
   "leaf-slow",
   "pool-data-errors",
   "scrub-overdue",
+  "pool-status",
+  "scrub-paused",
+  "scan-stalled",
+  "vdev-unredundant",
   "collector-silent",
   "collector-incompatible",
   "collector-outdated",
@@ -140,6 +144,23 @@ function poolDataErrorsTitle(data: FaultData) {
   return `Pool ${text(data.poolName)}: ${parts.join("; ")}`;
 }
 
+function firstLine(value: unknown) {
+  return text(value).trim().split("\n")[0]?.trim() ?? "";
+}
+
+function poolStatusTitle(data: FaultData) {
+  const summary = text(data.title) || firstLine(data.status);
+  const message = summary ? `${text(data.msgid)} ${summary}` : text(data.msgid);
+  return `Pool ${text(data.poolName)}: ${message}`;
+}
+
+function scanStalledTitle(data: FaultData, now: number) {
+  const scan = text(data.function).toLowerCase() || "scan";
+  const age = ageSince(data.progressAt, now);
+  const stalled = `Pool ${text(data.poolName)} ${scan} stalled`;
+  return age ? `${stalled} for ${age}` : stalled;
+}
+
 export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
   "smart-attribute": {
     category: "disk",
@@ -227,6 +248,39 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
         ? `${pool} last scrubbed ${age} ago`
         : `${pool} never scrubbed`;
     },
+  },
+  "pool-status": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: poolStatusTitle,
+  },
+  "scrub-paused": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: (data, now) => {
+      const age = ageSince(data.pausedAt, now);
+      const paused = `Pool ${text(data.poolName)} scrub paused`;
+      return age ? `${paused} for ${age}` : paused;
+    },
+  },
+  "scan-stalled": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "transient",
+    actions: ["acknowledge", "clear"],
+    title: scanStalledTitle,
+  },
+  "vdev-unredundant": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: (data) =>
+      `${text(data.role)} ${leafLabel(data.name)} in ${text(data.poolName)} is a single device`,
   },
   "collector-silent": {
     category: "host",
