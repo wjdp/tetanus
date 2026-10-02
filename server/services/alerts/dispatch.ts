@@ -73,14 +73,21 @@ export function alertContext(): AlertContext {
         .where(eq(disk.id, id))
         .get(),
     ),
-    pool: memoise((id): AlertPool | undefined =>
-      db
-        .select({ name: pool.name, hostName: host.name })
+    pool: memoise((id): AlertPool | undefined => {
+      const row = db
+        .select({
+          name: pool.name,
+          hostName: host.name,
+          archivedAt: pool.archivedAt,
+        })
         .from(pool)
         .leftJoin(host, eq(host.id, pool.hostId))
         .where(eq(pool.id, id))
-        .get(),
-    ),
+        .get();
+      if (!row) return undefined;
+      const { archivedAt, ...described } = row;
+      return { ...described, archived: archivedAt !== null };
+    }),
     host: memoise((id): AlertHost | undefined =>
       db.select({ name: host.name }).from(host).where(eq(host.id, id)).get(),
     ),

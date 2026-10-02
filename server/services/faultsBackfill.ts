@@ -9,6 +9,7 @@ import {
   type FaultKind,
   type FaultSeverity,
   type FaultState,
+  type FaultSubjectType,
   type LeafCounts,
   type PoolDegradedLeaf,
 } from "#shared/faults";
@@ -67,6 +68,8 @@ const REPLAYED_EVENTS = [
   "leaf-errors-changed",
   "pool-data-errors-changed",
   ...SCAN_FINISHED_EVENTS,
+  "pool-archived",
+  "pool-unarchived",
   "identity-conflict",
   "collector-status-changed",
   "fault-opened",
@@ -141,6 +144,12 @@ class FaultReplay {
 
   get(kind: FaultKind, key: string) {
     return this.live.get(identity(kind, key));
+  }
+
+  liveOfSubject(subjectType: FaultSubjectType, subjectId: number) {
+    return [...this.live.values()].filter(
+      (row) => row.subjectType === subjectType && row.subjectId === subjectId,
+    );
   }
 
   liveOf(kinds: FaultKind[], keyPrefix: string) {
@@ -241,6 +250,7 @@ interface ReplayContext {
   leaves: Map<number, ReplayedLeaf>;
   leafCounts: Map<string, LeafCounts>;
   pools: Map<number, PoolReplayState>;
+  archivedPoolIds: Set<number>;
 }
 
 function leaveOrReturnToService(
@@ -669,12 +679,44 @@ function setAcknowledgedLevel(row: ReplayedFault, state: FaultState) {
   row.data.acknowledgedCounts = countsOf(row.data.total);
 }
 
+// An archived pool's entries open nothing, as its detectors skip it.
+function replayArchiveEntry(context: ReplayContext, entry: DiaryEntryRow) {
+  const poolId = entry.subjectId as number;
+  if (entry.eventType === "pool-unarchived") {
+    context.archivedPoolIds.delete(poolId);
+    return;
+  }
+  context.archivedPoolIds.add(poolId);
+  const { replay } = context;
+  for (const row of replay.liveOfSubject("pool", poolId)) {
+    replay.resolve(row, entry.at);
+  }
+}
+
+function entryPoolId(context: ReplayContext, entry: DiaryEntryRow) {
+  if (entry.subjectId === null) return null;
+  if (entry.subjectType === "pool") return entry.subjectId;
+  if (entry.subjectType === "vdev") {
+    return context.leaves.get(entry.subjectId)?.poolId ?? null;
+  }
+  return null;
+}
+
 function replayEntry(context: ReplayContext, entry: DiaryEntryRow) {
   if (entry.eventType?.startsWith("fault-") && "faultId" in entry.data) {
     replayFaultEntry(context, entry);
     return;
   }
   if (entry.subjectId === null) return;
+  if (
+    entry.eventType === "pool-archived" ||
+    entry.eventType === "pool-unarchived"
+  ) {
+    replayArchiveEntry(context, entry);
+    return;
+  }
+  const poolId = entryPoolId(context, entry);
+  if (poolId !== null && context.archivedPoolIds.has(poolId)) return;
   if (entry.subjectType === "disk") {
     replayDiskEntry(context, entry, entry.subjectId);
   } else if (entry.subjectType === "pool") {
@@ -779,6 +821,7 @@ export function replayFaultHistory(): ReplayedFault[] {
     ),
     leafCounts: new Map(),
     pools: new Map(),
+    archivedPoolIds: new Set(),
   };
   for (const item of timeline()) {
     if ("entry" in item) replayEntry(context, item.entry);

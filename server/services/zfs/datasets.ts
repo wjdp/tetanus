@@ -7,6 +7,7 @@ import {
   getTableColumns,
   gte,
   inArray,
+  isNull,
   lt,
   type SQL,
   sql,
@@ -714,6 +715,7 @@ export function searchDatasets(
     .where(
       and(
         eq(dataset.present, true),
+        isNull(pool.archivedAt),
         sql`${dataset.name} like ${likePattern(query)} escape '\\'`,
       ),
     )

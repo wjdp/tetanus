@@ -462,6 +462,41 @@ describe("backfillFaults", () => {
     expect(withoutIds(faultRows())).toEqual(first);
   });
 
+  it("resolves an archived pool's faults and replays nothing for it until unarchived", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const tfault = db
+      .insert(pool)
+      .values({
+        hostId: mars.id,
+        guid: "123",
+        name: "tfault",
+        state: "ONLINE",
+        firstSeenAt: t0,
+        lastSeenAt: t0,
+      })
+      .returning()
+      .get().id;
+    const stateChanged = (from: string, to: string, offsetMs: number) =>
+      event("pool", tfault, "pool-state-changed", { from, to }, offsetMs);
+
+    stateChanged("ONLINE", "DEGRADED", HOUR_MS);
+    event("pool", tfault, "pool-archived", { note: "" }, 2 * HOUR_MS);
+    stateChanged("DEGRADED", "FAULTED", 3 * HOUR_MS);
+    event("pool", tfault, "pool-unarchived", {}, 4 * HOUR_MS);
+    stateChanged("FAULTED", "DEGRADED", 5 * HOUR_MS);
+
+    await backfillFaults(at(6 * HOUR_MS));
+
+    expect(
+      faultRows()
+        .filter((row) => row.kind === "pool-degraded")
+        .map((row) => [row.openedAt, row.resolvedAt]),
+    ).toEqual([
+      [at(HOUR_MS), at(2 * HOUR_MS)],
+      [at(5 * HOUR_MS), at(6 * HOUR_MS)],
+    ]);
+  });
+
   it("replays kinds with no trail of their own at their recorded severity", async () => {
     const mars = upsertHostByName("mars", t0);
     const poolId = db

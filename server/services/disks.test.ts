@@ -28,6 +28,7 @@ import {
 import { DRIVE_DB_SNAPSHOT } from "~~/server/services/drive-db/lookup";
 import { updateHost, upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
+import { archivePool } from "~~/server/services/zfs";
 import { flushDb } from "~~/test/db";
 import { replayBundle } from "~~/test/diagnostics";
 import { readFixture } from "~~/test/fixtures";
@@ -388,6 +389,7 @@ describe("disk state, overrides and inventory", () => {
     const membership = {
       poolId,
       poolName: "tank",
+      poolArchived: false,
       vdevName: "K1",
       groupName: "mirror-0",
       groupType: "mirror",
@@ -401,6 +403,14 @@ describe("disk state, overrides and inventory", () => {
       disks.filter((row) => row.id !== sdaId).map((row) => row.membership),
     ).toEqual(Array(19).fill(null));
     expect((await getDisk(sdaId)).membership).toEqual(membership);
+  });
+
+  it("marks membership of an archived pool", async () => {
+    archivePool(putInPool(sdaId));
+    expect((await getDisk(sdaId)).membership).toMatchObject({
+      poolName: "tank",
+      poolArchived: true,
+    });
   });
 
   it("has no membership for a vdev that left the pool", async () => {

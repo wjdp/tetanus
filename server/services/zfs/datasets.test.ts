@@ -20,6 +20,7 @@ import { addManualEntry } from "~~/server/services/diary";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
+import { archivePool } from "./archive";
 import {
   datasetCounts,
   getDataset,
@@ -644,6 +645,12 @@ describe("dataset queries", () => {
         pool: { id: tank.id, name: "tank" },
         host: { id: hostId, name: "mars", displayName: null },
       });
+    });
+
+    it("skips datasets of an archived pool", () => {
+      const { tank } = seedAll();
+      archivePool(tank.id);
+      expect(searchDatasets("DITI/")).toEqual([]);
     });
 
     it("looks up datasets by id, destroyed ones included", () => {

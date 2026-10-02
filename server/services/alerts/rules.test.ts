@@ -49,7 +49,12 @@ const context: AlertContext = {
     id === 3
       ? { alias: "K2", model: "WDC WD80", serial: "ABC", hostName: "mars" }
       : undefined,
-  pool: (id) => (id === 5 ? { name: "tank", hostName: "mars" } : undefined),
+  pool: (id) =>
+    id === 5
+      ? { name: "tank", hostName: "mars", archived: false }
+      : id === 6
+        ? { name: "tfault", hostName: "mars", archived: true }
+        : undefined,
   host: (id) => (id === 1 ? { name: "mars" } : undefined),
   hasActiveAcceptance: (diskId, attrId) => diskId === 3 && attrId === "5",
 };
@@ -427,6 +432,31 @@ describe("deriveAlert", () => {
       message: "mars · tank: C1 UNAVAIL (was ONLINE)",
       dedupeKey: "pool-degraded:pool:5:11:UNAVAIL:7",
     });
+  });
+
+  it("skips entries for an archived pool, its vdevs included", () => {
+    const archived = { subjectType: "pool", subjectId: 6 } as const;
+    expect(
+      deriveAlert(
+        entry(
+          "pool-state-changed",
+          { from: "ONLINE", to: "DEGRADED" },
+          archived,
+        ),
+        context,
+      ),
+    ).toBeNull();
+    expect(
+      deriveAlert(
+        vdevEntry({
+          poolId: 6,
+          poolState: "ONLINE",
+          from: "ONLINE",
+          to: "UNAVAIL",
+        }),
+        context,
+      ),
+    ).toBeNull();
   });
 
   it("sends slow I/Os as a notice", () => {

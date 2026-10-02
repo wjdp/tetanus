@@ -16,6 +16,7 @@ export interface AlertDisk {
 export interface AlertPool {
   name: string;
   hostName: string | null;
+  archived: boolean;
 }
 
 export interface AlertHost {
@@ -305,6 +306,7 @@ export function deriveAlert(
   const { label: title, severity } = ALERT_RULES[match.rule];
   const subjectType = match.subject?.type ?? entry.subjectType;
   const subjectId = match.subject?.id ?? entry.subjectId;
+  if (subjectType === "pool" && context.pool(subjectId)?.archived) return null;
   const { host, subject } = describeSubject(subjectType, subjectId, context);
   return {
     rule: match.rule,

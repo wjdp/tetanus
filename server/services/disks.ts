@@ -101,6 +101,7 @@ export type AliasSource = "udev" | "vdev-id-conf";
 export interface DiskMembership {
   poolId: number;
   poolName: string;
+  poolArchived: boolean;
   vdevName: string;
   groupName: string | null;
   groupType: string | null;
@@ -632,6 +633,7 @@ function membershipsOf(diskIds: number[]): Map<number, DiskMembership> {
       diskId: vdev.diskId,
       poolId: pool.id,
       poolName: pool.name,
+      poolArchived: isNotNull(pool.archivedAt).mapWith(Boolean),
       vdevName: vdev.name,
       groupName: group.name,
       groupType: group.type,
@@ -641,7 +643,7 @@ function membershipsOf(diskIds: number[]): Map<number, DiskMembership> {
     .innerJoin(pool, eq(pool.id, vdev.poolId))
     .leftJoin(group, eq(group.id, vdev.parentId))
     .where(and(eq(vdev.present, true), inArray(vdev.diskId, diskIds)))
-    .orderBy(asc(vdev.id))
+    .orderBy(isNotNull(pool.archivedAt), asc(vdev.id))
     .all();
   const byDisk = new Map<number, DiskMembership>();
   for (const { diskId, ...membership } of rows) {
