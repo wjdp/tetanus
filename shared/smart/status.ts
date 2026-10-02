@@ -23,13 +23,25 @@ export function worstStatus(...statuses: DeviceStatus[]): DeviceStatus {
   );
 }
 
-export type AttributeDisplayStatus = AttributeStatus | "accepted";
+export const ACCEPTANCE_KINDS = ["accept", "acknowledge"] as const;
+export type AcceptanceKind = (typeof ACCEPTANCE_KINDS)[number];
+
+export type AttributeDisplayStatus =
+  | AttributeStatus
+  | "accepted"
+  | "acknowledged";
 
 const DISK_FAILING_EXIT_BIT = 1 << 3;
 
 export interface AcceptedLevel {
+  kind: AcceptanceKind;
   acceptedValue: number;
 }
+
+const COVERED_STATUS = {
+  accept: "accepted",
+  acknowledge: "acknowledged",
+} as const satisfies Record<AcceptanceKind, AttributeDisplayStatus>;
 
 export interface OverlaidAttribute {
   attrId: string;
@@ -47,13 +59,25 @@ export function healthStatus(
   return smartPassed === null ? "unknown" : "passed";
 }
 
+export function isCovered(acceptedValue: number, value: number): boolean {
+  return value <= acceptedValue;
+}
+
 export function overlayStatus(
   status: AttributeStatus,
   transformedValue: number,
   acceptance: AcceptedLevel | null | undefined,
 ): AttributeDisplayStatus {
   if (!acceptance || status === "passed") return status;
-  return transformedValue <= acceptance.acceptedValue ? "accepted" : status;
+  return isCovered(acceptance.acceptedValue, transformedValue)
+    ? COVERED_STATUS[acceptance.kind]
+    : status;
+}
+
+function deviceContribution(display: AttributeDisplayStatus): DeviceStatus[] {
+  if (display === "accepted") return [];
+  if (display === "acknowledged") return ["warning"];
+  return [display];
 }
 
 export function effectiveDeviceStatus(
@@ -61,13 +85,14 @@ export function effectiveDeviceStatus(
   attributes: OverlaidAttribute[],
   active: ReadonlyMap<string, AcceptedLevel>,
 ): DeviceStatus {
-  const unaccepted = attributes.flatMap((attribute) => {
-    const display = overlayStatus(
-      attribute.status,
-      attribute.transformedValue,
-      active.get(attribute.attrId),
-    );
-    return display === "accepted" ? [] : [display];
-  });
-  return worstStatus(health, ...unaccepted);
+  const contributions = attributes.flatMap((attribute) =>
+    deviceContribution(
+      overlayStatus(
+        attribute.status,
+        attribute.transformedValue,
+        active.get(attribute.attrId),
+      ),
+    ),
+  );
+  return worstStatus(health, ...contributions);
 }

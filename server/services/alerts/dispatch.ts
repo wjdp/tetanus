@@ -78,7 +78,7 @@ export function alertContext(): AlertContext {
     host: memoise((id): AlertHost | undefined =>
       db.select({ name: host.name }).from(host).where(eq(host.id, id)).get(),
     ),
-    isAccepted: (() => {
+    hasActiveAcceptance: (() => {
       const accepted = memoise(activeAcceptances);
       return (diskId, attrId) => accepted(diskId).has(attrId);
     })(),

@@ -71,7 +71,7 @@ export interface AttributeMetadataSummary {
 
 export type AttributeAcceptance = Pick<
   FaultAcceptanceRow,
-  "id" | "acceptedValue" | "acceptedAt" | "note"
+  "id" | "kind" | "acceptedValue" | "acceptedAt" | "note"
 >;
 
 export interface LatestAttribute
@@ -247,12 +247,20 @@ function attributeIdsWithStatus(
     .map((attribute) => attribute.attrId);
 }
 
+export type StatusChangeCause = "reading" | "acceptance" | "policy";
+
+interface StatusChangeContext {
+  cause: StatusChangeCause;
+  superseded?: ReadonlySet<string>;
+}
+
 function recordStatusChange(
   row: Pick<DiskRow, "id" | "latestStatus" | "latestReadingAt">,
   to: DeviceStatus,
   attributes: StoredAttribute[],
   active: ReadonlyMap<string, FaultAcceptanceRow>,
   at: Date,
+  { cause, superseded = new Set() }: StatusChangeContext,
 ) {
   const from = row.latestStatus;
   if (row.latestReadingAt === null || from === to) return;
@@ -266,6 +274,9 @@ function recordStatusChange(
       to,
       failing: attributeIdsWithStatus(attributes, active, "failed"),
       warning: attributeIdsWithStatus(attributes, active, "warning"),
+      acknowledged: attributeIdsWithStatus(attributes, active, "acknowledged"),
+      superseded: [...superseded],
+      cause,
     },
     at,
   });
@@ -285,6 +296,7 @@ function recordAttributeStatusChanges(
   previous: StoredAttribute[],
   current: StoredAttribute[],
   at: Date,
+  superseded: ReadonlySet<string>,
 ) {
   const previousByAttr = new Map(
     previous.map((attribute) => [attribute.attrId, attribute]),
@@ -303,6 +315,7 @@ function recordAttributeStatusChanges(
         from: before.status,
         to: attribute.status,
         value: attribute.transformedValue,
+        superseded: superseded.has(attribute.attrId),
       },
       at,
     });
@@ -518,7 +531,9 @@ export function recordSmartReading({
   const isLatest =
     row.latestReadingAt === null || receivedAt >= row.latestReadingAt;
   const previous = isLatest ? latestReading(row.id) : null;
-  if (isLatest) supersedeIfRisen(row.id, evaluated, receivedAt);
+  const superseded = isLatest
+    ? supersedeIfRisen(row.id, evaluated, receivedAt)
+    : new Set<string>();
   const active = activeAcceptances(row.id);
   const deviceStatus = effectiveDeviceStatus(
     healthStatus(smartPassed, exitStatus),
@@ -556,9 +571,13 @@ export function recordSmartReading({
         attributesOfReading(previous.id),
         evaluated,
         receivedAt,
+        superseded,
       );
     }
-    recordStatusChange(row, deviceStatus, evaluated, active, receivedAt);
+    recordStatusChange(row, deviceStatus, evaluated, active, receivedAt, {
+      cause: "reading",
+      superseded,
+    });
     db.update(disk)
       .set({
         latestRaw: body,
@@ -575,7 +594,11 @@ export function recordSmartReading({
   return reading;
 }
 
-export function recomputeLatestStatus(diskId: number, now: Date) {
+export function recomputeLatestStatus(
+  diskId: number,
+  now: Date,
+  cause: StatusChangeCause,
+) {
   const reading = latestReading(diskId);
   const row = db
     .select({
@@ -594,7 +617,7 @@ export function recomputeLatestStatus(diskId: number, now: Date) {
     attributes,
     active,
   );
-  recordStatusChange(row, deviceStatus, attributes, active, now);
+  recordStatusChange(row, deviceStatus, attributes, active, now, { cause });
   db.update(smartReading)
     .set({ deviceStatus })
     .where(eq(smartReading.id, reading.id))
@@ -894,6 +917,7 @@ export function latestAttributes(diskId: number): LatestAttribute[] {
         acceptance: acceptance
           ? {
               id: acceptance.id,
+              kind: acceptance.kind,
               acceptedValue: acceptance.acceptedValue,
               acceptedAt: acceptance.acceptedAt,
               note: acceptance.note,

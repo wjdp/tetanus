@@ -100,7 +100,7 @@ export function reapplySmartPolicy(now = new Date()): SmartPolicyOutcome {
       if (!protocol) continue;
       reevaluateAttributes(reading, protocol, stored);
       const before = latestStatusOf(id);
-      recomputeLatestStatus(id, now);
+      recomputeLatestStatus(id, now, "policy");
       outcome.disks += 1;
       if (latestStatusOf(id) !== before) outcome.changed += 1;
     }

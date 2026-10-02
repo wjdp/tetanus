@@ -85,6 +85,13 @@
       "when": 1790713893007,
       "tag": "0011_host_intermittent_and_position",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1790959597195,
+      "tag": "0012_fault_acceptance_kind",
+      "breakpoints": true
     }
   ]
 }

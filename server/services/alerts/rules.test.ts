@@ -44,7 +44,7 @@ const context: AlertContext = {
       : undefined,
   pool: (id) => (id === 5 ? { name: "tank", hostName: "mars" } : undefined),
   host: (id) => (id === 1 ? { name: "mars" } : undefined),
-  isAccepted: (diskId, attrId) => diskId === 3 && attrId === "5",
+  hasActiveAcceptance: (diskId, attrId) => diskId === 3 && attrId === "5",
 };
 
 const failedPending = entry("attribute-status-changed", {
@@ -67,6 +67,16 @@ describe("deriveAlert", () => {
       }),
       "acceptance-superseded",
       "5@12",
+    ],
+    [
+      "acknowledged fault superseded",
+      entry("acknowledgement-superseded", {
+        attrId: "197",
+        acceptedValue: 16,
+        value: 17,
+      }),
+      "acknowledgement-superseded",
+      "197@17",
     ],
     [
       "SMART failed",
@@ -156,6 +166,38 @@ describe("deriveAlert", () => {
     [
       "an accepted attribute failing",
       entry("attribute-status-changed", { attrId: "5", to: "failed" }),
+    ],
+    [
+      "an attribute failing as its acceptance is superseded",
+      entry("attribute-status-changed", {
+        attrId: "197",
+        to: "failed",
+        superseded: true,
+      }),
+    ],
+    [
+      "SMART failing because an acceptance was superseded",
+      entry("smart-status-changed", {
+        from: "warning",
+        to: "failed",
+        superseded: ["197"],
+      }),
+    ],
+    [
+      "SMART recovering because a fault was accepted",
+      entry("smart-status-changed", {
+        from: "failed",
+        to: "warning",
+        cause: "acceptance",
+      }),
+    ],
+    [
+      "SMART failing because an acceptance was cleared",
+      entry("smart-status-changed", {
+        from: "passed",
+        to: "failed",
+        cause: "acceptance",
+      }),
     ],
     [
       "a SMART warning",

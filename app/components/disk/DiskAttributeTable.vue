@@ -76,6 +76,7 @@ watch(
 const ROW_TINT = {
   failed: "bg-error/5",
   warning: "bg-warning/5",
+  acknowledged: "bg-warning/5",
   accepted: "bg-elevated/40",
   passed: "",
 } as const;

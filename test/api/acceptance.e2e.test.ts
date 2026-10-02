@@ -70,7 +70,7 @@ interface Overview {
     attrId: string;
     status: string;
     displayStatus: string;
-    acceptance: { acceptedValue: number; note: string } | null;
+    acceptance: { kind: string; acceptedValue: number; note: string } | null;
   }[];
   acceptances: { attrId: string; supersededAt: string | null }[];
   selfTests: unknown[];
@@ -109,6 +109,7 @@ describe("/api/disks/:id/accept", () => {
     expect(await response.json()).toMatchObject({
       diskId,
       attrId: "197",
+      kind: "accept",
       acceptedValue: 16,
       note: "16 since purchase",
       supersededAt: null,
@@ -132,6 +133,9 @@ describe("/api/disks/:id/accept", () => {
     expect((await accept(diskId, { attrId: "999" })).status).toBe(404);
     expect((await accept(99999, { attrId: "197" })).status).toBe(404);
     expect((await accept(diskId, {})).status).toBe(400);
+    expect(
+      (await accept(diskId, { attrId: "197", kind: "ignore" })).status,
+    ).toBe(400);
   });
 
   it("clears the acceptance back to failed", async () => {
@@ -174,5 +178,30 @@ describe("/api/disks/:id/accept", () => {
         "acceptance-superseded",
       ]),
     );
+  });
+
+  it("acknowledges the fault as a warning until the value rises again", async () => {
+    const response = await accept(diskId, {
+      attrId: "197",
+      kind: "acknowledge",
+    });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      kind: "acknowledge",
+      acceptedValue: 24,
+    });
+    expect(attribute197(await overview(diskId))).toMatchObject({
+      displayStatus: "acknowledged",
+      acceptance: { kind: "acknowledge", acceptedValue: 24 },
+    });
+    expect(await diskStatus(diskId)).toBe("warning");
+
+    await ingestK2(withAttributeRaw(K2_WITH_PENDING_SECTORS_ONLY, 197, 25));
+
+    expect(attribute197(await overview(diskId))).toMatchObject({
+      displayStatus: "failed",
+      acceptance: null,
+    });
+    expect(await diskStatus(diskId)).toBe("failed");
   });
 });

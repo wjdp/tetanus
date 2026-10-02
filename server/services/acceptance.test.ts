@@ -144,7 +144,15 @@ describe("acceptFault", () => {
       },
     ]);
     expect(events(diskId, "smart-status-changed")).toMatchObject([
-      { at: at(HOUR_MS), data: { from: "failed", to: "passed", failing: [] } },
+      {
+        at: at(HOUR_MS),
+        data: {
+          from: "failed",
+          to: "passed",
+          failing: [],
+          cause: "acceptance",
+        },
+      },
     ]);
   });
 
@@ -180,6 +188,129 @@ describe("acceptFault", () => {
       () => acceptFault({ diskId: k2().id, attrId: "999" }),
       404,
     );
+  });
+});
+
+describe("acknowledging", () => {
+  it("keeps the fault visible but drops the disk to a warning", () => {
+    ingestSmart(withAttributeRaw(SDB, 198, 0));
+    const diskId = k2().id;
+
+    const row = acceptFault({
+      diskId,
+      attrId: "197",
+      kind: "acknowledge",
+      note: "watching",
+      now: at(HOUR_MS),
+    });
+
+    expect(row).toMatchObject({ kind: "acknowledge", acceptedValue: 16 });
+    expect(attribute(diskId, "197")).toMatchObject({
+      status: "failed",
+      displayStatus: "acknowledged",
+      acceptance: { id: row.id, kind: "acknowledge", acceptedValue: 16 },
+    });
+    expect(k2().latestStatus).toBe("warning");
+    expect(latestReadingStatus(diskId)).toBe("warning");
+    expect(events(diskId, "fault-acknowledged")).toMatchObject([
+      { data: { attrId: "197", acceptedValue: 16, note: "watching" } },
+    ]);
+    expect(events(diskId, "smart-status-changed")).toMatchObject([
+      {
+        data: {
+          from: "failed",
+          to: "warning",
+          failing: [],
+          acknowledged: ["197"],
+          cause: "acceptance",
+        },
+      },
+    ]);
+  });
+
+  it("goes back to failed once the value rises, and holds when it drops", () => {
+    const quiet = withAttributeRaw(SDB, 198, 0);
+    ingestSmart(quiet);
+    const diskId = k2().id;
+    acceptFault({
+      diskId,
+      attrId: "197",
+      kind: "acknowledge",
+      now: at(HOUR_MS),
+    });
+
+    ingestSmart(withAttributeRaw(quiet, 197, 12), at(2 * HOUR_MS));
+    expect(k2().latestStatus).toBe("warning");
+    expect(activeAcceptances(diskId).has("197")).toBe(true);
+
+    ingestSmart(withAttributeRaw(quiet, 197, 17), at(3 * HOUR_MS));
+
+    expect(activeAcceptances(diskId).size).toBe(0);
+    expect(k2().latestStatus).toBe("failed");
+    expect(events(diskId, "acknowledgement-superseded")).toMatchObject([
+      {
+        title: "Current Pending Sector Count rose to 17 (acknowledged at 16)",
+        data: { attrId: "197", acceptedValue: 16, value: 17 },
+      },
+    ]);
+    expect(events(diskId, "smart-status-changed")[0]).toMatchObject({
+      data: {
+        from: "warning",
+        to: "failed",
+        superseded: ["197"],
+        cause: "reading",
+      },
+    });
+  });
+
+  it("switches kind in one step and 409s on the same kind", () => {
+    ingestSmart(withAttributeRaw(SDB, 198, 0));
+    const diskId = k2().id;
+    const first = acceptFault({
+      diskId,
+      attrId: "197",
+      kind: "acknowledge",
+      now: at(HOUR_MS),
+    });
+    expectServiceError(
+      () => acceptFault({ diskId, attrId: "197", kind: "acknowledge" }),
+      409,
+    );
+
+    const accepted = acceptFault({
+      diskId,
+      attrId: "197",
+      now: at(2 * HOUR_MS),
+    });
+
+    expect(activeAcceptances(diskId).get("197")?.id).toBe(accepted.id);
+    expect(
+      listAcceptances(diskId).find((row) => row.id === first.id),
+    ).toMatchObject({ clearedAt: at(2 * HOUR_MS) });
+    expect(events(diskId, "fault-accepted")).toMatchObject([
+      { data: { replaces: "acknowledge" } },
+    ]);
+    expect(events(diskId, "acknowledgement-cleared")).toHaveLength(0);
+    expect(k2().latestStatus).toBe("passed");
+  });
+
+  it("clears with its own event", () => {
+    ingestSmart(withAttributeRaw(SDB, 198, 0));
+    const diskId = k2().id;
+    acceptFault({
+      diskId,
+      attrId: "197",
+      kind: "acknowledge",
+      now: at(HOUR_MS),
+    });
+
+    clearAcceptance(diskId, "197", at(2 * HOUR_MS));
+
+    expect(k2().latestStatus).toBe("failed");
+    expect(events(diskId, "acknowledgement-cleared")).toMatchObject([
+      { data: { attrId: "197", acceptedValue: 16 } },
+    ]);
+    expect(events(diskId, "acceptance-cleared")).toHaveLength(0);
   });
 });
 

@@ -7,6 +7,10 @@ export const ALERT_RULES = {
     label: "Accepted fault worsened",
     severity: "alert",
   },
+  "acknowledgement-superseded": {
+    label: "Acknowledged fault worsened",
+    severity: "alert",
+  },
   "disk-failed": { label: "Disk failed", severity: "alert" },
   "disk-recovered": { label: "Disk recovered", severity: "recovery" },
   "disk-missing": { label: "Disk missing", severity: "alert" },

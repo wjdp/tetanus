@@ -35,16 +35,17 @@ const STATUS_GROUP: Record<
 > = {
   failed: 0,
   warning: 1,
-  accepted: 2,
+  acknowledged: 2,
+  accepted: 3,
 };
 
 function importanceGroup(attribute: RankedAttribute): number {
   if (attribute.displayStatus !== "passed") {
     return STATUS_GROUP[attribute.displayStatus];
   }
-  if (attributeClass(attribute.attrId) === "defect") return 3;
-  if (isNotableContextRate(attribute)) return 4;
-  return 5;
+  if (attributeClass(attribute.attrId) === "defect") return 4;
+  if (isNotableContextRate(attribute)) return 5;
+  return 6;
 }
 
 const numericId = (attrId: string) =>
@@ -90,6 +91,7 @@ export function countByStatus(
   return {
     failed: count("failed"),
     warning: count("warning"),
+    acknowledged: count("acknowledged"),
     accepted: count("accepted"),
   };
 }
@@ -106,6 +108,7 @@ export const ATTRIBUTE_STATUS_DOT: Record<
   passed: null,
   warning: { colour: "warning", shape: "filled" },
   failed: { colour: "error", shape: "filled" },
+  acknowledged: { colour: "warning", shape: "filled" },
   accepted: { colour: "warning", shape: "hollow" },
 };
 

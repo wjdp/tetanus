@@ -26,7 +26,7 @@ export interface AlertContext {
   disk(id: number): AlertDisk | undefined;
   pool(id: number): AlertPool | undefined;
   host(id: number): AlertHost | undefined;
-  isAccepted(diskId: number, attrId: string): boolean;
+  hasActiveAcceptance(diskId: number, attrId: string): boolean;
 }
 
 export interface Alert {
@@ -71,7 +71,13 @@ function matchDiskEntry(
   switch (entry.eventType) {
     case "attribute-status-changed": {
       const attrId = text(data.attrId);
-      if (to !== "failed" || context.isAccepted(diskId, attrId)) return null;
+      if (
+        to !== "failed" ||
+        data.superseded === true ||
+        context.hasActiveAcceptance(diskId, attrId)
+      ) {
+        return null;
+      }
       return {
         rule: "attribute-failed",
         value: attrId,
@@ -79,13 +85,18 @@ function matchDiskEntry(
       };
     }
     case "acceptance-superseded":
+    case "acknowledgement-superseded":
       return {
-        rule: "acceptance-superseded",
+        rule: entry.eventType,
         value: `${text(data.attrId)}@${text(data.value)}`,
         detail: entry.title,
       };
     case "smart-status-changed":
+      if (data.cause === "acceptance") return null;
       if (to === "failed") {
+        if (Array.isArray(data.superseded) && data.superseded.length > 0) {
+          return null;
+        }
         return {
           rule: "disk-failed",
           value: "failed",

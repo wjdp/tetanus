@@ -1,5 +1,10 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import type { OverlaidAttribute } from "#shared/smart/status";
+import type { DiaryEventType } from "#shared/diary";
+import {
+  type AcceptanceKind,
+  isCovered,
+  type OverlaidAttribute,
+} from "#shared/smart/status";
 import { db } from "~~/server/database/client";
 import { disk, faultAcceptance } from "~~/server/database/schema";
 import { addAutoEvent } from "~~/server/services/diary";
@@ -16,9 +21,35 @@ type NamedAttribute = OverlaidAttribute & { name: string };
 export interface AcceptFaultInput {
   diskId: number;
   attrId: string;
+  kind?: AcceptanceKind;
   note?: string;
   now?: Date;
 }
+
+interface KindVocabulary {
+  verb: string;
+  created: DiaryEventType;
+  superseded: DiaryEventType;
+  cleared: DiaryEventType;
+  noun: string;
+}
+
+const KIND_VOCABULARY: Record<AcceptanceKind, KindVocabulary> = {
+  accept: {
+    verb: "accepted",
+    created: "fault-accepted",
+    superseded: "acceptance-superseded",
+    cleared: "acceptance-cleared",
+    noun: "acceptance",
+  },
+  acknowledge: {
+    verb: "acknowledged",
+    created: "fault-acknowledged",
+    superseded: "acknowledgement-superseded",
+    cleared: "acknowledgement-cleared",
+    noun: "acknowledgement",
+  },
+};
 
 function isActive(diskId: number) {
   return and(
@@ -61,15 +92,18 @@ function assertDiskExists(diskId: number) {
 export function acceptFault({
   diskId,
   attrId,
+  kind = "accept",
   note = "",
   now = new Date(),
 }: AcceptFaultInput): FaultAcceptanceRow {
   return db.transaction(() => {
     assertDiskExists(diskId);
-    if (activeAcceptances(diskId).has(attrId)) {
+    const vocabulary = KIND_VOCABULARY[kind];
+    const active = activeAcceptances(diskId).get(attrId);
+    if (active?.kind === kind) {
       throw new ServiceError(
         409,
-        `Attribute ${attrId} on disk ${diskId} is already accepted`,
+        `Attribute ${attrId} on disk ${diskId} is already ${vocabulary.verb}`,
       );
     }
     const attribute = latestAttributes(diskId).find(
@@ -80,21 +114,33 @@ export function acceptFault({
         `Disk ${diskId} has no attribute ${attrId} in its latest reading`,
       );
     }
+    if (active) {
+      db.update(faultAcceptance)
+        .set({ clearedAt: now })
+        .where(eq(faultAcceptance.id, active.id))
+        .run();
+    }
     const acceptedValue = attribute.transformedValue;
     const row = db
       .insert(faultAcceptance)
-      .values({ diskId, attrId, acceptedValue, acceptedAt: now, note })
+      .values({ diskId, attrId, kind, acceptedValue, acceptedAt: now, note })
       .returning()
       .get();
     addAutoEvent({
       subjectType: "disk",
       subjectId: diskId,
-      eventType: "fault-accepted",
-      title: `accepted ${attribute.name} at ${acceptedValue}`,
-      data: { attrId, acceptedValue, trend: attribute.trend, note },
+      eventType: vocabulary.created,
+      title: `${vocabulary.verb} ${attribute.name} at ${acceptedValue}`,
+      data: {
+        attrId,
+        acceptedValue,
+        trend: attribute.trend,
+        note,
+        ...(active ? { replaces: active.kind } : {}),
+      },
       at: now,
     });
-    recomputeLatestStatus(diskId, now);
+    recomputeLatestStatus(diskId, now, "acceptance");
     return row;
   });
 }
@@ -111,6 +157,7 @@ export function clearAcceptance(
         `Attribute ${attrId} on disk ${diskId} has no active acceptance`,
       );
     }
+    const vocabulary = KIND_VOCABULARY[active.kind];
     const row = db
       .update(faultAcceptance)
       .set({ clearedAt: now })
@@ -120,12 +167,12 @@ export function clearAcceptance(
     addAutoEvent({
       subjectType: "disk",
       subjectId: diskId,
-      eventType: "acceptance-cleared",
-      title: `cleared acceptance of ${attrId} at ${active.acceptedValue}`,
+      eventType: vocabulary.cleared,
+      title: `cleared ${vocabulary.noun} of ${attrId} at ${active.acceptedValue}`,
       data: { attrId, acceptedValue: active.acceptedValue },
       at: now,
     });
-    recomputeLatestStatus(diskId, now);
+    recomputeLatestStatus(diskId, now, "acceptance");
     return row;
   });
 }
@@ -134,16 +181,21 @@ export function supersedeIfRisen(
   diskId: number,
   attributes: NamedAttribute[],
   now: Date,
-) {
+): Set<string> {
   const byAttr = new Map(
     attributes.map((attribute) => [attribute.attrId, attribute]),
   );
+  const superseded = new Set<string>();
   for (const active of activeAcceptances(diskId).values()) {
     const attribute = byAttr.get(active.attrId);
-    if (!attribute || attribute.transformedValue <= active.acceptedValue) {
+    if (
+      !attribute ||
+      isCovered(active.acceptedValue, attribute.transformedValue)
+    ) {
       continue;
     }
     const value = attribute.transformedValue;
+    const vocabulary = KIND_VOCABULARY[active.kind];
     db.update(faultAcceptance)
       .set({ supersededAt: now })
       .where(eq(faultAcceptance.id, active.id))
@@ -151,8 +203,8 @@ export function supersedeIfRisen(
     addAutoEvent({
       subjectType: "disk",
       subjectId: diskId,
-      eventType: "acceptance-superseded",
-      title: `${attribute.name} rose to ${value} (accepted at ${active.acceptedValue})`,
+      eventType: vocabulary.superseded,
+      title: `${attribute.name} rose to ${value} (${vocabulary.verb} at ${active.acceptedValue})`,
       data: {
         attrId: active.attrId,
         acceptedValue: active.acceptedValue,
@@ -160,5 +212,7 @@ export function supersedeIfRisen(
       },
       at: now,
     });
+    superseded.add(active.attrId);
   }
+  return superseded;
 }

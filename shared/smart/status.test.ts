@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   effectiveDeviceStatus,
   healthStatus,
+  isCovered,
   overlayStatus,
   worstStatus,
 } from "./status";
@@ -33,21 +34,59 @@ describe("healthStatus", () => {
   });
 });
 
+describe("isCovered", () => {
+  it("covers the level and anything below it", () => {
+    expect(isCovered(16, 16)).toBe(true);
+    expect(isCovered(16, 3)).toBe(true);
+    expect(isCovered(16, 17)).toBe(false);
+  });
+});
+
+const acknowledged = (acceptedValue: number) => ({
+  kind: "acknowledge" as const,
+  acceptedValue,
+});
+
 describe("overlayStatus", () => {
+  it("shows acknowledged while the value stays at or below the acknowledged value", () => {
+    expect(overlayStatus("failed", 16, acknowledged(16))).toBe("acknowledged");
+    expect(overlayStatus("warning", 12, acknowledged(16))).toBe("acknowledged");
+    expect(overlayStatus("failed", 17, acknowledged(16))).toBe("failed");
+    expect(overlayStatus("passed", 0, acknowledged(16))).toBe("passed");
+  });
+
   it("shows accepted while the value stays at or below the accepted value", () => {
-    expect(overlayStatus("failed", 16, { acceptedValue: 16 })).toBe("accepted");
-    expect(overlayStatus("warning", 12, { acceptedValue: 16 })).toBe(
-      "accepted",
-    );
+    expect(
+      overlayStatus("failed", 16, {
+        kind: "accept" as const,
+        acceptedValue: 16,
+      }),
+    ).toBe("accepted");
+    expect(
+      overlayStatus("warning", 12, {
+        kind: "accept" as const,
+        acceptedValue: 16,
+      }),
+    ).toBe("accepted");
   });
 
   it("shows the real status once the value rises or without an acceptance", () => {
-    expect(overlayStatus("failed", 17, { acceptedValue: 16 })).toBe("failed");
+    expect(
+      overlayStatus("failed", 17, {
+        kind: "accept" as const,
+        acceptedValue: 16,
+      }),
+    ).toBe("failed");
     expect(overlayStatus("failed", 16, null)).toBe("failed");
   });
 
   it("leaves passed attributes alone", () => {
-    expect(overlayStatus("passed", 0, { acceptedValue: 16 })).toBe("passed");
+    expect(
+      overlayStatus("passed", 0, {
+        kind: "accept" as const,
+        acceptedValue: 16,
+      }),
+    ).toBe("passed");
   });
 });
 
@@ -66,7 +105,7 @@ describe("effectiveDeviceStatus", () => {
       effectiveDeviceStatus(
         "passed",
         attributes,
-        new Map([["197", { acceptedValue: 16 }]]),
+        new Map([["197", { kind: "accept" as const, acceptedValue: 16 }]]),
       ),
     ).toBe("warning");
     expect(
@@ -74,11 +113,31 @@ describe("effectiveDeviceStatus", () => {
         "passed",
         attributes,
         new Map([
-          ["197", { acceptedValue: 16 }],
-          ["198", { acceptedValue: 20 }],
+          ["197", { kind: "accept" as const, acceptedValue: 16 }],
+          ["198", { kind: "accept" as const, acceptedValue: 20 }],
         ]),
       ),
     ).toBe("passed");
+  });
+
+  it("counts an acknowledged attribute as a warning", () => {
+    expect(
+      effectiveDeviceStatus(
+        "passed",
+        attributes,
+        new Map([
+          ["197", acknowledged(16)],
+          ["198", acknowledged(18)],
+        ]),
+      ),
+    ).toBe("warning");
+    expect(
+      effectiveDeviceStatus(
+        "failed",
+        attributes,
+        new Map([["197", acknowledged(16)]]),
+      ),
+    ).toBe("failed");
   });
 
   it("never hides a failed self-assessment", () => {
@@ -87,8 +146,8 @@ describe("effectiveDeviceStatus", () => {
         "failed",
         attributes,
         new Map([
-          ["197", { acceptedValue: 16 }],
-          ["198", { acceptedValue: 18 }],
+          ["197", { kind: "accept" as const, acceptedValue: 16 }],
+          ["198", { kind: "accept" as const, acceptedValue: 18 }],
         ]),
       ),
     ).toBe("failed");

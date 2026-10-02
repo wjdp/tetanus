@@ -27,7 +27,11 @@ import type {
 } from "../../shared/hardware";
 import type { Inventory } from "../../shared/inventory-fields";
 import type { SettingsConfig } from "../../shared/schemas/settings";
-import type { AttributeStatus, DeviceStatus } from "../../shared/smart/status";
+import type {
+  AcceptanceKind,
+  AttributeStatus,
+  DeviceStatus,
+} from "../../shared/smart/status";
 import type { HostTemperatureThresholds } from "../../shared/temperature";
 import type { DiskUsage } from "../../shared/usage";
 import type { Vendor } from "../../shared/vendor";
@@ -520,6 +524,7 @@ export const faultAcceptance = sqliteTable(
       .notNull()
       .references(() => disk.id, { onDelete: "cascade" }),
     attrId: text().notNull(),
+    kind: text().$type<AcceptanceKind>().notNull().default("accept"),
     acceptedValue: integer().notNull(),
     acceptedAt: datetime().notNull(),
     note: text().notNull().default(""),

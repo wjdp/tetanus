@@ -1,0 +1,1 @@
+ALTER TABLE `FaultAcceptance` ADD `kind` text DEFAULT 'accept' NOT NULL;

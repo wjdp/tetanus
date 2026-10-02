@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AttributeDisplayStatus } from "#shared/smart/status";
 import {
   ATTRIBUTE_STATUS_DOT,
   attributeNote,
@@ -9,7 +10,7 @@ import {
   orderAttributes,
 } from "./attributeRows";
 
-type Status = "passed" | "warning" | "failed" | "accepted";
+type Status = AttributeDisplayStatus;
 
 const attribute = (
   attrId: string,
@@ -25,9 +26,10 @@ const ids = (attributes: { attrId: string }[]) =>
   attributes.map((entry) => entry.attrId);
 
 describe("orderAttributes", () => {
-  it("groups failed, warning, accepted, defect, notable context, then the rest", () => {
+  it("groups failed, warning, acknowledged, accepted, defect, notable context, then the rest", () => {
     const ordered = orderAttributes([
       attribute("9", "passed", 0.02),
+      attribute("199", "acknowledged"),
       attribute("194", "passed", 0.15),
       attribute("198", "passed"),
       attribute("5", "accepted"),
@@ -35,7 +37,7 @@ describe("orderAttributes", () => {
       attribute("197", "failed"),
     ]);
 
-    expect(ids(ordered)).toEqual(["197", "4", "5", "198", "194", "9"]);
+    expect(ids(ordered)).toEqual(["197", "4", "199", "5", "198", "194", "9"]);
   });
 
   it("sorts by numeric attrId within a group", () => {
@@ -122,7 +124,7 @@ describe("attributeNote", () => {
 });
 
 describe("countByStatus", () => {
-  it("counts failed, warning and accepted attributes", () => {
+  it("counts failed, warning, acknowledged and accepted attributes", () => {
     expect(
       countByStatus([
         attribute("1", "failed"),
@@ -130,8 +132,9 @@ describe("countByStatus", () => {
         attribute("3", "warning"),
         attribute("4", "passed"),
         attribute("5", "accepted"),
+        attribute("6", "acknowledged"),
       ]),
-    ).toEqual({ failed: 1, warning: 2, accepted: 1 });
+    ).toEqual({ failed: 1, warning: 2, acknowledged: 1, accepted: 1 });
   });
 });
 
@@ -174,6 +177,13 @@ describe("ATTRIBUTE_STATUS_DOT", () => {
     });
     expect(ATTRIBUTE_STATUS_DOT.failed).toEqual({
       colour: "error",
+      shape: "filled",
+    });
+  });
+
+  it("draws an acknowledged fault as a filled warning dot", () => {
+    expect(ATTRIBUTE_STATUS_DOT.acknowledged).toEqual({
+      colour: "warning",
       shape: "filled",
     });
   });
