@@ -15,7 +15,7 @@ describe("VdevTypeIcon", () => {
 
   it("renders nothing for an unknown type", async () => {
     const icon = await mountSuspended(VdevTypeIcon, {
-      props: { type: "draid2" },
+      props: { type: "raidz9" },
     });
 
     expect(icon.find("[data-vdev-type]").exists()).toBe(false);
