@@ -34,6 +34,7 @@ import type {
   RecordingTech,
 } from "../../shared/hardware";
 import type { Inventory } from "../../shared/inventory-fields";
+import type { PoolConfig, PoolLastScrub } from "../../shared/schemas/pools";
 import type { SettingsConfig } from "../../shared/schemas/settings";
 import type {
   SimulationParams,
@@ -48,7 +49,10 @@ import type { HostTemperatureThresholds } from "../../shared/temperature";
 import type { DiskUsage } from "../../shared/usage";
 import type { Vendor } from "../../shared/vendor";
 import type { ZfsDatasetType } from "../ingest/zfs-list";
-import type { ZpoolStatusScan } from "../ingest/zpool-status";
+import type {
+  ZpoolStatusRemoval,
+  ZpoolStatusScan,
+} from "../ingest/zpool-status";
 import { autoIncrementId, boolean, datetime, json } from "./columns";
 
 export const setting = sqliteTable(
@@ -297,8 +301,12 @@ export const pool = sqliteTable(
     state: text().notNull(),
     status: text(),
     action: text(),
+    msgid: text(),
+    moreinfo: text(),
     health: text(),
     errors: integer(),
+    damagedFiles: json().$type<string[]>(),
+    damagedFilesError: text(),
     sizeBytes: integer(),
     allocBytes: integer(),
     freeBytes: integer(),
@@ -306,6 +314,9 @@ export const pool = sqliteTable(
     cap: integer(),
     dedup: real(),
     scan: json().$type<ZpoolStatusScan>(),
+    lastScrub: json().$type<PoolLastScrub>(),
+    removal: json().$type<ZpoolStatusRemoval>(),
+    config: json().$type<PoolConfig>(),
     firstSeenAt: datetime().notNull(),
     lastSeenAt: datetime().notNull(),
   },
