@@ -852,7 +852,7 @@ function pools(): PoolModel[] {
       vdevs: [vdev("normal", "disk", 0, 1, SCRATCH_CREATED)],
       allocatedFraction: { atCreation: 0, atAnchor: 0.47 },
       scrubDurationMs: 11 * 60_000,
-      scrubSchedule: "monthly-second-sunday",
+      scrubSchedule: "none",
       properties: { ...DEFAULT_POOL_PROPERTIES, autotrim: "on" },
     }),
     pool({

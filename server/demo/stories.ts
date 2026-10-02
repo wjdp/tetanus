@@ -485,6 +485,7 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
   }
 
   function scheduledStarts(owner: PoolModel, from: Date, to: Date): Date[] {
+    if (owner.scrubSchedule === "none") return [];
     const starts: Date[] = [];
     if (owner.scrubSchedule === "weekly-sunday") {
       const cursor = new Date(from);
@@ -902,8 +903,18 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
     seeds: createSeeds(
       timeline,
       a7ReallocatedReachesAt(A7_FAILS_AT_REALLOCATED),
+      a7ChecksumAcknowledgedAt(),
     ),
   };
+
+  /** Half an hour after the last checksum error before the anchor, so the acknowledgement holds at reset. */
+  function a7ChecksumAcknowledgedAt(): Date {
+    const last = A7_EREPORTS.filter((at) => ms(at) <= ms(timeline.anchor)).at(
+      -1,
+    );
+    if (!last) throw new Error("A7 has no checksum errors before the anchor");
+    return addMs(last, 30 * 60_000);
+  }
 
   function a7ReallocatedReachesAt(count: number): Date {
     const span = ms(timeline.anchor) - ms(timeline.a7ClimbFrom);
@@ -925,7 +936,11 @@ export interface Seeds {
   archivedPools: ArchivedPoolSeed[];
 }
 
-function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
+function createSeeds(
+  timeline: Timeline,
+  a7FailedAt: Date,
+  a7ChecksumAcknowledgedAt: Date,
+): Seeds {
   // V2's reallocations cross the policy threshold days before smartctl's own verdict.
   const v2FailedAt = addMs(timeline.v2DegradingFrom, 3 * DAY_MS);
   const days = (count: number, from = timeline.anchor) =>
@@ -1136,6 +1151,13 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
         action: "acknowledge",
         note: "Pulled for RMA",
         at: hours(14, timeline.v5PulledAt),
+      },
+      {
+        subject: onPool("atlas", "tank"),
+        kind: "leaf-errors",
+        action: "acknowledge",
+        note: "A7 again. Replacement HC550 ordered; reopens if the count climbs.",
+        at: a7ChecksumAcknowledgedAt,
       },
     ],
     overrides: [

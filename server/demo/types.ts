@@ -135,7 +135,8 @@ export interface PoolModel {
   /** Scrub duration; the scan rate is allocated bytes over this. */
   scrubDurationMs: number;
   /** Cron: Ubuntu/Debian zfsutils `monthly-second-sunday` at 00:24, or a weekly systemd timer on Sundays at 00:24 (UTC). */
-  scrubSchedule: "monthly-second-sunday" | "weekly-sunday";
+  /** `none`: no cron scrub, so the pool is scrub-overdue. */
+  scrubSchedule: "monthly-second-sunday" | "weekly-sunday" | "none";
   properties: Record<string, string>;
 }
 

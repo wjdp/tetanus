@@ -228,11 +228,11 @@ describe("seed", () => {
   });
 
   describe("faults", () => {
-    it("counts five live, one accepted and eleven resolved", () => {
+    it("counts six live, one accepted and eleven resolved", () => {
       const { counts } = allFaults();
       expect(counts).toEqual({
         open: 3,
-        acknowledged: 2,
+        acknowledged: 3,
         accepted: 1,
         resolved: 11,
       });
@@ -241,7 +241,8 @@ describe("seed", () => {
         .map((row) => [row.kind, row.subject.label, row.state]);
       expect(zfsKinds).toEqual(
         expect.arrayContaining([
-          ["leaf-errors", "tank", "open"],
+          ["leaf-errors", "tank", "acknowledged"],
+          ["scrub-overdue", "scratch", "open"],
           ["leaf-errors", "vault", "resolved"],
           ["scrub-overdue", "vault", "resolved"],
         ]),
@@ -299,11 +300,43 @@ describe("seed", () => {
       );
     });
 
-    it("vault was degraded until the resilver finished", () => {
-      expect(faultOf("pool-degraded", "vault")).toMatchObject({
+    it("vault was degraded until the resilver finished, listing V2", () => {
+      const degraded = faultOf("pool-degraded", "vault");
+      expect(degraded).toMatchObject({
         state: "resolved",
         openedAt: timeline.v2FaultedAt.toISOString(),
         resolvedAt: timeline.vaultResilverEnd.toISOString(),
+      });
+      expect(degraded.data.leaves).toEqual([
+        expect.objectContaining({
+          state: "FAULTED",
+          diskId: diskByAlias("V2").id,
+        }),
+      ]);
+    });
+
+    it("A7's checksum errors in tank are acknowledged at their level", () => {
+      const leafErrors = allFaults().faults.find(
+        (row) =>
+          row.kind === "leaf-errors" &&
+          row.subject.label === "tank" &&
+          row.state !== "resolved",
+      );
+      expect(leafErrors).toMatchObject({
+        state: "acknowledged",
+        note: expect.stringContaining("A7"),
+        data: { diskId: diskByAlias("A7").id },
+      });
+      expect(leafErrors?.data.acknowledgedCounts).toEqual(
+        leafErrors?.data.total,
+      );
+    });
+
+    it("scratch has never been scrubbed, so its scrub is overdue", () => {
+      expect(faultOf("scrub-overdue", "scratch")).toMatchObject({
+        state: "open",
+        severity: "warning",
+        data: { lastScrubAt: null, intervalDays: 35 },
       });
     });
 
