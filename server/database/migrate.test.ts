@@ -34,7 +34,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 18;
+const MIGRATION_COUNT = 19;
 
 const openConnections: Database.Database[] = [];
 
@@ -152,7 +152,10 @@ describe("0009_host_collector_version", () => {
     runMigrations(sqlite, db);
     sqlite.exec(`
       DELETE FROM __drizzle_migrations
-        WHERE created_at = (SELECT MAX(created_at) FROM __drizzle_migrations);
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 2
+        );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
         VALUES ('scan-errors', 'zfs', 'pool', 1, '1', 'error',
@@ -167,6 +170,7 @@ describe("0009_host_collector_version", () => {
 
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0017_fault_kind_pool_data_errors",
+      "0018_vdev_role_backfill",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -216,7 +220,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 9
+            ORDER BY created_at DESC LIMIT 10
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -238,6 +242,7 @@ describe("0009_host_collector_version", () => {
       "0015_pool_scrub_config_removal",
       "0016_vdev_role_spare_state",
       "0017_fault_kind_pool_data_errors",
+      "0018_vdev_role_backfill",
     ]);
     expect(
       sqlite
@@ -249,6 +254,45 @@ describe("0009_host_collector_version", () => {
       { name: "mars", collectorVersion: "0.3.0", collectorStatus: "unknown" },
       { name: "pihost", collectorVersion: null, collectorStatus: "unknown" },
       { name: "venus", collectorVersion: null, collectorStatus: "unknown" },
+    ]);
+  });
+});
+
+describe("0018_vdev_role_backfill", () => {
+  it("gives leaves their group's role and fixes single log and cache leaves", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DELETE FROM __drizzle_migrations
+        WHERE created_at = (SELECT MAX(created_at) FROM __drizzle_migrations);
+      INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
+      INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
+        VALUES (1, 1, 'p', 'tank', 'ONLINE', 0, 0);
+      INSERT INTO Vdev (id, poolId, guid, parentId, name, type, role, state, path, present, lastSeenAt)
+        VALUES (1, 1, 'root', NULL, 'tank', 'root', 'normal', 'ONLINE', NULL, 1, 0),
+               (2, 1, 'mirror', 1, 'mirror-4', 'special', 'special', 'ONLINE', NULL, 1, 0),
+               (3, 1, 'sa', 2, 'S1', 'disk', 'normal', 'ONLINE', '/dev/disk/by-vdev/S1', 0, 0),
+               (4, 1, 'sb', 2, 'S2', 'disk', 'normal', 'ONLINE', '/dev/disk/by-vdev/S2', 1, 0),
+               (5, 1, 'log', 1, 'L1', 'log', 'normal', 'ONLINE', '/dev/disk/by-vdev/L1', 0, 0),
+               (6, 1, 'logfile', 1, '/tmp/log.img', 'log', 'log', 'ONLINE', '/tmp/log.img', 1, 0),
+               (7, 1, 'nopath', 1, 'L2', 'log', 'log', 'ONLINE', NULL, 0, 0),
+               (8, 1, 'data', 1, 'A1', 'disk', 'normal', 'ONLINE', '/dev/disk/by-vdev/A1', 1, 0);
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0018_vdev_role_backfill",
+    ]);
+    expect(
+      sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
+    ).toEqual([
+      { guid: "root", type: "root", role: "normal" },
+      { guid: "mirror", type: "special", role: "special" },
+      { guid: "sa", type: "disk", role: "special" },
+      { guid: "sb", type: "disk", role: "special" },
+      { guid: "log", type: "disk", role: "log" },
+      { guid: "logfile", type: "file", role: "log" },
+      { guid: "nopath", type: "log", role: "log" },
+      { guid: "data", type: "disk", role: "normal" },
     ]);
   });
 });
