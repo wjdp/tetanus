@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Acknowledge faults
@@ -123,9 +123,8 @@ timeline and alert rules read clearly:
 ### Faults page ([036](036-Faults-page.md))
 
 A disk amber only through acknowledgement derives `disk-warning`, not `disk-failed`.
-036's "with no active acceptance covering it" wording becomes "device status `warning`"
-(acknowledged still counts; accepted does not). 036 is not built yet, so this is a
-doc change only: update 036 when this lands.
+036's `disk-warning` row now says "device status `warning`" (acknowledged still counts;
+accepted does not). 036 is not built yet, so this was a doc change only.
 
 ### UI
 
@@ -210,3 +209,39 @@ tables, 036 kind table, 025 untouched (history).
 - Expiry ("acknowledge for 7 days").
 - Bulk "acknowledge all" on a disk: each attribute is acknowledged on its own.
 - Acknowledging health-level failure (`smartPassed === false`).
+
+## Findings
+
+Built 2026-10-02.
+
+Deviations from the contract:
+
+- **Alert suppression is per entry, not per tick.** Collapsing in `deriveAlerts` would
+  depend on which entries share a pass and would not hold for retries, which re-derive
+  one entry at a time (`rederive` in `dispatch.ts`). Instead the diary entries say why
+  they happened and `deriveAlert` reads that:
+  - `smart-status-changed.data` gains `cause: "reading" | "acceptance" | "policy"` and
+    `superseded: attrId[]`. `cause: "acceptance"` (accept, acknowledge, clear, switch)
+    never alerts, in either direction; that also silences `disk-failed` after a clear,
+    which the contract did not mention but is the same "a click is not news" rule.
+    `disk-failed` is skipped when `superseded` is non-empty: the supersede alert says it.
+  - `attribute-status-changed.data` gains `superseded: boolean`; `attribute-failed` is
+    skipped when true.
+  - `policy` (`reapplySmartPolicy`) alerts as before.
+- `supersedeIfRisen` keeps its name and now returns the superseded attrIds.
+- Status line reads "1 warning, 1 acknowledged attributes"; the clear confirm and its
+  error toast name the kind. The detail panel heading is "Acknowledgements and
+  acceptances".
+- Demo: A7's reallocated sectors acknowledged 12 h after they fail and superseded at
+  the next rise; A12 has 2 new pending sectors from 6 days before the anchor,
+  acknowledged and holding (filled amber row, amber disk). The A7 acknowledgement had
+  to be 12 h, not 2 h, after the failure: earlier than the next SMART reading it
+  acknowledged the still-passing value 16, and the rise to 17 then superseded it and
+  swallowed the `attribute-failed` alert the demo seeds.
+
+Notes:
+
+- Acknowledging an attribute whose latest reading is `passed` is allowed (as accept
+  is) and has the effect above: the next rise supersedes it silently apart from the
+  `*-superseded` alert. The UI only offers it on `failed` / `warning` rows.
+- The dev database needs `pnpm db:migrate` for `0012_fault_acceptance_kind`.

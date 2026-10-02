@@ -57,7 +57,7 @@ dismissals:
 | `collector-incompatible` | `collectorStatus(version) === "incompatible"` | error | `collector-incompatible:<host>:<version>` |
 | `collector-outdated` | `collectorStatus(version) === "outdated"` | warning | `collector-outdated:<host>:<version>` |
 | `disk-failed` | device status `failed` | error | `disk-failed:<diskId>` |
-| `disk-warning` | device status `warning` with no active acceptance covering it | warning | `disk-warning:<diskId>` |
+| `disk-warning` | device status `warning` (an acknowledged fault counts; an accepted one does not, [042](042-Acknowledge-faults.md)) | warning | `disk-warning:<diskId>` |
 | `disk-missing` | `lastState === "missing"` | error | `disk-missing:<diskId>` |
 | `pool-degraded` | pool state not `ONLINE` | error | `pool-degraded:<poolId>:<state>` |
 | `scan-errors` | last scrub/resilver `errors > 0` | error | `scan-errors:<poolId>:<scanId>` |

@@ -192,14 +192,18 @@ diary entries but no attribute alerts.
 
 Overlay, computed on read:
 
-- **Accepted**: a `FaultAcceptance(disk, attr, acceptedValue)` exists and current
-  `transformedValue <= acceptedValue` → display `accepted`, no alert. Value rises →
+- **Accepted**: a `FaultAcceptance(disk, attr, kind = accept, acceptedValue)` exists and
+  current `transformedValue <= acceptedValue` → display `accepted`, no alert. Value rises →
   back to `failed`, alert fires, acceptance marked `superseded`, diary entry.
+- **Acknowledged**: the same with `kind = acknowledge` → display `acknowledged`; the
+  attribute still counts towards disk status, but as `warning` at most. Superseded by
+  the same rule ([042](042-Acknowledge-faults.md)).
 - **Trend**: for each non-passed attribute, compare current value with 7 d and 30 d ago.
   `stable | worsening | new`. Shown next to status; feeds the accept dialog ("16 for 14
   months, stable").
 
-Disk status = worst of un-accepted attribute statuses, plus `smart_status.passed`.
+Disk status = worst of un-accepted attribute statuses (acknowledged capped at `warning`),
+plus `smart_status.passed`.
 
 Raw smartctl JSON is stored **only for the latest reading per disk** (`Disk.latestRaw`).
 Hourly raw would be ~10 GB/yr; normalised attribute rows are ~7 M rows/yr and fine.
@@ -228,7 +232,7 @@ SmartAttribute  readingId, attrId (text: "5" | "media_errors"), value, worst, th
                 index(diskId via reading, attrId, takenAt)
 TemperatureReading  diskId, at, celsius       unique(diskId, at)
 SelfTest        diskId, type, status, lifetimeHours, lba?, seenAt   unique per (disk, lifetimeHours, type)
-FaultAcceptance id, diskId, attrId, acceptedValue, acceptedAt, note, supersededAt?
+FaultAcceptance id, diskId, attrId, kind (accept | acknowledge), acceptedValue, acceptedAt, note, supersededAt?
 Pool            id, hostId (current), guid (unique), name, state, health, sizeBytes, allocBytes, freeBytes, frag, cap,
                 dedup, scan (json: type, state, started, finished, examined, errors),
                 firstSeenAt, lastSeenAt

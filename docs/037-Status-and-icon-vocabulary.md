@@ -36,7 +36,7 @@ same colour, transparent centre). 8 px in tiles and rails, 6 px inline in tables
 
 ## SMART device status (`DeviceStatus`)
 
-Worst of health, un-accepted attribute statuses. Shown as the disk's dot everywhere.
+Worst of health, un-accepted attribute statuses (acknowledged ones count as `warning`). Shown as the disk's dot everywhere.
 
 | status | colour | shape | badge label | where |
 | --- | --- | --- | --- | --- |
@@ -54,6 +54,7 @@ Per row in the attribute table and the accept dialog.
 | `passed` | neutral | no dot | row text default |
 | `warning` | warning | filled dot | |
 | `failed` | error | filled dot | |
+| `acknowledged` | warning | filled dot; `i-lucide-eye` beside the acknowledged value | "acknowledged at 16" in the value cell; still a fault, the disk is amber ([042](042-Acknowledge-faults.md)) |
 | `accepted` | warning | hollow dot; `i-lucide-shield-check` beside the accepted value | "accepted at 16" in the value cell; still amber so the reader knows it is a fault being watched |
 
 Trend chip next to a non-passed attribute: `new` info, `worsening` warning, `stable`
@@ -257,6 +258,8 @@ without colour. Manual entries `i-lucide-pencil`.
 | `smart-status-changed`, `attribute-status-changed` | the new status as a dot |
 | `fault-accepted` | `i-lucide-shield-check` |
 | `acceptance-superseded`, `acceptance-cleared` | `i-lucide-shield-off` |
+| `fault-acknowledged` | `i-lucide-eye` |
+| `acknowledgement-superseded`, `acknowledgement-cleared` | `i-lucide-eye-off` |
 | `disk-appeared` | `i-lucide-plug-zap` |
 | `moved-host`, `pool-moved` | `i-lucide-move-right` |
 | `vdev-joined`, `vdev-left`, `vdev-state-changed` | the vdev type icon |
