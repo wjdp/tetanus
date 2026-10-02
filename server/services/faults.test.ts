@@ -168,6 +168,21 @@ describe("collector-silent", () => {
     ]);
   });
 
+  it("faults the host, not its disks", async () => {
+    recordIngest({
+      hostName: "mars",
+      source: "lsblk",
+      meta: {},
+      body: readFixture("mars/lsblk.json"),
+      receivedAt: t0,
+    });
+
+    await syncFaults(at(DAY_MS));
+
+    expect(faultsOf("collector-silent")).toHaveLength(1);
+    expect(faultsOf("disk-missing")).toEqual([]);
+  });
+
   it("never faults an intermittent host that is offline", async () => {
     const mars = upsertHostByName("mars", t0);
     db.update(host)

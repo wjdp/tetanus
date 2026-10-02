@@ -6,7 +6,7 @@ import { disk, diskKey } from "~~/server/database/schema";
 import { parse as parseUdev } from "~~/server/ingest/udev";
 import { PRESENT_WINDOW_MS } from "~~/server/services/disks";
 import { LEFT_SERVICE_STATES } from "~~/server/services/faults";
-import { intermittentSightingTimes } from "~~/server/services/hosts";
+import { diskSightingTimes } from "~~/server/services/hosts";
 import { extractKeys } from "~~/server/services/identity";
 import { ensureSettings } from "~~/server/services/settings";
 import { type StoredPayload, storedPayloads } from "../payloads";
@@ -23,9 +23,9 @@ function missingAfterHours() {
   return config.missingAfterDays * 24;
 }
 
-/** Disk state on an intermittent host is judged as of its last sighting, not now. */
+/** Disk state is judged as of the host's last sighting, not now. */
 function sightingReference(subject: SubjectOf<"disk">, now: Date) {
-  const sightedAt = intermittentSightingTimes().get(subject.host.id);
+  const sightedAt = diskSightingTimes().get(subject.host.id);
   return sightedAt && sightedAt < now ? sightedAt : now;
 }
 

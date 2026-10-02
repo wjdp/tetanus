@@ -74,7 +74,7 @@ export const collectorSilent = defineScenario({
   group: "Collector",
   subjectType: "host",
   description:
-    "The collector stops posting. Its disks go missing with it once they pass the presence window.",
+    "The collector stops posting. Its disks keep their state as of the last scan.",
   applies: (subject) =>
     !subject.host.intermittent && okRunAges(subject, new Date()).size > 0,
   params: (subject) => {

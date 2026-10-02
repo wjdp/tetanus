@@ -243,12 +243,15 @@ function hostPayloadsAt(
   ];
 }
 
-/** Sources whose handler leaves the database as it was when the body repeats. */
+/**
+ * Sources whose handler leaves the database as it was when the body repeats.
+ * `smartctl-scan` is not among them: its run time is when the host last looked
+ * for its disks, which disk state is judged against.
+ */
 const IDEMPOTENT_SOURCES = new Set<IngestSource>([
   "versions",
   "vdev-id-conf",
   "lsblk",
-  "smartctl-scan",
   "udev",
 ]);
 const HISTORY_HEADER = /^History for '[^']+':$/;

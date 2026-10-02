@@ -24,6 +24,11 @@ const faultsOf = (kind: FaultKind, hostId: number) =>
     (fault) => fault.kind === kind && fault.subject.id === hostId,
   );
 
+const missingDiskFaultIds = () =>
+  listFaults({ state: ["open", "acknowledged"] })
+    .faults.filter((fault) => fault.kind === "disk-missing")
+    .map((fault) => fault.id);
+
 const scenarioIds = (hostId: number) =>
   subjectScenarios("host", hostId).scenarios.map((scenario) => scenario.id);
 
@@ -38,13 +43,14 @@ describe("host scenarios", () => {
     );
   });
 
-  it("silences a collector until every chip is stale", async () => {
+  it("silences a collector until every chip is stale, without missing its disks", async () => {
     const before = dumpDatabase();
     const atlas = hostNamed("atlas");
     const param = subjectScenarios("host", atlas.id).scenarios.find(
       (scenario) => scenario.id === "collector-silent",
     )?.params[0];
     if (param?.kind !== "number") throw new Error("Expected an hours param");
+    const missingBefore = missingDiskFaultIds();
 
     await simulate("host", atlas.id, "collector-silent", {}, LATER);
     const [silent] = faultsOf("collector-silent", atlas.id);
@@ -56,6 +62,7 @@ describe("host scenarios", () => {
       LATER.getTime(),
     );
     expect(groups.every((group) => group.status !== "ok")).toBe(true);
+    expect(missingDiskFaultIds()).toEqual(missingBefore);
 
     restore();
     expect(dumpDatabase()).toEqual(before);

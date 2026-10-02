@@ -165,6 +165,11 @@ override ∈ { none, spare, removed, dead, sold, retired }
 effective = override ?? inferred
 ```
 
+"Absent" means absent from the host's latest `lsblk` / `smartctl-scan`: state is judged
+as of that scan, so a host that stops reporting leaves its disks as they were and faults
+itself (`collector-silent`) instead
+([045](045-Silent-host-does-not-make-its-disks-missing.md)).
+
 `missing` alerts once; `removed` is quiet. Override is manual and produces a diary
 entry. Transitions of `effective` produce diary entries.
 

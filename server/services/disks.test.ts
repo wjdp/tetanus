@@ -153,6 +153,14 @@ function putInPool(diskId: number, present = true) {
   return tank.id;
 }
 
+function lsblkWithout(serial: string) {
+  const json = JSON.parse(readFixture("mars/lsblk.json"));
+  json.blockdevices = json.blockdevices.filter(
+    (device: { serial: string | null }) => device.serial !== serial,
+  );
+  return JSON.stringify(json);
+}
+
 describe("observing mars", () => {
   beforeEach(() => {
     flushDb();
@@ -417,11 +425,20 @@ describe("disk state, overrides and inventory", () => {
     expect(sda).not.toHaveProperty("latestRaw");
   });
 
-  it("reports presence within the present window", async () => {
+  it("reports presence as of the host's last scan", async () => {
     const soon = await listDisks(new Date("2026-09-01T11:00:00Z"));
     expect(soon.find((row) => row.id === sdaId)?.present).toBe(true);
-    const later = await listDisks(new Date("2026-09-01T13:00:00Z"));
-    expect(later.every((row) => !row.present)).toBe(true);
+    const silent = await listDisks(new Date("2026-09-01T13:00:00Z"));
+    expect(silent.every((row) => row.present)).toBe(true);
+    ingest(
+      "lsblk",
+      lsblkWithout("0UTY8HTE"),
+      undefined,
+      "mars",
+      new Date("2026-09-01T13:00:00Z"),
+    );
+    const rescanned = await listDisks(new Date("2026-09-01T13:00:00Z"));
+    expect(rescanned.find((row) => row.id === sdaId)?.present).toBe(false);
   });
 
   it("resolves the short model from inventory, drive-db line, then model", async () => {
@@ -472,6 +489,13 @@ describe("disk state, overrides and inventory", () => {
     );
     expect(eventsOf(sdaId, "state-changed")).toEqual([]);
 
+    ingest(
+      "lsblk",
+      lsblkWithout("0UTY8HTE"),
+      undefined,
+      "mars",
+      new Date("2026-09-01T13:00:00Z"),
+    );
     const missing = await getDisk(sdaId, new Date("2026-09-01T13:00:00Z"));
     expect(missing.state).toBe("missing");
     await getDisk(sdaId, new Date("2026-09-01T14:00:00Z"));
@@ -479,6 +503,13 @@ describe("disk state, overrides and inventory", () => {
       expect.objectContaining({ title: "missing (was in-use)" }),
     ]);
 
+    ingest(
+      "lsblk",
+      lsblkWithout("0UTY8HTE"),
+      undefined,
+      "mars",
+      new Date("2026-09-09T11:00:00Z"),
+    );
     await listDisks(new Date("2026-09-09T11:00:00Z"));
     expect(eventsOf(sdaId, "state-changed")[0].title).toBe(
       "removed (was missing)",
@@ -1032,19 +1063,14 @@ describe("Pi SD card bundle", () => {
   });
 });
 
-describe("disk state on an intermittent host", () => {
+describe.each([
+  { kind: "a regular", intermittent: false },
+  { kind: "an intermittent", intermittent: true },
+])("disk state on $kind host", ({ intermittent }) => {
   const HOUR_MS = 60 * 60 * 1000;
   const DAY_MS = 24 * HOUR_MS;
   const seenAtPlus = (ms: number) => new Date(seenAt.getTime() + ms);
   let sdaId: number;
-
-  const lsblkWithout = (serial: string) => {
-    const json = JSON.parse(readFixture("mars/lsblk.json"));
-    json.blockdevices = json.blockdevices.filter(
-      (device: { serial: string | null }) => device.serial !== serial,
-    );
-    return JSON.stringify(json);
-  };
 
   const stateOf = async (at: Date) =>
     (await listDisks(at)).find((row) => row.id === sdaId)?.state;
@@ -1054,15 +1080,16 @@ describe("disk state on an intermittent host", () => {
     ingestMars();
     sdaId = diskBySerial("0UTY8HTE").id;
     putInPool(sdaId);
-    updateHost(upsertHostByName("mars", seenAt).id, { intermittent: true });
+    updateHost(upsertHostByName("mars", seenAt).id, { intermittent });
   });
 
-  it("holds disk state while the host is off for weeks", async () => {
+  it("holds disk state while the host is silent for weeks", async () => {
     expect(await stateOf(seenAtPlus(HOUR_MS))).toBe("in-use");
     const weeksLater = await listDisks(seenAtPlus(30 * DAY_MS));
     expect(weeksLater.find((row) => row.id === sdaId)).toMatchObject({
       state: "in-use",
       present: true,
+      stateAsOf: seenAt,
     });
     expect(weeksLater.some((row) => row.state === "missing")).toBe(false);
     expect(eventsOf(sdaId, "state-changed")).toEqual([]);
@@ -1078,6 +1105,38 @@ describe("disk state on an intermittent host", () => {
     );
     expect(await stateOf(seenAtPlus(3 * HOUR_MS))).toBe("missing");
     expect(await stateOf(seenAtPlus(30 * DAY_MS))).toBe("missing");
+  });
+
+  it("only marks the pulled disk missing", async () => {
+    ingest(
+      "lsblk",
+      lsblkWithout("0UTY8HTE"),
+      undefined,
+      "mars",
+      seenAtPlus(3 * HOUR_MS),
+    );
+    const missing = (await listDisks(seenAtPlus(3 * HOUR_MS))).filter(
+      (row) => row.state === "missing",
+    );
+    expect(missing.map((row) => row.id)).toEqual([sdaId]);
+  });
+
+  it("has no stale hint while the host reports", async () => {
+    const row = (await listDisks(seenAtPlus(HOUR_MS))).find(
+      (disk) => disk.id === sdaId,
+    );
+    expect(row?.stateAsOf).toBeNull();
+  });
+
+  it("has no stale hint on an overridden state", async () => {
+    db.update(disk)
+      .set({ stateOverride: "spare" })
+      .where(eq(disk.id, sdaId))
+      .run();
+    const row = (await listDisks(seenAtPlus(30 * DAY_MS))).find(
+      (disk) => disk.id === sdaId,
+    );
+    expect(row?.stateAsOf).toBeNull();
   });
 
   it("holds state while the host boots and zfs reports before smart", async () => {
@@ -1098,9 +1157,16 @@ describe("disk state on an intermittent host", () => {
     expect(eventsOf(sdaId, "state-changed")).toEqual([]);
   });
 
-  it("applies normal rules once the disk is sighted on another host", async () => {
+  it("judges the disk by the new host's scans once it moves", async () => {
     ingestLsblk("venus", seenAtPlus(DAY_MS));
     expect(await stateOf(seenAtPlus(DAY_MS + HOUR_MS))).toBe("in-use");
+    ingest(
+      "lsblk",
+      lsblkWithout("0UTY8HTE"),
+      undefined,
+      "venus",
+      seenAtPlus(DAY_MS + 3 * HOUR_MS),
+    );
     expect(await stateOf(seenAtPlus(DAY_MS + 3 * HOUR_MS))).toBe("missing");
   });
 });

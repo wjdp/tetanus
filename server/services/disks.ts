@@ -47,7 +47,7 @@ import {
   recordingTechChanges,
   zonedChanges,
 } from "~~/server/services/hardware";
-import { intermittentSightingTimes } from "~~/server/services/hosts";
+import { diskSightingTimes } from "~~/server/services/hosts";
 import {
   extractKeys,
   isPartitionName,
@@ -122,6 +122,7 @@ export interface DiskSummary
   sectorFormat: SectorFormat | null;
   interfaceLabel: string | null;
   present: boolean;
+  stateAsOf: Date | null;
   modelShort: string | null;
   tempThresholds: TemperatureThresholds;
 }
@@ -662,11 +663,12 @@ interface StateSnapshot {
   inferredState: DiskState;
   state: EffectiveDiskState;
   present: boolean;
+  stateAsOf: Date | null;
 }
 
 function stateResolver(now: Date, missingAfterDays: number) {
   const inPool = diskIdsInPools();
-  const sightingTimes = intermittentSightingTimes();
+  const sightingTimes = diskSightingTimes();
   const referenceFor = (row: DiskRow) => {
     const sightedAt =
       row.lastSeenHostId === null
@@ -684,10 +686,14 @@ function stateResolver(now: Date, missingAfterDays: number) {
       now: referenceAt,
       missingAfterDays,
     });
+    const isStale =
+      row.stateOverride === null &&
+      now.getTime() - referenceAt.getTime() > PRESENT_WINDOW_MS;
     return {
       inferredState,
       state: row.stateOverride ?? inferredState,
       present,
+      stateAsOf: isStale ? referenceAt : null,
     };
   };
 }

@@ -72,6 +72,9 @@ host has no URL.
 
 ### Disk state reference time
 
+Since [045](045-Silent-host-does-not-make-its-disks-missing.md) this applies to every
+host, not only intermittent ones.
+
 In `stateResolver`, for a disk whose `lastSeenHostId` host is intermittent, use
 `referenceAt = min(now, lastSmartScanAt)` for both `isPresent` and the
 `missingAfterDays` ageing, where `lastSmartScanAt` is that host's latest ok run of the
