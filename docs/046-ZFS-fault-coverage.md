@@ -216,6 +216,41 @@ future kinds (017 scrub row); 044 gaps; 017 pool half done.
 8. Pool page additions; component tests.
 9. Simulator assertions and new scenarios; demo seed; docs.
 
+## As built
+
+Part A (ingest, data, topology):
+
+- Fixtures `zpool-status-spare-avail.json`, `-spare-offline.json`, `-spare-inuse.json`
+  (file-backed `tspare` on mars: mirror, log, l2cache, one spare).
+- Under `--json-flat-vdevs`, log, cache and spare devices are top-level flat entries
+  with no `parent`, told apart by `class` (`log`, `l2cache`, `spare`). A single log or
+  cache device is the leaf itself, not a group. Before this task a single log parsed as
+  type `log` (so never linked to its disk) and `l2cache` was unmapped (parsed as a plain
+  leaf under root).
+- Leaves keep their own type (`disk` / `file`); the class goes in `Vdev.role`
+  (`normal`, `log`, `cache`, `special`, `dedup`, `spare`), inherited from the parent
+  when a leaf has no `class` (`-L`). Top-level groups (`mirror-4` class `special`) keep
+  the class as their type, as before. The topology card groups single devices by role.
+- A spare's flat entry is its aux status: `AVAIL` with no error counters (parsed as 0),
+  or `INUSE` with `"aux": "SPARED"`. While in use the flat map holds only that aux entry
+  under the shared name key; the in-pool copy (`ONLINE`, parent `spare-N`) survives only
+  in the nested `vdevs` maps. The parser takes the nested copy for position, state and
+  counters, and keeps the aux state in `Vdev.spareState`, so one row per guid: the spare
+  sits under `spare-N` while `INUSE` and back under root when `AVAIL`.
+- Second migration `vdev_role_spare_state` (`Vdev.role`, `Vdev.spareState`, role
+  backfilled from group type); `pool_scrub_config_removal` has the Pool columns only.
+  The `scan-errors` → `pool-data-errors` rename is left for the kinds step.
+- `Pool.lastScrub.endAt` is an ISO string; `repairedBytes` is null when the scan has no
+  `processed`. Pool summaries carry `resolvedConfig` beside the raw `config`.
+- First sighting writes the finished-scan entry, and also `leaf-errors-changed` /
+  `pool-data-errors-changed` from 0 when a new leaf or pool already has errors, so
+  backfill has a trail.
+- `scrub-cancelled` fires for any scan function reaching `CANCELED` (keyed on start
+  time). Icons: `scrub-cancelled` scan-line, `leaf-errors-changed` hard-drive,
+  `pool-data-errors-changed` file-warning (037 updated).
+- The simulator models spares as a separate `spares` section, unlike real output; align
+  it with the flat-map shape in the simulator step.
+
 ## Open questions
 
 None. Decided 2026-10-02: `-j -v` carries `errlist` (key present on `tfault`), so parse it (array of paths as root, the string `"Permission denied"` otherwise); `pool-missing` warning; slow I/O default 10 per 24 h, tune once

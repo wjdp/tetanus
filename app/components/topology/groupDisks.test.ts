@@ -83,11 +83,11 @@ describe("vdevGroups", () => {
       name: "tank",
       type: "root",
       children: [
-        leaf("C1", 1, { type: "cache" }),
+        leaf("C1", 1, { type: "file", role: "cache" }),
         vdev({ name: "mirror-0", type: "mirror", children: [leaf("M1", 2)] }),
         leaf("L1", 3, { type: "log" }),
         vdev({ name: "mirror-1", type: "special", children: [leaf("S1", 4)] }),
-        leaf("P1", 5, { type: "spare" }),
+        leaf("P1", 5, { role: "spare" }),
         vdev({ name: "raidz2-2", type: "raidz2", children: [leaf("R1", 6)] }),
         vdev({ name: "/dev/sdz1", type: "disk", path: "/dev/sdz1" }),
         vdev({ name: "mirror-3", type: "dedup", children: [leaf("D1", 7)] }),

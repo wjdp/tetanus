@@ -34,7 +34,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 16;
+const MIGRATION_COUNT = 17;
 
 const openConnections: Database.Database[] = [];
 
@@ -167,10 +167,12 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Pool DROP COLUMN lastScrub;
       ALTER TABLE Pool DROP COLUMN removal;
       ALTER TABLE Pool DROP COLUMN config;
+      ALTER TABLE Vdev DROP COLUMN role;
+      ALTER TABLE Vdev DROP COLUMN spareState;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 7
+            ORDER BY created_at DESC LIMIT 8
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -190,6 +192,7 @@ describe("0009_host_collector_version", () => {
       "0013_fault",
       "0014_simulation",
       "0015_pool_scrub_config_removal",
+      "0016_vdev_role_spare_state",
     ]);
     expect(
       sqlite

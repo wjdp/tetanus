@@ -531,6 +531,46 @@ describe("zpool-status fault inputs", () => {
     expect(diary("scrub-finished")).toMatchObject([{ data: { errors: 1 } }]);
   });
 
+  it("follows a hot spare from available to in use and back", () => {
+    const SPARE_GUID = "685941043871615807";
+    const spareStatus = (name: string) =>
+      parseZpoolStatus(readFixture(`mars/zpool-status-spare-${name}.json`), {})
+        .data;
+    const spareGroupId = () => vdevRow("14459204147885815961").id;
+
+    run("zpool-status", spareStatus("avail"));
+    expect(vdevRow(SPARE_GUID)).toMatchObject({
+      type: "file",
+      role: "spare",
+      state: "AVAIL",
+      spareState: "AVAIL",
+    });
+    expect(vdevRow("2013447265795836269")).toMatchObject({
+      type: "file",
+      role: "cache",
+    });
+
+    run("zpool-status", spareStatus("offline"), minutesAfter(10));
+    run("zpool-status", spareStatus("inuse"), minutesAfter(20));
+    expect(vdevRow(SPARE_GUID)).toMatchObject({
+      state: "ONLINE",
+      spareState: "INUSE",
+      parentId: spareGroupId(),
+      present: true,
+    });
+    expect(vdevRow("564360516931719640").parentId).toBe(spareGroupId());
+    expect(diary("resilver-finished")).toHaveLength(1);
+    expect(diary("vdev-joined")).toMatchObject([{ subjectId: spareGroupId() }]);
+
+    run("zpool-status", spareStatus("avail"), minutesAfter(30));
+    expect(vdevRow(SPARE_GUID)).toMatchObject({
+      state: "AVAIL",
+      spareState: "AVAIL",
+      parentId: vdevRow("6044964816500147212").id,
+    });
+    expect(vdevRow("14459204147885815961").present).toBe(false);
+  });
+
   it("records pool data errors rising but not falling", () => {
     run("zpool-status", marsStatus());
     const withErrors = (count: number) => {

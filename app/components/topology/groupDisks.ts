@@ -35,6 +35,7 @@ export interface TopologyVdev {
   guid: string;
   name: string;
   type: string;
+  role: string;
   state: string;
   readErrors: number;
   writeErrors: number;
@@ -140,15 +141,16 @@ export function vdevGroups(root: TopologyVdev | null): VdevGroup[] {
       });
       continue;
     }
-    const label = SINGLE_DEVICE_LABEL[child.type] ?? child.type;
+    const type = child.role === "normal" ? child.type : child.role;
+    const label = SINGLE_DEVICE_LABEL[type] ?? type;
     const existing = singles.get(label);
     if (existing) {
       existing.leaves.push(child);
     } else {
       const group: VdevGroup = {
         key: `single-${label}`,
-        type: child.type,
-        isClass: CLASS_TYPES.has(child.type),
+        type,
+        isClass: CLASS_TYPES.has(type),
         kicker: null,
         label,
         state: null,

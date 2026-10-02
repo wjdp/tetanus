@@ -48,6 +48,7 @@ import type {
 import type { HostTemperatureThresholds } from "../../shared/temperature";
 import type { DiskUsage } from "../../shared/usage";
 import type { Vendor } from "../../shared/vendor";
+import type { VdevRole } from "../../shared/zfsState";
 import type { ZfsDatasetType } from "../ingest/zfs-list";
 import type {
   ZpoolStatusRemoval,
@@ -336,7 +337,9 @@ export const vdev = sqliteTable(
     }),
     name: text().notNull(),
     type: text().notNull(),
+    role: text().$type<VdevRole>().notNull().default("normal"),
     state: text().notNull(),
+    spareState: text(),
     readErrors: integer().notNull().default(0),
     writeErrors: integer().notNull().default(0),
     checksumErrors: integer().notNull().default(0),

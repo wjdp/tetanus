@@ -15,3 +15,13 @@ export function zfsStateColour(state: string): ZfsStateColour {
     ? ZFS_STATE_COLOUR[state]
     : "warning";
 }
+
+export const VDEV_ROLES = [
+  "normal",
+  "log",
+  "cache",
+  "special",
+  "dedup",
+  "spare",
+] as const;
+export type VdevRole = (typeof VDEV_ROLES)[number];

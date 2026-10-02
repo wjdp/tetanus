@@ -14,6 +14,7 @@ export function vdevFixture(overrides: Partial<TopologyVdev>): TopologyVdev {
     guid: `guid-${id}`,
     name: `vdev-${id}`,
     type: "disk",
+    role: "normal",
     state: "ONLINE",
     readErrors: 0,
     writeErrors: 0,

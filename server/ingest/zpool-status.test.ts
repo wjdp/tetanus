@@ -164,6 +164,102 @@ describe("zpool-status parser", () => {
     expect(data.pools.find((p) => p.name === "tank")?.removal).toBeNull();
   });
 
+  describe("log, cache and spares", () => {
+    const parsed = (name: string) => {
+      const [pool] = parse(fixture(`zpool-status-${name}.json`), {}).data.pools;
+      if (!pool) throw new Error("no pool");
+      const named = (vdevName: string) =>
+        pool.vdevs.find((v) => v.name === `/var/tmp/tspare-${vdevName}.img`);
+      return { pool, named };
+    };
+
+    it("parses log, cache and available spare leaves with their role", () => {
+      const { pool, named } = parsed("spare-avail");
+      const root = pool.vdevs.find((v) => v.type === "root");
+      expect(pool.vdevs).toHaveLength(7);
+      expect(named("log")).toMatchObject({
+        type: "file",
+        role: "log",
+        parentGuid: root?.guid,
+      });
+      expect(named("cache")).toMatchObject({
+        type: "file",
+        role: "cache",
+        parentGuid: root?.guid,
+      });
+      expect(named("spare")).toMatchObject({
+        type: "file",
+        role: "spare",
+        state: "AVAIL",
+        spareState: "AVAIL",
+        parentGuid: root?.guid,
+        readErrors: 0,
+        writeErrors: 0,
+        checksumErrors: 0,
+      });
+      expect(named("a")).toMatchObject({ role: "normal", state: "ONLINE" });
+      expect(named("a")?.spareState).toBeUndefined();
+    });
+
+    it("parses an offline leaf beside an available spare", () => {
+      const { pool, named } = parsed("spare-offline");
+      expect(pool.state).toBe("DEGRADED");
+      expect(named("a")?.state).toBe("OFFLINE");
+      expect(named("spare")?.spareState).toBe("AVAIL");
+    });
+
+    it("places an in-use spare under spare-N once, keeping its aux state", () => {
+      const { pool, named } = parsed("spare-inuse");
+      const spareGroup = pool.vdevs.find((v) => v.name === "spare-0");
+      const mirror = pool.vdevs.find((v) => v.name === "mirror-0");
+      expect(spareGroup).toMatchObject({
+        type: "spare",
+        role: "normal",
+        state: "DEGRADED",
+        parentGuid: mirror?.guid,
+      });
+      expect(
+        pool.vdevs.filter((v) => v.guid === "685941043871615807"),
+      ).toHaveLength(1);
+      expect(named("spare")).toMatchObject({
+        guid: "685941043871615807",
+        type: "file",
+        role: "spare",
+        state: "ONLINE",
+        spareState: "INUSE",
+        parentGuid: spareGroup?.guid,
+      });
+      expect(named("a")).toMatchObject({
+        state: "OFFLINE",
+        parentGuid: spareGroup?.guid,
+      });
+      expect(spareGroup?.children).toEqual([
+        named("a")?.guid,
+        named("spare")?.guid,
+      ]);
+      const root = pool.vdevs.find((v) => v.type === "root");
+      expect(root?.children).not.toContain(named("spare")?.guid);
+      expect(pool.scan).toMatchObject({
+        function: "RESILVER",
+        state: "FINISHED",
+      });
+    });
+
+    it("keeps special groups typed by class with normal-role members", () => {
+      const tank = parse(fixture("zpool-status-stored-paths.json"), {}).data
+        .pools[0];
+      expect(tank?.vdevs.find((v) => v.name === "mirror-4")?.role).toBe(
+        "special",
+      );
+      expect(
+        tank?.vdevs.find((v) => v.name === "/dev/disk/by-vdev/M1-part1")?.role,
+      ).toBe("special");
+      expect(tank?.vdevs.find((v) => v.name === "raidz1-0")?.role).toBe(
+        "normal",
+      );
+    });
+  });
+
   it("rejects the nested vdev tree shape (no --json-flat-vdevs)", () => {
     expect(() => parse(fixture("zpool-status-nested.json"), {})).toThrow(
       ParseError,

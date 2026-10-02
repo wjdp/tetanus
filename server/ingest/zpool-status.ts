@@ -1,4 +1,5 @@
 import type { Parser } from "#shared/ingest";
+import type { VdevRole } from "#shared/zfsState";
 import { ParseError } from "./parseError";
 
 export type VdevType =
@@ -32,6 +33,8 @@ export interface ZpoolStatusVdev {
   guid: string;
   name: string;
   type: VdevType;
+  role: VdevRole;
+  spareState?: string;
   parentGuid: string | null;
   path?: string;
   devid?: string;
@@ -95,11 +98,19 @@ const CLASS_TYPE: Record<string, VdevType> = {
   log: "log",
   logs: "log",
   cache: "cache",
+  l2cache: "cache",
   spare: "spare",
   spares: "spare",
   special: "special",
   dedup: "dedup",
 };
+
+const ROLE_BY_CLASS: Record<string, VdevRole> = {
+  normal: "normal",
+  ...CLASS_TYPE,
+} as Record<string, VdevRole>;
+
+const LEAF_VDEV_TYPES = new Set(["disk", "file"]);
 
 function parseJson(body: string): Record<string, unknown> {
   if (body.trim() === "") throw new ParseError("Empty zpool-status body");
@@ -192,6 +203,7 @@ function deriveType(raw: RawVdev, isTopLevelGroup: boolean): VdevType {
   }
   if (
     isTopLevelGroup &&
+    !LEAF_VDEV_TYPES.has(String(vdevType)) &&
     typeof raw.class === "string" &&
     raw.class !== "normal"
   ) {
@@ -202,6 +214,58 @@ function deriveType(raw: RawVdev, isTopLevelGroup: boolean): VdevType {
     throw new ParseError(`Unknown vdev_type: ${JSON.stringify(vdevType)}`);
   }
   return vdevType as VdevType;
+}
+
+function findNestedEntry(
+  vdevs: Record<string, RawVdev>,
+  name: string,
+): RawVdev | undefined {
+  for (const entry of Object.values(vdevs)) {
+    const nested = entry.vdevs as Record<string, RawVdev> | undefined;
+    if (typeof nested !== "object" || nested === null) continue;
+    const candidate = nested[name];
+    if (candidate?.parent !== undefined) return candidate;
+    const deeper = findNestedEntry(nested, name);
+    if (deeper) return deeper;
+  }
+  return undefined;
+}
+
+// A spare's flat entry is its aux status (AVAIL, INUSE, …). While INUSE the
+// flat map keeps only that aux entry under the shared name key; its in-pool
+// copy, under spare-N, survives only in the nested vdevs maps.
+function resolveSpareEntry(
+  poolVdevs: Record<string, RawVdev>,
+  vdevName: string,
+  flat: RawVdev,
+): { raw: RawVdev; spareState?: string } {
+  if (flat.class !== "spare") return { raw: flat };
+  const spareState = optionalString(flat.state);
+  if (flat.parent !== undefined) return { raw: flat, spareState };
+  return {
+    raw: findNestedEntry(poolVdevs, vdevName) ?? flat,
+    spareState,
+  };
+}
+
+function counter(raw: RawVdev, key: string, label: string, isSpare: boolean) {
+  if (isSpare && raw[key] === undefined) return 0;
+  return toNumber(raw[key], label);
+}
+
+function resolveInheritedRoles(
+  vdevs: ZpoolStatusVdev[],
+  explicitRoles: Map<string, VdevRole>,
+) {
+  const byGuid = new Map(vdevs.map((vdev) => [vdev.guid, vdev]));
+  const roleOf = (vdev: ZpoolStatusVdev): VdevRole => {
+    const explicit = explicitRoles.get(vdev.guid);
+    if (explicit) return explicit;
+    const parent =
+      vdev.parentGuid === null ? undefined : byGuid.get(vdev.parentGuid);
+    return parent && parent.type !== "root" ? roleOf(parent) : "normal";
+  };
+  for (const vdev of vdevs) vdev.role = roleOf(vdev);
 }
 
 function parseScan(rawScan: Record<string, unknown>): ZpoolStatusScan {
@@ -271,11 +335,23 @@ function parsePool(
 
   const children = new Map<string, string[]>();
   const vdevs: ZpoolStatusVdev[] = [];
-  for (const [vdevName, vdevRaw] of Object.entries(poolVdevs)) {
+  const explicitRoles = new Map<string, VdevRole>();
+  for (const [vdevName, flatRaw] of Object.entries(poolVdevs)) {
+    const { raw: vdevRaw, spareState } = resolveSpareEntry(
+      poolVdevs,
+      vdevName,
+      flatRaw,
+    );
     const guid = guidByName.get(vdevName) ?? vdevName;
     const isTopLevelGroup =
       vdevRaw.parent === undefined && vdevRaw.vdev_type !== "root";
     const type = deriveType(vdevRaw, isTopLevelGroup);
+    const isSpare = vdevRaw.class === "spare";
+    const explicitRole =
+      typeof vdevRaw.class === "string"
+        ? ROLE_BY_CLASS[vdevRaw.class]
+        : undefined;
+    if (explicitRole) explicitRoles.set(guid, explicitRole);
 
     let parentGuid: string | null;
     if (typeof vdevRaw.parent === "string") {
@@ -304,16 +380,30 @@ function parsePool(
       guid,
       name: vdevName,
       type,
+      role: "normal",
+      spareState,
       parentGuid,
       path: optionalString(vdevRaw.path),
       devid: optionalString(vdevRaw.devid),
       physPath: optionalString(vdevRaw.phys_path),
       state: optionalString(vdevRaw.state) ?? "UNKNOWN",
-      readErrors: toNumber(vdevRaw.read_errors, `${vdevName}.read_errors`),
-      writeErrors: toNumber(vdevRaw.write_errors, `${vdevName}.write_errors`),
-      checksumErrors: toNumber(
-        vdevRaw.checksum_errors,
+      readErrors: counter(
+        vdevRaw,
+        "read_errors",
+        `${vdevName}.read_errors`,
+        isSpare,
+      ),
+      writeErrors: counter(
+        vdevRaw,
+        "write_errors",
+        `${vdevName}.write_errors`,
+        isSpare,
+      ),
+      checksumErrors: counter(
+        vdevRaw,
+        "checksum_errors",
         `${vdevName}.checksum_errors`,
+        isSpare,
       ),
       slowIos: optionalNumber(vdevRaw.slow_ios, `${vdevName}.slow_ios`),
       allocSpace: optionalNumber(
@@ -331,6 +421,7 @@ function parsePool(
       children: [],
     });
   }
+  resolveInheritedRoles(vdevs, explicitRoles);
   for (const vdev of vdevs) {
     vdev.children = children.get(vdev.guid) ?? [];
   }

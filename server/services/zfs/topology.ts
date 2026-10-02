@@ -255,7 +255,9 @@ function vdevFields(observed: ZpoolStatusVdev) {
   return {
     name: observed.name,
     type: observed.type,
+    role: observed.role,
     state: observed.state,
+    spareState: observed.spareState ?? null,
     readErrors: observed.readErrors,
     writeErrors: observed.writeErrors,
     checksumErrors: observed.checksumErrors,
