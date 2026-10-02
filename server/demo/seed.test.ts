@@ -110,6 +110,17 @@ describe("seed", () => {
     }).map((entry) => entry.eventType);
     expect(events).toContain("attribute-status-changed");
     expect(events).toContain("smart-status-changed");
+    expect(events).toContain("fault-acknowledged");
+    expect(events).toContain("acknowledgement-superseded");
+  });
+
+  it("A12: new pending sectors acknowledged, so a warning rather than failed", () => {
+    expect(diskByAlias("A12").latestStatus).toBe("warning");
+    expect(attribute("A12", "197")).toMatchObject({
+      rawValue: 2,
+      status: "failed",
+      displayStatus: "acknowledged",
+    });
   });
 
   it("V2 is dead and V6 took its slot in vault", () => {

@@ -369,10 +369,16 @@ function replayActions(world: DemoWorld): ReplayAction[] {
   const { seeds, disk } = world.stories;
   return [
     ...seeds.acceptances.map(
-      ({ alias, attrId, note, at }): ReplayAction => ({
+      ({ alias, attrId, kind, note, at }): ReplayAction => ({
         at,
         apply: () =>
-          acceptFault({ diskId: diskIdOf(disk(alias)), attrId, note, now: at }),
+          acceptFault({
+            diskId: diskIdOf(disk(alias)),
+            attrId,
+            kind,
+            note,
+            now: at,
+          }),
       }),
     ),
     ...seeds.overrides.map(

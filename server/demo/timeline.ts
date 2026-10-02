@@ -50,6 +50,10 @@ export interface Timeline {
   a3PendingFrom: Date;
   /** A3: the 8 pending sectors accepted ("six months ago"). */
   a3AcceptedAt: Date;
+  /** A12: 2 pending sectors from here, new. */
+  a12PendingFrom: Date;
+  /** A12: the pending sectors acknowledged, not accepted ("five days ago"). */
+  a12AcknowledgedAt: Date;
   /** A7: reallocated sectors 0 before, 24 at the anchor. */
   a7ClimbFrom: Date;
   /** V2: reallocated sectors start climbing. */
@@ -94,6 +98,8 @@ export function createTimeline(anchor: Date = DEMO_EPOCH): Timeline {
     anchor,
     a3PendingFrom: onDay(anchor, -197, "02:40"),
     a3AcceptedAt: onDay(anchor, -182, "21:10"),
+    a12PendingFrom: onDay(anchor, -6, "04:15"),
+    a12AcknowledgedAt: onDay(anchor, -5, "19:40"),
     a7ClimbFrom: addMs(anchor, -30 * DAY_MS),
     v2DegradingFrom: onDay(anchor, -44, "11:00"),
     v2SmartFailedAt: onDay(anchor, -35, "14:40"),

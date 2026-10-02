@@ -175,10 +175,12 @@ export function createStories(timeline: Timeline, fleet: Fleet) {
     (ms(timeline.v2DegradingFrom) + ms(timeline.v2SmartFailedAt)) / 2,
   );
 
-  // Story 1: A3 has 8 pending sectors, stable.
+  // Story 1: A3 has 8 pending sectors, stable. A12 has 2, new and acknowledged.
   function pendingSectors(target: DiskModel, t: Date): number {
     if (target.alias === "A3")
       return ms(t) >= ms(timeline.a3PendingFrom) ? 8 : 0;
+    if (target.alias === "A12")
+      return ms(t) >= ms(timeline.a12PendingFrom) ? 2 : 0;
     if (target.alias === "V2") {
       if (ms(t) >= ms(timeline.v2SmartFailedAt)) return 64;
       return ms(t) >= ms(v2PendingFrom) ? 16 : 0;
@@ -1093,8 +1095,23 @@ function createSeeds(timeline: Timeline, a7FailedAt: Date): Seeds {
       {
         alias: "A3",
         attrId: "197",
+        kind: "accept",
         note: "Long self-test passed; stable at 8 for two weeks.",
         at: timeline.a3AcceptedAt,
+      },
+      {
+        alias: "A7",
+        attrId: "5",
+        kind: "acknowledge",
+        note: "Ordering a replacement.",
+        at: addMs(a7FailedAt, 12 * HOUR_MS),
+      },
+      {
+        alias: "A12",
+        attrId: "197",
+        kind: "acknowledge",
+        note: "Long self-test queued; watching it.",
+        at: timeline.a12AcknowledgedAt,
       },
     ],
     overrides: [

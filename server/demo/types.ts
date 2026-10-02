@@ -2,6 +2,7 @@ import type { AlertRule } from "#shared/alerts";
 import type { DiskProtocol, StateOverride } from "#shared/disk";
 import type { IngestMeta, IngestSource } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
+import type { AcceptanceKind } from "#shared/smart/status";
 
 export interface HostPayload {
   source: IngestSource;
@@ -323,10 +324,11 @@ export interface ManualDiarySeed {
   at: Date;
 }
 
-/** For `acceptFault({ diskId, attrId, note, now: at })`; attrId is the ATA attribute id as a string. */
+/** For `acceptFault({ diskId, attrId, kind, note, now: at })`; attrId is the ATA attribute id as a string. */
 export interface AcceptanceSeed {
   alias: string;
   attrId: string;
+  kind: AcceptanceKind;
   note: string;
   at: Date;
 }
