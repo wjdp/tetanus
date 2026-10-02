@@ -42,7 +42,7 @@ describe("GET /host/:path", () => {
     expect(await response.text()).toBe(hostFile(path));
   });
 
-  it.each(["README.md", "test/run.sh", "../package.json"])(
+  it.each(["README.md", "test/run.sh", "..%2Fpackage.json"])(
     "does not serve %s",
     async (path) => {
       expect((await fetch(`/host/${path}`)).status).toBe(404);
