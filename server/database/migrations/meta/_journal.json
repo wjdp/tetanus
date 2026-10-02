@@ -141,6 +141,13 @@
       "when": 1790980321647,
       "tag": "0019_pool_scan_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1790980956694,
+      "tag": "0020_pool_archive",
+      "breakpoints": true
     }
   ]
 }

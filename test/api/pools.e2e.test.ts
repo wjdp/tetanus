@@ -166,6 +166,54 @@ describe("/api/pools", () => {
     expect((await patch({}, 99999)).status).toBe(404);
   });
 
+  it("archives and unarchives a pool, hiding it from the list by default", async () => {
+    const pools = await (await fetch("/api/pools")).json();
+    const zeta = pools.find((row: { name: string }) => row.name === "zeta");
+    const archive = (method: "POST" | "DELETE", body?: unknown, id = zeta.id) =>
+      fetch(`/api/pools/${id}/archive`, {
+        method,
+        headers: { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    const names = async (query = "") =>
+      (await (await fetch(`/api/pools${query}`)).json()).map(
+        (row: { name: string }) => row.name,
+      );
+
+    const archived = await archive("POST", { note: "test pool" });
+    expect(archived.status).toBe(200);
+    const detail = await archived.json();
+    expect(detail).toMatchObject({
+      name: "zeta",
+      archivedAt: expect.any(String),
+      archiveNote: "test pool",
+    });
+    expect(detail.diary[0]).toMatchObject({
+      eventType: "pool-archived",
+      data: { note: "test pool" },
+    });
+    expect((await archive("POST")).status).toBe(409);
+
+    expect(await names()).toEqual(["tank"]);
+    expect(await names("?archived=include")).toEqual(["tank", "zeta"]);
+    expect(await names("?archived=only")).toEqual(["zeta"]);
+    expect((await fetch("/api/pools?archived=maybe")).status).toBe(400);
+    expect((await fetch(`/api/pools/${zeta.id}`)).status).toBe(200);
+
+    const unarchived = await archive("DELETE");
+    expect(unarchived.status).toBe(200);
+    expect(await unarchived.json()).toMatchObject({
+      archivedAt: null,
+      archiveNote: "",
+    });
+    expect((await archive("DELETE")).status).toBe(409);
+    expect(await names()).toEqual(["tank", "zeta"]);
+
+    expect((await archive("POST", { colour: "red" })).status).toBe(400);
+    expect((await archive("POST", {}, 99999)).status).toBe(404);
+    expect((await archive("DELETE", undefined, 99999)).status).toBe(404);
+  });
+
   it("404s for a missing pool", async () => {
     expect((await fetch("/api/pools/99999")).status).toBe(404);
   });

@@ -4,6 +4,19 @@ export const poolParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const POOL_ARCHIVED_FILTERS = ["exclude", "include", "only"] as const;
+export type PoolArchivedFilter = (typeof POOL_ARCHIVED_FILTERS)[number];
+
+export const poolsQuerySchema = z.object({
+  archived: z.enum(POOL_ARCHIVED_FILTERS).default("exclude"),
+});
+
+export const poolArchiveInputSchema = z
+  .strictObject({ note: z.string().trim().max(10_000).optional() })
+  .default({});
+
+export type PoolArchiveInput = z.infer<typeof poolArchiveInputSchema>;
+
 const nonNegativeInt = z.number().int().min(0);
 
 export const poolConfigSchema = z.strictObject({

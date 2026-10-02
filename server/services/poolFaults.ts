@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, lte, max } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte, max } from "drizzle-orm";
 import type {
   FaultData,
   FaultKind,
@@ -631,7 +631,11 @@ export function detectPoolFaults(
   const detections: Detection[] = [];
   const superseded: Supersession[] = [];
   const current: PoolScope[] = [];
-  for (const row of db.select().from(pool).all()) {
+  for (const row of db
+    .select()
+    .from(pool)
+    .where(isNull(pool.archivedAt))
+    .all()) {
     const vdevs = vdevsByPool.get(row.id) ?? [];
     if (silentHostIds.has(row.hostId)) {
       superseded.push({

@@ -13,6 +13,11 @@ import { observeZpoolHistory } from "./zfs/history";
 import { observeZpoolList, observeZpoolStatus } from "./zfs/topology";
 
 export {
+  ARCHIVED_FAULT_REASON,
+  archivePool,
+  unarchivePool,
+} from "./zfs/archive";
+export {
   DATASET_READING_DAYS,
   DATASET_SEARCH_LIMIT,
   type DatasetChild,

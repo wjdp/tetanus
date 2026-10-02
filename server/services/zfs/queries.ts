@@ -1,7 +1,18 @@
-import { and, asc, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+} from "drizzle-orm";
 import type { Media } from "#shared/hardware";
 import { resolveModelShort } from "#shared/model";
 import {
+  type PoolArchivedFilter,
   type PoolConfig,
   type ResolvedPoolConfig,
   resolvePoolConfig,
@@ -211,8 +222,21 @@ function selectPools() {
     .innerJoin(host, eq(host.id, pool.hostId));
 }
 
-export function listPools(): PoolSummary[] {
-  return summarise(selectPools().orderBy(asc(host.name), asc(pool.name)).all());
+const ARCHIVED_CONDITIONS = {
+  exclude: isNull(pool.archivedAt),
+  include: undefined,
+  only: isNotNull(pool.archivedAt),
+} satisfies Record<PoolArchivedFilter, unknown>;
+
+export function listPools(
+  archived: PoolArchivedFilter = "exclude",
+): PoolSummary[] {
+  return summarise(
+    selectPools()
+      .where(ARCHIVED_CONDITIONS[archived])
+      .orderBy(asc(host.name), asc(pool.name))
+      .all(),
+  );
 }
 
 function recentReadings(poolId: number, now: Date) {

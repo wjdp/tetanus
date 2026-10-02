@@ -449,7 +449,7 @@ function resolveFault(
   row: FaultRow,
   now: Date,
   note = row.note,
-  supersededBy?: FaultReference,
+  extra: FaultData = {},
 ): FaultRow {
   const resolved = db
     .update(fault)
@@ -458,15 +458,25 @@ function resolveFault(
     .returning()
     .get();
   if (!DIARY_SILENT_KINDS.has(row.kind)) {
-    writeFaultEvent(
-      resolved,
-      "fault-resolved",
-      row.state,
-      now,
-      supersededBy ? { supersededBy } : {},
-    );
+    writeFaultEvent(resolved, "fault-resolved", row.state, now, extra);
   }
   return resolved;
+}
+
+export function resolvePoolFaults(poolId: number, reason: string, now: Date) {
+  const rows = db
+    .select()
+    .from(fault)
+    .where(
+      and(
+        eq(fault.subjectType, "pool"),
+        eq(fault.subjectId, poolId),
+        isNull(fault.resolvedAt),
+      ),
+    )
+    .all();
+  for (const row of rows) resolveFault(row, now, row.note, { reason });
+  return rows.length;
 }
 
 function supersessionOf(row: FaultRow, superseded: Supersession[]) {
@@ -503,7 +513,8 @@ export function applyDetections(
     }
     for (const [id, row] of live) {
       if (seen.has(id)) continue;
-      resolveFault(row, now, row.note, supersessionOf(row, superseded));
+      const supersededBy = supersessionOf(row, superseded);
+      resolveFault(row, now, row.note, supersededBy ? { supersededBy } : {});
       changes += 1;
     }
     return changes;

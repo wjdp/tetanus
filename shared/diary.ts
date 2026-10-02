@@ -25,6 +25,8 @@ export const DIARY_EVENT_TYPES = [
   "disk-appeared",
   "moved-host",
   "pool-moved",
+  "pool-archived",
+  "pool-unarchived",
   "vdev-joined",
   "vdev-left",
   "vdev-state-changed",

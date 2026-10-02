@@ -79,6 +79,8 @@ const DIARY_EVENT_ICON: Record<
   "disk-appeared": () => "i-lucide-plug-zap",
   "moved-host": () => "i-lucide-move-right",
   "pool-moved": () => "i-lucide-move-right",
+  "pool-archived": () => "i-lucide-archive",
+  "pool-unarchived": () => "i-lucide-archive-restore",
   "vdev-joined": vdevIcon,
   "vdev-left": vdevIcon,
   "vdev-state-changed": vdevIcon,

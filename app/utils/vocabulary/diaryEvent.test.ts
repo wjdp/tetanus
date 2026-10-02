@@ -15,6 +15,8 @@ const FIXED_ICONS: Partial<Record<DiaryEventType, string>> = {
   "disk-appeared": "i-lucide-plug-zap",
   "moved-host": "i-lucide-move-right",
   "pool-moved": "i-lucide-move-right",
+  "pool-archived": "i-lucide-archive",
+  "pool-unarchived": "i-lucide-archive-restore",
   "pool-state-changed": "i-lucide-database",
   "scrub-finished": "i-lucide-scan-line",
   "resilver-finished": "i-lucide-scan-line",

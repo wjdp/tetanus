@@ -321,6 +321,8 @@ export const pool = sqliteTable(
     config: json().$type<PoolConfig>(),
     firstSeenAt: datetime().notNull(),
     lastSeenAt: datetime().notNull(),
+    archivedAt: datetime(),
+    archiveNote: text().notNull().default(""),
   },
   (table) => [index("Pool_hostId_idx").on(table.hostId)],
 );
