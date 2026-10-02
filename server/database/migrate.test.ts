@@ -23,6 +23,8 @@ const TABLES = [
   "PoolReading",
   "SelfTest",
   "Setting",
+  "Simulation",
+  "SimulationChange",
   "SmartAttribute",
   "SmartReading",
   "Snapshot",
@@ -32,7 +34,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 14;
+const MIGRATION_COUNT = 15;
 
 const openConnections: Database.Database[] = [];
 
@@ -156,10 +158,12 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Host DROP COLUMN collectorStatus;
       ALTER TABLE FaultAcceptance DROP COLUMN kind;
       DROP TABLE Fault;
+      DROP TABLE Simulation;
+      DROP TABLE SimulationChange;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 5
+            ORDER BY created_at DESC LIMIT 6
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -177,6 +181,7 @@ describe("0009_host_collector_version", () => {
       "0011_host_intermittent_and_position",
       "0012_fault_acceptance_kind",
       "0013_fault",
+      "0014_simulation",
     ]);
     expect(
       sqlite
