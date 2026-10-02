@@ -26,6 +26,10 @@ const canClear = computed(() =>
 const canResolve = computed(() =>
   allowedActions(props.fault).includes("resolve"),
 );
+const canArchivePool = computed(
+  () => props.fault.kind === "pool-missing" && props.fault.state !== "resolved",
+);
+const archiveOpen = ref(false);
 const isSmartAttribute = computed(
   () => props.fault.kind === "smart-attribute",
 );
@@ -63,7 +67,7 @@ const openDialog = async () => {
 
 <template>
   <div
-    v-if="primary || canClear || canResolve"
+    v-if="primary || canClear || canResolve || canArchivePool"
     class="relative z-10 flex shrink-0 justify-end gap-1"
   >
     <UButton
@@ -90,6 +94,22 @@ const openDialog = async () => {
       label="Resolve"
       @click="perform('resolve')"
     />
+    <template v-if="canArchivePool">
+      <UButton
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        icon="i-lucide-archive"
+        label="Archive pool"
+        @click="archiveOpen = true"
+      />
+      <PoolArchiveModal
+        v-model:open="archiveOpen"
+        :pool-id="fault.subject.id"
+        :pool-name="fault.subject.label"
+        @archived="emit('changed')"
+      />
+    </template>
     <template v-if="primary">
       <DiskAcceptFaultModal
         v-if="isSmartAttribute"

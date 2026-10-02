@@ -23,6 +23,8 @@ const groupName = computed(() =>
     <div
       v-else
       class="border-default flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border p-4 text-sm"
+      :class="{ 'opacity-60': membership.poolArchived }"
+      :data-archived="membership.poolArchived"
     >
       <div class="flex items-center gap-1.5">
         <ULink
@@ -47,6 +49,14 @@ const groupName = computed(() =>
         variant="subtle"
         :label="membership.vdevState"
         data-testid="membership-state"
+      />
+      <UBadge
+        v-if="membership.poolArchived"
+        color="neutral"
+        variant="outline"
+        icon="i-lucide-archive"
+        label="archived pool"
+        data-testid="membership-archived"
       />
     </div>
   </section>

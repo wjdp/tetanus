@@ -6,7 +6,22 @@ import { capacityColour, zfsStateColour } from "~/utils/vocabulary";
 
 useSeoMeta({ title: getPageTitle("ZFS") });
 
-const { data: pools } = await useFetch("/api/pools");
+const route = useRoute();
+const router = useRouter();
+
+const showArchived = computed({
+  get: () => route.query.archived === "include",
+  set: (show: boolean) =>
+    router.replace({
+      query: { ...route.query, archived: show ? "include" : undefined },
+    }),
+});
+
+const { data: pools } = await useFetch("/api/pools", {
+  query: computed(() => ({
+    archived: showArchived.value ? "include" : "exclude",
+  })),
+});
 
 type Pool = NonNullable<typeof pools.value>[number];
 
@@ -39,9 +54,18 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
 
 <template>
   <AppPanel title="ZFS" class="max-w-7xl">
-    <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
-      ZFS
-    </h1>
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
+        ZFS
+      </h1>
+      <USwitch
+        v-model="showArchived"
+        label="Show archived"
+        size="sm"
+        class="ms-auto"
+        data-testid="show-archived"
+      />
+    </div>
 
     <UTable
       :data="pools ?? []"
@@ -54,12 +78,24 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
         {{ row.original.host.displayName || row.original.host.name }}
       </template>
       <template #name-cell="{ row }">
-        <NuxtLink
-          :to="`/zfs/${row.original.id}`"
-          class="text-highlighted font-semibold hover:underline"
-        >
-          {{ row.original.name }}
-        </NuxtLink>
+        <div class="flex items-center gap-2">
+          <NuxtLink
+            :to="`/zfs/${row.original.id}`"
+            class="font-semibold hover:underline"
+            :class="row.original.archivedAt ? 'text-muted' : 'text-highlighted'"
+          >
+            {{ row.original.name }}
+          </NuxtLink>
+          <UBadge
+            v-if="row.original.archivedAt"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            icon="i-lucide-archive"
+            label="archived"
+            data-testid="pool-archived-badge"
+          />
+        </div>
       </template>
       <template #state-cell="{ row }">
         <UBadge

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TabsItem } from "@nuxt/ui";
+import type { DropdownMenuItem, TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
 import { formatTimestamp } from "~/components/pool/timestamp";
 import { capacityColour, zfsStateColour } from "~/utils/vocabulary";
@@ -17,6 +17,35 @@ if (error.value) {
 useSeoMeta({ title: getPageTitle(pool.value?.name ?? "Pool") });
 
 const now = ref(Date.now());
+
+const toast = useToast();
+const archiveOpen = ref(false);
+const unarchiving = ref(false);
+
+const unarchive = async () => {
+  if (!pool.value) return;
+  unarchiving.value = true;
+  try {
+    await $fetch(`/api/pools/${pool.value.id}/archive`, { method: "DELETE" });
+    await refresh();
+  } catch {
+    toast.add({ title: `Could not unarchive ${pool.value.name}`, color: "error" });
+  } finally {
+    unarchiving.value = false;
+  }
+};
+
+const menuItems = computed<DropdownMenuItem[]>(() => [
+  pool.value?.archivedAt
+    ? { label: "Unarchive", icon: "i-lucide-archive-restore", onSelect: unarchive }
+    : {
+        label: "Archive…",
+        icon: "i-lucide-archive",
+        onSelect: () => {
+          archiveOpen.value = true;
+        },
+      },
+]);
 
 const capacitySeries = computed(() => [
   {
@@ -81,14 +110,50 @@ const tabs = computed<TabsItem[]>(() => [
           <span class="text-muted">
             on {{ pool.host.displayName || pool.host.name }}
           </span>
-          <SimulateFaultMenu
-            subject-type="pool"
-            :subject-id="pool.id"
-            size="sm"
-            class="ms-auto"
+          <div class="ms-auto flex items-center gap-2">
+            <SimulateFaultMenu
+              subject-type="pool"
+              :subject-id="pool.id"
+              size="sm"
+            />
+            <UDropdownMenu :items="menuItems" :content="{ align: 'end' }">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                icon="i-lucide-ellipsis-vertical"
+                aria-label="Pool actions"
+                data-testid="pool-menu"
+              />
+            </UDropdownMenu>
+          </div>
+          <PoolArchiveModal
+            v-model:open="archiveOpen"
+            :pool-id="pool.id"
+            :pool-name="pool.name"
+            @archived="refresh"
           />
         </div>
         <p class="text-dimmed font-mono text-xs">{{ pool.guid }}</p>
+        <div
+          v-if="pool.archivedAt"
+          data-testid="pool-archived-banner"
+          class="bg-elevated border-default border-s-accented text-muted flex items-center gap-3 rounded-md border border-s-[3px] py-1.5 ps-4 pe-2 text-sm"
+        >
+          <UIcon name="i-lucide-archive" class="size-4 shrink-0" />
+          <span class="flex-1">
+            Archived {{ formatDate(pool.archivedAt) }}<template v-if="pool.archiveNote"> · {{ pool.archiveNote }}</template>
+          </span>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="soft"
+            icon="i-lucide-archive-restore"
+            label="Unarchive"
+            :loading="unarchiving"
+            @click="unarchive"
+          />
+        </div>
         <div
           v-if="pool.status || pool.action"
           class="text-muted flex flex-col gap-1 text-sm whitespace-pre-line"

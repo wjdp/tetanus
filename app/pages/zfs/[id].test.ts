@@ -94,6 +94,23 @@ registerEndpoint("/api/pools/7", () => tank);
 registerEndpoint("/api/pools/8", () => ({ ...tank, id: 8, cap: 92 }));
 registerEndpoint("/api/pools/8/datasets", () => ({ datasets: [] }));
 
+let tfaultArchived = true;
+const tfault = () => ({
+  ...tank,
+  id: 9,
+  name: "tfault",
+  archivedAt: tfaultArchived ? "2026-10-02T09:00:00.000Z" : null,
+  archiveNote: tfaultArchived ? "fixture capture" : "",
+});
+registerEndpoint("/api/pools/9", () => tfault());
+registerEndpoint("/api/pools/9/archive", {
+  method: "DELETE",
+  handler: () => {
+    tfaultArchived = false;
+    return tfault();
+  },
+});
+
 const datasetRequests: string[] = [];
 
 registerEndpoint("/api/pools/7/datasets", (event) => {
@@ -201,5 +218,29 @@ describe("pool page", () => {
       expect(page.find('a[href="/datasets/22"]').exists()).toBe(true),
     );
     expect(datasetRequests).toHaveLength(1);
+  });
+
+  it("shows no archive banner for a pool in use", async () => {
+    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    expect(page.find('[data-testid="pool-archived-banner"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it("shows an archived pool's date and note in a banner, and unarchives it", async () => {
+    tfaultArchived = true;
+    const page = await mountSuspended(PoolPage, { route: "/zfs/9" });
+
+    const banner = page.get('[data-testid="pool-archived-banner"]');
+    expect(banner.text()).toContain("Archived 2026-10-02 · fixture capture");
+
+    await banner.get("button").trigger("click");
+    await flushPromises();
+
+    await vi.waitFor(() =>
+      expect(page.find('[data-testid="pool-archived-banner"]').exists()).toBe(
+        false,
+      ),
+    );
   });
 });
