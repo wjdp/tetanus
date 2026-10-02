@@ -20,6 +20,14 @@ import type {
 } from "../../shared/disk";
 import type { DriveSpec } from "../../shared/drive-spec";
 import type {
+  FaultCategory,
+  FaultData,
+  FaultKind,
+  FaultSeverity,
+  FaultState,
+  FaultSubjectType,
+} from "../../shared/faults";
+import type {
   HardwareJson,
   Interface,
   Media,
@@ -556,5 +564,35 @@ export const notification = sqliteTable(
   (table) => [
     index("Notification_dedupeKey_idx").on(table.dedupeKey),
     index("Notification_at_idx").on(table.at),
+  ],
+);
+
+export const fault = sqliteTable(
+  "Fault",
+  {
+    id: autoIncrementId(),
+    kind: text().$type<FaultKind>().notNull(),
+    category: text().$type<FaultCategory>().notNull(),
+    subjectType: text().$type<FaultSubjectType>().notNull(),
+    subjectId: integer().notNull(),
+    key: text().notNull(),
+    severity: text().$type<FaultSeverity>().notNull(),
+    data: json().$type<FaultData>().notNull().default({}),
+    openedAt: datetime().notNull(),
+    lastSeenAt: datetime().notNull(),
+    resolvedAt: datetime(),
+    state: text().$type<FaultState>().notNull(),
+    stateChangedAt: datetime().notNull(),
+    note: text().notNull().default(""),
+  },
+  (table) => [
+    uniqueIndex("Fault_kind_key_live")
+      .on(table.kind, table.key)
+      .where(sql`${table.resolvedAt} IS NULL`),
+    index("Fault_state_idx").on(table.state),
+    index("Fault_subjectType_subjectId_idx").on(
+      table.subjectType,
+      table.subjectId,
+    ),
   ],
 );

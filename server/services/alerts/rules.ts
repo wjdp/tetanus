@@ -188,7 +188,10 @@ function withHost(hostName: string | null, label: string) {
   return hostName ? `${hostName} · ${label}` : label;
 }
 
-export function diskLabel(id: number, found: AlertDisk | undefined) {
+export function diskLabel(
+  id: number,
+  found: Pick<AlertDisk, "alias" | "model" | "serial"> | undefined,
+) {
   if (found?.alias) return found.alias;
   const described = [found?.model, found?.serial].filter(Boolean).join(" ");
   return described || `disk ${id}`;

@@ -20,11 +20,16 @@ export interface SseTask {
   total?: number;
 }
 
+export interface SseFaults {
+  at: string;
+}
+
 // Map of event names to their types
 export interface SseMessageMap {
   message: SseMessage;
   notification: SseNotification;
   task: SseTask;
+  faults: SseFaults;
 }
 
 export type SseMessageType = keyof SseMessageMap;

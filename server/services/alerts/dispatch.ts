@@ -27,6 +27,7 @@ import {
   deriveAlerts,
 } from "~~/server/services/alerts/rules";
 import { listDisks } from "~~/server/services/disks";
+import { syncFaults } from "~~/server/services/faults";
 import { getSettings, setAlertCursor } from "~~/server/services/settings";
 import { isDemo } from "~~/server/utils/demo";
 
@@ -190,7 +191,7 @@ export async function runAlertsPass(
   now = new Date(),
   fetchImpl: Fetch = fetch,
 ): Promise<AlertsPassSummary> {
-  await listDisks(now);
+  await syncFaults(now, await listDisks(now));
   const { config } = await getSettings();
   const entries = readNewEntries(config.alertCursor);
   const lastEntry = entries.at(-1);

@@ -768,6 +768,18 @@ function referenceValues(diskId: number, attrId: string, takenAt: Date) {
   });
 }
 
+export function attributeTrend(
+  diskId: number,
+  attribute: Pick<SmartAttributeRow, "attrId" | "transformedValue" | "takenAt">,
+): AttributeTrend {
+  const metadata = metadataFor(diskProtocol(diskId), attribute.attrId);
+  return trendDirection(
+    metadata?.ideal ?? "",
+    attribute.transformedValue,
+    referenceValues(diskId, attribute.attrId, attribute.takenAt),
+  );
+}
+
 function isAttributeStatus(value: unknown): value is AttributeStatus {
   return ATTRIBUTE_STATUSES.includes(value as AttributeStatus);
 }

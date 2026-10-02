@@ -13,6 +13,7 @@ const TABLES = [
   "DiaryEntry",
   "Disk",
   "DiskKey",
+  "Fault",
   "FaultAcceptance",
   "Host",
   "Notification",
@@ -31,7 +32,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 13;
+const MIGRATION_COUNT = 14;
 
 const openConnections: Database.Database[] = [];
 
@@ -154,10 +155,11 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Host DROP COLUMN collectorVersion;
       ALTER TABLE Host DROP COLUMN collectorStatus;
       ALTER TABLE FaultAcceptance DROP COLUMN kind;
+      DROP TABLE Fault;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 4
+            ORDER BY created_at DESC LIMIT 5
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -174,6 +176,7 @@ describe("0009_host_collector_version", () => {
       "0010_host_temperature_thresholds",
       "0011_host_intermittent_and_position",
       "0012_fault_acceptance_kind",
+      "0013_fault",
     ]);
     expect(
       sqlite

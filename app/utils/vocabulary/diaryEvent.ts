@@ -96,8 +96,9 @@ const DIARY_EVENT_ICON: Record<
   "events-gap": () => "i-lucide-history",
   "events-reset": () => "i-lucide-history",
   "imported-from-scrutiny": () => "i-lucide-import",
-  "fault-dismissed": () => ENTITY_ICON.fault,
-  "fault-restored": () => ENTITY_ICON.fault,
+  "fault-opened": () => ENTITY_ICON.fault,
+  "fault-state-changed": () => ENTITY_ICON.fault,
+  "fault-resolved": () => ENTITY_ICON.fault,
 };
 
 const isDiaryEventType = (value: string): value is DiaryEventType =>

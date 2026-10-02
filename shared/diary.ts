@@ -42,7 +42,8 @@ export const DIARY_EVENT_TYPES = [
   "events-gap",
   "events-reset",
   "imported-from-scrutiny",
-  "fault-dismissed",
-  "fault-restored",
+  "fault-opened",
+  "fault-state-changed",
+  "fault-resolved",
 ] as const;
 export type DiaryEventType = (typeof DIARY_EVENT_TYPES)[number];

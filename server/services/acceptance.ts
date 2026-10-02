@@ -8,6 +8,7 @@ import {
 import { db } from "~~/server/database/client";
 import { disk, faultAcceptance } from "~~/server/database/schema";
 import { addAutoEvent } from "~~/server/services/diary";
+import { setSmartAttributeFaultState } from "~~/server/services/faults";
 import {
   latestAttributes,
   recomputeLatestStatus,
@@ -141,6 +142,7 @@ export function acceptFault({
       at: now,
     });
     recomputeLatestStatus(diskId, now, "acceptance");
+    setSmartAttributeFaultState(diskId, attrId, { kind, note }, now);
     return row;
   });
 }
@@ -173,6 +175,7 @@ export function clearAcceptance(
       at: now,
     });
     recomputeLatestStatus(diskId, now, "acceptance");
+    setSmartAttributeFaultState(diskId, attrId, null, now);
     return row;
   });
 }
@@ -212,6 +215,7 @@ export function supersedeIfRisen(
       },
       at: now,
     });
+    setSmartAttributeFaultState(diskId, active.attrId, null, now);
     superseded.add(active.attrId);
   }
   return superseded;

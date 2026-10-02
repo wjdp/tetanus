@@ -29,8 +29,9 @@ const FIXED_ICONS: Partial<Record<DiaryEventType, string>> = {
   "events-gap": "i-lucide-history",
   "events-reset": "i-lucide-history",
   "imported-from-scrutiny": "i-lucide-import",
-  "fault-dismissed": "i-lucide-siren",
-  "fault-restored": "i-lucide-siren",
+  "fault-opened": "i-lucide-siren",
+  "fault-state-changed": "i-lucide-siren",
+  "fault-resolved": "i-lucide-siren",
 };
 
 describe("diaryEventIcon", () => {

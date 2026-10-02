@@ -1,0 +1,753 @@
+import { and, count, desc, eq, inArray, isNull, max } from "drizzle-orm";
+import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
+import {
+  allowedActions,
+  FAULT_KIND_DEFINITIONS,
+  FAULT_SEVERITY_RANK,
+  FAULT_STATES,
+  type FaultAction,
+  type FaultCounts,
+  type FaultData,
+  type FaultKind,
+  type FaultSeverity,
+  type FaultState,
+  type FaultSubject,
+  type FaultsResponse,
+  type FaultView,
+  faultTitle,
+} from "#shared/faults";
+import {
+  allGroupFreshness,
+  type CadenceOverrides,
+  DEMO_CADENCES,
+  isEveryGroupSilent,
+  isHostOffline,
+} from "#shared/hostFreshness";
+import type { FaultsQuery } from "#shared/schemas/faults";
+import { healthStatus, overlayStatus } from "#shared/smart/status";
+import { zfsStateColour } from "#shared/zfsState";
+import { db } from "~~/server/database/client";
+import {
+  collectorRun,
+  diaryEntry,
+  disk,
+  fault,
+  host,
+  pool,
+} from "~~/server/database/schema";
+import {
+  acceptFault,
+  activeAcceptances,
+  clearAcceptance,
+} from "~~/server/services/acceptance";
+import { diskLabel } from "~~/server/services/alerts/rules";
+import { addAutoEvent } from "~~/server/services/diary";
+import { type DiskSummary, listDisks } from "~~/server/services/disks";
+import { type HostWithRuns, listHosts } from "~~/server/services/hosts";
+import {
+  attributesOfReading,
+  attributeTrend,
+  latestReading,
+} from "~~/server/services/smart";
+import { useSseEvent } from "~~/server/sse";
+import { isDemo } from "~~/server/utils/demo";
+import { notFound, ServiceError } from "~~/server/utils/serviceError";
+
+export type FaultRow = typeof fault.$inferSelect;
+
+export interface Detection {
+  kind: FaultKind;
+  key: string;
+  subjectId: number;
+  severity: FaultSeverity;
+  data: FaultData;
+  state?: FaultState;
+}
+
+interface DetectionContext {
+  now: Date;
+  disks: DiskSummary[];
+  hosts: HostWithRuns[];
+  cadences: CadenceOverrides;
+}
+
+const LEFT_SERVICE_STATES = new Set(["dead", "retired", "sold"]);
+
+const ACCEPTANCE_STATE = {
+  accepted: "accepted",
+  acknowledged: "acknowledged",
+} as const;
+
+const iso = (date: Date | null) => date?.toISOString() ?? null;
+
+function inService(disks: DiskSummary[]) {
+  return disks.filter((row) => !LEFT_SERVICE_STATES.has(row.state));
+}
+
+function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
+  return inService(disks).flatMap((row) => {
+    const reading = latestReading(row.id);
+    if (!reading) return [];
+    const active = activeAcceptances(row.id);
+    return attributesOfReading(reading.id)
+      .filter((attribute) => attribute.status !== "passed")
+      .map((attribute): Detection => {
+        const acceptance = active.get(attribute.attrId);
+        const display = overlayStatus(
+          attribute.status,
+          attribute.transformedValue,
+          acceptance,
+        );
+        const covered = display === "accepted" || display === "acknowledged";
+        return {
+          kind: "smart-attribute",
+          key: `${row.id}:${attribute.attrId}`,
+          subjectId: row.id,
+          severity: attribute.status === "failed" ? "error" : "warning",
+          state: covered ? ACCEPTANCE_STATE[display] : "open",
+          data: {
+            attrId: attribute.attrId,
+            name: attribute.name,
+            value: attribute.transformedValue,
+            trend: attributeTrend(row.id, attribute),
+            ...(acceptance && covered
+              ? {
+                  acceptanceKind: acceptance.kind,
+                  acceptedValue: acceptance.acceptedValue,
+                }
+              : {}),
+          },
+        };
+      });
+  });
+}
+
+function detectHealthFailed({ disks }: DetectionContext): Detection[] {
+  return inService(disks).flatMap((row) => {
+    const reading = latestReading(row.id);
+    if (!reading) return [];
+    if (healthStatus(reading.smartPassed, reading.exitStatus) !== "failed") {
+      return [];
+    }
+    return {
+      kind: "smart-health-failed",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: "error",
+      data: { readingAt: iso(reading.takenAt) },
+    };
+  });
+}
+
+function detectMissing({ disks }: DetectionContext): Detection[] {
+  return disks
+    .filter((row) => row.state === "missing")
+    .map((row) => ({
+      kind: "disk-missing",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: "error",
+      data: { lastSeenAt: iso(row.lastSeenAt) },
+    }));
+}
+
+function wasAcknowledgedSince(kind: FaultKind, key: string, at: Date) {
+  return db
+    .select({ openedAt: fault.openedAt })
+    .from(fault)
+    .where(
+      and(
+        eq(fault.kind, kind),
+        eq(fault.key, key),
+        eq(fault.state, "resolved"),
+      ),
+    )
+    .all()
+    .some((row) => row.openedAt >= at);
+}
+
+export function identityConflictKey(subjectId: number, diskIds: unknown) {
+  const ids = Array.isArray(diskIds) ? diskIds.map(Number) : [];
+  return `${subjectId}:${[...ids].sort((a, b) => a - b).join(",")}`;
+}
+
+function detectIdentityConflicts(): Detection[] {
+  const entries = db
+    .select()
+    .from(diaryEntry)
+    .where(eq(diaryEntry.eventType, "identity-conflict"))
+    .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
+    .all();
+  const byKey = new Map<string, Detection>();
+  for (const entry of entries) {
+    if (entry.subjectId === null) continue;
+    const key = identityConflictKey(entry.subjectId, entry.data.diskIds);
+    if (byKey.has(key)) continue;
+    if (wasAcknowledgedSince("identity-conflict", key, entry.at)) continue;
+    byKey.set(key, {
+      kind: "identity-conflict",
+      key,
+      subjectId: entry.subjectId,
+      severity: "error",
+      data: { diskIds: entry.data.diskIds, conflictAt: iso(entry.at) },
+    });
+  }
+  return [...byKey.values()];
+}
+
+type PoolRow = typeof pool.$inferSelect;
+
+function currentPools(): PoolRow[] {
+  const latestStatus = new Map(
+    db
+      .select({ hostId: collectorRun.hostId, at: max(collectorRun.receivedAt) })
+      .from(collectorRun)
+      .where(
+        and(eq(collectorRun.source, "zpool-status"), eq(collectorRun.ok, true)),
+      )
+      .groupBy(collectorRun.hostId)
+      .all()
+      .map(({ hostId, at }) => [hostId, at]),
+  );
+  return db
+    .select()
+    .from(pool)
+    .all()
+    .filter((row) => {
+      const at = latestStatus.get(row.hostId);
+      return at !== undefined && at !== null && row.lastSeenAt >= at;
+    });
+}
+
+export function poolSeverity(state: string): FaultSeverity {
+  return zfsStateColour(state) === "error" ? "error" : "warning";
+}
+
+function detectPoolDegraded(pools: PoolRow[]): Detection[] {
+  return pools
+    .filter((row) => row.state !== "ONLINE")
+    .map((row) => ({
+      kind: "pool-degraded",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: poolSeverity(row.state),
+      data: { state: row.state, poolName: row.name },
+    }));
+}
+
+export const SCAN_FINISHED_EVENTS = [
+  "scrub-finished",
+  "resilver-finished",
+  "scan-finished",
+] as const;
+
+function detectScanErrors(pools: PoolRow[]): Detection[] {
+  if (pools.length === 0) return [];
+  const entries = db
+    .select()
+    .from(diaryEntry)
+    .where(
+      and(
+        eq(diaryEntry.subjectType, "pool"),
+        inArray(
+          diaryEntry.subjectId,
+          pools.map((row) => row.id),
+        ),
+        inArray(diaryEntry.eventType, [...SCAN_FINISHED_EVENTS]),
+      ),
+    )
+    .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
+    .all();
+  const latest = new Map<number, (typeof entries)[number]>();
+  for (const entry of entries) {
+    const poolId = entry.subjectId as number;
+    if (!latest.has(poolId)) latest.set(poolId, entry);
+  }
+  return pools.flatMap((row) => {
+    const entry = latest.get(row.id);
+    const errors = Number(entry?.data.errors);
+    if (!entry || !(errors > 0)) return [];
+    return {
+      kind: "scan-errors",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: "error",
+      data: {
+        poolName: row.name,
+        function: entry.data.function,
+        errors,
+        finishedAt: iso(entry.at),
+      },
+    };
+  });
+}
+
+function lastOkAt(row: HostWithRuns) {
+  const times = Object.values(row.lastRuns)
+    .filter((run) => run.ok)
+    .map((run) => run.receivedAt.getTime());
+  return times.length > 0 ? new Date(Math.max(...times)) : null;
+}
+
+function detectCollectorSilent({
+  hosts,
+  now,
+  cadences,
+}: DetectionContext): Detection[] {
+  return hosts.flatMap((row) => {
+    const at = now.getTime();
+    if (isHostOffline(row, at, cadences)) return [];
+    if (!isEveryGroupSilent(allGroupFreshness(row.lastRuns, at, cadences))) {
+      return [];
+    }
+    return {
+      kind: "collector-silent",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: "error",
+      data: { lastOkAt: iso(lastOkAt(row) ?? row.lastSeenAt) },
+    };
+  });
+}
+
+function detectCollectorVersion({ hosts }: DetectionContext): Detection[] {
+  return hosts.flatMap((row): Detection[] => {
+    const version = row.collectorVersion;
+    if (!version) return [];
+    if (row.collectorStatus === "incompatible") {
+      return [
+        {
+          kind: "collector-incompatible",
+          key: `${row.id}:${version}`,
+          subjectId: row.id,
+          severity: "error",
+          data: { version, minVersion: MIN_COLLECTOR_VERSION },
+        },
+      ];
+    }
+    if (row.collectorStatus === "outdated") {
+      return [
+        {
+          kind: "collector-outdated",
+          key: `${row.id}:${version}`,
+          subjectId: row.id,
+          severity: "warning",
+          data: { version, currentVersion: COLLECTOR_VERSION },
+        },
+      ];
+    }
+    return [];
+  });
+}
+
+export function detectFaults(context: DetectionContext): Detection[] {
+  const pools = currentPools();
+  return [
+    ...detectSmartAttributes(context),
+    ...detectHealthFailed(context),
+    ...detectMissing(context),
+    ...detectIdentityConflicts(),
+    ...detectPoolDegraded(pools),
+    ...detectScanErrors(pools),
+    ...detectCollectorSilent(context),
+    ...detectCollectorVersion(context),
+  ];
+}
+
+// SMART attribute faults have their own diary trail (042's acceptance
+// events, attribute-status-changed); health failure shows as
+// smart-status-changed.
+const DIARY_SILENT_KINDS = new Set<FaultKind>([
+  "smart-attribute",
+  "smart-health-failed",
+]);
+
+function writeFaultEvent(
+  row: FaultRow,
+  eventType: "fault-opened" | "fault-resolved" | "fault-state-changed",
+  from: FaultState | null,
+  at: Date,
+) {
+  const title = faultTitle(row, at.getTime());
+  const prefix = {
+    "fault-opened": "fault",
+    "fault-resolved": "fault resolved",
+    "fault-state-changed": `fault ${row.state}`,
+  }[eventType];
+  addAutoEvent({
+    subjectType: row.subjectType,
+    subjectId: row.subjectId,
+    eventType,
+    title: `${prefix}: ${title}`,
+    data: {
+      faultId: row.id,
+      kind: row.kind,
+      key: row.key,
+      from,
+      to: row.state,
+      note: row.note,
+    },
+    at,
+  });
+}
+
+function liveRows(): FaultRow[] {
+  return db.select().from(fault).where(isNull(fault.resolvedAt)).all();
+}
+
+const identity = (kind: FaultKind, key: string) => `${kind}\u0000${key}`;
+
+function isSeverityRise(from: FaultSeverity, to: FaultSeverity) {
+  return FAULT_SEVERITY_RANK[to] > FAULT_SEVERITY_RANK[from];
+}
+
+function nextState(row: FaultRow, detection: Detection): FaultState {
+  if (detection.state) return detection.state;
+  const isQuiet = row.state === "acknowledged" || row.state === "accepted";
+  return isQuiet && isSeverityRise(row.severity, detection.severity)
+    ? "open"
+    : row.state;
+}
+
+function openFault(detection: Detection, now: Date): FaultRow {
+  const definition = FAULT_KIND_DEFINITIONS[detection.kind];
+  const row = db
+    .insert(fault)
+    .values({
+      kind: detection.kind,
+      category: definition.category,
+      subjectType: definition.subjectType,
+      subjectId: detection.subjectId,
+      key: detection.key,
+      severity: detection.severity,
+      data: detection.data,
+      openedAt: now,
+      lastSeenAt: now,
+      state: detection.state ?? "open",
+      stateChangedAt: now,
+    })
+    .returning()
+    .get();
+  if (!DIARY_SILENT_KINDS.has(row.kind)) {
+    writeFaultEvent(row, "fault-opened", null, now);
+  }
+  return row;
+}
+
+function refreshFault(row: FaultRow, detection: Detection, now: Date) {
+  const state = nextState(row, detection);
+  const changed =
+    state !== row.state ||
+    detection.severity !== row.severity ||
+    JSON.stringify(detection.data) !== JSON.stringify(row.data);
+  const updated = db
+    .update(fault)
+    .set({
+      lastSeenAt: now,
+      severity: detection.severity,
+      data: detection.data,
+      ...(state === row.state
+        ? {}
+        : {
+            state,
+            stateChangedAt: now,
+            note: state === "open" ? "" : row.note,
+          }),
+    })
+    .where(eq(fault.id, row.id))
+    .returning()
+    .get();
+  if (state !== row.state && !DIARY_SILENT_KINDS.has(row.kind)) {
+    writeFaultEvent(updated, "fault-state-changed", row.state, now);
+  }
+  return changed;
+}
+
+function resolveFault(row: FaultRow, now: Date, note = row.note): FaultRow {
+  const resolved = db
+    .update(fault)
+    .set({ state: "resolved", resolvedAt: now, stateChangedAt: now, note })
+    .where(eq(fault.id, row.id))
+    .returning()
+    .get();
+  if (!DIARY_SILENT_KINDS.has(row.kind)) {
+    writeFaultEvent(resolved, "fault-resolved", row.state, now);
+  }
+  return resolved;
+}
+
+export function applyDetections(detections: Detection[], now: Date): number {
+  return db.transaction(() => {
+    const live = new Map(
+      liveRows().map((row) => [identity(row.kind, row.key), row]),
+    );
+    const seen = new Set<string>();
+    let changes = 0;
+    for (const detection of detections) {
+      const id = identity(detection.kind, detection.key);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const row = live.get(id);
+      if (!row) {
+        openFault(detection, now);
+        changes += 1;
+      } else if (refreshFault(row, detection, now)) {
+        changes += 1;
+      }
+    }
+    for (const [id, row] of live) {
+      if (seen.has(id)) continue;
+      resolveFault(row, now);
+      changes += 1;
+    }
+    return changes;
+  });
+}
+
+export function notifyFaultsChanged() {
+  useSseEvent().push("faults", { at: new Date().toISOString() });
+}
+
+export async function syncFaults(
+  now = new Date(),
+  disks?: DiskSummary[],
+): Promise<number> {
+  const context: DetectionContext = {
+    now,
+    disks: disks ?? (await listDisks(now)),
+    hosts: listHosts(),
+    cadences: isDemo() ? DEMO_CADENCES : {},
+  };
+  const changes = applyDetections(detectFaults(context), now);
+  if (changes > 0) notifyFaultsChanged();
+  return changes;
+}
+
+const SMART_ATTRIBUTE_STATE = {
+  accept: "accepted",
+  acknowledge: "acknowledged",
+} as const;
+
+export function setSmartAttributeFaultState(
+  diskId: number,
+  attrId: string,
+  acceptance: { kind: keyof typeof SMART_ATTRIBUTE_STATE; note: string } | null,
+  now: Date,
+) {
+  const row = db
+    .select()
+    .from(fault)
+    .where(
+      and(
+        eq(fault.kind, "smart-attribute"),
+        eq(fault.key, `${diskId}:${attrId}`),
+        isNull(fault.resolvedAt),
+      ),
+    )
+    .get();
+  if (!row) return;
+  const state = acceptance ? SMART_ATTRIBUTE_STATE[acceptance.kind] : "open";
+  if (state === row.state) return;
+  db.update(fault)
+    .set({ state, stateChangedAt: now, note: acceptance?.note ?? "" })
+    .where(eq(fault.id, row.id))
+    .run();
+  notifyFaultsChanged();
+}
+
+function getFaultRow(id: number): FaultRow {
+  const row = db.select().from(fault).where(eq(fault.id, id)).get();
+  if (!row) throw notFound(`Fault ${id} not found`);
+  return row;
+}
+
+function assertAllowed(row: FaultRow, action: FaultAction) {
+  if (row.state === "resolved") {
+    throw new ServiceError(409, `Fault ${row.id} is resolved`);
+  }
+  if (!allowedActions(row).includes(action)) {
+    throw new ServiceError(
+      409,
+      `Cannot ${action} a ${row.kind} fault that is ${row.state}`,
+    );
+  }
+}
+
+function smartAttributeOf(row: FaultRow) {
+  return { diskId: row.subjectId, attrId: String(row.data.attrId) };
+}
+
+function setState(
+  row: FaultRow,
+  state: FaultState,
+  note: string,
+  now: Date,
+): FaultRow {
+  const updated = db
+    .update(fault)
+    .set({ state, note, stateChangedAt: now })
+    .where(eq(fault.id, row.id))
+    .returning()
+    .get();
+  writeFaultEvent(updated, "fault-state-changed", row.state, now);
+  return updated;
+}
+
+interface FaultActionOptions {
+  note?: string;
+  now?: Date;
+}
+
+export function performFaultAction(
+  id: number,
+  action: FaultAction,
+  { note = "", now = new Date() }: FaultActionOptions = {},
+): FaultRow {
+  const result = db.transaction(() => {
+    const row = getFaultRow(id);
+    assertAllowed(row, action);
+    if (row.kind === "smart-attribute") {
+      const { diskId, attrId } = smartAttributeOf(row);
+      if (action === "clear") clearAcceptance(diskId, attrId, now);
+      else acceptFault({ diskId, attrId, kind: action, note, now });
+      return getFaultRow(id);
+    }
+    if (action === "clear") return setState(row, "open", "", now);
+    if (row.kind === "identity-conflict") return resolveFault(row, now, note);
+    return setState(
+      row,
+      action === "accept" ? "accepted" : "acknowledged",
+      note,
+      now,
+    );
+  });
+  notifyFaultsChanged();
+  return result;
+}
+
+interface SubjectLookup {
+  disks: Map<number, typeof disk.$inferSelect>;
+  pools: Map<number, PoolRow>;
+  hostNames: Map<number, string>;
+}
+
+function subjectLookup(): SubjectLookup {
+  return {
+    disks: new Map(
+      db
+        .select()
+        .from(disk)
+        .all()
+        .map((row) => [row.id, row]),
+    ),
+    pools: new Map(
+      db
+        .select()
+        .from(pool)
+        .all()
+        .map((row) => [row.id, row]),
+    ),
+    hostNames: new Map(
+      db
+        .select({ id: host.id, name: host.name })
+        .from(host)
+        .all()
+        .map((row) => [row.id, row.name]),
+    ),
+  };
+}
+
+function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
+  const base = { type: row.subjectType, id: row.subjectId };
+  const hostName = (hostId: number | null | undefined) =>
+    hostId == null ? null : (lookup.hostNames.get(hostId) ?? null);
+  if (row.subjectType === "disk") {
+    const found = lookup.disks.get(row.subjectId);
+    return {
+      ...base,
+      label: diskLabel(row.subjectId, found),
+      hostName: hostName(found?.lastSeenHostId),
+    };
+  }
+  if (row.subjectType === "pool") {
+    const found = lookup.pools.get(row.subjectId);
+    return {
+      ...base,
+      label: found?.name ?? `pool ${row.subjectId}`,
+      hostName: hostName(found?.hostId),
+    };
+  }
+  const name = hostName(row.subjectId);
+  return { ...base, label: name ?? `host ${row.subjectId}`, hostName: name };
+}
+
+function present(row: FaultRow, lookup: SubjectLookup): FaultView {
+  return {
+    id: row.id,
+    kind: row.kind,
+    category: row.category,
+    severity: row.severity,
+    state: row.state,
+    key: row.key,
+    data: row.data,
+    note: row.note,
+    openedAt: row.openedAt.toISOString(),
+    lastSeenAt: row.lastSeenAt.toISOString(),
+    resolvedAt: iso(row.resolvedAt),
+    stateChangedAt: row.stateChangedAt.toISOString(),
+    subject: describeSubject(row, lookup),
+  };
+}
+
+const STATE_ORDER = Object.fromEntries(
+  FAULT_STATES.map((state, index) => [state, index]),
+) as Record<FaultState, number>;
+
+function byAttention(a: FaultView, b: FaultView) {
+  return (
+    STATE_ORDER[a.state] - STATE_ORDER[b.state] ||
+    FAULT_SEVERITY_RANK[b.severity] - FAULT_SEVERITY_RANK[a.severity] ||
+    (b.resolvedAt ?? b.openedAt).localeCompare(a.resolvedAt ?? a.openedAt) ||
+    b.id - a.id
+  );
+}
+
+export function faultBadge(): number {
+  return (
+    db
+      .select({ open: count() })
+      .from(fault)
+      .where(and(eq(fault.state, "open"), eq(fault.severity, "error")))
+      .get()?.open ?? 0
+  );
+}
+
+export function listFaults(query: FaultsQuery): FaultsResponse {
+  const lookup = subjectLookup();
+  const conditions = [
+    query.category && eq(fault.category, query.category),
+    query.severity && eq(fault.severity, query.severity),
+    query.subject &&
+      and(
+        eq(fault.subjectType, query.subject.type),
+        eq(fault.subjectId, query.subject.id),
+      ),
+  ].filter((condition) => condition !== undefined);
+  const matching = db
+    .select()
+    .from(fault)
+    .where(and(...conditions))
+    .all()
+    .map((row) => present(row, lookup))
+    .filter((view) => !query.host || view.subject.hostName === query.host);
+  const counts = Object.fromEntries(
+    FAULT_STATES.map((state) => [state, 0]),
+  ) as FaultCounts;
+  for (const view of matching) counts[view.state] += 1;
+  const states = new Set<FaultState>(query.state);
+  return {
+    faults: matching.filter((view) => states.has(view.state)).sort(byAttention),
+    counts,
+    badge: faultBadge(),
+  };
+}

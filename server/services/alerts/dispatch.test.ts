@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~~/server/database/client";
-import { disk, faultAcceptance, notification } from "~~/server/database/schema";
+import {
+  collectorRun,
+  disk,
+  faultAcceptance,
+  notification,
+} from "~~/server/database/schema";
 import type { Fetch } from "~~/server/services/alerts/channels";
 import {
   listNotifications,
@@ -56,6 +61,15 @@ async function configure({ pushover = true, webhook = true } = {}) {
 beforeEach(() => {
   flushDb();
   const mars = upsertHostByName("mars", now);
+  db.insert(collectorRun)
+    .values({
+      hostId: mars.id,
+      source: "zpool-status",
+      receivedAt: now,
+      ok: true,
+      bytes: 0,
+    })
+    .run();
   diskId = db
     .insert(disk)
     .values({
