@@ -1,5 +1,8 @@
 import { attributeClass } from "#shared/smart/classification";
-import type { AttributeDisplayStatus } from "#shared/smart/status";
+import type {
+  AcceptanceKind,
+  AttributeDisplayStatus,
+} from "#shared/smart/status";
 import type { DotShape, StatusColour } from "~/utils/vocabulary";
 
 interface RankedAttribute {
@@ -110,6 +113,39 @@ export const ATTRIBUTE_STATUS_DOT: Record<
   failed: { colour: "error", shape: "filled" },
   acknowledged: { colour: "warning", shape: "filled" },
   accepted: { colour: "warning", shape: "hollow" },
+};
+
+export interface AcceptanceKindVocabulary {
+  action: string;
+  verb: string;
+  noun: string;
+  icon: string;
+  description: string;
+  notePlaceholder: string;
+}
+
+export const ACCEPTANCE_KIND_VOCABULARY: Record<
+  AcceptanceKind,
+  AcceptanceKindVocabulary
+> = {
+  acknowledge: {
+    action: "Acknowledge",
+    verb: "acknowledged",
+    noun: "acknowledgement",
+    icon: "i-lucide-eye",
+    description:
+      "Still a fault, but the disk drops to a warning. Back to its real status if the value rises.",
+    notePlaceholder: "What you are doing about it (optional)",
+  },
+  accept: {
+    action: "Accept",
+    verb: "accepted",
+    noun: "acceptance",
+    icon: "i-lucide-shield-check",
+    description:
+      "Normal for this disk: stops counting towards its status. Back to its real status if the value rises.",
+    notePlaceholder: "Why this is acceptable (optional)",
+  },
 };
 
 export type AttributeTrend = "new" | "stable" | "worsening" | "improving";

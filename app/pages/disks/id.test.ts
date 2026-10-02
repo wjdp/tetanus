@@ -205,6 +205,7 @@ registerEndpoint("/api/disks/7/smart", () => ({
       displayStatus: "accepted",
       acceptance: {
         id: 1,
+        kind: "accept",
         acceptedValue: 8,
         acceptedAt: "2026-09-20T09:00:00.000Z",
         note: "Stable since RMA refused",
@@ -220,7 +221,19 @@ registerEndpoint("/api/disks/7/smart", () => ({
       metadata: null,
     },
     passedAttribute("9", "Power-On Hours", 0.02),
-    passedAttribute("198", "Offline Uncorrectable", null),
+    {
+      ...passedAttribute("198", "Offline Uncorrectable", null),
+      transformedValue: 18,
+      status: "failed",
+      displayStatus: "acknowledged",
+      acceptance: {
+        id: 2,
+        kind: "acknowledge",
+        acceptedValue: 18,
+        acceptedAt: "2026-09-21T09:00:00.000Z",
+        note: "",
+      },
+    },
     passedAttribute("1", "Raw Read Error Rate", null),
   ],
   history: { temperature: [], attributes: {} },
@@ -241,6 +254,7 @@ registerEndpoint("/api/disks/7/smart", () => ({
       id: 1,
       diskId: 7,
       attrId: "5",
+      kind: "accept",
       acceptedValue: 8,
       acceptedAt: "2026-09-20T09:00:00.000Z",
       note: "Stable since RMA refused",
@@ -283,7 +297,7 @@ describe("disk page", () => {
     expect(text).toContain("VK0ABC");
     expect(text).toContain("8.00 TB");
     expect(text).toContain("5.7 y old");
-    expect(text).toContain("1 warning attribute");
+    expect(text).toContain("1 warning, 1 acknowledged attributes");
     expect(text).toContain("· 1 accepted");
 
     const attributeRows = () =>
@@ -296,10 +310,17 @@ describe("disk page", () => {
     expect(rows).toHaveLength(4);
     expect(rows[0]).toContain("Current Pending Sector Count");
     expect(rows[0]).toContain("12.0 %");
+    expect(rows[0]).toContain("Acknowledge");
     expect(rows[0]).toContain("Accept");
-    expect(rows[1]).toContain("accepted");
+    expect(rows[0]).not.toContain("Clear");
+    expect(rows[1]).toContain("Offline Uncorrectable");
+    expect(rows[1]).toContain("acknowledged at 18");
+    expect(rows[1]).not.toContain("Acknowledge");
+    expect(rows[1]).toContain("Accept");
     expect(rows[1]).toContain("Clear");
-    expect(rows[2]).toContain("Offline Uncorrectable");
+    expect(rows[2]).toContain("accepted");
+    expect(rows[2]).not.toContain("Accept");
+    expect(rows[2]).toContain("Clear");
     expect(rows[3]).toContain("34 °C");
     expect(rows[3]).not.toContain("Accept");
 
@@ -311,11 +332,15 @@ describe("disk page", () => {
     });
     expect(statusDots).toEqual([
       "warning filled",
+      "warning filled",
       "warning hollow",
       null,
-      null,
     ]);
-    const acceptedValue = attributeRows()[1]?.get(
+    const acknowledgedValue = attributeRows()[1]?.get(
+      '[data-testid="accepted-value"]',
+    );
+    expect(acknowledgedValue?.html()).toContain("i-lucide:eye");
+    const acceptedValue = attributeRows()[2]?.get(
       '[data-testid="accepted-value"]',
     );
     expect(acceptedValue?.text()).toBe("accepted at 8");
@@ -327,7 +352,7 @@ describe("disk page", () => {
     const notedRows = attributeRows().map((row) =>
       row.find('[data-testid="attribute-note"]').exists(),
     );
-    expect(notedRows).toEqual([true, true, false, true]);
+    expect(notedRows).toEqual([true, false, true, true]);
 
     const details = page.findAll('[data-testid="attribute-detail"]');
     expect(details).toHaveLength(1);

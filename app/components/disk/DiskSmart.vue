@@ -4,8 +4,9 @@ import {
   SMART_HISTORY_RANGES,
   type SmartHistoryRange,
 } from "#shared/schemas/smart";
+import type { AcceptanceKind } from "#shared/smart/status";
 import { DEVICE_STATUS_VOCABULARY } from "~/utils/vocabulary";
-import { countByStatus } from "./attributeRows";
+import { ACCEPTANCE_KIND_VOCABULARY, countByStatus } from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 const props = defineProps<{
@@ -40,12 +41,15 @@ const statusBadgeColour = computed(() =>
     : DEVICE_STATUS_VOCABULARY[deviceStatus.value].colour,
 );
 
-const faultCount = computed(() => counts.value.failed + counts.value.warning);
+const faultCount = computed(
+  () => counts.value.failed + counts.value.warning + counts.value.acknowledged,
+);
 
 const reasonSummary = computed(() =>
   [
     counts.value.failed && `${counts.value.failed} failed`,
     counts.value.warning && `${counts.value.warning} warning`,
+    counts.value.acknowledged && `${counts.value.acknowledged} acknowledged`,
   ]
     .filter(Boolean)
     .join(", "),
@@ -53,6 +57,7 @@ const reasonSummary = computed(() =>
 
 const toast = useToast();
 const accepting = ref<LatestAttribute | null>(null);
+const acceptingKind = ref<AcceptanceKind>("acknowledge");
 const acceptOpen = ref(false);
 const clearing = ref<LatestAttribute | null>(null);
 const clearOpen = ref(false);
@@ -60,8 +65,9 @@ const clearOpen = ref(false);
 const attributeLabel = (attribute: LatestAttribute | null) =>
   attribute ? (attribute.metadata?.displayName ?? attribute.name) : "";
 
-const onAccept = (attribute: LatestAttribute) => {
+const onAccept = (attribute: LatestAttribute, kind: AcceptanceKind) => {
   accepting.value = attribute;
+  acceptingKind.value = kind;
   acceptOpen.value = true;
 };
 
@@ -75,6 +81,12 @@ const refreshAfterChange = async () => {
   emit("changed");
 };
 
+const clearingNoun = computed(
+  () =>
+    ACCEPTANCE_KIND_VOCABULARY[clearing.value?.acceptance?.kind ?? "accept"]
+      .noun,
+);
+
 const clearAcceptance = async () => {
   const attribute = clearing.value;
   if (!attribute) return;
@@ -85,7 +97,10 @@ const clearAcceptance = async () => {
     );
     toast.add({ title: `Cleared ${attributeLabel(attribute)}`, color: "neutral" });
   } catch {
-    toast.add({ title: "Could not clear the acceptance", color: "error" });
+    toast.add({
+      title: `Could not clear the ${clearingNoun.value}`,
+      color: "error",
+    });
   }
   await refreshAfterChange();
 };
@@ -174,12 +189,13 @@ const temperatureSeries = computed(() => [
       v-model:open="acceptOpen"
       :disk-id="diskId"
       :attribute="accepting"
+      :kind="acceptingKind"
       @accepted="refreshAfterChange"
     />
 
     <ConfirmModal
       v-model:open="clearOpen"
-      :title="`Clear acceptance of ${attributeLabel(clearing)}?`"
+      :title="`Clear ${clearingNoun} of ${attributeLabel(clearing)}?`"
       description="The attribute counts towards the disk status again."
       confirm-label="Clear"
       :action="clearAcceptance"

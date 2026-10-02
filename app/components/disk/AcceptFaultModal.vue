@@ -1,16 +1,21 @@
 <script setup lang="ts">
+import { ACCEPTANCE_KINDS, type AcceptanceKind } from "#shared/smart/status";
 import {
   acceptanceSummary,
   type HistoryPoint,
   REFERENCE_AGES_DAYS,
   referenceValue,
 } from "~/utils/acceptanceSummary";
-import { ATTRIBUTE_TREND_COLOUR } from "./attributeRows";
+import {
+  ACCEPTANCE_KIND_VOCABULARY,
+  ATTRIBUTE_TREND_COLOUR,
+} from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 const props = defineProps<{
   diskId: number;
   attribute: LatestAttribute | null;
+  kind: AcceptanceKind;
 }>();
 
 const emit = defineEmits<{ accepted: [] }>();
@@ -19,6 +24,17 @@ const open = defineModel<boolean>("open", { default: false });
 
 const toast = useToast();
 const note = ref("");
+const kind = ref<AcceptanceKind>(props.kind);
+const vocabulary = computed(() => ACCEPTANCE_KIND_VOCABULARY[kind.value]);
+const kindItems = computed(() =>
+  ACCEPTANCE_KINDS.filter(
+    (candidate) => candidate !== props.attribute?.acceptance?.kind,
+  ).map((value) => ({
+    value,
+    label: ACCEPTANCE_KIND_VOCABULARY[value].action,
+    description: ACCEPTANCE_KIND_VOCABULARY[value].description,
+  })),
+);
 const saving = ref(false);
 const history = ref<HistoryPoint[]>([]);
 const loadingHistory = ref(false);
@@ -43,6 +59,7 @@ watch(
   ([isOpen, attrId]) => {
     if (!isOpen || !attrId) return;
     note.value = "";
+    kind.value = props.kind;
     history.value = [];
     loadHistory(attrId);
   },
@@ -91,17 +108,26 @@ const failureRate = computed(() => {
 const isConflict = (error: unknown) =>
   (error as { statusCode?: number })?.statusCode === 409;
 
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+const attributeName = computed(() =>
+  props.attribute
+    ? (props.attribute.metadata?.displayName ?? props.attribute.name)
+    : "",
+);
+
 const confirm = async () => {
   const attribute = props.attribute;
   if (!attribute) return;
+  const { action, verb } = vocabulary.value;
   saving.value = true;
   try {
     await $fetch(`/api/disks/${props.diskId}/accept`, {
       method: "POST",
-      body: { attrId: attribute.attrId, note: note.value },
+      body: { attrId: attribute.attrId, kind: kind.value, note: note.value },
     });
     toast.add({
-      title: `Accepted ${attribute.metadata?.displayName ?? attribute.name}`,
+      title: `${capitalise(verb)} ${attributeName.value}`,
       color: "neutral",
     });
     open.value = false;
@@ -109,8 +135,11 @@ const confirm = async () => {
   } catch (error) {
     toast.add(
       isConflict(error)
-        ? { title: "Already accepted", color: "neutral" }
-        : { title: "Could not accept the fault", color: "error" },
+        ? { title: `Already ${verb}`, color: "neutral" }
+        : {
+            title: `Could not ${action.toLowerCase()} the fault`,
+            color: "error",
+          },
     );
     if (isConflict(error)) {
       open.value = false;
@@ -125,8 +154,8 @@ const confirm = async () => {
 <template>
   <UModal
     v-model:open="open"
-    :title="attribute ? `Accept ${attribute.metadata?.displayName ?? attribute.name}` : 'Accept fault'"
-    description="Treat the current value as known. The fault returns if the value rises."
+    :title="attribute ? `${vocabulary.action} ${attributeName}` : `${vocabulary.action} fault`"
+    :description="vocabulary.description"
   >
     <template #body>
       <div v-if="attribute" class="flex flex-col gap-4 text-sm">
@@ -169,12 +198,20 @@ const confirm = async () => {
           {{ summary }}
         </p>
 
+        <URadioGroup
+          v-model="kind"
+          :items="kindItems"
+          variant="table"
+          size="sm"
+          data-testid="acceptance-kind"
+        />
+
         <UFormField label="Note" name="note">
           <UTextarea
             v-model="note"
             :rows="3"
             autoresize
-            placeholder="Why this is acceptable (optional)"
+            :placeholder="vocabulary.notePlaceholder"
             class="w-full"
           />
         </UFormField>
@@ -186,7 +223,7 @@ const confirm = async () => {
         <UButton color="neutral" variant="ghost" label="Cancel" @click="open = false" />
         <UButton
           color="primary"
-          label="Accept"
+          :label="vocabulary.action"
           :loading="saving"
           :disabled="!attribute"
           @click="confirm"

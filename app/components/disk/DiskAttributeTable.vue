@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import type { AcceptanceKind } from "#shared/smart/status";
 import {
+  ACCEPTANCE_KIND_VOCABULARY,
   ATTRIBUTE_TREND_COLOUR,
   attributeNote,
   isNotableContextRate,
@@ -17,7 +19,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  accept: [attribute: LatestAttribute];
+  accept: [attribute: LatestAttribute, kind: AcceptanceKind];
   clear: [attribute: LatestAttribute];
 }>();
 
@@ -66,7 +68,9 @@ watch(
     if (Object.values(expanded.value).some(Boolean)) return;
     const firstFault = current.find(
       (attribute) =>
-        attribute.displayStatus === "failed" || attribute.displayStatus === "warning",
+        attribute.displayStatus === "failed" ||
+        attribute.displayStatus === "warning" ||
+        attribute.displayStatus === "acknowledged",
     );
     expanded.value = firstFault ? { [firstFault.attrId]: true } : {};
   },
@@ -84,15 +88,24 @@ const ROW_TINT = {
 const isAcceptable = (attribute: LatestAttribute) =>
   attribute.displayStatus === "failed" || attribute.displayStatus === "warning";
 
-const acceptedAt = (attribute: LatestAttribute) =>
-  attribute.acceptance
-    ? `accepted at ${attribute.acceptance.acceptedValue.toLocaleString("en-GB")}`
-    : "accepted";
+const isCovered = (attribute: LatestAttribute) =>
+  attribute.displayStatus === "accepted" ||
+  attribute.displayStatus === "acknowledged";
+
+const coveredVocabulary = (attribute: LatestAttribute) =>
+  ACCEPTANCE_KIND_VOCABULARY[attribute.acceptance?.kind ?? "accept"];
+
+const acceptedAt = (attribute: LatestAttribute) => {
+  const { verb } = coveredVocabulary(attribute);
+  return attribute.acceptance
+    ? `${verb} at ${attribute.acceptance.acceptedValue.toLocaleString("en-GB")}`
+    : verb;
+};
 
 const acceptanceTooltip = (attribute: LatestAttribute) =>
   attribute.acceptance
     ? `${acceptedAt(attribute)} on ${formatDate(attribute.acceptance.acceptedAt)}`
-    : "accepted";
+    : acceptedAt(attribute);
 
 const formatValue = (attribute: LatestAttribute) => {
   const unit = attribute.metadata?.transformValueUnit;
@@ -157,7 +170,7 @@ const rowClass = (row: { original: LatestAttribute }) =>
       <template #status-cell="{ row }">
         <UTooltip
           :text="acceptanceTooltip(row.original)"
-          :disabled="row.original.displayStatus !== 'accepted'"
+          :disabled="!isCovered(row.original)"
         >
           <DiskAttributeStatus :status="row.original.displayStatus" />
         </UTooltip>
@@ -180,11 +193,11 @@ const rowClass = (row: { original: LatestAttribute }) =>
         <span class="inline-flex items-center gap-1.5">
           {{ formatValue(row.original) }}
           <span
-            v-if="row.original.displayStatus === 'accepted'"
+            v-if="isCovered(row.original)"
             class="text-dimmed inline-flex items-center gap-1 text-xs"
             data-testid="accepted-value"
           >
-            <UIcon name="i-lucide-shield-check" class="size-3.5" />
+            <UIcon :name="coveredVocabulary(row.original).icon" class="size-3.5" />
             {{ acceptedAt(row.original) }}
           </span>
         </span>
@@ -225,22 +238,32 @@ const rowClass = (row: { original: LatestAttribute }) =>
       </template>
 
       <template #actions-cell="{ row }">
-        <UButton
-          v-if="isAcceptable(row.original)"
-          color="neutral"
-          variant="soft"
-          size="xs"
-          label="Accept"
-          @click.stop="emit('accept', row.original)"
-        />
-        <UButton
-          v-else-if="row.original.displayStatus === 'accepted'"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          label="Clear"
-          @click.stop="emit('clear', row.original)"
-        />
+        <div class="flex justify-end gap-1">
+          <UButton
+            v-if="isAcceptable(row.original)"
+            color="neutral"
+            variant="soft"
+            size="xs"
+            label="Acknowledge"
+            @click.stop="emit('accept', row.original, 'acknowledge')"
+          />
+          <UButton
+            v-if="isAcceptable(row.original) || row.original.displayStatus === 'acknowledged'"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            label="Accept"
+            @click.stop="emit('accept', row.original, 'accept')"
+          />
+          <UButton
+            v-if="isCovered(row.original)"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            label="Clear"
+            @click.stop="emit('clear', row.original)"
+          />
+        </div>
       </template>
 
       <template #expanded="{ row }">

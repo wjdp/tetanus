@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TimePoint } from "~/components/charts/alignSeries";
+import { ACCEPTANCE_KIND_VOCABULARY } from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 type Acceptance = SmartOverview["acceptances"][number];
@@ -42,7 +43,7 @@ const valueMilestones = computed(() => {
 
 const acceptanceLine = (acceptance: Acceptance) =>
   [
-    `accepted at ${withUnit(acceptance.acceptedValue)} on ${formatDate(acceptance.acceptedAt)}`,
+    `${ACCEPTANCE_KIND_VOCABULARY[acceptance.kind].verb} at ${withUnit(acceptance.acceptedValue)} on ${formatDate(acceptance.acceptedAt)}`,
     acceptance.supersededAt && `superseded ${formatDate(acceptance.supersededAt)}`,
     acceptance.clearedAt && `cleared ${formatDate(acceptance.clearedAt)}`,
   ]
@@ -88,7 +89,7 @@ const rawLine = computed(() => {
     </div>
 
     <div v-if="acceptances.length" class="flex flex-col gap-1">
-      <h4 class="text-muted text-xs font-medium">Acceptances</h4>
+      <h4 class="text-muted text-xs font-medium">Acknowledgements and acceptances</h4>
       <div v-for="acceptance in acceptances" :key="acceptance.id">
         <p class="text-default">{{ acceptanceLine(acceptance) }}</p>
         <p v-if="acceptance.note" class="text-muted">{{ acceptance.note }}</p>
