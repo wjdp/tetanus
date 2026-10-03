@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install or remove the tetanus host collector. Idempotent. See host/README.md.
 #
-#   sudo host/install.sh --url https://tetanus.example --token <enrol token> [--host <name>]
+#   sudo host/install.sh --url https://tetanus.example --token <enrol token> [--host <name>] [--no-collect]
 #   sudo host/install.sh --uninstall
 #
 # Run from a checkout it installs the files next to it; piped from curl it downloads them
@@ -12,6 +12,7 @@ set -euo pipefail
 readonly bin_path=/usr/local/bin/tetanus-collect
 readonly unit_dir=/etc/systemd/system
 readonly timers=(tetanus-collect-zfs.timer tetanus-collect-smart.timer tetanus-collect-snapshots.timer)
+readonly first_runs=(tetanus-collect@zfs.service tetanus-collect@smart.service tetanus-collect@snapshots.service)
 readonly units=(tetanus-collect@.service "${timers[@]}")
 readonly zedlet_path=/usr/local/libexec/tetanus/all-tetanus.sh
 readonly zedlet_link=/etc/zfs/zed.d/all-tetanus.sh
@@ -24,6 +25,7 @@ token=
 sources=
 host=
 uninstall=0
+collect_now=1
 
 say() {
   printf 'tetanus install: %s\n' "$*"
@@ -36,8 +38,11 @@ die() {
 
 usage() {
   cat <<USAGE
-Usage: install.sh --url <server url> --token <enrol token> [--host <name>]
+Usage: install.sh --url <server url> --token <enrol token> [--host <name>] [--no-collect]
        install.sh --uninstall
+
+  --no-collect  only schedule the timers; by default every group is collected once
+                straight after install
 USAGE
 }
 
@@ -48,6 +53,7 @@ parse_args() {
       --token) token=${2:?--token needs a value}; shift 2 ;;
       --host) host=${2:?--host needs a value}; shift 2 ;;
       --uninstall) uninstall=1; shift ;;
+      --no-collect) collect_now=0; shift ;;
       -h | --help) usage; exit 0 ;;
       *) usage >&2; exit 2 ;;
     esac
@@ -147,6 +153,11 @@ install_collector() {
     say "smoke check passed"
   else
     say "warning: smoke check failed; see the output above"
+  fi
+
+  if ((collect_now)); then
+    systemctl start --no-block "${first_runs[@]}"
+    say "collecting every group now in the background; results in journalctl"
   fi
 
   cat <<NEXT

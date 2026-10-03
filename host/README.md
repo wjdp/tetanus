@@ -38,7 +38,9 @@ collectors and shows `curl -fsSL https://tetanus.example/host/install.sh | sudo 
 | `/usr/local/libexec/tetanus/all-tetanus.sh`, symlinked from `/etc/zfs/zed.d/` | ZED hook |
 | `/etc/tetanus/collect.env` (mode 600) | `TETANUS_URL`, `TETANUS_TOKEN`, optional `TETANUS_HOST` |
 
-It then enables the timers, restarts ZED and runs a `--dry-run` as a smoke check.
+It then enables the timers, restarts ZED, runs a `--dry-run` as a smoke check and
+starts one collection of every group in the background so the host reports straight
+away (`--no-collect` to skip it).
 
 ## What runs when
 
