@@ -31,6 +31,7 @@ import {
 import { DRIVE_DB_SNAPSHOT } from "~~/server/services/drive-db/lookup";
 import { updateHost, upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
+import { updateSettings } from "~~/server/services/settings";
 import { reapplySmartPolicy } from "~~/server/services/smartPolicy";
 import { archivePool } from "~~/server/services/zfs";
 import { flushDb } from "~~/test/db";
@@ -590,6 +591,231 @@ describe("disk state, overrides and inventory", () => {
     await expect(updateDisk(99999, {})).rejects.toMatchObject({
       statusCode: 404,
     });
+  });
+});
+
+describe("disk disposal", () => {
+  const absentAt = new Date("2026-09-01T13:00:00Z");
+  const rma = { kind: "rma", on: "2026-09-01" } as const;
+  let sdaId: number;
+  let k2Id: number;
+
+  beforeEach(() => {
+    flushDb();
+    ingestMars();
+    sdaId = diskBySerial("0UTY8HTE").id;
+    k2Id = findDiskByAlias("K2")!.id;
+    ingest("lsblk", lsblkWithout("0UTY8HTE"), undefined, "mars", absentAt);
+  });
+
+  function titlesOf(diskId: number, eventType: string) {
+    return eventsOf(diskId, eventType).map((entry) => entry.title);
+  }
+
+  it("disposes an absent disk and clears it again", async () => {
+    const sold = await updateDisk(
+      sdaId,
+      { disposal: { kind: "sold", on: "2026-09-01", salePrice: 40 } },
+      absentAt,
+    );
+    expect(sold.disposal).toEqual({
+      kind: "sold",
+      on: "2026-09-01",
+      salePrice: 40,
+    });
+    expect(sold.replacesDiskId).toBeNull();
+    const cleared = await updateDisk(sdaId, { disposal: null }, absentAt);
+    expect(cleared.disposal).toBeNull();
+    expect(titlesOf(sdaId, "disposed")).toEqual([
+      "sold for £40.00 on 2026-09-01",
+    ]);
+    expect(eventsOf(sdaId, "disposal-cleared")).toEqual([
+      expect.objectContaining({
+        title: "disposal cleared (was sold for £40.00 on 2026-09-01)",
+        data: {
+          from: { kind: "sold", on: "2026-09-01", salePrice: 40 },
+          to: null,
+        },
+      }),
+    ]);
+  });
+
+  it("formats the sale price in the display currency", async () => {
+    await updateSettings({ config: { currency: "EUR" } });
+    await updateDisk(
+      sdaId,
+      { disposal: { kind: "sold", on: "2026-09-01", salePrice: 40 } },
+      absentAt,
+    );
+    expect(titlesOf(sdaId, "disposed")).toEqual([
+      "sold for €40.00 on 2026-09-01",
+    ]);
+  });
+
+  it("refuses to dispose a present disk, naming its host", async () => {
+    await expect(
+      updateDisk(k2Id, { disposal: rma }, absentAt),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: "K2 is still attached to mars",
+    });
+    expect(eventsOf(k2Id, "disposed")).toEqual([]);
+  });
+
+  it("lets an existing disposal change while the disk is present again", async () => {
+    await updateDisk(sdaId, { disposal: rma }, absentAt);
+    ingestLsblk("mars", new Date("2026-09-02T10:00:00Z"));
+    const changed = await updateDisk(
+      sdaId,
+      { disposal: { kind: "recycled", on: "2026-09-02" } },
+      new Date("2026-09-02T10:30:00Z"),
+    );
+    expect(changed).toMatchObject({
+      present: true,
+      disposal: { kind: "recycled", on: "2026-09-02" },
+    });
+  });
+
+  it("links a replacement to an RMA'd disk", async () => {
+    await updateDisk(sdaId, { disposal: rma }, absentAt);
+    const replacement = await updateDisk(
+      k2Id,
+      { replacesDiskId: sdaId },
+      absentAt,
+    );
+    expect(replacement.replacesDiskId).toBe(sdaId);
+    expect(eventsOf(sdaId, "replaced-by")).toEqual([
+      expect.objectContaining({
+        title: "replaced by K2",
+        data: { diskId: k2Id },
+      }),
+    ]);
+    expect(eventsOf(k2Id, "replaces")).toEqual([
+      expect.objectContaining({
+        title: `replaces K1`,
+        data: { diskId: sdaId },
+      }),
+    ]);
+  });
+
+  it("refuses a replacement of itself, of a disk not RMA'd, or of one already replaced", async () => {
+    await expect(
+      updateDisk(k2Id, { replacesDiskId: k2Id }, absentAt),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(
+      updateDisk(k2Id, { replacesDiskId: 99999 }, absentAt),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await updateDisk(
+      sdaId,
+      { disposal: { kind: "recycled", on: "2026-09-01" } },
+      absentAt,
+    );
+    await expect(
+      updateDisk(k2Id, { replacesDiskId: sdaId }, absentAt),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    await updateDisk(sdaId, { disposal: rma }, absentAt);
+    await updateDisk(k2Id, { replacesDiskId: sdaId }, absentAt);
+    const k3Id = findDiskByAlias("K3")!.id;
+    await expect(
+      updateDisk(k3Id, { replacesDiskId: sdaId }, absentAt),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: `K1 is already replaced by K2`,
+    });
+  });
+
+  it("writes replacement-cleared on both sides when unlinking or re-pointing", async () => {
+    const k3Id = findDiskByAlias("K3")!.id;
+    await updateDisk(sdaId, { disposal: rma }, absentAt);
+    await updateDisk(k2Id, { replacesDiskId: sdaId }, absentAt);
+    await updateDisk(k2Id, { replacesDiskId: null }, absentAt);
+    expect(titlesOf(sdaId, "replacement-cleared")).toEqual([
+      "no longer replaced by K2",
+    ]);
+    expect(titlesOf(k2Id, "replacement-cleared")).toEqual([
+      "no longer replaces K1",
+    ]);
+
+    await updateDisk(k3Id, { replacesDiskId: sdaId }, absentAt);
+    db.update(disk).set({ disposal: rma }).where(eq(disk.id, k2Id)).run();
+    await updateDisk(k3Id, { replacesDiskId: k2Id }, absentAt);
+    expect(titlesOf(sdaId, "replacement-cleared")).toHaveLength(2);
+    expect(titlesOf(k3Id, "replacement-cleared")).toEqual([
+      "no longer replaces K1",
+    ]);
+    expect(titlesOf(k2Id, "replaced-by")).toEqual(["replaced by K3"]);
+  });
+
+  it.each([
+    ["clearing", null],
+    ["changing away from rma", { kind: "recycled", on: "2026-09-01" } as const],
+  ])(
+    "%s a replaced RMA disposal nulls the replacement's link",
+    async (_, disposal) => {
+      await updateDisk(sdaId, { disposal: rma }, absentAt);
+      await updateDisk(k2Id, { replacesDiskId: sdaId }, absentAt);
+      await updateDisk(sdaId, { disposal }, absentAt);
+      expect((await getDisk(k2Id, absentAt)).replacesDiskId).toBeNull();
+      expect(titlesOf(sdaId, "replacement-cleared")).toEqual([
+        "no longer replaced by K2",
+      ]);
+      expect(titlesOf(k2Id, "replacement-cleared")).toEqual([
+        "no longer replaces K1",
+      ]);
+    },
+  );
+
+  it("keeps the link when an RMA disposal is re-saved as rma", async () => {
+    await updateDisk(sdaId, { disposal: rma }, absentAt);
+    await updateDisk(k2Id, { replacesDiskId: sdaId }, absentAt);
+    await updateDisk(
+      sdaId,
+      { disposal: { kind: "rma", on: "2026-08-31" } },
+      absentAt,
+    );
+    expect((await getDisk(k2Id, absentAt)).replacesDiskId).toBe(sdaId);
+    expect(eventsOf(sdaId, "replacement-cleared")).toEqual([]);
+  });
+
+  it("freezes state transitions while disposed", async () => {
+    await getDisk(sdaId, absentAt);
+    await updateDisk(sdaId, { disposal: rma }, absentAt);
+    const later = new Date("2026-09-20T11:00:00Z");
+    ingest("lsblk", lsblkWithout("0UTY8HTE"), undefined, "mars", later);
+    const aged = (await listDisks(later)).find((row) => row.id === sdaId)!;
+    expect(aged.state).toBe("removed");
+    expect(eventsOf(sdaId, "state-changed")).toEqual([]);
+  });
+
+  it("records a disposed disk seen again once per disposal", async () => {
+    const disposedAt = new Date("2026-09-01T14:00:00Z");
+    await updateDisk(sdaId, { disposal: rma }, disposedAt);
+    ingestLsblk("mars", new Date("2026-09-02T10:00:00Z"));
+    ingestLsblk("mars", new Date("2026-09-02T11:00:00Z"));
+    expect(eventsOf(sdaId, "disposed-disk-seen")).toEqual([
+      expect.objectContaining({
+        title: "seen on mars while RMA'd on 2026-09-01",
+        data: { hostId: expect.any(Number), disposalOn: "2026-09-01" },
+      }),
+    ]);
+    expect((await getDisk(sdaId)).disposal).toEqual(rma);
+
+    await updateDisk(
+      sdaId,
+      { disposal: rma },
+      new Date("2026-09-02T12:00:00Z"),
+    );
+    ingestLsblk("mars", new Date("2026-09-02T13:00:00Z"));
+    ingestLsblk("mars", new Date("2026-09-02T14:00:00Z"));
+    expect(eventsOf(sdaId, "disposed-disk-seen")).toHaveLength(2);
+  });
+
+  it("ignores sightings from before the disposal", async () => {
+    const disposedAt = new Date("2026-09-01T14:00:00Z");
+    await updateDisk(sdaId, { disposal: rma }, disposedAt);
+    ingestLsblk("mars", new Date("2026-09-01T12:00:00Z"));
+    expect(eventsOf(sdaId, "disposed-disk-seen")).toEqual([]);
   });
 });
 

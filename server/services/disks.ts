@@ -10,12 +10,14 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/sqlite-core";
-import type {
-  DiskKey,
-  DiskKeyKind,
-  DiskProtocol,
-  DiskState,
-  EffectiveDiskState,
+import {
+  type DiskKey,
+  type DiskKeyKind,
+  type DiskProtocol,
+  type DiskState,
+  type Disposal,
+  type EffectiveDiskState,
+  isDisposed,
 } from "#shared/disk";
 import {
   type DiskFaultCounts,
@@ -30,6 +32,7 @@ import {
 import type { IngestMeta } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
 import { resolveModelShort } from "#shared/model";
+import { formatMoney } from "#shared/money";
 import type { DiskPatch } from "#shared/schemas/disks";
 import {
   counterAttributeIds,
@@ -339,9 +342,26 @@ function recordMove(row: DiskRow, sighting: DiskSighting) {
   });
 }
 
+function recordDisposedDiskSeen(row: DiskRow, sighting: DiskSighting) {
+  if (row.disposal === null) return;
+  const disposed = latestAutoEvent("disk", row.id, "disposed");
+  if (disposed && sighting.receivedAt <= disposed.at) return;
+  const seen = latestAutoEvent("disk", row.id, "disposed-disk-seen");
+  if (seen && (!disposed || seen.at > disposed.at)) return;
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: row.id,
+    eventType: "disposed-disk-seen",
+    title: `seen on ${hostName(sighting.hostId)} while ${disposalTitle(row.disposal)}`,
+    data: { hostId: sighting.hostId, disposalOn: row.disposal.on },
+    at: sighting.receivedAt,
+  });
+}
+
 function mergeIntoDisk(row: DiskRow, sighting: DiskSighting): DiskRow {
   addKeys(row.id, sighting.keys);
   recordMove(row, sighting);
+  recordDisposedDiskSeen(row, sighting);
   return db
     .update(disk)
     .set({
@@ -854,7 +874,7 @@ function recordStateTransition(
   state: EffectiveDiskState,
   now: Date,
 ) {
-  if (state === row.lastState) return;
+  if (isDisposed(row) || state === row.lastState) return;
   db.update(disk).set({ lastState: state }).where(eq(disk.id, row.id)).run();
   if (row.lastState === null) return;
   addAutoEvent({
@@ -996,6 +1016,151 @@ function assertAliasFree(id: number, alias: string) {
   }
 }
 
+function diskLabel(row: Pick<DiskRow, "id" | "alias">) {
+  return row.alias ?? `disk ${row.id}`;
+}
+
+const DISPOSAL_VERBS: Record<Disposal["kind"], string> = {
+  sold: "sold",
+  rma: "RMA'd",
+  recycled: "recycled",
+  "given-away": "given away",
+};
+
+function disposalTitle(disposal: Disposal, currency?: string) {
+  const price =
+    disposal.salePrice !== undefined && currency
+      ? ` for ${formatMoney(disposal.salePrice, currency)}`
+      : "";
+  return `${DISPOSAL_VERBS[disposal.kind]}${price} on ${disposal.on}`;
+}
+
+function replacementOf(id: number): DiskRow | undefined {
+  return db.select().from(disk).where(eq(disk.replacesDiskId, id)).get();
+}
+
+function assertDisposable(row: DiskRow, present: boolean) {
+  if (row.disposal !== null || !present) return;
+  throw new ServiceError(
+    409,
+    `${diskLabel(row)} is still attached to ${hostName(row.lastSeenHostId)}`,
+  );
+}
+
+function replacedDiskFor(id: number, replacesDiskId: number): DiskRow {
+  if (replacesDiskId === id) {
+    throw new ServiceError(400, "A disk cannot replace itself");
+  }
+  const replaced = getDiskRow(replacesDiskId);
+  if (!replaced) {
+    throw new ServiceError(400, `Disk ${replacesDiskId} does not exist`);
+  }
+  if (replaced.disposal?.kind !== "rma") {
+    throw new ServiceError(409, `${diskLabel(replaced)} was not RMA'd`);
+  }
+  const replacement = replacementOf(replacesDiskId);
+  if (replacement && replacement.id !== id) {
+    throw new ServiceError(
+      409,
+      `${diskLabel(replaced)} is already replaced by ${diskLabel(replacement)}`,
+    );
+  }
+  return replaced;
+}
+
+function recordReplacementCleared(
+  replaced: DiskRow,
+  replacement: DiskRow,
+  now: Date,
+) {
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: replaced.id,
+    eventType: "replacement-cleared",
+    title: `no longer replaced by ${diskLabel(replacement)}`,
+    data: { diskId: replacement.id },
+    at: now,
+  });
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: replacement.id,
+    eventType: "replacement-cleared",
+    title: `no longer replaces ${diskLabel(replaced)}`,
+    data: { diskId: replaced.id },
+    at: now,
+  });
+}
+
+function recordReplacement(replaced: DiskRow, replacement: DiskRow, now: Date) {
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: replaced.id,
+    eventType: "replaced-by",
+    title: `replaced by ${diskLabel(replacement)}`,
+    data: { diskId: replacement.id },
+    at: now,
+  });
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: replacement.id,
+    eventType: "replaces",
+    title: `replaces ${diskLabel(replaced)}`,
+    data: { diskId: replaced.id },
+    at: now,
+  });
+}
+
+function unlinkReplacementOnDisposalChange(
+  row: DiskRow,
+  disposal: Disposal | null,
+  now: Date,
+) {
+  if (row.disposal?.kind !== "rma" || disposal?.kind === "rma") return;
+  const replacement = replacementOf(row.id);
+  if (!replacement) return;
+  db.update(disk)
+    .set({ replacesDiskId: null })
+    .where(eq(disk.id, replacement.id))
+    .run();
+  recordReplacementCleared(row, replacement, now);
+}
+
+function recordDisposal(
+  row: DiskRow,
+  disposal: Disposal | null,
+  currency: string,
+  now: Date,
+) {
+  if (disposal === null) {
+    if (row.disposal === null) return;
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: row.id,
+      eventType: "disposal-cleared",
+      title: `disposal cleared (was ${disposalTitle(row.disposal, currency)})`,
+      data: { from: row.disposal, to: null },
+      at: now,
+    });
+  } else {
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: row.id,
+      eventType: "disposed",
+      title: disposalTitle(disposal, currency),
+      data: { from: row.disposal, to: disposal },
+      at: now,
+    });
+  }
+  unlinkReplacementOnDisposalChange(row, disposal, now);
+}
+
+function relinkReplacement(row: DiskRow, replaced: DiskRow | null, now: Date) {
+  const previous =
+    row.replacesDiskId === null ? undefined : getDiskRow(row.replacesDiskId);
+  if (previous) recordReplacementCleared(previous, row, now);
+  if (replaced) recordReplacement(replaced, row, now);
+}
+
 export async function updateDisk(
   id: number,
   patch: DiskPatch,
@@ -1003,6 +1168,8 @@ export async function updateDisk(
 ): Promise<DiskDetail> {
   const row = getDiskRow(id);
   if (!row) throw notFound(`Disk ${id} not found`);
+  const { config } = await getSettings();
+  const snapshot = stateResolver(now, config.missingAfterDays)(row);
 
   const changes: Partial<DiskRow> = {};
   if (patch.alias !== undefined && patch.alias !== row.alias) {
@@ -1016,24 +1183,43 @@ export async function updateDisk(
   const overrideChanged =
     patch.stateOverride !== undefined &&
     patch.stateOverride !== row.stateOverride;
+  const stateOverride = patch.stateOverride ?? null;
   if (overrideChanged) {
-    const stateOverride = patch.stateOverride ?? null;
-    const { inferredState } = stateResolver(now, await missingAfterDays())(row);
     changes.stateOverride = stateOverride;
-    changes.lastState = stateOverride ?? inferredState;
-    addAutoEvent({
-      subjectType: "disk",
-      subjectId: id,
-      eventType: "override-set",
-      title: stateOverride
-        ? `state set to ${stateOverride}`
-        : `state override cleared (now ${inferredState})`,
-      data: { from: row.stateOverride, to: stateOverride },
-      at: now,
-    });
+    changes.lastState = stateOverride ?? snapshot.inferredState;
   }
+  const disposal = patch.disposal;
+  const disposalChanged =
+    disposal !== undefined && (disposal !== null || row.disposal !== null);
+  if (disposalChanged) {
+    if (disposal !== null) assertDisposable(row, snapshot.present);
+    changes.disposal = disposal;
+  }
+  const replacesDiskId = patch.replacesDiskId;
+  const replacementChanged =
+    replacesDiskId !== undefined && replacesDiskId !== row.replacesDiskId;
+  const replaced =
+    replacementChanged && replacesDiskId !== null
+      ? replacedDiskFor(id, replacesDiskId)
+      : null;
+  if (replacementChanged) changes.replacesDiskId = replacesDiskId;
 
-  if (Object.keys(changes).length > 0) {
+  db.transaction(() => {
+    if (overrideChanged) {
+      addAutoEvent({
+        subjectType: "disk",
+        subjectId: id,
+        eventType: "override-set",
+        title: stateOverride
+          ? `state set to ${stateOverride}`
+          : `state override cleared (now ${snapshot.inferredState})`,
+        data: { from: row.stateOverride, to: stateOverride },
+        at: now,
+      });
+    }
+    if (disposalChanged) recordDisposal(row, disposal, config.currency, now);
+    if (replacementChanged) relinkReplacement(row, replaced, now);
+    if (Object.keys(changes).length === 0) return;
     const updated = db
       .update(disk)
       .set(changes)
@@ -1041,6 +1227,6 @@ export async function updateDisk(
       .returning()
       .get();
     if (changes.inventory) refreshRecordingTech(updated);
-  }
+  });
   return getDisk(id, now);
 }
