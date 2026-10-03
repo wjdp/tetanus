@@ -18,6 +18,8 @@ interface FlaggedCounter {
   suffix?: string;
 }
 
+const QUIET_STATUSES = new Set(["passed", "accepted"]);
+
 const flaggedCounters = computed(() => {
   const { reallocated, pending, uncorrectable, wearPercent } =
     props.disk.counters;
@@ -29,7 +31,7 @@ const flaggedCounters = computed(() => {
   ];
   return candidates.filter(
     (candidate): candidate is FlaggedCounter =>
-      candidate.counter !== null && candidate.counter.status !== "passed",
+      candidate.counter !== null && !QUIET_STATUSES.has(candidate.counter.status),
   );
 });
 

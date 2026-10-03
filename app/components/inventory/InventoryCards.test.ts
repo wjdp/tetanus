@@ -82,6 +82,17 @@ describe("InventoryCards", () => {
       expect(cards.find(attention).exists()).toBe(false);
     });
 
+    it("is absent when the only flagged counter is accepted", async () => {
+      const cards = await mountCard({
+        counters: {
+          ...NO_COUNTERS,
+          pending: { value: 8, status: "accepted" },
+        },
+      });
+
+      expect(cards.find(attention).exists()).toBe(false);
+    });
+
     it("shows fault badges", async () => {
       const cards = await mountCard({
         faultCounts: { error: 2, warning: 0, acknowledged: 0 },
