@@ -4,6 +4,7 @@ import {
   isHostOffline,
   isHostSilent,
 } from "#shared/hostFreshness";
+import { MISSING_POOL_STATE } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import { collectorRun, type pool } from "~~/server/database/schema";
 import { type HostWithRuns, listHosts } from "~~/server/services/hosts";
@@ -62,4 +63,17 @@ export function poolPresence(
   if (row.lastSeenAt >= statusAt) return "present";
   if (host && isHostOffline(host, at, cadences)) return "host-offline";
   return "missing";
+}
+
+export function poolDisplayState(
+  row: Pick<
+    typeof pool.$inferSelect,
+    "hostId" | "lastSeenAt" | "state" | "archivedAt"
+  >,
+  context: PoolPresenceContext,
+): string {
+  if (row.archivedAt === null && poolPresence(row, context) === "missing") {
+    return MISSING_POOL_STATE;
+  }
+  return row.state;
 }

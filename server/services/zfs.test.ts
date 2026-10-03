@@ -4,6 +4,7 @@ import { eq, isNotNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "~~/server/database/client";
 import {
+  collectorRun,
   diaryEntry,
   pool,
   poolHistory,
@@ -969,6 +970,47 @@ describe("pool queries", () => {
     );
     expect(k1?.disk).toMatchObject({ alias: "K1", latestStatus: "unknown" });
     expect(k1?.children).toEqual([]);
+  });
+
+  it("shows a pool the latest scan did not see as MISSING", () => {
+    const recordStatus = (receivedAt: Date) =>
+      db
+        .insert(collectorRun)
+        .values({
+          hostId: upsertHostByName("mars", receivedAt).id,
+          source: "zpool-status",
+          receivedAt,
+          ok: true,
+          bytes: 0,
+        })
+        .run();
+    run("zpool-status", marsStatus());
+    recordStatus(T0);
+    const withoutZeta = marsStatus();
+    withoutZeta.pools = withoutZeta.pools.filter(
+      (candidate) => candidate.name !== "zeta",
+    );
+    run("zpool-status", withoutZeta, minutesAfter(10));
+    recordStatus(minutesAfter(10));
+
+    const states = (pools: ReturnType<typeof listPools>) =>
+      pools.map(({ name, state, displayState }) => ({
+        name,
+        state,
+        displayState,
+      }));
+    expect(states(listPools("exclude", minutesAfter(11)))).toEqual([
+      { name: "tank", state: "ONLINE", displayState: "ONLINE" },
+      { name: "zeta", state: "ONLINE", displayState: "MISSING" },
+    ]);
+
+    db.update(pool)
+      .set({ archivedAt: minutesAfter(11) })
+      .where(eq(pool.name, "zeta"))
+      .run();
+    expect(states(listPools("only", minutesAfter(12)))).toEqual([
+      { name: "zeta", state: "ONLINE", displayState: "ONLINE" },
+    ]);
   });
 
   it("hides vdevs that have left", () => {

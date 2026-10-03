@@ -50,6 +50,23 @@ function flatten(node: VdevNode): VdevNode[] {
   return [node, ...node.children.flatMap(flatten)];
 }
 
+// Edits the text rather than JSON.parse, which would round pool GUIDs past 2^53.
+function withoutPool(statusJson: string, name: string) {
+  const start = statusJson.indexOf(`"${name}":{"name":"${name}"`);
+  let depth = 0;
+  let end = statusJson.indexOf("{", start);
+  do {
+    if (statusJson[end] === "{") depth += 1;
+    if (statusJson[end] === "}") depth -= 1;
+    end += 1;
+  } while (depth > 0);
+  const before = statusJson.slice(0, start).replace(/,$/, "");
+  const after = before.endsWith("{")
+    ? statusJson.slice(end).replace(/^,/, "")
+    : statusJson.slice(end);
+  return before + after;
+}
+
 beforeAll(async () => {
   await ingest("lsblk", readFixture("mars/lsblk.json"));
   for (const file of readdirSync(UDEV_DIR)) {
@@ -80,6 +97,7 @@ describe("/api/pools", () => {
     expect(pools[0]).toMatchObject({
       name: "tank",
       state: "ONLINE",
+      displayState: "ONLINE",
       health: "ONLINE",
       cap: 63,
       host: { name: "mars" },
@@ -244,5 +262,28 @@ describe("/api/pools", () => {
 
   it("404s for a missing pool", async () => {
     expect((await fetch("/api/pools/99999")).status).toBe(404);
+  });
+
+  it("shows a pool the latest zpool-status did not see as MISSING", async () => {
+    await ingest(
+      "zpool-status",
+      withoutPool(readFixture("mars/zpool-status-stored-paths.json"), "zeta"),
+    );
+
+    const pools = await (await fetch("/api/pools")).json();
+    const states = pools.map(
+      (row: { name: string; state: string; displayState: string }) => [
+        row.name,
+        row.state,
+        row.displayState,
+      ],
+    );
+    expect(states).toEqual([
+      ["tank", "ONLINE", "ONLINE"],
+      ["zeta", "ONLINE", "MISSING"],
+    ]);
+    const zeta = pools.find((row: { name: string }) => row.name === "zeta");
+    const detail = await (await fetch(`/api/pools/${zeta.id}`)).json();
+    expect(detail.displayState).toBe("MISSING");
   });
 });

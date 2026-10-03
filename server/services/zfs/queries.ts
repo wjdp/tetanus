@@ -39,6 +39,10 @@ import {
   zfsEvent,
 } from "~~/server/database/schema";
 import type { DiaryEntryRow } from "~~/server/services/diary";
+import {
+  poolDisplayState,
+  poolPresenceContext,
+} from "~~/server/services/poolPresence";
 import { resolvePurpose } from "~~/server/services/usage";
 import { notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
@@ -76,6 +80,7 @@ export interface PoolHost {
 
 export interface PoolSummary extends Omit<PoolRow, "hostId"> {
   host: PoolHost;
+  displayState: string;
   resolvedConfig: ResolvedPoolConfig;
   vdevs: VdevNode | null;
   datasetCount: number;
@@ -198,7 +203,11 @@ function withoutPoolId(node: VdevNode & { poolId?: number }): VdevNode {
   return { ...rest, children: children.map(withoutPoolId) };
 }
 
-function summarise(rows: { pool: PoolRow; host: PoolHost }[]): PoolSummary[] {
+function summarise(
+  rows: { pool: PoolRow; host: PoolHost }[],
+  now: Date,
+): PoolSummary[] {
+  const presence = poolPresenceContext(now);
   const poolIds = rows.map((row) => row.pool.id);
   const trees = vdevTrees(poolIds);
   const counts = datasetCountsByPool(poolIds);
@@ -208,6 +217,7 @@ function summarise(rows: { pool: PoolRow; host: PoolHost }[]): PoolSummary[] {
     return {
       ...columns,
       host: hostRow,
+      displayState: poolDisplayState(poolRow, presence),
       resolvedConfig: resolvePoolConfig(poolRow.config),
       vdevs: trees.get(poolRow.id) ?? null,
       datasetCount: poolCounts?.datasets ?? 0,
@@ -234,12 +244,14 @@ const ARCHIVED_CONDITIONS = {
 
 export function listPools(
   archived: PoolArchivedFilter = "exclude",
+  now = new Date(),
 ): PoolSummary[] {
   return summarise(
     selectPools()
       .where(ARCHIVED_CONDITIONS[archived])
       .orderBy(asc(host.name), asc(pool.name))
       .all(),
+    now,
   );
 }
 
@@ -320,7 +332,7 @@ function recentEvents(poolGuid: string) {
 export function getPool(id: number, now = new Date()): PoolDetail {
   const row = selectPools().where(eq(pool.id, id)).get();
   if (!row) throw notFound(`Pool ${id} not found`);
-  const [summary] = summarise([row]);
+  const [summary] = summarise([row], now);
   if (!summary) throw notFound(`Pool ${id} not found`);
   return {
     ...summary,
