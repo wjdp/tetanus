@@ -17,6 +17,7 @@ const poolOf = (children: TopologyVdev[]): TopologyPool => ({
   id: 7,
   name: "tank",
   state: "ONLINE",
+  displayState: "ONLINE",
   sizeBytes: null,
   allocBytes: null,
   cap: 85,

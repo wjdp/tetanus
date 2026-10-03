@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { capacityColour, zfsStateColour } from "~/utils/vocabulary";
+import { capacityColour } from "~/utils/vocabulary";
 import { isScanActive, scanEndedAt } from "../pool/scan";
 import { activeScan } from "./activeScan";
 import { type TopologyPool, vdevGroups } from "./groupDisks";
@@ -36,9 +36,7 @@ const capColour = computed(() => capacityColour(props.pool.cap));
       >
         {{ pool.name }}
       </NuxtLink>
-      <UBadge :color="zfsStateColour(pool.state)" variant="subtle" size="sm">
-        {{ pool.state }}
-      </UBadge>
+      <PoolStateBadge :pool="pool" size="sm" />
       <span
         v-if="lastScan"
         class="text-sm"

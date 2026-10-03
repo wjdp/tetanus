@@ -62,6 +62,7 @@ export interface TopologyPool {
   id: number;
   name: string;
   state: string;
+  displayState: string;
   sizeBytes: number | null;
   allocBytes: number | null;
   cap: number | null;

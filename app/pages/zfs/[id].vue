@@ -2,7 +2,7 @@
 import type { DropdownMenuItem, TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
 import { formatTimestamp } from "~/components/pool/timestamp";
-import { capacityColour, zfsStateColour } from "~/utils/vocabulary";
+import { capacityColour } from "~/utils/vocabulary";
 
 const route = useRoute();
 const { data: pool, error, refresh } = await useFetch(`/api/pools/${route.params.id}`);
@@ -100,13 +100,7 @@ const tabs = computed<TabsItem[]>(() => [
           <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
             {{ pool.name }}
           </h1>
-          <UBadge
-            :color="zfsStateColour(pool.state)"
-            variant="subtle"
-            data-testid="pool-state"
-          >
-            {{ pool.state }}
-          </UBadge>
+          <PoolStateBadge :pool="pool" />
           <span class="text-muted">
             on {{ pool.host.displayName || pool.host.name }}
           </span>

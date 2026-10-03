@@ -2,7 +2,7 @@
 import type { TableColumn } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
 import { isScanActive, scanEndedAt } from "~/components/pool/scan";
-import { capacityColour, zfsStateColour } from "~/utils/vocabulary";
+import { capacityColour } from "~/utils/vocabulary";
 
 useSeoMeta({ title: getPageTitle("ZFS") });
 
@@ -28,7 +28,7 @@ type Pool = NonNullable<typeof pools.value>[number];
 const columns: TableColumn<Pool>[] = [
   { id: "host", header: "Host" },
   { accessorKey: "name", header: "Pool" },
-  { accessorKey: "state", header: "State" },
+  { id: "state", accessorKey: "displayState", header: "State" },
   { id: "size", header: "Size" },
   { id: "alloc", header: "Alloc" },
   { id: "free", header: "Free" },
@@ -98,13 +98,7 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
         </div>
       </template>
       <template #state-cell="{ row }">
-        <UBadge
-          :color="zfsStateColour(row.original.state)"
-          variant="subtle"
-          size="sm"
-        >
-          {{ row.original.state }}
-        </UBadge>
+        <PoolStateBadge :pool="row.original" size="sm" />
       </template>
       <template #size-cell="{ row }">
         <span class="tabular">{{ formatBytes(row.original.sizeBytes) }}</span>

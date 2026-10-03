@@ -5,10 +5,16 @@ import { getQuery } from "h3";
 import { describe, expect, it, vi } from "vitest";
 import ZfsPage from "./index.vue";
 
-const pool = (id: number, name: string, archivedAt: string | null) => ({
+const pool = (
+  id: number,
+  name: string,
+  archivedAt: string | null,
+  displayState = "ONLINE",
+) => ({
   id,
   name,
   state: "ONLINE",
+  displayState,
   sizeBytes: 1e12,
   allocBytes: 5e11,
   freeBytes: 5e11,
@@ -24,8 +30,11 @@ const pool = (id: number, name: string, archivedAt: string | null) => ({
 
 registerEndpoint("/api/pools", (event) => {
   const tank = pool(1, "tank", null);
+  const zeta = pool(3, "zeta", null, "MISSING");
   const tfault = pool(2, "tfault", "2026-10-02T09:00:00.000Z");
-  return getQuery(event).archived === "include" ? [tank, tfault] : [tank];
+  return getQuery(event).archived === "include"
+    ? [tank, tfault, zeta]
+    : [tank, zeta];
 });
 
 const poolNames = (page: VueWrapper) =>
@@ -34,7 +43,7 @@ const poolNames = (page: VueWrapper) =>
 describe("ZFS page", () => {
   it("hides archived pools until asked, then badges them", async () => {
     const page = await mountSuspended(ZfsPage, { route: "/zfs" });
-    expect(poolNames(page)).toEqual(["tank"]);
+    expect(poolNames(page)).toEqual(["tank", "zeta"]);
     expect(page.find('[data-testid="pool-archived-badge"]').exists()).toBe(
       false,
     );
@@ -42,7 +51,9 @@ describe("ZFS page", () => {
     await page.get('button[data-testid="show-archived"]').trigger("click");
     await flushPromises();
 
-    await vi.waitFor(() => expect(poolNames(page)).toEqual(["tank", "tfault"]));
+    await vi.waitFor(() =>
+      expect(poolNames(page)).toEqual(["tank", "tfault", "zeta"]),
+    );
     expect(page.findAll('[data-testid="pool-archived-badge"]')).toHaveLength(1);
   });
 
@@ -50,6 +61,16 @@ describe("ZFS page", () => {
     const page = await mountSuspended(ZfsPage, {
       route: "/zfs?archived=include",
     });
-    expect(poolNames(page)).toEqual(["tank", "tfault"]);
+    expect(poolNames(page)).toEqual(["tank", "tfault", "zeta"]);
+  });
+
+  it("shows a missing pool as MISSING, keeping its last-seen state in the title", async () => {
+    const page = await mountSuspended(ZfsPage, { route: "/zfs" });
+    const [tankState, zetaState] = page.findAll('[data-testid="pool-state"]');
+
+    expect(tankState?.text()).toBe("ONLINE");
+    expect(zetaState?.text()).toBe("MISSING");
+    expect(zetaState?.classes()).toContain("text-warning");
+    expect(zetaState?.attributes("title")).toBe("Last seen ONLINE");
   });
 });

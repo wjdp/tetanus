@@ -84,6 +84,7 @@ const tank = {
   id: 7,
   name: "tank",
   state: "ONLINE",
+  displayState: "ONLINE",
   sizeBytes: 36e12,
   allocBytes: 18e12,
   cap: 50,

@@ -26,6 +26,7 @@ const pool: TopologyPool = {
   id: 7,
   name: "tank",
   state: "ONLINE",
+  displayState: "ONLINE",
   sizeBytes: null,
   allocBytes: null,
   cap: null,
