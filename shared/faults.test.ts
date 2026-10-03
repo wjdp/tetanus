@@ -18,7 +18,7 @@ type AlertingRule = {
 // Alerts are still driven by diary entries (036 §Alerts). This map keeps the
 // two vocabularies in step: a new alert rule or fault kind fails here until
 // it is placed. `disk-failed` also fires on attribute failure, so it is not
-// one kind.
+// one kind; `disposed-disk-seen` opens no fault (040).
 const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "attribute-failed": "smart-attribute",
   "acceptance-superseded": "smart-attribute",
@@ -36,6 +36,7 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "scan-stalled": "scan-stalled",
   "vdev-unredundant": "vdev-unredundant",
   "identity-conflict": "identity-conflict",
+  "disposed-disk-seen": null,
   "collector-incompatible": "collector-incompatible",
 };
 

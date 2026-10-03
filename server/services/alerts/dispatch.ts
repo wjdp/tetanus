@@ -67,6 +67,7 @@ export function alertContext(): AlertContext {
           model: disk.model,
           serial: disk.serial,
           hostName: host.name,
+          disposal: disk.disposal,
         })
         .from(disk)
         .leftJoin(host, eq(host.id, disk.lastSeenHostId))

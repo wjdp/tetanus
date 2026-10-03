@@ -27,6 +27,7 @@ export const ALERT_RULES = {
   "scan-stalled": { label: "Scan stalled", severity: "alert" },
   "vdev-unredundant": { label: "Single-device vdev", severity: "notice" },
   "identity-conflict": { label: "Disk identity conflict", severity: "alert" },
+  "disposed-disk-seen": { label: "Disposed disk seen", severity: "alert" },
   "collector-incompatible": {
     label: "Collector incompatible",
     severity: "alert",

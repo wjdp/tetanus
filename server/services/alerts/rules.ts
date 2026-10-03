@@ -4,6 +4,7 @@ import {
   type AlertSeverity,
 } from "#shared/alerts";
 import type { DiarySubjectType } from "#shared/diary";
+import { type Disposal, isDisposed } from "#shared/disk";
 import type { DiaryEntryRow } from "~~/server/services/diary";
 
 export interface AlertDisk {
@@ -11,6 +12,7 @@ export interface AlertDisk {
   model: string | null;
   serial: string | null;
   hostName: string | null;
+  disposal: Disposal | null;
 }
 
 export interface AlertPool {
@@ -129,6 +131,17 @@ function matchDiskEntry(
         };
       }
       return null;
+    case "disposed-disk-seen": {
+      const hostId = Number(data.hostId);
+      const hostName = context.host(hostId)?.name ?? `host ${hostId}`;
+      const kind = context.disk(diskId)?.disposal?.kind;
+      const disposed = kind ? `disposed (${kind})` : "disposed";
+      return {
+        rule: "disposed-disk-seen",
+        value: text(data.disposalOn),
+        detail: `seen on ${hostName}, ${disposed} ${text(data.disposalOn)}`,
+      };
+    }
     case "identity-conflict": {
       const diskIds = Array.isArray(data.diskIds) ? data.diskIds : [];
       return {
@@ -296,6 +309,17 @@ function matchEntry(
   return null;
 }
 
+function isSuppressedForDisposal(
+  rule: AlertRule,
+  subjectType: DiarySubjectType,
+  subjectId: number,
+  context: AlertContext,
+) {
+  if (subjectType !== "disk" || rule === "disposed-disk-seen") return false;
+  const found = context.disk(subjectId);
+  return found !== undefined && isDisposed(found);
+}
+
 export function deriveAlert(
   entry: DiaryEntryRow,
   context: AlertContext,
@@ -307,6 +331,9 @@ export function deriveAlert(
   const subjectType = match.subject?.type ?? entry.subjectType;
   const subjectId = match.subject?.id ?? entry.subjectId;
   if (subjectType === "pool" && context.pool(subjectId)?.archived) return null;
+  if (isSuppressedForDisposal(match.rule, subjectType, subjectId, context)) {
+    return null;
+  }
   const { host, subject } = describeSubject(subjectType, subjectId, context);
   return {
     rule: match.rule,

@@ -47,8 +47,22 @@ const hostEntry = (from: string, to: string, version = "0.2.0") =>
 const context: AlertContext = {
   disk: (id) =>
     id === 3
-      ? { alias: "K2", model: "WDC WD80", serial: "ABC", hostName: "mars" }
-      : undefined,
+      ? {
+          alias: "K2",
+          model: "WDC WD80",
+          serial: "ABC",
+          hostName: "mars",
+          disposal: null,
+        }
+      : id === 4
+        ? {
+            alias: "K4",
+            model: "WDC WD80",
+            serial: "DEF",
+            hostName: "mars",
+            disposal: { kind: "rma", on: "2026-10-02" },
+          }
+        : undefined,
   pool: (id) =>
     id === 5
       ? { name: "tank", hostName: "mars", archived: false }
@@ -382,6 +396,7 @@ describe("deriveAlert", () => {
         model: "WDC WD80",
         serial: "ABC",
         hostName: null,
+        disposal: null,
       }),
     };
     expect(deriveAlert(failedPending, unaliased)?.subject).toBe("WDC WD80 ABC");
@@ -432,6 +447,45 @@ describe("deriveAlert", () => {
       message: "mars · tank: C1 UNAVAIL (was ONLINE)",
       dedupeKey: "pool-degraded:pool:5:11:UNAVAIL:7",
     });
+  });
+
+  it("alerts when a disposed disk is seen again", () => {
+    expect(
+      deriveAlert(
+        entry(
+          "disposed-disk-seen",
+          { hostId: 1, disposalOn: "2026-10-02" },
+          { subjectId: 4 },
+        ),
+        context,
+      ),
+    ).toMatchObject({
+      rule: "disposed-disk-seen",
+      severity: "alert",
+      subject: "mars · K4",
+      message: "mars · K4: seen on mars, disposed (rma) 2026-10-02",
+      dedupeKey: "disposed-disk-seen:disk:4:2026-10-02:7",
+    });
+  });
+
+  it("skips other alerts for a disposed disk", () => {
+    const disposed = { subjectId: 4 };
+    expect(
+      deriveAlert(
+        entry("attribute-status-changed", failedPending.data, disposed),
+        context,
+      ),
+    ).toBeNull();
+    expect(
+      deriveAlert(
+        entry(
+          "smart-status-changed",
+          { from: "passed", to: "failed" },
+          disposed,
+        ),
+        context,
+      ),
+    ).toBeNull();
   });
 
   it("skips entries for an archived pool, its vdevs included", () => {

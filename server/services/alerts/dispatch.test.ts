@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~~/server/database/client";
 import {
@@ -165,6 +166,37 @@ describe("runAlertsPass", () => {
       sent: 0,
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("alerts on a disposed disk only when it is seen again", async () => {
+    await configure({ webhook: false });
+    const mars = upsertHostByName("mars", now);
+    db.update(disk)
+      .set({ disposal: { kind: "rma", on: "2026-08-30" } })
+      .where(eq(disk.id, diskId))
+      .run();
+    failAttribute();
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: diskId,
+      eventType: "disposed-disk-seen",
+      title: "seen on mars",
+      data: { hostId: mars.id, disposalOn: "2026-08-30" },
+      at: now,
+    });
+
+    expect(await runAlertsPass(now, respondWith(200))).toMatchObject({
+      entries: 2,
+      alerts: 1,
+    });
+    expect(
+      listNotifications().map(({ rule, message }) => [rule, message]),
+    ).toEqual([
+      [
+        "disposed-disk-seen",
+        "mars · K2: seen on mars, disposed (rma) 2026-08-30",
+      ],
+    ]);
   });
 
   it("does not alert on an attribute failing under an active acceptance", async () => {
