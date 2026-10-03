@@ -40,6 +40,7 @@ import type {
   SimulationParams,
   SimulationSubjectType,
 } from "../../shared/simulator";
+import type { AtaSsdAttributes } from "../../shared/smart/ataSsdAttributes";
 import type {
   AcceptanceKind,
   AttributeStatus,
@@ -171,6 +172,7 @@ export const disk = sqliteTable("Disk", {
   latestPowerOnHours: integer(),
   latestPowerCycles: integer(),
   latestReadingAt: datetime(),
+  ataSsdAttributes: json().$type<AtaSsdAttributes>(),
 });
 
 export const diskKey = sqliteTable(

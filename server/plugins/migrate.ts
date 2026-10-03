@@ -1,5 +1,6 @@
 import { databasePath, db, sqlite } from "~~/server/database/client";
 import { describeMigrations, runMigrations } from "~~/server/database/migrate";
+import { backfillAtaSsdAttributesOnce } from "~~/server/services/ataSsdAttributesBackfill";
 import { ensureSettings } from "~~/server/services/settings";
 import { applySmartPolicyIfStale } from "~~/server/services/smartPolicy";
 import { enqueueUnlessPending } from "~~/server/tasks/queueable/alertsTick";
@@ -21,6 +22,7 @@ export default defineNitroPlugin(() => {
     }
     const settings = ensureSettings();
     applySmartPolicyIfStale();
+    backfillAtaSsdAttributesOnce();
     if (!settings.config.faultsBackfilledAt && !isDemo()) {
       void queueFaultsBackfill();
     }

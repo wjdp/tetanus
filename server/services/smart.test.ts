@@ -243,6 +243,29 @@ describe("recordSmartReading", () => {
     expect(statusEvents(row.id)).toHaveLength(0);
   });
 
+  it("records ATA SSD attribute ids from the latest reading only", () => {
+    const sdo = readFixture("mars/smartctl/xall-sdo-auto.json");
+    const serial = JSON.parse(sdo).serial_number as string;
+    const expected = {
+      wear: "177",
+      written: { attrId: "241", unitBytes: 512, inferred: true },
+    };
+    ingestSmart(sdo, t0);
+    expect(diskBySerial(serial).ataSsdAttributes).toEqual(expected);
+
+    db.update(disk).set({ ataSsdAttributes: null }).run();
+    ingestSmart(sdo, at(-HOUR_MS));
+    expect(diskBySerial(serial).ataSsdAttributes).toBeNull();
+
+    ingestSmart(sdo, at(HOUR_MS));
+    expect(diskBySerial(serial).ataSsdAttributes).toEqual(expected);
+  });
+
+  it("records no ATA SSD attributes for an HDD", () => {
+    ingestSmart(SDA, t0);
+    expect(diskBySerial(SDA_SERIAL).ataSsdAttributes).toBeNull();
+  });
+
   it("observes a standby disk without recording a reading", () => {
     const standby = JSON.stringify({
       json_format_version: [1, 0],

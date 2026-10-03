@@ -40,6 +40,7 @@ export const settingsConfigSchema = z.object({
   alertCursor: z.number().int().min(0),
   smartPolicyVersion: z.number().int().min(0),
   faultsBackfilledAt: z.iso.datetime().optional(),
+  ataSsdAttributesBackfilledAt: z.iso.datetime().optional(),
 });
 
 export type SettingsConfig = z.infer<typeof settingsConfigSchema>;

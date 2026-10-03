@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gt, gte, lte, ne } from "drizzle-orm";
 import type { DiskProtocol } from "#shared/disk";
 import type { IngestMeta } from "#shared/ingest";
 import type { SmartHistoryRange } from "#shared/schemas/smart";
+import { ataSsdAttributesFrom } from "#shared/smart/ataSsdAttributes";
 import {
   type EvaluatedAttribute,
   evaluateReading,
@@ -586,6 +587,7 @@ export function recordSmartReading({
         latestPowerOnHours: reading.powerOnHours,
         latestPowerCycles: reading.powerCycles,
         latestReadingAt: receivedAt,
+        ataSsdAttributes: ataSsdAttributesFrom(parsed, row),
       })
       .where(eq(disk.id, row.id))
       .run();

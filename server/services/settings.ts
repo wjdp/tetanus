@@ -87,3 +87,13 @@ export function setFaultsBackfilledAt(at: Date) {
     .where(eq(setting.id, SETTING_ROW_ID))
     .run();
 }
+
+export function setAtaSsdAttributesBackfilledAt(at: Date) {
+  const row = ensureSettings();
+  db.update(setting)
+    .set({
+      config: { ...row.config, ataSsdAttributesBackfilledAt: at.toISOString() },
+    })
+    .where(eq(setting.id, SETTING_ROW_ID))
+    .run();
+}
