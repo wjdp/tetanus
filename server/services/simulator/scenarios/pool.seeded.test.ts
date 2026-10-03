@@ -48,7 +48,7 @@ function flatten(node: ReturnType<typeof getPool>["vdevs"]) {
 }
 
 beforeAll(async () => {
-  loadSeededDatabase();
+  await loadSeededDatabase();
   // mars's file-backed test pool: a mirror with a log, a cache and a spare.
   recordIngest({
     hostName: "mars",

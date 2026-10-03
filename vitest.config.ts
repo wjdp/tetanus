@@ -29,13 +29,15 @@ export default defineConfig({
         },
       },
       {
-        // Integration tests over the demo fleet. Seeding takes ~20s, so it runs
-        // once per run in global setup and each file copies the result.
+        // Integration tests over the demo fleet. Seeding takes ~20s, so global
+        // setup starts it once per run in the background and each file waits
+        // for it, then copies the result.
         resolve: { alias: rootAlias },
         test: {
           name: "seeded",
           include: ["server/**/*.seeded.test.ts"],
           globalSetup: ["test/seed.globalSetup.ts"],
+          hookTimeout: 180_000,
           setupFiles: ["test/setup.ts"],
           env: {
             DATABASE_URL: ":memory:",

@@ -1,27 +1,35 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { TestProject } from "vitest/node";
+import { SEEDED_AT } from "./seeded";
 
 /**
- * Seeds the demo fleet once per run into a file database; each seeded test file
- * copies it into its own `:memory:` database with `loadSeededDatabase`.
+ * Starts seeding the demo fleet once per run, in a child process so other tests
+ * run meanwhile. Each seeded test file waits for it and copies it into its own
+ * `:memory:` database with `loadSeededDatabase`.
  */
-export default async function setup(project: TestProject) {
+export default function setup(project: TestProject) {
   const directory = mkdtempSync(join(tmpdir(), "tetanus-seed-"));
   const path = join(directory, "seed.db");
-  const databaseUrl = process.env.DATABASE_URL;
-  process.env.DATABASE_URL = path;
-  try {
-    await import("./setup");
-    const { seed } = await import("~~/server/demo/seed");
-    const { SEEDED_AT } = await import("./seeded");
-    const { sqlite } = await import("~~/server/database/client");
-    await seed(SEEDED_AT, { replay: "short" });
-    sqlite.close();
-  } finally {
-    process.env.DATABASE_URL = databaseUrl;
-  }
+  const child = spawn(
+    join(project.config.root, "node_modules/.bin/tsx"),
+    [
+      "--tsconfig",
+      ".nuxt/tsconfig.server.json",
+      "test/seed.script.ts",
+      path,
+      SEEDED_AT.toISOString(),
+    ],
+    { cwd: project.config.root, stdio: "inherit" },
+  );
+  child.on("exit", (code) => {
+    if (code !== 0) writeFileSync(`${path}.failed`, `exit ${code}`);
+  });
   project.provide("seededDatabasePath", path);
-  return () => rmSync(directory, { recursive: true, force: true });
+  return () => {
+    child.kill();
+    rmSync(directory, { recursive: true, force: true });
+  };
 }

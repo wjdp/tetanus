@@ -11,12 +11,13 @@ import { listFaults } from "~~/server/services/faults";
 import { listHosts } from "~~/server/services/hosts";
 import { latestAttributes } from "~~/server/services/smart";
 import { listPools } from "~~/server/services/zfs/queries";
-import { type SeedReport, seed, tick } from "./seed";
+import { loadSeededDatabase, SEEDED_AT, seededReport } from "~~/test/seeded";
+import { type SeedReport, tick } from "./seed";
 import { DEMO_EPOCH, HOUR_MS } from "./timeline";
 import { createWorld } from "./world";
 
 // A full replay takes over a minute; the short one keeps every story instant.
-const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
+const NOW = SEEDED_AT;
 const { stories, timeline } = createWorld(DEMO_EPOCH);
 
 let report: SeedReport;
@@ -52,9 +53,10 @@ const readingCount = () =>
   db.select({ n: count() }).from(smartReading).get()?.n ?? 0;
 
 beforeAll(async () => {
-  report = await seed(NOW, { replay: "short" });
+  await loadSeededDatabase();
+  report = await seededReport();
   disks = await listDisks(NOW);
-}, 120_000);
+});
 
 describe("seed", () => {
   it("ingests every payload without a parse or handler failure", () => {

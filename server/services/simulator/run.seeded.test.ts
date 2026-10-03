@@ -21,8 +21,8 @@ async function diskWith(scenarioId: string) {
   throw new Error(`No disk offers ${scenarioId}`);
 }
 
-beforeAll(() => {
-  loadSeededDatabase();
+beforeAll(async () => {
+  await loadSeededDatabase();
 });
 
 describe("simulate", () => {

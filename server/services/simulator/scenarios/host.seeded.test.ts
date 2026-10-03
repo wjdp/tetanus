@@ -32,8 +32,8 @@ const missingDiskFaultIds = () =>
 const scenarioIds = (hostId: number) =>
   subjectScenarios("host", hostId).scenarios.map((scenario) => scenario.id);
 
-beforeAll(() => {
-  loadSeededDatabase();
+beforeAll(async () => {
+  await loadSeededDatabase();
 });
 
 describe("host scenarios", () => {

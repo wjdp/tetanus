@@ -28,8 +28,8 @@ async function disksOffering(scenarioId: string, count = 1) {
   return found;
 }
 
-beforeAll(() => {
-  loadSeededDatabase();
+beforeAll(async () => {
+  await loadSeededDatabase();
 });
 
 describe("presence scenarios", () => {

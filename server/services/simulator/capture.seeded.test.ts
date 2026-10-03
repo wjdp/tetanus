@@ -20,8 +20,8 @@ function triggerCount() {
   );
 }
 
-beforeAll(() => {
-  loadSeededDatabase();
+beforeAll(async () => {
+  await loadSeededDatabase();
 });
 
 describe("capture", () => {

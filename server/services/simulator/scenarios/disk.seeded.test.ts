@@ -35,8 +35,8 @@ async function summaryOf(diskId: number) {
 
 let before: ReturnType<typeof dumpDatabase>;
 
-beforeAll(() => {
-  loadSeededDatabase();
+beforeAll(async () => {
+  await loadSeededDatabase();
 });
 
 beforeEach(() => {
