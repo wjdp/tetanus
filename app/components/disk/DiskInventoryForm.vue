@@ -4,6 +4,7 @@ import {
   type InventoryKey,
   isFieldVisible,
 } from "#shared/inventory-fields";
+import { currencyStep, currencySymbol } from "#shared/money";
 import {
   draftFromInventory,
   type InventoryDraft,
@@ -18,6 +19,7 @@ const emit = defineEmits<{ updated: [disk: DiskDetail] }>();
 const UNSET = "unset";
 
 const toast = useToast();
+const currency = useCurrency();
 const saving = ref(false);
 const alias = ref("");
 const notes = ref("");
@@ -147,13 +149,15 @@ const save = async () => {
           :model-value="textValue(field.key)"
           type="number"
           min="0"
-          step="0.01"
+          :step="currencyStep(currency)"
           class="w-full"
           :ui="{ leading: 'pointer-events-none' }"
           @update:model-value="(value) => setField(field.key, String(value))"
         >
           <template #leading>
-            <span class="text-muted text-sm">£</span>
+            <span class="text-muted text-sm" data-testid="currency-symbol">{{
+              currencySymbol(currency)
+            }}</span>
           </template>
         </UInput>
         <USelect

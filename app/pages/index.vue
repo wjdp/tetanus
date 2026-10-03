@@ -16,7 +16,7 @@ const [
   useFetch("/api/hosts"),
   useFetch("/api/pools"),
   useFetch("/api/disks"),
-  useFetch("/api/settings"),
+  useSettings(),
 ]);
 const requestUrl = useRequestURL();
 

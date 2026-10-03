@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  currencyItems,
   currencyStep,
   currencySymbol,
   formatMoney,
@@ -64,5 +65,14 @@ describe("per TB", () => {
 
   it("labels the column with the symbol", () => {
     expect(moneyPerTbLabel("USD")).toBe("$/TB");
+  });
+});
+
+describe("currencyItems", () => {
+  it("labels each code with its British English name", () => {
+    expect(currencyItems()).toContainEqual({
+      label: "GBP: British Pound",
+      value: "GBP",
+    });
   });
 });

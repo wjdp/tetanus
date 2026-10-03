@@ -61,3 +61,16 @@ export function formatMoneyPerTb(
 export function moneyPerTbLabel(currency: string): string {
   return `${currencySymbol(currency)}/TB`;
 }
+
+export interface CurrencyItem {
+  label: string;
+  value: string;
+}
+
+export function currencyItems(): CurrencyItem[] {
+  const names = new Intl.DisplayNames("en-GB", { type: "currency" });
+  return Intl.supportedValuesOf("currency").map((code) => ({
+    label: `${code}: ${names.of(code) ?? code}`,
+    value: code,
+  }));
+}
