@@ -377,3 +377,82 @@ creates a phantom empty sync. vault pairs share exactly one GUID, so the common
 snapshot vanishes for an hour roughly one hour in four. Collected history covers
 20 days on mars `tank`, 4.5 days on vault `vpool`. No `PoolHistory` pruning exists.
 The alerts pass runs after every ingest (~100/h), so health must read stored rows.
+
+### Stage 2 (server)
+
+Done 2026-10-03; real-data check on the prod copy matches the second review table
+(all 12 discovered, chain sources `zeta/*`, 20–21 daily and 111–112 hourly syncs, all
+`ok` as of the copy's last history run).
+
+For stage 3:
+
+- `shared/replications.ts`: `REPLICATION_STATUSES` (`ok`, `late`, `stalled`,
+  `learning`, `gone`, `archived`), `REPLICATION_DIRECTIONS` (`received`, `manual`),
+  `REPLICATION_ROLES`, the row types (`ReplicationRow`, `ReplicationEndpoint`,
+  `ReplicationSyncView`, `ReplicationLadderRow`, `DatasetReplication`),
+  `replicationLabel` ("source → target"), `REPLICATION_SYNCS_PAGE` (100),
+  `REPLICATION_LADDER_LIMIT` (200). Health is `replicationHealth` there too.
+- `GET /api/replications` → `ReplicationRow[]`, sorted by target host then target
+  dataset; no grouping. `source` is null while not monitored. `intervalSec` null while
+  learning; `dueAt`, `overdueMs` null with it. Dates are ISO strings.
+- `GET /api/replications/:id?page=N` → `ReplicationDetail`
+  (`server/services/replications/detail.ts`): the row plus
+  `syncs: { items, total, page, pageSize }` (newest first, 1-based pages), `ladder`,
+  `diary` (`DiaryEntryRow[]`), `faults` (live `FaultView[]`).
+- `PATCH /api/replications/:id` (`replicationPatchSchema`,
+  `shared/schemas/replications.ts`) → `ReplicationDetail`. `sourceDatasetId`: a dataset
+  sets it and `direction = manual`; null hands it back to discovery
+  (`direction = received`, re-evaluated at once). `manualIntervalSec` 60 s–366 d, null
+  clears. `archived: true` with optional `archivedNote` (the note only with
+  `archived: true`); `archived: false` un-archives.
+- `GET /api/pools/:id/datasets`: each dataset has
+  `replications: { id, role, status }[]`.
+- Settings keys (no UI yet): `replicationLateFloorHours` 3, `replicationLateFactor`
+  0.5, `replicationStalledFloorHours` 48, `replicationStalledFactor` 2, all in
+  `settingsPatchSchema`.
+- Sidebar entry Replications (`i-lucide-arrow-right-left`, badge `replications`)
+  links to `/replications`, which does not exist yet. Diary and fault links go to
+  `/replications/:id`. No `app/utils/vocabulary` file for statuses yet; 037 has the
+  table.
+
+Decisions and deviations:
+
+- Derivation (`server/services/replications/derive.ts`): a command closes its own
+  target's pending finish lines; it closes those under it only when it has none of its
+  own or carries `-d`/`-e`. Otherwise a child's run logged in the same second as its
+  parent's command would be swallowed by the parent.
+- Re-derivation after a history payload starts 48 h before the payload's oldest
+  receive line, not 48 h before now, so a host's first `zfs-receives` backfill (weeks)
+  is taken whole even after the boot backfill has run.
+- Upserted syncs keep the larger `snapshots` count, so a run cut by the window edge
+  does not shrink.
+- Source choice adds a tie-break after newest common snapshot: most snapshots in
+  common. Without it, a chain member discovered before its sibling is a target can win
+  the tie on the one shared sync snapshot. Unresolved sources are decided oldest
+  replication first, so a later restore is told apart.
+- `unique(replicationId, at)` serves as the index; no second index.
+- `replicationsBackfilledAt` setting; `replications:backfill` task queued at boot
+  before `faults:backfill`, one after the other (concurrent `createTask` calls could
+  take the same id).
+- The diary subject plumbing landed with step 2 (discovery writes diary entries); the
+  fault side with step 4.
+- Late/stalled detections carry stable data (`targetName`, `sourceName`, `hostName`,
+  `lastSyncAt`, `intervalSec`) so the alerts pass does not rewrite them each tick.
+  Archived replications withdraw their faults (reason `archived`). A silent target host
+  freezes status; replication faults are not superseded by `collector-silent`.
+- `resolvePoolFaults` also resolves replication faults of targets in the pool.
+- `referenceAt` uses the last ok run of `zfs-receives` or `zpool-history`, so a host
+  on a pre-0.4.0 collector still has one.
+- Navigation `replications`: stalled red, late amber, ok/learning/gone neutral,
+  archived out.
+- A new sync after archiving un-archives (`replication-resumed`); un-archiving by
+  PATCH writes the same event.
+- Simulator "Replication stalls" (pool, group Replication) moves every sync into the
+  pool back by N hours (default 96); the next real history ingest moves them back.
+- Demo: receives log `snap=` with the newest snapshot received; replicas of
+  `tank/media/music` and `tank/backups/laptops` run 2 and 4 days behind the daily
+  schedule, so they stay late and stalled at any demo time.
+
+Unverified: behaviour against a tool that logs no command line (only hand-written
+tests); `-e` receives; the live ingest path on prod (only the backfill was run on
+the copy).

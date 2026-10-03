@@ -42,11 +42,15 @@ function snapshotItem(
   const { at, dataset } = activity;
   if (activity.action === "receive") {
     const partial = `${dataset}/%recv`;
+    const snap = activity.snapshot ? ` snap=${activity.snapshot}` : "";
     return {
       at,
       lines: [
         internal(at, `receive ${partial} (${datasetId(partial)})`),
-        internal(at, `finish receiving ${partial} (${datasetId(partial)})`),
+        internal(
+          at,
+          `finish receiving ${partial} (${datasetId(partial)})${snap}`,
+        ),
         command(at, `zfs receive -s -F ${dataset}`),
       ],
     };

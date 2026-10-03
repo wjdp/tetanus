@@ -345,17 +345,17 @@ function snapshotLadder(
   return rows.slice(0, REPLICATION_LADDER_LIMIT);
 }
 
-export interface ReplicationDetail extends ReplicationRow {
+export interface ReplicationRecord extends ReplicationRow {
   syncs: ReplicationSyncPage;
   ladder: ReplicationLadderRow[];
   diary: DiaryEntryRow[];
 }
 
-export function getReplication(
+export function replicationRecord(
   id: number,
   { page = 1 }: { page?: number } = {},
   now = new Date(),
-): ReplicationDetail {
+): ReplicationRecord {
   const row = replicationRow(id);
   const total = syncCounts([id]).get(id) ?? 0;
   const view = present(

@@ -9,6 +9,7 @@ import { listDiary } from "~~/server/services/diary";
 import { type DiskSummary, listDisks } from "~~/server/services/disks";
 import { listFaults } from "~~/server/services/faults";
 import { listHosts } from "~~/server/services/hosts";
+import { listReplications } from "~~/server/services/replications";
 import { latestAttributes } from "~~/server/services/smart";
 import { listPools } from "~~/server/services/zfs/queries";
 import { loadSeededDatabase, SEEDED_AT, seededReport } from "~~/test/seeded";
@@ -243,11 +244,33 @@ describe("seed", () => {
     }
   });
 
+  it("replicates five datasets to the vault: three ok, one late, one stalled", () => {
+    expect(
+      listReplications(SEEDED_AT).map((row) => [
+        row.source?.dataset.name ?? null,
+        row.target.dataset.name,
+        row.status,
+        row.intervalSec === null ? null : Math.round(row.intervalSec / 3600),
+      ]),
+    ).toEqual([
+      [
+        "tank/backups/laptops",
+        "vault/replica/tank/backups/laptops",
+        "stalled",
+        24,
+      ],
+      ["tank/home/ada", "vault/replica/tank/home/ada", "ok", 24],
+      ["tank/home/ben", "vault/replica/tank/home/ben", "ok", 24],
+      ["tank/media/music", "vault/replica/tank/media/music", "late", 24],
+      ["tank/photos", "vault/replica/tank/photos", "ok", 24],
+    ]);
+  });
+
   describe("faults", () => {
-    it("counts six live, one accepted and twelve resolved", () => {
+    it("counts eight live, one accepted and twelve resolved", () => {
       const { counts } = allFaults();
       expect(counts).toEqual({
-        open: 3,
+        open: 5,
         acknowledged: 3,
         accepted: 1,
         resolved: 12,
@@ -261,6 +284,16 @@ describe("seed", () => {
           ["scrub-overdue", "scratch", "open"],
           ["leaf-errors", "vault", "resolved"],
           ["scrub-overdue", "vault", "resolved"],
+          [
+            "replication-late",
+            "tank/media/music → vault/replica/tank/media/music",
+            "open",
+          ],
+          [
+            "replication-stalled",
+            "tank/backups/laptops → vault/replica/tank/backups/laptops",
+            "open",
+          ],
         ]),
       );
       expect(

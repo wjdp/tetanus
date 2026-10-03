@@ -161,6 +161,7 @@ describe("/api/replications", () => {
         target: expect.objectContaining({ name: "syncoid_vault_1" }),
       }),
     ]);
+    expect(detail.faults).toEqual([]);
     expect(detail.diary).toEqual([
       expect.objectContaining({ eventType: "replication-discovered" }),
     ]);
@@ -185,5 +186,42 @@ describe("/api/pools/:id/datasets replications", () => {
         replications: [{ id, role: "source", status: "ok" }],
       }),
     ]);
+  });
+});
+
+describe("PATCH /api/replications/:id", () => {
+  const patch = (id: number, body: unknown) =>
+    fetch(`/api/replications/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("overrides the interval and archives with a note", async () => {
+    const { id } = await onlyReplication();
+    const interval = await patch(id, { manualIntervalSec: 7200 });
+    expect(interval.status).toBe(200);
+    expect(await interval.json()).toMatchObject({
+      intervalSec: 7200,
+      intervalManual: true,
+    });
+
+    const archived = await patch(id, {
+      archived: true,
+      archivedNote: "retired",
+    });
+    expect(await archived.json()).toMatchObject({
+      status: "archived",
+      archivedNote: "retired",
+    });
+    expect(await onlyReplication()).toMatchObject({ status: "archived" });
+  });
+
+  it("400s for a bad patch and 404s for a missing replication", async () => {
+    const { id } = await onlyReplication();
+    expect((await patch(id, { archivedNote: "x" })).status).toBe(400);
+    expect((await patch(id, { bogus: true })).status).toBe(400);
+    expect((await patch(id, { sourceDatasetId: 99999 })).status).toBe(400);
+    expect((await patch(99999, { archived: true })).status).toBe(404);
   });
 });

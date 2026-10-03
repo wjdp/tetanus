@@ -509,6 +509,14 @@ function resolveSubjectFaults(
   return rows.length;
 }
 
+export function resolveReplicationFaults(
+  replicationId: number,
+  reason: string,
+  now: Date,
+) {
+  return resolveSubjectFaults("replication", [replicationId], reason, now);
+}
+
 export function resolvePoolFaults(poolId: number, reason: string, now: Date) {
   const replicationIds = db
     .select({ id: replication.id })

@@ -961,6 +961,7 @@ interface DatasetSpec {
   snapshots?: SnapshotPolicy;
   volsize?: number;
   replicaOf?: string;
+  replicationLagDays?: number;
 }
 
 const KiB = 1024;
@@ -989,6 +990,9 @@ function dataset(spec: DatasetSpec): DatasetModel {
     quota: spec.quota ?? 0,
     snapshots: spec.snapshots ?? null,
     ...(spec.replicaOf && { replicaOf: spec.replicaOf }),
+    ...(spec.replicationLagDays && {
+      replicationLagDays: spec.replicationLagDays,
+    }),
   };
 }
 
@@ -1002,6 +1006,14 @@ const REPLICATED_TANK_DATASETS = [
   "tank/media/music",
   "tank/backups/laptops",
 ] as const;
+
+/** Replicas whose syncs have fallen behind: music late, laptops stalled. */
+const REPLICATION_LAG_DAYS: Partial<
+  Record<(typeof REPLICATED_TANK_DATASETS)[number], number>
+> = {
+  "tank/media/music": 2,
+  "tank/backups/laptops": 4,
+};
 
 function atlasDatasets(): DatasetModel[] {
   const tank = (spec: Omit<DatasetSpec, "createdAt"> & { createdAt?: Date }) =>
@@ -1197,6 +1209,7 @@ function styxDatasets(): DatasetModel[] {
       mountpoint: "none",
       snapshots: SANOID.replica,
       replicaOf: sourceName,
+      replicationLagDays: REPLICATION_LAG_DAYS[sourceName],
     });
   });
   const replicaParents = [

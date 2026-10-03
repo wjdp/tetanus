@@ -278,6 +278,40 @@ export function observeReceives(
   resolveReplicationSources();
 }
 
+function replicationIdsInto(poolId: number) {
+  return db
+    .select({ id: replication.id })
+    .from(replication)
+    .innerJoin(dataset, eq(dataset.id, replication.targetDatasetId))
+    .where(and(eq(dataset.poolId, poolId), isNull(replication.archivedAt)))
+    .all()
+    .map((row) => row.id);
+}
+
+export function hasReplicationsInto(poolId: number) {
+  return replicationIdsInto(poolId).length > 0;
+}
+
+/** Moves every sync into the pool back in time, as if receives had stopped. */
+export function backdateSyncsInto(poolId: number, byMs: number) {
+  const ids = replicationIdsInto(poolId);
+  if (ids.length === 0) return;
+  const into = inArray(replicationSync.replicationId, ids);
+  // Negated first so no shifted row meets an unshifted one on (replicationId, at).
+  db.update(replicationSync)
+    .set({ at: sql`-(${replicationSync.at} - ${byMs})` })
+    .where(into)
+    .run();
+  db.update(replicationSync)
+    .set({ at: sql`-${replicationSync.at}` })
+    .where(into)
+    .run();
+  db.update(replication)
+    .set({ lastSyncAt: sql`${replication.lastSyncAt} - ${byMs}` })
+    .where(inArray(replication.id, ids))
+    .run();
+}
+
 export function observeSnapshotsForReplications(receivedAt: Date) {
   fillSyncGuids(receivedAt);
   resolveReplicationSources();

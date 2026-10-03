@@ -227,6 +227,28 @@ describe("pool scenarios", () => {
     60_000,
   );
 
+  it("offers a replication stall only to pools that receive", () => {
+    const ids = (id: number) =>
+      subjectScenarios("pool", id).scenarios.map((scenario) => scenario.id);
+    expect(ids(poolId("styx", "vault"))).toContain("replication-stalls");
+    expect(ids(poolId("atlas", "tank"))).not.toContain("replication-stalls");
+  });
+
+  it("stalls every replication into the pool", async () => {
+    const faults = await opened(poolId("styx", "vault"), "replication-stalls");
+    expect(
+      faults.map((fault) => [fault.kind, fault.subject.label]).sort(),
+    ).toEqual([
+      ["replication-stalled", "tank/home/ada → vault/replica/tank/home/ada"],
+      ["replication-stalled", "tank/home/ben → vault/replica/tank/home/ben"],
+      [
+        "replication-stalled",
+        "tank/media/music → vault/replica/tank/media/music",
+      ],
+      ["replication-stalled", "tank/photos → vault/replica/tank/photos"],
+    ]);
+  }, 60_000);
+
   it.each(["resilver-in-progress", "nearly-full", "fragmented", "error-burst"])(
     "%s opens no fault",
     async (scenario) => {

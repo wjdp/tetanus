@@ -7,11 +7,14 @@ import { applySmartPolicyIfStale } from "~~/server/services/smartPolicy";
 import { enqueueUnlessPending } from "~~/server/tasks/queueable/alertsTick";
 import { isDemo } from "~~/server/utils/demo";
 
-async function queueBackfill(name: TaskName) {
-  try {
-    await enqueueUnlessPending(name);
-  } catch (error) {
-    console.error(`Could not queue ${name}`, error);
+// One at a time: task ids are allocated read-then-write.
+async function queueBackfills(names: TaskName[]) {
+  for (const name of names) {
+    try {
+      await enqueueUnlessPending(name);
+    } catch (error) {
+      console.error(`Could not queue ${name}`, error);
+    }
   }
 }
 
@@ -24,11 +27,12 @@ export default defineNitroPlugin(() => {
     const settings = ensureSettings();
     applySmartPolicyIfStale();
     backfillAtaSsdAttributesOnce();
-    if (!settings.config.faultsBackfilledAt && !isDemo()) {
-      void queueBackfill("faults:backfill");
-    }
-    if (!settings.config.replicationsBackfilledAt && !isDemo()) {
-      void queueBackfill("replications:backfill");
+    if (!isDemo()) {
+      const { replicationsBackfilledAt, faultsBackfilledAt } = settings.config;
+      void queueBackfills([
+        ...(replicationsBackfilledAt ? [] : ["replications:backfill" as const]),
+        ...(faultsBackfilledAt ? [] : ["faults:backfill" as const]),
+      ]);
     }
   } catch (error) {
     if (import.meta.dev) {

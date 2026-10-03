@@ -145,16 +145,20 @@ export function lastReplication(t: Date): Date {
   return at;
 }
 
-/** Replicas hold the source's dailies and monthlies up to the last sync, pruned to their own retention. */
-function replicaSnapshots(
+/** The replica's last sync at or before `t`, behind schedule by its lag. */
+function lastReplicaSync(replica: DatasetModel, t: Date): Date {
+  return addMs(lastReplication(t), -(replica.replicationLagDays ?? 0) * DAY_MS);
+}
+
+/** Replicas hold the source's dailies and monthlies up to the sync, pruned to their own retention. */
+function replicaSnapshotsAt(
   source: DatasetModel,
   replica: DatasetModel,
-  t: Date,
+  syncedAt: Date,
 ): ScheduledSnapshot[] {
   const sourcePolicy = source.snapshots;
   const policy = replica.snapshots;
   if (!sourcePolicy || !policy) return [];
-  const syncedAt = lastReplication(t);
   if (ms(syncedAt) < ms(replica.createdAt)) return [];
   return KINDS.filter((kind) => sourcePolicy[kind] > 0)
     .flatMap((kind) =>
@@ -258,7 +262,7 @@ function datasetSnapshots(
   const source = sourceOf(world, dataset);
   const scheduled =
     dataset.replicaOf && source !== dataset
-      ? replicaSnapshots(source, dataset, t)
+      ? replicaSnapshotsAt(source, dataset, lastReplicaSync(dataset, t))
       : dataset.snapshots
         ? sourceSnapshots(dataset, dataset.snapshots, t)
         : [];
@@ -642,13 +646,18 @@ function replicaActivity(
   const policy = replica.snapshots;
   if (!sourcePolicy || !policy) return [];
   const activity: SnapshotActivity[] = [];
-  let syncedAt = lastReplication(to);
+  let syncedAt = lastReplicaSync(replica, to);
   while (ms(syncedAt) > ms(from) && ms(syncedAt) >= ms(replica.createdAt)) {
     const receivedAt = addMs(
       syncedAt,
       forkRng(`receive:${replica.name}:${ms(syncedAt)}`).int(20, 240) * 1000,
     );
-    activity.push({ at: receivedAt, dataset: replica.name, action: "receive" });
+    activity.push({
+      at: receivedAt,
+      dataset: replica.name,
+      action: "receive",
+      snapshot: replicaSnapshotsAt(source, replica, syncedAt).at(-1)?.name,
+    });
     const previousSync = addMs(syncedAt, -DAY_MS);
     for (const kind of KINDS) {
       if (sourcePolicy[kind] === 0 || policy[kind] === 0) continue;

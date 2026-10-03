@@ -8,6 +8,10 @@ import {
   vdev as vdevTable,
   zfsEvent,
 } from "~~/server/database/schema";
+import {
+  backdateSyncsInto,
+  hasReplicationsInto,
+} from "~~/server/services/replications";
 import { type StoredPayload, storedPayload } from "../payloads";
 import { defineScenario, type Scenario, type SubjectOf } from "../types";
 import {
@@ -170,6 +174,7 @@ const STATE = "State";
 const ERRORS_AND_SCANS = "Errors and scans";
 const CAPACITY = "Capacity";
 const EVENTS = "Events";
+const REPLICATION = "Replication";
 
 export const leafFails = defineScenario({
   id: "leaf-fails",
@@ -761,6 +766,24 @@ export const errorBurst = defineScenario({
   },
 });
 
+export const replicationStalls = defineScenario({
+  id: "replication-stalls",
+  label: "Replication stalls",
+  group: REPLICATION,
+  subjectType: "pool",
+  description:
+    "Receives into this pool stop: its replications' syncs move back in time.",
+  applies: (subject) => hasReplicationsInto(subject.pool.id),
+  params: () => [
+    numberParam("hours", "Syncs moved back", 96, { min: 1, unit: "hours" }),
+  ],
+  plan: (subject, params) => ({
+    replays: [],
+    afterReplay: () =>
+      backdateSyncsInto(subject.pool.id, Number(params.hours) * HOUR_MS),
+  }),
+});
+
 export const POOL_SCENARIOS: Scenario<"pool">[] = [
   leafFails,
   diskPulled,
@@ -783,4 +806,5 @@ export const POOL_SCENARIOS: Scenario<"pool">[] = [
   nearlyFull,
   fragmented,
   errorBurst,
+  replicationStalls,
 ];

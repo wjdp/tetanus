@@ -237,6 +237,8 @@ export interface DatasetModel {
    * retention, so it keeps older dailies and monthlies than the source.
    */
   replicaOf?: string;
+  /** Days the replica's syncs run behind the daily schedule: a late or stalled replication. */
+  replicationLagDays?: number;
 }
 
 export interface PoolHistoryEvent {

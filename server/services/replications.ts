@@ -7,8 +7,16 @@ export {
   deriveSyncs,
   type ReceiveLine,
 } from "./replications/derive";
+export { getReplication, type ReplicationDetail } from "./replications/detail";
 export {
+  detectReplicationFaults,
+  REPLICATION_ARCHIVED_REASON,
+  REPLICATION_FAULT_KINDS,
+} from "./replications/faults";
+export {
+  backdateSyncsInto,
   fillSyncGuids,
+  hasReplicationsInto,
   observeReceives,
   observeSnapshotsForReplications,
   pruneSyncs,
@@ -19,16 +27,17 @@ export {
   type AssessedReplication,
   assessReplication,
   datasetReplications,
-  getReplication,
   listReplications,
   type ReplicationContext,
-  type ReplicationDetail,
+  type ReplicationRecord,
   type ReplicationSyncPage,
   receiveSightingTimes,
   replicationContext,
+  replicationRecord,
   replicationThresholds,
 } from "./replications/queries";
 export {
   chooseSource,
   resolveReplicationSources,
 } from "./replications/sources";
+export { updateReplication } from "./replications/updates";
