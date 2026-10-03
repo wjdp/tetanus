@@ -150,6 +150,7 @@ export interface DiskSummary
   state: EffectiveDiskState;
   inferredState: DiskState;
   hostName: string | null;
+  replacedByDiskId: number | null;
   ageDays: number | null;
   warrantyDaysLeft: number | null;
   usage: DiskUsage;
@@ -801,6 +802,16 @@ function countersOf(rows: DiskRow[]): Map<number, DiskCounters> {
   );
 }
 
+function replacementsOf(diskIds: number[]): Map<number, number> {
+  if (diskIds.length === 0) return new Map();
+  const rows = db
+    .select({ id: disk.id, replacesDiskId: disk.replacesDiskId })
+    .from(disk)
+    .where(inArray(disk.replacesDiskId, diskIds))
+    .all();
+  return new Map(rows.map((row) => [row.replacesDiskId as number, row.id]));
+}
+
 function faultCountsOf(diskIds: number[]): Map<number, DiskFaultCounts> {
   if (diskIds.length === 0) return new Map();
   const rows = db
@@ -927,6 +938,7 @@ function summarise(
   const memberships = membershipsOf(diskIds);
   const counters = countersOf(rows);
   const faultCounts = faultCountsOf(diskIds);
+  const replacements = replacementsOf(diskIds);
   const hosts = new Map(
     db
       .select({
@@ -959,6 +971,7 @@ function summarise(
       ...snapshot,
       ...resolveUsage(row, membership !== null),
       hostName: lastHost?.name ?? null,
+      replacedByDiskId: replacements.get(row.id) ?? null,
       ...inventoryDays(row.inventory, now),
       sectorFormat: sectorFormat(row.logicalBlockSize, row.physicalBlockSize),
       interfaceLabel: interfaceLabel(row.interface, row.link),

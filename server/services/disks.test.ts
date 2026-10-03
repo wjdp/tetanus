@@ -684,6 +684,7 @@ describe("disk disposal", () => {
       absentAt,
     );
     expect(replacement.replacesDiskId).toBe(sdaId);
+    expect((await getDisk(sdaId, absentAt)).replacedByDiskId).toBe(k2Id);
     expect(eventsOf(sdaId, "replaced-by")).toEqual([
       expect.objectContaining({
         title: "replaced by K2",
