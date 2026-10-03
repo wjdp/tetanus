@@ -2,45 +2,15 @@
 import { mountSuspended } from "@nuxt/test-utils/runtime";
 import { flushPromises, type VueWrapper } from "@vue/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
-import { UNKNOWN_USAGE } from "#shared/usage";
 import { CLEARED_FILTERS, type InventoryFilterState } from "./filterDisks";
 import InventoryFilters from "./InventoryFilters.vue";
+import { emptyInventoryDisk, mirrorMembership } from "./testFixtures";
 import type { InventoryDisk } from "./types";
 
-const disk = (overrides: Partial<InventoryDisk>): InventoryDisk => ({
-  id: 1,
-  alias: null,
-  model: null,
-  serial: null,
-  capacityBytes: null,
-  hostName: null,
-  state: "in-use",
-  stateOverride: null,
-  stateAsOf: null,
-  latestStatus: "passed",
-  latestTemp: null,
-  tempThresholds: { warning: 45, error: 55 },
-  latestPowerOnHours: null,
-  ageDays: null,
-  warrantyDaysLeft: null,
-  inventory: {},
-  membership: null,
-  usage: UNKNOWN_USAGE,
-  purpose: null,
-  purposeInferred: false,
-  vendor: null,
-  media: null,
-  rotationRate: null,
-  interface: null,
-  link: null,
-  recordingTech: null,
-  logicalBlockSize: null,
-  physicalBlockSize: null,
-  hardware: null,
-  ...overrides,
-});
+const disk = (overrides: Partial<InventoryDisk>): InventoryDisk =>
+  emptyInventoryDisk(overrides);
 
-const tank = { poolId: 1, poolName: "tank" };
+const tank = mirrorMembership();
 
 const DISKS = [
   disk({ id: 1, hostName: "mars", membership: tank }),

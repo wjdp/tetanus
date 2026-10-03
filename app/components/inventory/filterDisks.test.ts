@@ -8,42 +8,25 @@ import {
   isFiltered,
   NONE,
 } from "./filterDisks";
+import { emptyInventoryDisk, mirrorMembership } from "./testFixtures";
 import type { InventoryDisk } from "./types";
 
-const disk = (overrides: Partial<InventoryDisk>): InventoryDisk => ({
-  id: 1,
-  alias: null,
-  model: "ST4000VN008",
-  serial: "ZC100001",
-  capacityBytes: 4e12,
-  hostName: "mars",
-  state: "in-use",
-  stateOverride: null,
-  stateAsOf: null,
-  latestStatus: "passed",
-  latestTemp: 34,
-  tempThresholds: { warning: 45, error: 55 },
-  latestPowerOnHours: 20_000,
-  ageDays: 400,
-  warrantyDaysLeft: 500,
-  inventory: {},
-  membership: null,
-  usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
-  purpose: null,
-  purposeInferred: false,
-  vendor: null,
-  media: null,
-  rotationRate: null,
-  interface: null,
-  link: null,
-  recordingTech: null,
-  logicalBlockSize: null,
-  physicalBlockSize: null,
-  hardware: null,
-  ...overrides,
-});
+const disk = (overrides: Partial<InventoryDisk>): InventoryDisk =>
+  emptyInventoryDisk({
+    model: "ST4000VN008",
+    serial: "ZC100001",
+    capacityBytes: 4e12,
+    hostName: "mars",
+    latestTemp: 34,
+    tempThresholds: { warning: 45, error: 55 },
+    latestPowerOnHours: 20_000,
+    ageDays: 400,
+    warrantyDaysLeft: 500,
+    usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
+    ...overrides,
+  });
 
-const tank = { poolId: 1, poolName: "tank" };
+const tank = mirrorMembership();
 
 const DISKS = [
   disk({
