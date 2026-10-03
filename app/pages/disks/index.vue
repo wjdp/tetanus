@@ -23,28 +23,6 @@ const { visibleColumns, setColumnVisible, resetColumns, isCustomised, view } =
 
 const allDisks = computed(() => disks.value ?? []);
 
-const hosts = computed(() =>
-  [
-    ...new Set(
-      allDisks.value.flatMap((row) => (row.hostName ? [row.hostName] : [])),
-    ),
-  ].sort(),
-);
-
-const pools = computed(() =>
-  [
-    ...new Set(
-      allDisks.value.flatMap((row) =>
-        row.membership ? [row.membership.poolName] : [],
-      ),
-    ),
-  ].sort(),
-);
-
-const states = computed(() =>
-  [...new Set(allDisks.value.map((row) => row.state))].sort(),
-);
-
 const visibleDisks = computed(() =>
   filterDisks(allDisks.value, filters.value),
 );
@@ -83,9 +61,7 @@ const countLabel = computed(() =>
       <div class="flex items-start gap-2">
         <InventoryFilters
           v-model="filters"
-          :hosts="hosts"
-          :pools="pools"
-          :states="states"
+          :disks="allDisks"
           class="min-w-0 flex-1"
         />
         <div class="hidden shrink-0 items-center gap-2 md:flex">

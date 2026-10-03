@@ -207,10 +207,14 @@ describe("useInventoryQuery", () => {
 
     expect(state.filters.value.search).toBe("ab");
     expect(replace).not.toHaveBeenCalled();
-    await vi.waitFor(() => expect(replace).toHaveBeenCalledOnce());
-    await flushPromises();
+    await vi.waitFor(() =>
+      expect(router.currentRoute.value.query).toEqual({
+        pool: "tank",
+        q: "ab",
+      }),
+    );
+    expect(replace).toHaveBeenCalledOnce();
     expect(push).not.toHaveBeenCalled();
-    expect(router.currentRoute.value.query).toEqual({ pool: "tank", q: "ab" });
   });
 
   it("folds a pending search into a select push", async () => {
