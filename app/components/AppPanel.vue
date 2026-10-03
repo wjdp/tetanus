@@ -11,7 +11,7 @@ const { open: openCommandPalette } = useCommandPalette();
 </script>
 
 <template>
-  <UDashboardPanel>
+  <UDashboardPanel :ui="{ root: 'min-h-0' }">
     <template #header>
       <UDashboardNavbar
         :title="title"
