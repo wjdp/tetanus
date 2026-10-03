@@ -52,6 +52,14 @@ const saveCurrency = async (currency: string) => {
     </section>
 
     <section class="flex flex-col gap-4">
+      <h2 class="text-highlighted text-lg font-semibold">Replication</h2>
+      <ReplicationThresholdsForm
+        :config="settings?.config"
+        @saved="settings = $event"
+      />
+    </section>
+
+    <section class="flex flex-col gap-4">
       <h2 class="text-highlighted text-lg font-semibold">Collectors</h2>
 
       <UFormField

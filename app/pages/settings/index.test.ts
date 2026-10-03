@@ -8,9 +8,16 @@ import SettingsPage from "./index.vue";
 
 const enrolToken = "ab".repeat(32);
 
+const THRESHOLDS = {
+  replicationLateFloorHours: 3,
+  replicationLateFactor: 0.5,
+  replicationStalledFloorHours: 48,
+  replicationStalledFactor: 2,
+};
+
 registerEndpoint("/api/settings", () => ({
   enrolToken,
-  config: { missingAfterDays: 7, currency: "GBP" },
+  config: { missingAfterDays: 7, currency: "GBP", ...THRESHOLDS },
 }));
 
 const patched: unknown[] = [];
@@ -19,7 +26,10 @@ registerEndpoint("/api/settings", {
   handler: async (event) => {
     const body = await readBody(event);
     patched.push(body);
-    return { enrolToken, config: { missingAfterDays: 7, ...body.config } };
+    return {
+      enrolToken,
+      config: { missingAfterDays: 7, ...THRESHOLDS, ...body.config },
+    };
   },
 });
 
@@ -58,6 +68,26 @@ describe("settings page currency", () => {
     await vi.waitFor(() =>
       expect(page.get('[data-testid="currency"]').text()).toContain("EUR"),
     );
+  });
+});
+
+describe("settings page replication thresholds", () => {
+  it("shows the four thresholds and patches them together", async () => {
+    const page = await mountSuspended(SettingsPage);
+    const form = page.get('[data-testid="replication-thresholds"]');
+    const inputs = form.findAll("input");
+
+    expect(
+      inputs.map((input) => (input.element as HTMLInputElement).value),
+    ).toEqual(["3", "0.5", "48", "2"]);
+
+    await inputs[0].setValue("6");
+    await form.trigger("submit");
+    await flushPromises();
+
+    expect(patched).toEqual([
+      { config: { ...THRESHOLDS, replicationLateFloorHours: 6 } },
+    ]);
   });
 });
 
