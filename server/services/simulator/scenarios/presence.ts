@@ -1,6 +1,6 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import type { DiskKey } from "#shared/disk";
-import { isHistoryState } from "#shared/disk";
+import { isDisposed, isHistoryState } from "#shared/disk";
 import { DEFAULT_SETTINGS_CONFIG } from "#shared/schemas/settings";
 import { db } from "~~/server/database/client";
 import { disk, diskKey } from "~~/server/database/schema";
@@ -127,6 +127,7 @@ function conflictPartners(subject: SubjectOf<"disk">) {
     .filter(
       (row) =>
         !isHistoryState(row.stateOverride) &&
+        !isDisposed(row) &&
         udevPayloadOf(subject.host.id, row.id) !== undefined,
     );
 }

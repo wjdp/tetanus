@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { isHistoryState } from "#shared/disk";
+import { isDisposed, isHistoryState } from "#shared/disk";
 import type { SimulationSubjectType } from "#shared/simulator";
 import { db } from "~~/server/database/client";
 import { disk, host, pool } from "~~/server/database/schema";
@@ -31,9 +31,7 @@ export function loadSubject(
   }
   const row = db.select().from(disk).where(eq(disk.id, id)).get();
   if (!row) throw notFound(`No disk ${id}`);
-  if (isHistoryState(row.stateOverride)) {
-    return undefined;
-  }
+  if (isHistoryState(row.stateOverride) || isDisposed(row)) return undefined;
   const owner = hostRow(row.lastSeenHostId);
   return owner && { type, disk: row, host: owner };
 }
