@@ -51,7 +51,7 @@ Badges in order red, amber, neutral. A zero count hides its badge.
     Do not call `listDisks()`: it writes `lastState` transitions and diary entries
     on read.
   - pools: `archivedAt IS NULL`, bucketed by `zfsStateColour` of the display state
-    (049's missing rule).
+    (`poolDisplayState`, `server/services/poolPresence.ts`).
 - History set: move `LEFT_SERVICE_STATES` (`server/services/faults.ts`) to
   `shared/disk.ts` as `HISTORY_STATES`; use it in `faults.ts`, `faultsBackfill.ts`,
   the simulator and `groupDisks.ts` (replacing its local `HISTORY_STATES`).

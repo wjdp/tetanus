@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Missing pool display state
@@ -40,3 +40,14 @@ fault, [039](039-Intermittent-hosts.md)).
 - `zfsStateColour("MISSING")` is `warning`.
 - ZFS list / pool page / `PoolCard`: `MISSING` badge for a missing pool.
 - e2e: `/api/pools` and `/api/pools/:id` display state for a missing pool.
+
+## Built
+
+- `server/services/poolPresence.ts`: `poolPresence` (`present`, `missing`,
+  `host-silent`, `host-offline`, `unscanned`) and `poolDisplayState`; used by
+  `detectPoolFaults` and the pool summaries. `isHostSilent` in
+  `shared/hostFreshness.ts` shared with `collector-silent` detection;
+  `collectorCadences()` in `server/utils/demo.ts`.
+- `PoolSummary.displayState`; archived pools keep their state.
+- `PoolStateBadge` on the ZFS list, pool page and `PoolCard`; title "Last seen ONLINE"
+  when they differ.
