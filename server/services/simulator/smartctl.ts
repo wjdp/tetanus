@@ -1,3 +1,4 @@
+import { isAtaLifeRemainingAttribute } from "#shared/smart/ataSsdAttributes";
 import type { StoredPayload } from "./payloads";
 
 export const EXIT_BITS = {
@@ -144,18 +145,9 @@ function setDeviceStatistic(json: Json, name: string, value: number) {
   }
 }
 
-/** Normalised SATA SSD life attributes, by name since vendors reuse ids (Intel 233 is Total_LBAs_Written on some models). */
-const ATA_LIFE_REMAINING_ATTRIBUTES = new Set([
-  "Wear_Leveling_Count",
-  "Media_Wearout_Indicator",
-  "Percent_Life_Remaining",
-  "SSD_Life_Left",
-  "Percent_Lifetime_Remain",
-]);
-
 export function ataWearAttributes(json: Json): AtaAttribute[] {
   return ataAttributes(json).filter((attribute) =>
-    ATA_LIFE_REMAINING_ATTRIBUTES.has(attribute.name),
+    isAtaLifeRemainingAttribute(attribute.name),
   );
 }
 
