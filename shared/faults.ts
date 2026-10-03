@@ -17,7 +17,12 @@ export type FaultCategory = (typeof FAULT_CATEGORIES)[number];
 export const FAULT_SEVERITIES = ["warning", "error"] as const;
 export type FaultSeverity = (typeof FAULT_SEVERITIES)[number];
 
-export const FAULT_SUBJECT_TYPES = ["disk", "pool", "host"] as const;
+export const FAULT_SUBJECT_TYPES = [
+  "disk",
+  "pool",
+  "host",
+  "replication",
+] as const;
 export type FaultSubjectType = (typeof FAULT_SUBJECT_TYPES)[number];
 
 export const FAULT_ACTIONS = [
@@ -43,6 +48,8 @@ export const FAULT_KINDS = [
   "scrub-paused",
   "scan-stalled",
   "vdev-unredundant",
+  "replication-late",
+  "replication-stalled",
   "collector-silent",
   "collector-incompatible",
   "collector-outdated",
@@ -159,6 +166,14 @@ function scanStalledTitle(data: FaultData, now: number) {
   const age = ageSince(data.progressAt, now);
   const stalled = `Pool ${text(data.poolName)} ${scan} stalled`;
   return age ? `${stalled} for ${age}` : stalled;
+}
+
+function replicationTitle(state: string) {
+  return (data: FaultData, now: number) => {
+    const age = ageSince(data.lastSyncAt, now);
+    const target = `Replication into ${text(data.targetName)} ${state}`;
+    return age ? `${target}, last synced ${age} ago` : target;
+  };
 }
 
 export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
@@ -281,6 +296,20 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
       `${text(data.role)} ${leafLabel(data.name)} in ${text(data.poolName)} is a single device`,
+  },
+  "replication-late": {
+    category: "zfs",
+    subjectType: "replication",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: replicationTitle("late"),
+  },
+  "replication-stalled": {
+    category: "zfs",
+    subjectType: "replication",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: replicationTitle("stalled"),
   },
   "collector-silent": {
     category: "host",

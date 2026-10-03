@@ -1,4 +1,5 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { isDisposed, isHistoryState } from "#shared/disk";
 import {
@@ -19,10 +20,19 @@ import {
   faultTitle,
 } from "#shared/faults";
 import { type CadenceOverrides, isHostSilent } from "#shared/hostFreshness";
+import { replicationLabel } from "#shared/replications";
 import type { FaultsQuery } from "#shared/schemas/faults";
 import { healthStatus, overlayStatus } from "#shared/smart/status";
 import { db } from "~~/server/database/client";
-import { diaryEntry, disk, fault, host, pool } from "~~/server/database/schema";
+import {
+  dataset,
+  diaryEntry,
+  disk,
+  fault,
+  host,
+  pool,
+  replication,
+} from "~~/server/database/schema";
 import {
   acceptFault,
   activeAcceptances,
@@ -33,6 +43,7 @@ import { addAutoEvent } from "~~/server/services/diary";
 import { type DiskSummary, listDisks } from "~~/server/services/disks";
 import { type HostWithRuns, listHosts } from "~~/server/services/hosts";
 import { detectPoolFaults } from "~~/server/services/poolFaults";
+import { detectReplicationFaults } from "~~/server/services/replications/faults";
 import {
   attributesOfReading,
   attributeTrend,
@@ -289,6 +300,7 @@ function detectCollectorVersion({ hosts }: DetectionContext): Detection[] {
 export function detectFaults(context: DetectionContext): FaultScan {
   const silent = detectCollectorSilent(context);
   const pools = detectPoolFaults(context);
+  const replications = detectReplicationFaults(context.now);
   const suppressedDiskIds = new Set(
     pools.superseded
       .filter((supersession) => supersession.subjectType === "disk")
@@ -301,11 +313,12 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...detectMissing(context, suppressedDiskIds),
       ...detectIdentityConflicts(),
       ...pools.detections,
+      ...replications.detections,
       ...silent,
       ...detectCollectorVersion(context),
     ],
-    superseded: pools.superseded,
-    withdrawn: withdrawDisposedDisks(context),
+    superseded: [...pools.superseded, ...replications.superseded],
+    withdrawn: [...withdrawDisposedDisks(context), ...replications.withdrawn],
   };
 }
 
@@ -474,20 +487,40 @@ function resolveFault(
   return resolved;
 }
 
-export function resolvePoolFaults(poolId: number, reason: string, now: Date) {
+function resolveSubjectFaults(
+  subjectType: FaultSubjectType,
+  subjectIds: number[],
+  reason: string,
+  now: Date,
+) {
+  if (subjectIds.length === 0) return 0;
   const rows = db
     .select()
     .from(fault)
     .where(
       and(
-        eq(fault.subjectType, "pool"),
-        eq(fault.subjectId, poolId),
+        eq(fault.subjectType, subjectType),
+        inArray(fault.subjectId, subjectIds),
         isNull(fault.resolvedAt),
       ),
     )
     .all();
   for (const row of rows) resolveFault(row, now, row.note, { reason });
   return rows.length;
+}
+
+export function resolvePoolFaults(poolId: number, reason: string, now: Date) {
+  const replicationIds = db
+    .select({ id: replication.id })
+    .from(replication)
+    .innerJoin(dataset, eq(dataset.id, replication.targetDatasetId))
+    .where(eq(dataset.poolId, poolId))
+    .all()
+    .map((row) => row.id);
+  return (
+    resolveSubjectFaults("pool", [poolId], reason, now) +
+    resolveSubjectFaults("replication", replicationIds, reason, now)
+  );
 }
 
 function withdrawalOf(row: FaultRow, withdrawn: Withdrawal[]) {
@@ -681,10 +714,36 @@ export function performFaultAction(
   return result;
 }
 
+interface ReplicationSubject {
+  targetName: string;
+  sourceName: string | null;
+  hostId: number;
+}
+
 interface SubjectLookup {
   disks: Map<number, typeof disk.$inferSelect>;
   pools: Map<number, PoolRow>;
   hostNames: Map<number, string>;
+  replications: Map<number, ReplicationSubject>;
+}
+
+function replicationSubjects(): Map<number, ReplicationSubject> {
+  const source = alias(dataset, "source");
+  return new Map(
+    db
+      .select({
+        id: replication.id,
+        targetName: dataset.name,
+        sourceName: source.name,
+        hostId: pool.hostId,
+      })
+      .from(replication)
+      .innerJoin(dataset, eq(dataset.id, replication.targetDatasetId))
+      .innerJoin(pool, eq(pool.id, dataset.poolId))
+      .leftJoin(source, eq(source.id, replication.sourceDatasetId))
+      .all()
+      .map(({ id, ...subject }) => [id, subject]),
+  );
 }
 
 function subjectLookup(): SubjectLookup {
@@ -710,6 +769,7 @@ function subjectLookup(): SubjectLookup {
         .all()
         .map((row) => [row.id, row.name]),
     ),
+    replications: replicationSubjects(),
   };
 }
 
@@ -730,6 +790,14 @@ function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
     return {
       ...base,
       label: found?.name ?? `pool ${row.subjectId}`,
+      hostName: hostName(found?.hostId),
+    };
+  }
+  if (row.subjectType === "replication") {
+    const found = lookup.replications.get(row.subjectId);
+    return {
+      ...base,
+      label: found ? replicationLabel(found) : `replication ${row.subjectId}`,
       hostName: hostName(found?.hostId),
     };
   }

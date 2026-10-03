@@ -26,6 +26,8 @@ export const ALERT_RULES = {
   "scrub-paused": { label: "Scrub paused", severity: "notice" },
   "scan-stalled": { label: "Scan stalled", severity: "alert" },
   "vdev-unredundant": { label: "Single-device vdev", severity: "notice" },
+  "replication-late": { label: "Replication late", severity: "notice" },
+  "replication-stalled": { label: "Replication stalled", severity: "alert" },
   "identity-conflict": { label: "Disk identity conflict", severity: "alert" },
   "disposed-disk-seen": { label: "Disposed disk seen", severity: "alert" },
   "collector-incompatible": {

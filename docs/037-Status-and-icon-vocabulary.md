@@ -185,6 +185,24 @@ Host header chips, Hosts settings page.
 Collector version (`collectorStatus`): `current` nothing shown, `outdated` warning fault,
 `incompatible` error fault. No icon; the fault row carries the copyable command.
 
+## Replication status (`ReplicationStatus`)
+
+Replications page, detail page, pool datasets tab ([015](015-Replication-health.md)).
+`overdue` = the target host's last history run − (last sync + interval). Thresholds are
+settings: late floor 3 h, late factor 0.5, stalled floor 2 d, stalled factor 2.
+
+| status | colour | shape | when |
+| --- | --- | --- | --- |
+| `ok` | neutral | filled | not overdue past the late threshold |
+| `late` | warning | filled | overdue > max(late floor, late factor × interval); fault `replication-late` |
+| `stalled` | error | filled | overdue > max(stalled floor, stalled factor × interval); fault `replication-stalled`, superseding late |
+| `learning` | neutral | hollow | interval unknown: fewer than 3 syncs and none set by hand |
+| `gone` | neutral | hollow | target or stored source no longer present |
+| `archived` | neutral | hollow | marked no longer replicated, or target pool archived |
+
+Nav entry `i-lucide-arrow-right-left`, counts stalled red, late amber, the rest but
+archived neutral.
+
 ## Faults (`Fault.state`, `Fault.severity`)
 
 | state | severity | gutter | nav badge, banner |
@@ -269,6 +287,7 @@ Used in navigation, command palette groups, diary subject links, breadcrumbs.
 | vdev | per type above |
 | disk | media glyph when known, else `i-lucide-hard-drive` |
 | dataset | `i-lucide-folder-tree` |
+| replication | `i-lucide-arrow-right-left` |
 | snapshot | `i-lucide-camera` |
 | diary | `i-lucide-notebook-pen` |
 | fault | `i-lucide-siren` |
@@ -305,6 +324,9 @@ without colour. Manual entries `i-lucide-pencil`.
 | `events-gap`, `events-reset` | `i-lucide-history` |
 | `imported-from-scrutiny` | `i-lucide-import` |
 | `fault-opened`, `fault-state-changed`, `fault-resolved` | `i-lucide-siren` |
+| `replication-discovered` | `i-lucide-arrow-right-left` |
+| `replication-archived` | `i-lucide-archive` |
+| `replication-resumed` | `i-lucide-archive-restore` |
 
 ## Where the code lives
 

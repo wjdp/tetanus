@@ -23,6 +23,7 @@ export function faultHostLabel(fault: Pick<FaultView, "subject">): string {
 export function faultSubjectPath(subject: FaultSubject): string {
   if (subject.type === "disk") return `/disks/${subject.id}`;
   if (subject.type === "pool") return `/zfs/${subject.id}`;
+  if (subject.type === "replication") return `/replications/${subject.id}`;
   return "/settings/hosts";
 }
 

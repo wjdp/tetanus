@@ -98,6 +98,16 @@ export function replicationHealth(
   return health("ok");
 }
 
+export function replicationLabel({
+  sourceName,
+  targetName,
+}: {
+  sourceName: string | null;
+  targetName: string;
+}) {
+  return sourceName ? `${sourceName} → ${targetName}` : targetName;
+}
+
 export interface ReplicationEndpoint {
   host: { id: number; name: string; displayName: string | null };
   pool: { id: number; name: string };

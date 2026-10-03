@@ -19,6 +19,12 @@ export const NAVIGATION: NavigationEntry[] = [
     badge: "disks",
   },
   { label: "ZFS", icon: "i-lucide-database", to: "/zfs", badge: "pools" },
+  {
+    label: "Replications",
+    icon: "i-lucide-arrow-right-left",
+    to: "/replications",
+    badge: "replications",
+  },
   { label: "Diary", icon: "i-lucide-notebook-pen", to: "/diary" },
   { label: "Settings", icon: "i-lucide-settings", to: "/settings" },
 ];

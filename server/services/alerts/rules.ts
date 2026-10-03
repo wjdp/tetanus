@@ -25,10 +25,17 @@ export interface AlertHost {
   name: string;
 }
 
+export interface AlertReplication {
+  label: string;
+  hostName: string | null;
+  archived: boolean;
+}
+
 export interface AlertContext {
   disk(id: number): AlertDisk | undefined;
   pool(id: number): AlertPool | undefined;
   host(id: number): AlertHost | undefined;
+  replication(id: number): AlertReplication | undefined;
   hasActiveAcceptance(diskId: number, attrId: string): boolean;
 }
 
@@ -220,6 +227,21 @@ function matchPoolEntry(entry: DiaryEntryRow, data: Data): Match | null {
   }
 }
 
+const REPLICATION_FAULT_RULES = new Set<AlertRule>([
+  "replication-late",
+  "replication-stalled",
+]);
+
+function matchReplicationEntry(entry: DiaryEntryRow, data: Data): Match | null {
+  if (entry.eventType !== "fault-opened") return null;
+  if (!REPLICATION_FAULT_RULES.has(data.kind as AlertRule)) return null;
+  return {
+    rule: data.kind as AlertRule,
+    value: text(data.key),
+    detail: entry.title.replace(/^fault: /, ""),
+  };
+}
+
 const HEALTHY_VDEV_STATES = new Set(["ONLINE", "AVAIL"]);
 
 // A pool that goes non-ONLINE alerts through pool-state-changed; a failed
@@ -287,6 +309,14 @@ function describeSubject(
       subject: withHost(hostName, found?.name ?? `pool ${subjectId}`),
     };
   }
+  if (subjectType === "replication") {
+    const found = context.replication(subjectId);
+    const hostName = found?.hostName ?? null;
+    return {
+      host: hostName,
+      subject: withHost(hostName, found?.label ?? `replication ${subjectId}`),
+    };
+  }
   const found = context.disk(subjectId);
   const hostName = found?.hostName ?? null;
   return {
@@ -306,6 +336,9 @@ function matchEntry(
   if (entry.subjectType === "pool") return matchPoolEntry(entry, entry.data);
   if (entry.subjectType === "host") return matchHostEntry(entry, entry.data);
   if (entry.subjectType === "vdev") return matchVdevEntry(entry, entry.data);
+  if (entry.subjectType === "replication") {
+    return matchReplicationEntry(entry, entry.data);
+  }
   return null;
 }
 
@@ -331,6 +364,12 @@ export function deriveAlert(
   const subjectType = match.subject?.type ?? entry.subjectType;
   const subjectId = match.subject?.id ?? entry.subjectId;
   if (subjectType === "pool" && context.pool(subjectId)?.archived) return null;
+  if (
+    subjectType === "replication" &&
+    context.replication(subjectId)?.archived
+  ) {
+    return null;
+  }
   if (isSuppressedForDisposal(match.rule, subjectType, subjectId, context)) {
     return null;
   }

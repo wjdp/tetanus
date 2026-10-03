@@ -3,7 +3,15 @@ import type { Disposal, StateOverride } from "#shared/disk";
 import type { FaultSeverity, FaultState } from "#shared/faults";
 import type { DeviceStatus } from "#shared/smart/status";
 import { db } from "~~/server/database/client";
-import { collectorRun, disk, fault, pool } from "~~/server/database/schema";
+import {
+  collectorRun,
+  dataset,
+  disk,
+  fault,
+  pool,
+  replication,
+  replicationSync,
+} from "~~/server/database/schema";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { navigationCounts } from "~~/server/services/navigation";
 import { flushDb } from "~~/test/db";
@@ -117,6 +125,76 @@ describe("navigationCounts", () => {
     expect(navigationCounts(at(2 * MINUTE_MS)).pools).toEqual({
       error: 1,
       warning: 2,
+      neutral: 1,
+    });
+  });
+
+  it("buckets replications stalled red, late amber, archived left out", () => {
+    const vault = upsertHostByName("vault", t0);
+    const vpool = db
+      .insert(pool)
+      .values({
+        hostId: vault.id,
+        guid: "vpool",
+        name: "vpool",
+        state: "ONLINE",
+        firstSeenAt: t0,
+        lastSeenAt: t0,
+      })
+      .returning()
+      .get().id;
+    const HOUR_MS = 60 * MINUTE_MS;
+    const insertReplication = (
+      name: string,
+      lastSyncHoursAgo: number,
+      archivedAt: Date | null = null,
+    ) => {
+      const targetDatasetId = db
+        .insert(dataset)
+        .values({
+          poolId: vpool,
+          name,
+          type: "filesystem",
+          used: 0,
+          referenced: 0,
+          available: 0,
+          creation: t0,
+          firstSeenAt: t0,
+          lastSeenAt: t0,
+        })
+        .returning()
+        .get().id;
+      const lastSyncAt = at(-lastSyncHoursAgo * HOUR_MS);
+      const id = db
+        .insert(replication)
+        .values({
+          targetDatasetId,
+          direction: "received",
+          lastSyncAt,
+          archivedAt,
+          firstSeenAt: t0,
+          lastSeenAt: t0,
+        })
+        .returning()
+        .get().id;
+      for (const hour of [0, 1, 2]) {
+        db.insert(replicationSync)
+          .values({
+            replicationId: id,
+            at: new Date(lastSyncAt.getTime() - hour * HOUR_MS),
+            snapshots: 1,
+          })
+          .run();
+      }
+    };
+    insertReplication("vpool/a", 1);
+    insertReplication("vpool/b", 5);
+    insertReplication("vpool/c", 60);
+    insertReplication("vpool/d", 60, t0);
+
+    expect(navigationCounts(t0).replications).toEqual({
+      error: 1,
+      warning: 1,
       neutral: 1,
     });
   });

@@ -19,6 +19,7 @@ const counts = ref<NavigationCounts>({
   faults: zero(),
   disks: zero(),
   pools: zero(),
+  replications: zero(),
 });
 mockNuxtImport("useNavigationCounts", () => () => counts);
 
@@ -54,7 +55,12 @@ const chipOf = (component: Mounted, href: string) =>
 
 beforeEach(() => {
   FakeEventSource.install();
-  counts.value = { faults: zero(), disks: zero(), pools: zero() };
+  counts.value = {
+    faults: zero(),
+    disks: zero(),
+    pools: zero(),
+    replications: zero(),
+  };
 });
 
 describe("AppSidebar", () => {
@@ -80,6 +86,7 @@ describe("AppSidebar", () => {
       faults: { error: 2, warning: 5, neutral: 0 },
       disks: { error: 0, warning: 1, neutral: 9 },
       pools: { error: 0, warning: 0, neutral: 3 },
+      replications: { error: 1, warning: 0, neutral: 4 },
     };
     const component = await mountSidebar();
 
@@ -92,6 +99,10 @@ describe("AppSidebar", () => {
       ["neutral", "9"],
     ]);
     expect(badgesOf(component, "/zfs")).toEqual([["neutral", "3"]]);
+    expect(badgesOf(component, "/replications")).toEqual([
+      ["error", "1"],
+      ["neutral", "4"],
+    ]);
     expect(badgesOf(component, "/diary")).toEqual([]);
   });
 
@@ -100,6 +111,7 @@ describe("AppSidebar", () => {
       faults: { error: 2, warning: 5, neutral: 0 },
       disks: { error: 0, warning: 1, neutral: 9 },
       pools: { error: 0, warning: 0, neutral: 3 },
+      replications: { error: 1, warning: 0, neutral: 4 },
     };
 
     const expanded = await mountSidebar();

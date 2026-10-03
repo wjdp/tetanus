@@ -43,6 +43,7 @@ describe("faultSubjectPath", () => {
     ["disk", "/disks/12"],
     ["pool", "/zfs/12"],
     ["host", "/settings/hosts"],
+    ["replication", "/replications/12"],
   ] as const)("links a %s to %s", (type, path) => {
     expect(faultSubjectPath(subject({ type }))).toBe(path);
   });

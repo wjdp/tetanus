@@ -35,6 +35,8 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "scrub-paused": "scrub-paused",
   "scan-stalled": "scan-stalled",
   "vdev-unredundant": "vdev-unredundant",
+  "replication-late": "replication-late",
+  "replication-stalled": "replication-stalled",
   "identity-conflict": "identity-conflict",
   "disposed-disk-seen": null,
   "collector-incompatible": "collector-incompatible",
@@ -161,6 +163,16 @@ describe("faultTitle", () => {
       "scrub-overdue",
       { poolName: "tank", lastScrubAt: null },
       "Pool tank never scrubbed",
+    ],
+    [
+      "replication-late",
+      { targetName: "vpool/tank/a", lastSyncAt: "2026-09-10T05:00:00Z" },
+      "Replication into vpool/tank/a late, last synced 5 h ago",
+    ],
+    [
+      "replication-stalled",
+      { targetName: "vpool/tank/a", lastSyncAt: "2026-09-07T10:00:00Z" },
+      "Replication into vpool/tank/a stalled, last synced 3 d ago",
     ],
     [
       "pool-status",

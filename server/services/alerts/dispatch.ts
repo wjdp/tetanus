@@ -1,14 +1,18 @@
 import { and, asc, desc, eq, gt, isNotNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { type AlertChannel, TEST_RULE } from "#shared/alerts";
 import { APP_NAME } from "#shared/app";
+import { replicationLabel } from "#shared/replications";
 import type { NotificationsConfig } from "#shared/schemas/settings";
 import { db } from "~~/server/database/client";
 import {
+  dataset,
   diaryEntry,
   disk,
   host,
   notification,
   pool,
+  replication,
 } from "~~/server/database/schema";
 import { activeAcceptances } from "~~/server/services/acceptance";
 import {
@@ -23,6 +27,7 @@ import {
   type AlertDisk,
   type AlertHost,
   type AlertPool,
+  type AlertReplication,
   deriveAlert,
   deriveAlerts,
 } from "~~/server/services/alerts/rules";
@@ -92,6 +97,30 @@ export function alertContext(): AlertContext {
     host: memoise((id): AlertHost | undefined =>
       db.select({ name: host.name }).from(host).where(eq(host.id, id)).get(),
     ),
+    replication: memoise((id): AlertReplication | undefined => {
+      const source = alias(dataset, "source");
+      const row = db
+        .select({
+          targetName: dataset.name,
+          sourceName: source.name,
+          hostName: host.name,
+          archivedAt: replication.archivedAt,
+          poolArchivedAt: pool.archivedAt,
+        })
+        .from(replication)
+        .innerJoin(dataset, eq(dataset.id, replication.targetDatasetId))
+        .innerJoin(pool, eq(pool.id, dataset.poolId))
+        .leftJoin(host, eq(host.id, pool.hostId))
+        .leftJoin(source, eq(source.id, replication.sourceDatasetId))
+        .where(eq(replication.id, id))
+        .get();
+      if (!row) return undefined;
+      return {
+        label: replicationLabel(row),
+        hostName: row.hostName,
+        archived: row.archivedAt !== null || row.poolArchivedAt !== null,
+      };
+    }),
     hasActiveAcceptance: (() => {
       const accepted = memoise(activeAcceptances);
       return (diskId, attrId) => accepted(diskId).has(attrId);

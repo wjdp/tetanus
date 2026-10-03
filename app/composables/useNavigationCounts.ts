@@ -8,6 +8,7 @@ const emptyResponse = (): NavigationCounts => ({
   faults: emptyCounts(),
   disks: emptyCounts(),
   pools: emptyCounts(),
+  replications: emptyCounts(),
 });
 
 export function useNavigationCounts() {

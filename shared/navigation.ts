@@ -8,4 +8,5 @@ export interface NavigationCounts {
   faults: StatusCounts;
   disks: StatusCounts;
   pools: StatusCounts;
+  replications: StatusCounts;
 }

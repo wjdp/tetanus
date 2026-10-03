@@ -1,6 +1,7 @@
 import { and, count, eq, isNull, notInArray, or } from "drizzle-orm";
 import { HISTORY_STATES } from "#shared/disk";
 import type { NavigationCounts, StatusCounts } from "#shared/navigation";
+import type { ReplicationStatus } from "#shared/replications";
 import type { DeviceStatus } from "#shared/smart/status";
 import { zfsStateColour } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
@@ -9,6 +10,7 @@ import {
   poolDisplayState,
   poolPresenceContext,
 } from "~~/server/services/poolPresence";
+import { listReplications } from "~~/server/services/replications";
 
 const emptyCounts = (): StatusCounts => ({ error: 0, warning: 0, neutral: 0 });
 
@@ -78,10 +80,30 @@ function poolCounts(now: Date): StatusCounts {
   return counts;
 }
 
+const REPLICATION_STATUS_BUCKET: Partial<
+  Record<ReplicationStatus, keyof StatusCounts>
+> = {
+  stalled: "error",
+  late: "warning",
+  ok: "neutral",
+  learning: "neutral",
+  gone: "neutral",
+};
+
+function replicationCounts(now: Date): StatusCounts {
+  const counts = emptyCounts();
+  for (const row of listReplications(now)) {
+    const bucket = REPLICATION_STATUS_BUCKET[row.status];
+    if (bucket) counts[bucket] += 1;
+  }
+  return counts;
+}
+
 export function navigationCounts(now = new Date()): NavigationCounts {
   return {
     faults: faultCounts(),
     disks: diskCounts(),
     pools: poolCounts(now),
+    replications: replicationCounts(now),
   };
 }

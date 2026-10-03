@@ -70,6 +70,12 @@ const context: AlertContext = {
         ? { name: "tfault", hostName: "mars", archived: true }
         : undefined,
   host: (id) => (id === 1 ? { name: "mars" } : undefined),
+  replication: (id) =>
+    id === 5
+      ? { label: "tank/a → vpool/tank/a", hostName: "vault", archived: false }
+      : id === 6
+        ? { label: "zeta/p → vpool/zeta/p", hostName: "vault", archived: true }
+        : undefined,
   hasActiveAcceptance: (diskId, attrId) => diskId === 3 && attrId === "5",
 };
 
@@ -510,6 +516,39 @@ describe("deriveAlert", () => {
         }),
         context,
       ),
+    ).toBeNull();
+  });
+
+  it("alerts on a late or stalled replication, but not an archived one", () => {
+    const replicationEntry = (subjectId: number, kind: string) =>
+      entry(
+        "fault-opened",
+        { faultId: 9, kind, key: String(subjectId) },
+        {
+          subjectType: "replication",
+          subjectId,
+          title: `fault: Replication into vpool/tank/a ${kind}`,
+        },
+      );
+    expect(
+      deriveAlert(replicationEntry(5, "replication-stalled"), context),
+    ).toMatchObject({
+      rule: "replication-stalled",
+      severity: "alert",
+      host: "vault",
+      subject: "vault · tank/a → vpool/tank/a",
+      message:
+        "vault · tank/a → vpool/tank/a: Replication into vpool/tank/a replication-stalled",
+      dedupeKey: "replication-stalled:replication:5:5:7",
+    });
+    expect(
+      deriveAlert(replicationEntry(5, "replication-late"), context)?.severity,
+    ).toBe("notice");
+    expect(
+      deriveAlert(replicationEntry(6, "replication-stalled"), context),
+    ).toBeNull();
+    expect(
+      deriveAlert(replicationEntry(5, "scrub-overdue"), context),
     ).toBeNull();
   });
 
