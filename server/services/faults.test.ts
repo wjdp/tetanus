@@ -1273,7 +1273,7 @@ describe("performFaultAction", () => {
 });
 
 describe("listFaults", () => {
-  it("filters, counts by state and badges open errors", async () => {
+  it("filters and counts by state", async () => {
     const mars = upsertHostByName("mars", t0);
     const venus = upsertHostByName("venus", t0);
     recordRun(venus.id, "zpool-status", t0);
@@ -1297,7 +1297,6 @@ describe("listFaults", () => {
       accepted: 1,
       resolved: 0,
     });
-    expect(live.badge).toBe(1);
     expect(live.faults[0].subject).toEqual({
       type: "host",
       id: mars.id,

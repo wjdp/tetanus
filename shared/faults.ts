@@ -366,5 +366,4 @@ export type FaultCounts = Record<FaultState, number>;
 export interface FaultsResponse {
   faults: FaultView[];
   counts: FaultCounts;
-  badge: number;
 }

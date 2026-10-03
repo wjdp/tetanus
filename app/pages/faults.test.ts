@@ -90,7 +90,6 @@ registerEndpoint("/api/faults", (event) => {
   return {
     faults: faults.filter((row) => states.includes(row.state)),
     counts: { open: 3, acknowledged: 1, accepted: 2, resolved: 31 },
-    badge: 1,
   };
 });
 

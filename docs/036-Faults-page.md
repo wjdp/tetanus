@@ -192,8 +192,9 @@ first seen outdated (first sighting writes no entry).
 ### API
 
 - `GET /api/faults?state=&category=&severity=&host=&subject=` →
-  `{ faults, counts: { open, acknowledged, accepted, resolved }, badge }`. `counts`
-  for the current filter minus `state`; `badge` = open errors, ignoring filters.
+  `{ faults, counts: { open, acknowledged, accepted, resolved } }`. `counts`
+  for the current filter minus `state`. The nav badge moved to `GET /api/navigation`
+  ([048](048-Sidebar-status-counts.md)).
   Default `state=open,acknowledged`. `host` resolves through the subject's current
   host (disks move), as `describeSubject` in `alerts/rules.ts` does.
 - `POST /api/faults/:id/acknowledge` `{ note? }`, `POST /api/faults/:id/accept`
@@ -206,7 +207,8 @@ first seen outdated (first sighting writes no entry).
 
 `/faults`, nav entry after Topology, `i-lucide-siren`. `NavigationEntry`
 (`app/utils/navigation.ts`) gains an optional badge; `AppSidebar.vue` fills it from
-`useFaults().badge`. Colour `error`, none at zero. Command palette entry.
+`useNavigationCounts()` ([048](048-Sidebar-status-counts.md)). Colour `error`, none at
+zero. Command palette entry.
 
 ```
 Faults                                    [Live ▾] [All categories ▾] [All hosts ▾]
@@ -309,7 +311,8 @@ Each of these adds a kind entry and a detector when it lands; the page needs no 
   does (`fault-state-changed`), as nothing else records it.
 - "No data for" counts from the newest successful run.
 - `NavigationEntry.badge` is a key (`"faults"`) the sidebar resolves, since
-  `NAVIGATION` is static. Banners and badge share one open-errors request.
+  `NAVIGATION` is static. Since 048 the badge has its own request
+  (`/api/navigation`); the banners keep the open-errors one.
 - `fault-opened` entries carry `severity` (since 046 part C), which backfill uses for
   past rows. Possible follow-up: store `data` too so a backfill can rebuild past rows
   exactly.

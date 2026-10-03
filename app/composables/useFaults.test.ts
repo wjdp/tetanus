@@ -8,19 +8,18 @@ import type { FaultsResponse } from "#shared/faults";
 import { emitSseEvent, FakeEventSource } from "~~/test/fakeEventSource";
 import { type FaultsQuery, useFaults } from "./useFaults";
 
-const response = (badge: number): FaultsResponse => ({
+const response = (open: number): FaultsResponse => ({
   faults: [],
-  counts: { open: badge, acknowledged: 1, accepted: 0, resolved: 2 },
-  badge,
+  counts: { open, acknowledged: 1, accepted: 0, resolved: 2 },
 });
 
 const listRequests: Record<string, unknown>[] = [];
-let badge = 1;
+let open = 1;
 registerEndpoint("/api/faults", (event) => {
   listRequests.push(
     Object.fromEntries(new URL(event.path, "http://x").searchParams),
   );
-  return response(badge);
+  return response(open);
 });
 
 const actionRequests: string[] = [];
@@ -46,7 +45,8 @@ const mountProbe = async (query: FaultsQuery = {}) => {
   const Probe = defineComponent({
     setup() {
       api = useFaults(query);
-      return () => h("pre", `${api.badge.value} ${api.counts.value.resolved}`);
+      return () =>
+        h("pre", `${api.counts.value.open} ${api.counts.value.resolved}`);
     },
   });
   const component = await mountSuspended(Probe);
@@ -59,11 +59,11 @@ beforeEach(() => {
   clearNuxtData();
   listRequests.length = 0;
   actionRequests.length = 0;
-  badge = 1;
+  open = 1;
 });
 
 describe("useFaults", () => {
-  it("exposes the badge and counts from the API", async () => {
+  it("exposes the counts from the API", async () => {
     const { component } = await mountProbe();
 
     expect(component.text()).toBe("1 2");
@@ -77,7 +77,7 @@ describe("useFaults", () => {
 
   it("refreshes on the SSE faults event", async () => {
     const { component } = await mountProbe();
-    badge = 3;
+    open = 3;
 
     emitSseEvent("faults", { at: new Date().toISOString() });
     await vi.waitFor(() => expect(component.text()).toBe("3 2"));

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { isHistoryState } from "#shared/disk";
 import {
@@ -729,16 +729,6 @@ function byAttention(a: FaultView, b: FaultView) {
   );
 }
 
-export function faultBadge(): number {
-  return (
-    db
-      .select({ open: count() })
-      .from(fault)
-      .where(and(eq(fault.state, "open"), eq(fault.severity, "error")))
-      .get()?.open ?? 0
-  );
-}
-
 export function listFaults(query: FaultsQuery): FaultsResponse {
   const lookup = subjectLookup();
   const conditions = [
@@ -765,6 +755,5 @@ export function listFaults(query: FaultsQuery): FaultsResponse {
   return {
     faults: matching.filter((view) => states.has(view.state)).sort(byAttention),
     counts,
-    badge: faultBadge(),
   };
 }

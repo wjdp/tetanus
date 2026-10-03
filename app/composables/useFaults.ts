@@ -25,7 +25,6 @@ const EMPTY_COUNTS: FaultCounts = {
 const emptyResponse = (): FaultsResponse => ({
   faults: [],
   counts: { ...EMPTY_COUNTS },
-  badge: 0,
 });
 
 const ACTION_REQUEST: Record<
@@ -56,7 +55,6 @@ export function useFaults(query: MaybeRefOrGetter<FaultsQuery> = {}) {
 
   const faults = computed(() => data.value?.faults ?? []);
   const counts = computed(() => data.value?.counts ?? EMPTY_COUNTS);
-  const badge = computed(() => data.value?.badge ?? 0);
 
   const perform = async (id: number, action: FaultAction, note?: string) => {
     const { path, method } = ACTION_REQUEST[action];
@@ -70,7 +68,6 @@ export function useFaults(query: MaybeRefOrGetter<FaultsQuery> = {}) {
   return {
     faults,
     counts,
-    badge,
     status,
     refresh,
     perform,

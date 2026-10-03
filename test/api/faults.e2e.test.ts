@@ -6,6 +6,7 @@ import { runMigrations } from "~~/server/database/migrate";
 import { collectorRun, fault, host, pool } from "~~/server/database/schema";
 import type { FaultsResponse, FaultView } from "~~/shared/faults";
 import { HOST_HEADER } from "~~/shared/ingest";
+import type { NavigationCounts } from "~~/shared/navigation";
 import type { Settings } from "~~/shared/schemas/settings";
 import { readFixture } from "~~/test/fixtures";
 import { createTestDatabaseFile, startNuxtServer } from "./devServer";
@@ -64,6 +65,10 @@ async function runAlertsTick() {
 
 function getFaults(query = ""): Promise<FaultsResponse> {
   return $fetch<FaultsResponse>(`/api/faults${query}`);
+}
+
+async function openErrorCount() {
+  return (await $fetch<NavigationCounts>("/api/navigation")).faults.error;
 }
 
 function kinds(response: FaultsResponse) {
@@ -163,7 +168,7 @@ const degraded = await findFault("pool-degraded", "");
 const outdated = await findFault("collector-outdated", "");
 
 describe("GET /api/faults", () => {
-  it("lists live faults by default with counts and the open-error badge", async () => {
+  it("lists live faults by default with counts, open errors in the nav count", async () => {
     const response = await getFaults();
     expect(
       response.faults.every((row) =>
@@ -190,7 +195,7 @@ describe("GET /api/faults", () => {
     const openErrors = response.faults.filter(
       (row) => row.severity === "error",
     ).length;
-    expect(response.badge).toBe(openErrors);
+    expect(await openErrorCount()).toBe(openErrors);
     expect(openErrors).toBeGreaterThanOrEqual(2);
   });
 
@@ -211,8 +216,6 @@ describe("GET /api/faults", () => {
     const resolved = await getFaults("?state=resolved&category=zfs");
     expect(resolved.faults).toEqual([]);
     expect(resolved.counts).toMatchObject({ open: 1, resolved: 0 });
-    const badge = (await getFaults()).badge;
-    expect(resolved.badge).toBe(badge);
   });
 
   it("400s for an invalid state", async () => {
@@ -248,7 +251,7 @@ describe("fault actions", () => {
 
   it("mirrors SMART attribute actions in the disk's acceptances", async () => {
     const diskId = pendingSectors.subject.id;
-    const badgeBefore = (await getFaults()).badge;
+    const openErrorsBefore = await openErrorCount();
 
     expect((await action(pendingSectors.id, "accept", "stable")).status).toBe(
       200,
@@ -260,7 +263,7 @@ describe("fault actions", () => {
     expect(
       (await getFaults("?state=accepted&category=disk")).faults,
     ).toMatchObject([{ id: pendingSectors.id, note: "stable" }]);
-    expect((await getFaults()).badge).toBe(badgeBefore - 1);
+    expect(await openErrorCount()).toBe(openErrorsBefore - 1);
 
     expect((await action(pendingSectors.id, "clear")).status).toBe(200);
     expect(await attribute197(diskId)).toMatchObject({ acceptance: null });
