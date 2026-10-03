@@ -33,6 +33,17 @@ const mountCard = (overrides: Partial<InventoryDisk>) =>
   });
 
 describe("InventoryCards", () => {
+  it("dims a disposed disk and shows its disposal in place of the state", async () => {
+    const cards = await mountCard({
+      disposal: { kind: "recycled", on: "2026-09-20" },
+    });
+    const card = cards.get('[data-testid="inventory-card"]');
+
+    expect(card.classes()).toContain("opacity-60");
+    expect(card.get('[data-disposal="recycled"]').text()).toBe("Recycled");
+    expect(card.find("[data-state]").exists()).toBe(false);
+  });
+
   it("shows six core fields, whatever the table columns", async () => {
     const cards = await mountSuspended(InventoryCards, {
       props: { disks: [disk] },

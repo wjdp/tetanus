@@ -6,7 +6,13 @@ import InventoryCardAttention from "./InventoryCardAttention.vue";
 import InventoryCell from "./InventoryCell.vue";
 import type { InventoryDisk, SortingState } from "./types";
 
-const props = defineProps<{ disks: InventoryDisk[] }>();
+const props = withDefaults(
+  defineProps<{
+    disks: InventoryDisk[];
+    diskLabels?: ReadonlyMap<number, string>;
+  }>(),
+  { diskLabels: () => new Map() },
+);
 
 const sorting = defineModel<SortingState>("sorting", {
   default: () => [{ id: "alias", desc: false }],
@@ -81,6 +87,8 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
         <NuxtLink
           :to="`/disks/${disk.id}`"
           class="bg-elevated border-default hover:border-accented flex h-full flex-col gap-3 rounded-md border p-3 transition-colors"
+          :class="{ 'opacity-60': disk.disposal }"
+          :data-disposed="disk.disposal ? true : undefined"
           data-testid="inventory-card"
         >
           <div class="flex items-start justify-between gap-3">
@@ -103,6 +111,7 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
                 :column="column"
                 :disk="disk"
                 :linked="false"
+                :disk-labels="diskLabels"
               />
             </div>
           </div>

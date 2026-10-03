@@ -1,4 +1,4 @@
-import type { EffectiveDiskState, StateOverride } from "#shared/disk";
+import type { Disposal, EffectiveDiskState, StateOverride } from "#shared/disk";
 import type { DiskFaultCounts } from "#shared/faults";
 import type {
   HardwareJson,
@@ -68,6 +68,8 @@ export interface InventoryDisk {
   hardware: HardwareJson | null;
   counters: DiskCounters;
   faultCounts: DiskFaultCounts;
+  disposal: Disposal | null;
+  replacedByDiskId: number | null;
 }
 
 export type SortingState = { id: string; desc: boolean }[];

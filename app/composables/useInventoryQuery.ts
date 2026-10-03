@@ -38,6 +38,7 @@ const INVENTORY_PARAMS = [
   ...Object.values(SINGLE_PARAMS),
   "state",
   "status",
+  "disposed",
   "sort",
 ];
 
@@ -88,6 +89,10 @@ const inventoryQuerySchema = z.object({
   vendor: oneOfOrNone(VENDORS),
   state: listOf(LIFECYCLE_STATES),
   status: listOf(DEVICE_STATUSES),
+  disposed: z
+    .string()
+    .transform((value) => value === "1")
+    .catch(false),
   sort: sortParam,
 });
 
@@ -105,11 +110,16 @@ export interface InventoryQueryState {
 }
 
 export function parseInventoryQuery(query: LocationQuery): InventoryQueryState {
-  const { q, state, status, sort, ...singles } = inventoryQuerySchema.parse(
-    firstValues(query),
-  );
+  const { q, state, status, disposed, sort, ...singles } =
+    inventoryQuerySchema.parse(firstValues(query));
   return {
-    filters: { ...singles, search: q, states: state, statuses: status },
+    filters: {
+      ...singles,
+      search: q,
+      states: state,
+      statuses: status,
+      includeDisposed: disposed,
+    },
     sorting: sort,
   };
 }
@@ -142,6 +152,7 @@ export function inventoryQuery({
     ),
     state: filters.states.join(",") || undefined,
     status: filters.statuses.join(",") || undefined,
+    disposed: filters.includeDisposed ? "1" : undefined,
     sort: toSortParam(sorting),
   };
   return Object.fromEntries(

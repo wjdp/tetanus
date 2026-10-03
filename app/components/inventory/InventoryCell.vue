@@ -25,8 +25,14 @@ const props = withDefaults(
     linked?: boolean;
     currency?: string;
     serialShown?: boolean;
+    diskLabels?: ReadonlyMap<number, string>;
   }>(),
-  { linked: true, currency: DEFAULT_CURRENCY, serialShown: false },
+  {
+    linked: true,
+    currency: DEFAULT_CURRENCY,
+    serialShown: false,
+    diskLabels: () => new Map(),
+  },
 );
 
 const isEmpty = computed(() => props.column.value(props.disk) === null);
@@ -43,6 +49,12 @@ const FAULT_BADGES = [
 
 const faultBadges = computed(() =>
   FAULT_BADGES.filter(({ bucket }) => props.disk.faultCounts[bucket] > 0),
+);
+
+const replacedByLabel = computed(() =>
+  props.disk.replacedByDiskId === null
+    ? null
+    : props.diskLabels.get(props.disk.replacedByDiskId),
 );
 
 const notesText = computed(() => markdownToPlainText(props.disk.notes));
@@ -174,6 +186,14 @@ const INFERRED_WRITTEN_TITLE =
     size="sm"
     :label="disk.membership.vdevState"
     data-testid="inventory-vdev-state"
+  />
+
+  <DisposalBadge
+    v-else-if="column.id === 'state' && disk.disposal"
+    :disposal="disk.disposal"
+    :replaced-by-disk-id="disk.replacedByDiskId"
+    :replaced-by-label="replacedByLabel"
+    size="sm"
   />
 
   <LifecycleBadge

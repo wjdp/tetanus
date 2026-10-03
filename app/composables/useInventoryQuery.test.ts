@@ -28,6 +28,7 @@ const EVERY_FILTER: InventoryFilterState = {
   vendor: "western-digital",
   states: ["spare", "in-use"],
   statuses: ["failed", "warning"],
+  includeDisposed: true,
 };
 
 const EVERY_NONE: InventoryFilterState = {
@@ -77,6 +78,7 @@ describe("inventory query string", () => {
       vendor: "western-digital",
       state: "spare,in-use",
       status: "failed,warning",
+      disposed: "1",
       sort: "-temp",
     });
     expect(
@@ -114,6 +116,7 @@ describe("inventory query string", () => {
         vendor: "acme",
         state: "spare,bogus,spare",
         status: "great",
+        disposed: "yes",
         sort: "-nope",
       }),
     ).toEqual({

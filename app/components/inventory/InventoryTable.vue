@@ -13,8 +13,12 @@ const props = withDefaults(
   defineProps<{
     disks: InventoryDisk[];
     visibleColumns?: ReadonlySet<string>;
+    diskLabels?: ReadonlyMap<number, string>;
   }>(),
-  { visibleColumns: () => DEFAULT_VISIBLE_COLUMNS },
+  {
+    visibleColumns: () => DEFAULT_VISIBLE_COLUMNS,
+    diskLabels: () => new Map(),
+  },
 );
 
 const sorting = defineModel<SortingState>("sorting", {
@@ -67,11 +71,19 @@ const columns: TableColumn<InventoryDisk>[] = INVENTORY_COLUMNS.map(
         disk: row.original,
         currency: currency.value,
         serialShown: columnVisibility.value.serial,
+        diskLabels: props.diskLabels,
       }),
     sortingFn: column.id === "alias" ? "alphanumeric" : "auto",
     sortUndefined: "last",
   }),
 );
+
+const meta = {
+  class: {
+    tr: (row: { original: InventoryDisk }) =>
+      row.original.disposal ? "opacity-60" : "",
+  },
+};
 
 const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
   navigateTo(`/disks/${row.original.id}`);
@@ -83,6 +95,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
     :column-visibility="columnVisibility"
     :data="disks"
     :columns="columns"
+    :meta="meta"
     empty="No disks match the filters."
     :on-select="onSelectRow"
     :ui="{ th: 'px-3', td: 'whitespace-nowrap px-3 py-2.5' }"

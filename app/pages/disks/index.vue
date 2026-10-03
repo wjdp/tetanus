@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
-import { filterDisks } from "~/components/inventory/filterDisks";
+import { displayName } from "~/components/disk/displayName";
+import {
+  disksInScope,
+  filterDisks,
+} from "~/components/inventory/filterDisks";
 
 useSeoMeta({ title: getPageTitle("Disks") });
 
@@ -27,10 +31,24 @@ const visibleDisks = computed(() =>
   filterDisks(allDisks.value, filters.value),
 );
 
+const scopedCount = computed(
+  () => disksInScope(allDisks.value, filters.value).length,
+);
+
 const countLabel = computed(() =>
-  visibleDisks.value.length === allDisks.value.length
-    ? `${allDisks.value.length}`
-    : `${visibleDisks.value.length} of ${allDisks.value.length}`,
+  visibleDisks.value.length === scopedCount.value
+    ? `${scopedCount.value}`
+    : `${visibleDisks.value.length} of ${scopedCount.value}`,
+);
+
+const diskLabels = computed(
+  () =>
+    new Map(
+      allDisks.value.map((disk) => [
+        disk.id,
+        displayName(disk) ?? disk.serial ?? `disk ${disk.id}`,
+      ]),
+    ),
 );
 </script>
 
@@ -99,11 +117,13 @@ const countLabel = computed(() =>
         v-model:sorting="sorting"
         :disks="visibleDisks"
         :visible-columns="visibleColumns"
+        :disk-labels="diskLabels"
         class="hidden md:block"
       />
       <InventoryCards
         v-model:sorting="sorting"
         :disks="visibleDisks"
+        :disk-labels="diskLabels"
         :class="{ 'md:hidden': view === 'table' }"
       />
     </template>

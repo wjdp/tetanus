@@ -17,6 +17,11 @@ const DISKS = [
   disk({ id: 2, hostName: "mars" }),
   disk({ id: 3, hostName: "venus", membership: tank }),
   disk({ id: 4, hostName: "venus", membership: tank }),
+  disk({
+    id: 5,
+    hostName: "venus",
+    disposal: { kind: "rma", on: "2026-10-02" },
+  }),
 ];
 
 const mountFilters = async (filters: Partial<InventoryFilterState> = {}) => {
@@ -107,6 +112,49 @@ describe("InventoryFilters", () => {
       vendor: "-",
     });
     expect(wrapper.get('[data-testid="more-filters-count"]').text()).toBe("2");
+  });
+
+  it("leaves disposed disks out of the counts until included", async () => {
+    const hidden = await mountFilters();
+    expect(optionCounts(await openOptions(hidden.wrapper, "host"))).toEqual({
+      "All hosts": "4",
+      mars: "2",
+      venus: "2",
+      "No host": "0",
+    });
+    hidden.wrapper.unmount();
+
+    const shown = await mountFilters({ includeDisposed: true });
+    expect(optionCounts(await openOptions(shown.wrapper, "host"))).toEqual({
+      "All hosts": "5",
+      mars: "2",
+      venus: "3",
+      "No host": "0",
+    });
+  });
+
+  it("includes disposed disks from the Filters popover and badges it", async () => {
+    const { wrapper, emitted } = await mountFilters();
+    await wrapper.get('[data-testid="more-filters"]').trigger("click");
+    await flushPromises();
+
+    const toggle = document.body.querySelector<HTMLElement>(
+      '[data-testid="include-disposed"]',
+    );
+    expect(toggle?.textContent).toContain("Include disposed");
+    expect(toggle?.textContent).toContain("1");
+    toggle?.querySelector<HTMLElement>('[role="switch"]')?.click();
+    await flushPromises();
+
+    expect(emitted.at(-1)).toEqual({
+      ...CLEARED_FILTERS,
+      includeDisposed: true,
+    });
+
+    const included = await mountFilters({ includeDisposed: true });
+    expect(
+      included.wrapper.get('[data-testid="more-filters-count"]').text(),
+    ).toBe("1");
   });
 
   it("clears every filter", async () => {

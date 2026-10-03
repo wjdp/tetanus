@@ -8,6 +8,7 @@ import { ENTITY_ICON, LIFECYCLE_VOCABULARY } from "~/utils/vocabulary";
 import {
   ALL,
   CLEARED_FILTERS,
+  disposedCount,
   facetCounts,
   INTERFACE_OPTIONS,
   type InventoryFilterState,
@@ -154,10 +155,12 @@ const POPOVER_FILTERS: PopoverFilter[] = [
   },
 ];
 
+const disposed = computed(() => disposedCount(props.disks, filters.value));
+
 const popoverActiveCount = computed(
   () =>
     POPOVER_FILTERS.filter(({ facet }) => isFacetActive(filters.value, facet))
-      .length,
+      .length + (filters.value.includeDisposed ? 1 : 0),
 );
 </script>
 
@@ -241,6 +244,17 @@ const popoverActiveCount = computed(
             :aria-label="`Filter by ${filter.facet}`"
             @update:model-value="update({ [filter.facet]: String($event) })"
           />
+          <div class="px-1 py-1.5" data-testid="include-disposed">
+            <USwitch
+              :model-value="filters.includeDisposed"
+              @update:model-value="update({ includeDisposed: $event })"
+            >
+              <template #label>
+                Include disposed
+                <span class="text-dimmed tabular-nums">{{ disposed }}</span>
+              </template>
+            </USwitch>
+          </div>
         </div>
       </template>
     </UPopover>

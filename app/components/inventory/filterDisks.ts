@@ -1,4 +1,4 @@
-import type { EffectiveDiskState } from "#shared/disk";
+import { type EffectiveDiskState, isDisposed } from "#shared/disk";
 import type { Interface, Media } from "#shared/hardware";
 import type { DeviceStatus } from "#shared/smart/status";
 import { LIFECYCLE_VOCABULARY } from "~/utils/vocabulary";
@@ -19,6 +19,7 @@ export interface InventoryFilterState {
   vendor: string;
   states: EffectiveDiskState[];
   statuses: DeviceStatus[];
+  includeDisposed: boolean;
 }
 
 export const CLEARED_FILTERS: InventoryFilterState = {
@@ -33,6 +34,7 @@ export const CLEARED_FILTERS: InventoryFilterState = {
   vendor: ALL,
   states: [],
   statuses: [],
+  includeDisposed: false,
 };
 
 export const MEDIA_OPTIONS = ["hdd", "ssd"] as const satisfies readonly Media[];
@@ -96,6 +98,7 @@ export const isFacetActive = (filters: InventoryFilterState, facet: Facet) =>
 
 export const isFiltered = (filters: InventoryFilterState) =>
   filters.search !== "" ||
+  filters.includeDisposed ||
   FACETS.some((facet) => isFacetActive(filters, facet));
 
 const matchesFacet = (
@@ -115,6 +118,11 @@ const matchesSearch = (needle: string, disk: InventoryDisk) =>
     value?.toLowerCase().includes(needle),
   );
 
+export const disksInScope = (
+  disks: InventoryDisk[],
+  { includeDisposed }: Pick<InventoryFilterState, "includeDisposed">,
+) => (includeDisposed ? disks : disks.filter((disk) => !isDisposed(disk)));
+
 function filterDisksExcept(
   disks: InventoryDisk[],
   filters: InventoryFilterState,
@@ -124,7 +132,7 @@ function filterDisksExcept(
   const active = FACETS.filter(
     (facet) => facet !== excluded && isFacetActive(filters, facet),
   );
-  return disks.filter(
+  return disksInScope(disks, filters).filter(
     (disk) =>
       matchesSearch(needle, disk) &&
       active.every((facet) => matchesFacet(filters, facet, disk)),
@@ -135,6 +143,13 @@ export const filterDisks = (
   disks: InventoryDisk[],
   filters: InventoryFilterState,
 ) => filterDisksExcept(disks, filters);
+
+export const disposedCount = (
+  disks: InventoryDisk[],
+  filters: InventoryFilterState,
+) =>
+  filterDisks(disks, { ...filters, includeDisposed: true }).filter(isDisposed)
+    .length;
 
 export type FacetCounts = Record<Facet, ReadonlyMap<string, number>>;
 

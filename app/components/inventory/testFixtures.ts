@@ -47,6 +47,8 @@ export const emptyInventoryDisk = (
   hardware: null,
   counters: NO_COUNTERS,
   faultCounts: NO_DISK_FAULTS,
+  disposal: null,
+  replacedByDiskId: null,
   ...overrides,
 });
 

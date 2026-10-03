@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ALL,
   CLEARED_FILTERS,
+  disposedCount,
   facetCounts,
   filterDisks,
   type InventoryFilterState,
@@ -69,6 +70,14 @@ const DISKS = [
     state: "retired",
     latestStatus: "unknown",
   }),
+  disk({
+    id: 5,
+    alias: "GONE",
+    hostName: "mars",
+    state: "removed",
+    present: false,
+    disposal: { kind: "sold", on: "2026-09-01", salePrice: 40 },
+  }),
 ];
 
 const aliases = (filters: Partial<InventoryFilterState>) =>
@@ -77,8 +86,23 @@ const aliases = (filters: Partial<InventoryFilterState>) =>
   );
 
 describe("filterDisks", () => {
-  it("keeps every disk when cleared", () => {
+  it("keeps every owned disk when cleared", () => {
     expect(aliases({})).toEqual(["K1", "K2", "K3", "LOOSE01"]);
+  });
+
+  it("includes disposed disks only on request", () => {
+    expect(aliases({ includeDisposed: true })).toEqual([
+      "K1",
+      "K2",
+      "K3",
+      "LOOSE01",
+      "GONE",
+    ]);
+    expect(aliases({ includeDisposed: true, host: "mars" })).toEqual([
+      "K1",
+      "K2",
+      "GONE",
+    ]);
   });
 
   it.each<[Partial<InventoryFilterState>, string[]]>([
@@ -141,11 +165,31 @@ describe("facetCounts", () => {
     expect(Object.fromEntries(counts.media)).toEqual({ [ALL]: 1, hdd: 1 });
   });
 
+  it("counts disposed disks only when they are included", () => {
+    const hidden = facetCounts(DISKS, CLEARED_FILTERS);
+    const shown = facetCounts(DISKS, {
+      ...CLEARED_FILTERS,
+      includeDisposed: true,
+    });
+
+    expect(hidden.host.get("mars")).toBe(2);
+    expect(hidden.states.get("removed")).toBeUndefined();
+    expect(shown.host.get("mars")).toBe(3);
+    expect(shown.states.get("removed")).toBe(1);
+  });
+
   it("applies the search to every facet", () => {
     const counts = facetCounts(DISKS, { ...CLEARED_FILTERS, search: "K" });
 
     expect(counts.host.get(ALL)).toBe(3);
     expect(counts.host.get(NONE)).toBeUndefined();
+  });
+});
+
+describe("disposedCount", () => {
+  it("counts disposed disks under the other filters", () => {
+    expect(disposedCount(DISKS, CLEARED_FILTERS)).toBe(1);
+    expect(disposedCount(DISKS, { ...CLEARED_FILTERS, host: "venus" })).toBe(0);
   });
 });
 
@@ -155,6 +199,7 @@ describe("isFiltered", () => {
     [{ search: "x" }, true],
     [{ vendor: NONE }, true],
     [{ statuses: ["passed"] }, true],
+    [{ includeDisposed: true }, true],
   ])("%o → %s", (filters, expected) => {
     expect(isFiltered({ ...CLEARED_FILTERS, ...filters })).toBe(expected);
   });

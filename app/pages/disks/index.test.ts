@@ -45,6 +45,9 @@ const disk = (overrides: Record<string, unknown>) => ({
   hardware: null,
   counters: NO_COUNTERS,
   faultCounts: NO_DISK_FAULTS,
+  disposal: null,
+  replacesDiskId: null,
+  replacedByDiskId: null,
   ...overrides,
 });
 
@@ -87,6 +90,34 @@ describe("disks inventory page", () => {
     expect(page.get('[data-testid="disk-count"]').text()).toBe("· 3");
     expect(page.get('[data-state="spare"]').attributes("title")).toBe(
       "set by hand",
+    );
+  });
+
+  it("hides disposed disks unless the query includes them", async () => {
+    disks = [
+      disk({ id: 1, alias: "K1" }),
+      disk({
+        id: 2,
+        alias: "K2",
+        state: "removed",
+        disposal: { kind: "rma", on: "2026-10-02" },
+        replacedByDiskId: 3,
+      }),
+      disk({ id: 3, alias: "K7" }),
+    ];
+
+    const page = await mountPage();
+    expect(aliasColumn(page)).toEqual(["K1", "K7"]);
+    expect(page.get('[data-testid="disk-count"]').text()).toBe("· 2");
+
+    const included = await mountPage("/disks?disposed=1");
+    expect(aliasColumn(included)).toEqual(["K1", "K2", "K7"]);
+    expect(included.get('[data-testid="disk-count"]').text()).toBe("· 3");
+    const disposed = included.get('[data-disposal="rma"]');
+    expect(disposed.text()).toBe("RMA · replaced by K7");
+    expect(included.findAll("tbody tr")[1]?.classes()).toContain("opacity-60");
+    expect(included.findAll("tbody tr")[0]?.classes()).not.toContain(
+      "opacity-60",
     );
   });
 
