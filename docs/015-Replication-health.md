@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Replication health
@@ -456,3 +456,58 @@ Decisions and deviations:
 Unverified: behaviour against a tool that logs no command line (only hand-written
 tests); `-e` receives; the live ingest path on prod (only the backfill was run on
 the copy).
+
+### Stage 3 (UI)
+
+Done 2026-10-04.
+
+- Vocabulary: `app/utils/vocabulary/replication.ts`. Status colour, shape, label and a
+  rank for "worst" (stalled, late, gone, learning, ok, archived); role icons
+  `i-lucide-upload` (source) and `i-lucide-download` (target); direction labels
+  "Discovered" / "Source set by hand". `formatCadence`: a learnt interval within 2 % of
+  an hour, day or week takes the word, within 15 % the word with `~`, else
+  `every N min|h|d` (`~` when rounded). A manual interval is named only when exact
+  and carries a pencil (`ReplicationCadence`). 037 updated.
+- Components in `app/components/replication/` (auto-imported as `Replication*`; the
+  dev server may need a restart to pick up the new directory).
+- `/replications`: one table per group under a heading (dot of the worst status,
+  `host parent/* → host parent/*`, count); groups in API order (target host, then
+  dataset). Archived = status `archived` (marked or target pool archived), collapsed
+  under a toggle, not remembered. Data refreshes on the 60 s clock tick, no SSE.
+- `/replications/:id`: header, archived banner, open faults (`useFaults` on
+  `replication:<id>`, like the pool page, rather than the detail's `faults`, so
+  actions work), cadence and source panels, then tabs Syncs / Snapshots / Diary as on
+  the pool page. Actions menu holds "No longer replicated…" (modal with note) or
+  "Unarchive".
+- Interval override is entered in hours (decimals allowed); blank or "Use learnt"
+  sends `null`.
+- Source override: dataset search (`useDatasetSearch`, as the diary form) excluding
+  the target; "Rediscover" (manual only) sends `sourceDatasetId: null`.
+- Sync log gaps: marked `late`/`stalled` (warning/error text) when the gap past the
+  interval exceeds the configured thresholds, i.e. the status the replication would
+  have had. Deviation from "gaps over the interval highlighted": a strict
+  `gap > interval` would mark about half of all gaps, since the interval is their
+  median. The oldest row on a page shows no gap (its predecessor is on the next page).
+- Ladder: 50 rows at a time ("Show more"), arrow between the sides when both hold the
+  snapshot (guid in the tooltip); source column hidden while not monitored.
+- `GET /api/datasets/:id` gains `replications: ReplicationRow[]`
+  (`replicationsOfDataset`); the dataset page shows them grouped, only when any exist.
+- Pool datasets tab: Replication column, one link per replication (role icon + dot,
+  title "Sends · Late").
+- Settings: Replication section on General settings, the four thresholds saved
+  together, with a worked example in the copy.
+
+Check in a browser (needs `pnpm db:migrate` and a server restart on the dev copy so
+the backfill runs; or the demo):
+
+- Sidebar Replications count and link; `/replications` groups, headings' worst dot,
+  long dataset names truncating, table width at phone width (tables scroll).
+- A late and a stalled demo replication: amber/red status and "overdue" text.
+- Archived section toggle; archive from the detail menu with a note, banner, then
+  Unarchive.
+- Detail page: cadence panel, set 24 h then "Use learnt"; choose a source by search,
+  then Rediscover; sync log pagination with > 100 syncs and marked gaps after the
+  "Replication stalls" simulator case; Snapshots tab arrows; Diary tab entries.
+- Pool datasets tab icons and dots link to the right replication; dataset page
+  Replications section on a source and on a target.
+- Settings: thresholds show the defaults, save, and change a status on reload.
