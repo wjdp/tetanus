@@ -14,6 +14,7 @@ import {
   datasetReplications,
   getReplication,
   listReplications,
+  replicationsOfDataset,
 } from "~~/server/services/replications";
 import { updateSettings } from "~~/server/services/settings";
 import { ServiceError } from "~~/server/utils/serviceError";
@@ -277,6 +278,16 @@ describe("replication detail", () => {
     ]);
     expect(byDataset.get(vaultA)).toEqual([
       { id, role: "target", status: "ok" },
+    ]);
+  });
+
+  it("lists a dataset's replications as list rows", () => {
+    const id = insertReplication(tankA, vaultA, hourly(10));
+    expect(replicationsOfDataset(tankA, at(11))).toMatchObject([
+      { id, source: { dataset: { id: tankA } }, status: "ok" },
+    ]);
+    expect(replicationsOfDataset(vaultA, at(11)).map((row) => row.id)).toEqual([
+      id,
     ]);
   });
 });

@@ -50,7 +50,12 @@ const datasets = [
     snapshotCount: 12,
     latestSnapshotAt: "2026-09-28T09:00:00.000Z",
   }),
-  dataset(3, "tank/media/photos", 2),
+  dataset(3, "tank/media/photos", 2, {
+    replications: [
+      { id: 8, role: "source", status: "late" },
+      { id: 9, role: "target", status: "ok" },
+    ],
+  }),
   dataset(4, "tank/vm-disk", 1, { type: "volume", mountpoint: null }),
   dataset(5, "tank/old", 1, { present: false }),
 ];
@@ -108,5 +113,21 @@ describe("DatasetTree", () => {
     expect(last?.text()).toContain("old");
     expect(last?.text()).toContain("destroyed");
     expect(last?.classes()).toContain("opacity-50");
+  });
+
+  it("links each replication with its role icon and status dot", async () => {
+    const tree = await mountTree();
+    const links = tree.findAll('[data-testid="dataset-replication"]');
+
+    expect(links.map((link) => link.attributes("href"))).toEqual([
+      "/replications/8",
+      "/replications/9",
+    ]);
+    expect(links[0].attributes("data-role")).toBe("source");
+    expect(links[0].attributes("title")).toBe("Sends · Late");
+    expect(links[0].get("[data-colour]").attributes("data-colour")).toBe(
+      "warning",
+    );
+    expect(links[1].attributes("title")).toBe("Receives · OK");
   });
 });

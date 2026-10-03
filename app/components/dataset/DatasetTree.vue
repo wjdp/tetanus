@@ -30,6 +30,7 @@ const columns: TableColumn<Row>[] = [
   { id: "quota", header: "Quota" },
   { id: "snapshots", header: "Snapshots" },
   { id: "newest", header: "Newest snapshot" },
+  { id: "replication", header: "Replication" },
 ];
 
 const formatRatio = (ratio: number | null) =>
@@ -132,6 +133,11 @@ const snapshotAge = (at: string | null) =>
       <span class="text-muted tabular">
         {{ snapshotAge(row.original.dataset.latestSnapshotAt) }}
       </span>
+    </template>
+    <template #replication-cell="{ row }">
+      <ReplicationDatasetLinks
+        :replications="row.original.dataset.replications"
+      />
     </template>
   </UTable>
 </template>

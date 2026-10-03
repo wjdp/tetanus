@@ -19,6 +19,8 @@ if (error.value) {
 
 useSeoMeta({ title: getPageTitle(dataset.value?.name ?? "Dataset") });
 
+const now = Date.now();
+
 const shortName = computed(() =>
   dataset.value ? lastSegment(dataset.value.name) : "Dataset",
 );
@@ -149,6 +151,20 @@ const properties = computed(() => {
           />
         </section>
       </div>
+
+      <section
+        v-if="dataset.replications.length"
+        class="flex flex-col gap-3"
+        data-testid="dataset-replications"
+      >
+        <h2 class="text-highlighted text-lg font-semibold">
+          Replications
+          <span class="text-muted tabular text-sm font-normal">
+            {{ dataset.replications.length }}
+          </span>
+        </h2>
+        <ReplicationGroupList :rows="dataset.replications" :now="now" />
+      </section>
 
       <section class="flex flex-col gap-3">
         <h2 class="text-highlighted text-lg font-semibold">

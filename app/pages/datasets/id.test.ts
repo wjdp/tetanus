@@ -2,6 +2,10 @@
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { createError } from "h3";
 import { describe, expect, it } from "vitest";
+import {
+  endpoint,
+  replicationRow,
+} from "~/components/replication/testFixtures";
 import DatasetPage from "./[id].vue";
 
 const snapshot = (index: number) => ({
@@ -50,6 +54,13 @@ registerEndpoint("/api/datasets/22", () => ({
   children: [],
   snapshots: Array.from({ length: 150 }, (_, index) => snapshot(150 - index)),
   readings: [],
+  replications: [
+    replicationRow(8, {
+      source: endpoint("atlas", "tank/media/photos", { datasetId: 22 }),
+      target: endpoint("styx", "vault/replica/tank/media/photos"),
+      status: "late",
+    }),
+  ],
   diary: [
     {
       id: 5,
@@ -89,6 +100,15 @@ describe("dataset page", () => {
       "Not enough readings",
     );
     expect(page.text()).toContain("Moved photos off the old array");
+
+    const replications = page.get('[data-testid="dataset-replications"]');
+    expect(replications.get("h3").text()).toMatch(
+      /atlas\s*tank\/media\/\*\s*styx\s*vault\/replica\/tank\/media\/\*/,
+    );
+    expect(replications.get('a[href="/replications/8"]').text()).toBe(
+      "vault/replica/tank/media/photos",
+    );
+    expect(replications.text()).toContain("Late");
   });
 
   it("shows snapshots newest first, a hundred at a time", async () => {

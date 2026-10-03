@@ -263,6 +263,30 @@ export function listReplications(now = new Date()): ReplicationRow[] {
     .sort(byTarget);
 }
 
+/** Every replication the dataset is the source or target of, as list rows. */
+export function replicationsOfDataset(
+  datasetId: number,
+  now = new Date(),
+): ReplicationRow[] {
+  const rows = db
+    .select()
+    .from(replication)
+    .where(
+      or(
+        eq(replication.targetDatasetId, datasetId),
+        eq(replication.sourceDatasetId, datasetId),
+      ),
+    )
+    .all();
+  const context = replicationContext(rows, now);
+  const counts = syncCounts(rows.map((row) => row.id));
+  return rows
+    .map((row) =>
+      present(assessReplication(row, context), counts.get(row.id) ?? 0),
+    )
+    .sort(byTarget);
+}
+
 function replicationRow(id: number): ReplicationTableRow {
   const row = db.select().from(replication).where(eq(replication.id, id)).get();
   if (!row) throw notFound(`Replication ${id} not found`);

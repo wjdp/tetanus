@@ -34,6 +34,7 @@ export {
   receiveSightingTimes,
   replicationContext,
   replicationRecord,
+  replicationsOfDataset,
   replicationThresholds,
 } from "./replications/queries";
 export {

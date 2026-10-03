@@ -146,6 +146,7 @@ describe("/api/datasets", () => {
       host: { name: "mars" },
       children: [],
       diary: [],
+      replications: [],
     });
     expect(detail.snapshots).toHaveLength(50);
     expect(detail.snapshots[0].ageMs).toBeGreaterThan(0);
