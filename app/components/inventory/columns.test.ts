@@ -95,9 +95,9 @@ describe("pool and usage fields", () => {
   });
 
   it("uses the short usage wording for usage", () => {
-    expect(fieldValue("usage", member)).toBe("tank");
+    expect(fieldValue("usage", member)).toBe("zfs");
     expect(fieldValue("usage", boot)).toBe("ext4 /");
-    expect(fieldValue("usage", disk(3, {}))).toBe("?");
+    expect(fieldValue("usage", disk(3, {}))).toBeNull();
   });
 });
 

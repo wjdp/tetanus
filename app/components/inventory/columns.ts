@@ -180,7 +180,7 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     id: "usage",
     label: "Usage",
     group: "Placement",
-    value: (disk) => usageShort(disk.usage, disk.membership?.poolName ?? null),
+    value: (disk) => usageShort(disk.usage),
     defaultVisible: false,
   },
   {

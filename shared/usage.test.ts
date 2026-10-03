@@ -3,7 +3,6 @@ import {
   type DiskUsage,
   isMounted,
   UNKNOWN_USAGE,
-  usageColour,
   usageDetail,
   usageShort,
 } from "./usage";
@@ -73,30 +72,20 @@ describe("usageDetail", () => {
 });
 
 describe("usageShort", () => {
-  it("uses the pool name, else zfs", () => {
-    expect(usageShort(zfs, "tank")).toBe("tank");
-    expect(usageShort(zfs, null)).toBe("zfs");
+  it("says zfs, leaving the pool name to the Pool column", () => {
+    expect(usageShort(zfs)).toBe("zfs");
   });
 
   it("uses the first mount when mounted", () => {
-    expect(usageShort(system, null)).toBe("ext4 /");
+    expect(usageShort(system)).toBe("ext4 /");
   });
 
   it("lists filesystem types when unmounted", () => {
-    expect(usageShort(unmounted, null)).toBe("LVM2_member, ext4");
+    expect(usageShort(unmounted)).toBe("LVM2_member, ext4");
   });
 
-  it("abbreviates empty and unknown", () => {
-    expect(usageShort(empty, null)).toBe("empty");
-    expect(usageShort(UNKNOWN_USAGE, null)).toBe("?");
-  });
-});
-
-describe("usageColour", () => {
-  it("colours each kind", () => {
-    expect(usageColour("zfs")).toBe("info");
-    expect(usageColour("filesystem")).toBe("neutral");
-    expect(usageColour("empty")).toBe("neutral");
-    expect(usageColour("unknown")).toBe("neutral");
+  it("says empty, and nothing for unknown", () => {
+    expect(usageShort(empty)).toBe("empty");
+    expect(usageShort(UNKNOWN_USAGE)).toBeNull();
   });
 });

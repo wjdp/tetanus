@@ -3,7 +3,6 @@ import { interfaceLabel, sectorFormat } from "#shared/hardware";
 import { formatDuration } from "#shared/hostFreshness";
 import { displayModel } from "#shared/model";
 import { DEFAULT_CURRENCY, formatMoney, formatMoneyPerTb } from "#shared/money";
-import { usageColour, usageShort } from "#shared/usage";
 import { markdownToPlainText } from "~/utils/markdown";
 import {
   DEVICE_STATUS_VOCABULARY,
@@ -154,16 +153,14 @@ const INFERRED_WRITTEN_TITLE =
     :title="disk.purposeInferred ? 'Purpose inferred from usage' : undefined"
   />
 
-  <UBadge
+  <span
     v-else-if="column.id === 'usage'"
-    size="xs"
-    variant="subtle"
-    :color="usageColour(disk.usage.kind)"
-    :class="{ 'opacity-60': disk.usage.kind === 'empty' }"
-    class="max-w-full truncate"
+    class="block max-w-full truncate"
+    :class="{ 'text-dimmed': disk.usage.kind === 'empty' }"
+    :data-usage="disk.usage.kind"
   >
-    {{ usageShort(disk.usage, disk.membership?.poolName ?? null) }}
-  </UBadge>
+    {{ column.value(disk) }}
+  </span>
 
   <span v-else-if="column.id === 'vdev' && vdev" class="flex items-center gap-1.5">
     <VdevTypeIcon :type="vdev.type" />

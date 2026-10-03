@@ -59,10 +59,10 @@ export function usageDetail(usage: DiskUsage, poolName: string | null): string {
   }
 }
 
-export function usageShort(usage: DiskUsage, poolName: string | null): string {
+export function usageShort(usage: DiskUsage): string | null {
   switch (usage.kind) {
     case "zfs":
-      return poolName ?? "zfs";
+      return "zfs";
     case "filesystem": {
       const [first] = usage.mounts;
       return first ? `${first.fsType} ${first.path}` : usage.fsTypes.join(", ");
@@ -70,10 +70,6 @@ export function usageShort(usage: DiskUsage, poolName: string | null): string {
     case "empty":
       return "empty";
     case "unknown":
-      return "?";
+      return null;
   }
-}
-
-export function usageColour(kind: UsageKind): "neutral" | "info" {
-  return kind === "zfs" ? "info" : "neutral";
 }

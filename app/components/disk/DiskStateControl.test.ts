@@ -51,4 +51,25 @@ describe("DiskStateControl", () => {
     expect(control.getComponent(LifecycleBadge).props("overridden")).toBe(true);
     expect(control.text()).toContain("inferred in-use");
   });
+
+  it("shows usage as plain neutral text, dimmed when empty", async () => {
+    const zfs = await mountSuspended(DiskStateControl, {
+      props: { disk: disk({}) },
+    });
+    const empty = await mountSuspended(DiskStateControl, {
+      props: {
+        disk: disk({
+          usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
+        }),
+      },
+    });
+
+    const usage = zfs.get('[data-testid="disk-usage"]');
+    expect(usage.text()).toBe("zfs label, no pool");
+    expect(usage.classes().join(" ")).not.toMatch(/rounded|info/);
+    expect(usage.classes()).not.toContain("text-dimmed");
+    expect(empty.get('[data-testid="disk-usage"]').classes()).toContain(
+      "text-dimmed",
+    );
+  });
 });

@@ -2,6 +2,7 @@
 import { mountSuspended } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
 import { type DiskCounters, NO_COUNTERS } from "#shared/smart/counters";
+import { type DiskUsage, UNKNOWN_USAGE } from "#shared/usage";
 import { findColumn } from "./columns";
 import InventoryCell from "./InventoryCell.vue";
 import { emptyInventoryDisk, mirrorMembership } from "./testFixtures";
@@ -118,6 +119,53 @@ describe("InventoryCell", () => {
 
       expect(cell.text()).toBe("mirror-0");
       expect(cell.find('[data-vdev-type="mirror"]').exists()).toBe(true);
+    });
+
+    it.each([
+      [
+        "zfs",
+        { kind: "zfs", fsTypes: ["zfs_member"], mounts: [], system: false },
+        "zfs",
+      ],
+      [
+        "filesystem",
+        {
+          kind: "filesystem",
+          fsTypes: ["ext4"],
+          mounts: [{ fsType: "ext4", path: "/boot", via: [] }],
+          system: true,
+        },
+        "ext4 /boot",
+      ],
+      [
+        "empty",
+        { kind: "empty", fsTypes: [], mounts: [], system: false },
+        "empty",
+      ],
+      ["unknown", UNKNOWN_USAGE, "—"],
+    ] satisfies [string, DiskUsage, string][])(
+      "shows %s usage as plain text, not a badge",
+      async (_kind, usage, text) => {
+        const cell = await mountCell("usage", {
+          usage,
+          membership: mirrorMembership(),
+        });
+
+        expect(cell.text()).toBe(text);
+        expect(cell.classes().join(" ")).not.toMatch(/rounded|info/);
+      },
+    );
+
+    it("dims empty usage only", async () => {
+      const empty = await mountCell("usage", {
+        usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
+      });
+      const zfs = await mountCell("usage", {
+        usage: { kind: "zfs", fsTypes: [], mounts: [], system: false },
+      });
+
+      expect(empty.classes()).toContain("text-dimmed");
+      expect(zfs.classes()).not.toContain("text-dimmed");
     });
 
     it("colours the ZFS state", async () => {

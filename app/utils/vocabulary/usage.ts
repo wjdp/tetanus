@@ -1,7 +1,5 @@
 import type { Purpose } from "#shared/usage";
 
-export { usageColour } from "#shared/usage";
-
 export interface PurposeBadgeProps {
   label: string;
   color: "neutral";

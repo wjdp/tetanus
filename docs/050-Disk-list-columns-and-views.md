@@ -332,5 +332,8 @@ Server half of build step 8.
   999). Price/TB header from `moneyPerTbLabel`; cards' sort select says `Price/TB`.
   Counters render via `InventoryStatusCounter.vue` reusing the attribute table's
   dot and label vocabulary. Notes via `app/utils/markdown.ts`.
+- Usage column: plain text like Pool, no badge (`usageShort`: `zfs`, `ext4 /boot`,
+  dimmed `empty`, `—` unknown); the pool name is left to Pool. `usageColour`
+  removed; `DiskStateControl` shows usage as plain text too.
 - ATA SSD wear acceptance and evaluation: deferred to
   [052](052-SSD-wear-monitoring.md).

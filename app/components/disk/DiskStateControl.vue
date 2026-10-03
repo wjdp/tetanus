@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { STATE_OVERRIDES, type StateOverride } from "#shared/disk";
 import { usageDetail } from "#shared/usage";
-import { usageColour } from "~/utils/vocabulary";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{ disk: DiskDetail }>();
@@ -61,12 +60,13 @@ const setOverride = async (value: string) => {
     <span v-if="disk.stateOverride" class="text-dimmed text-xs">
       inferred {{ disk.inferredState }}
     </span>
-    <UBadge
-      :color="usageColour(disk.usage.kind)"
-      variant="subtle"
-      :label="usageLabel"
-      :class="{ 'opacity-60': disk.usage.kind === 'empty' }"
-    />
+    <span
+      class="text-sm"
+      :class="{ 'text-dimmed': disk.usage.kind === 'empty' }"
+      data-testid="disk-usage"
+    >
+      {{ usageLabel }}
+    </span>
     <UTooltip
       v-if="disk.purpose && disk.purposeInferred"
       :text="`inferred from mount at ${inferredFromPath}`"

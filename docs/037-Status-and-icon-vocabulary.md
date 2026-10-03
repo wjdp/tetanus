@@ -186,12 +186,15 @@ Nav entry `i-lucide-siren` ([036](036-Faults-page.md)).
 
 ## Usage (`UsageKind`) and purpose (`Purpose`)
 
+Usage is plain text, not a badge: the Disks Usage column, the card fallback and
+the disk page state row. The disk page keeps the longer `usageDetail` wording.
+
 | value | colour | rendering |
 | --- | --- | --- |
-| usage `zfs` | info badge | pool name |
-| usage `filesystem` | neutral badge | `ext4 /boot` |
-| usage `empty` | neutral badge at 60 % opacity | `empty` |
-| usage `unknown` | neutral badge | `?`; change from today (was warning): not knowing is not a problem, and a warning here pollutes the Disks table |
+| usage `zfs` | neutral text | `zfs`; the Pool column names the pool. Was an info badge: info stays reserved for something running |
+| usage `filesystem` | neutral text | `ext4 /boot` |
+| usage `empty` | dimmed text | `empty` |
+| usage `unknown` | dimmed `—` | not knowing is not a problem, and a warning here pollutes the Disks table |
 | purpose `system` | `sys` neutral outline badge, `xs` | modifier beside the alias on tiles and rail rows; the media glyph still shows what the disk is |
 | purpose `other` | `other` neutral outline badge | as today |
 
