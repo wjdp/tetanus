@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { StateOverride } from "#shared/disk";
+import type { Disposal, StateOverride } from "#shared/disk";
 import type { FaultSeverity, FaultState } from "#shared/faults";
 import type { DeviceStatus } from "#shared/smart/status";
 import { db } from "~~/server/database/client";
@@ -35,8 +35,9 @@ function insertFault(state: FaultState, severity: FaultSeverity) {
 function insertDisk(
   latestStatus: DeviceStatus,
   stateOverride: StateOverride | null = null,
+  disposal: Disposal | null = null,
 ) {
-  db.insert(disk).values({ latestStatus, stateOverride }).run();
+  db.insert(disk).values({ latestStatus, stateOverride, disposal }).run();
 }
 
 function insertPool(
@@ -78,7 +79,7 @@ describe("navigationCounts", () => {
     });
   });
 
-  it("buckets disks by SMART status, unknown as neutral, leaving history disks out", () => {
+  it("buckets disks by SMART status, unknown as neutral, leaving history and disposed disks out", () => {
     insertDisk("failed");
     insertDisk("warning");
     insertDisk("warning", "spare");
@@ -86,7 +87,8 @@ describe("navigationCounts", () => {
     insertDisk("unknown");
     insertDisk("failed", "dead");
     insertDisk("warning", "retired");
-    insertDisk("passed", "sold");
+    insertDisk("passed", null, { kind: "sold", on: "2026-08-01" });
+    insertDisk("failed", "spare", { kind: "rma", on: "2026-08-01" });
 
     expect(navigationCounts(t0).disks).toEqual({
       error: 1,

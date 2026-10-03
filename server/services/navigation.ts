@@ -1,4 +1,4 @@
-import { count, eq, isNull, notInArray, or } from "drizzle-orm";
+import { and, count, eq, isNull, notInArray, or } from "drizzle-orm";
 import { HISTORY_STATES } from "#shared/disk";
 import type { NavigationCounts, StatusCounts } from "#shared/navigation";
 import type { DeviceStatus } from "#shared/smart/status";
@@ -44,9 +44,12 @@ function diskCounts(): StatusCounts {
     .select({ status: disk.latestStatus, total: count() })
     .from(disk)
     .where(
-      or(
-        isNull(disk.stateOverride),
-        notInArray(disk.stateOverride, [...HISTORY_STATES]),
+      and(
+        isNull(disk.disposal),
+        or(
+          isNull(disk.stateOverride),
+          notInArray(disk.stateOverride, [...HISTORY_STATES]),
+        ),
       ),
     )
     .groupBy(disk.latestStatus)
