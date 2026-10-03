@@ -35,6 +35,7 @@ import type {
   RecordingTech,
 } from "../../shared/hardware";
 import type { Inventory } from "../../shared/inventory-fields";
+import type { ReplicationDirection } from "../../shared/replications";
 import type { PoolConfig, PoolLastScrub } from "../../shared/schemas/pools";
 import type { SettingsConfig } from "../../shared/schemas/settings";
 import type {
@@ -650,3 +651,47 @@ export const simulationChange = sqliteTable("SimulationChange", {
   before: text(),
   after: text(),
 });
+
+export const replication = sqliteTable(
+  "Replication",
+  {
+    id: autoIncrementId(),
+    sourceDatasetId: integer().references(() => dataset.id, {
+      onDelete: "set null",
+    }),
+    targetDatasetId: integer()
+      .notNull()
+      .references(() => dataset.id, { onDelete: "cascade" }),
+    direction: text().$type<ReplicationDirection>().notNull(),
+    manualIntervalSec: integer(),
+    lastSyncAt: datetime(),
+    archivedAt: datetime(),
+    archivedNote: text().notNull().default(""),
+    firstSeenAt: datetime().notNull(),
+    lastSeenAt: datetime().notNull(),
+  },
+  (table) => [
+    uniqueIndex("Replication_targetDatasetId_key").on(table.targetDatasetId),
+    index("Replication_sourceDatasetId_idx").on(table.sourceDatasetId),
+  ],
+);
+
+export const replicationSync = sqliteTable(
+  "ReplicationSync",
+  {
+    id: autoIncrementId(),
+    replicationId: integer()
+      .notNull()
+      .references(() => replication.id, { onDelete: "cascade" }),
+    at: datetime().notNull(),
+    snapshotName: text(),
+    guid: text(),
+    snapshots: integer().notNull(),
+  },
+  (table) => [
+    uniqueIndex("ReplicationSync_replicationId_at_key").on(
+      table.replicationId,
+      table.at,
+    ),
+  ],
+);
