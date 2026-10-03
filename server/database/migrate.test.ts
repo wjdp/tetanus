@@ -34,7 +34,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 22;
+const MIGRATION_COUNT = 23;
 
 const openConnections: Database.Database[] = [];
 
@@ -154,11 +154,14 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Pool DROP COLUMN scanProgressAt;
       ALTER TABLE Pool DROP COLUMN archivedAt;
       ALTER TABLE Pool DROP COLUMN archiveNote;
+      DROP INDEX Disk_replacesDiskId_key;
+      ALTER TABLE Disk DROP COLUMN disposal;
+      ALTER TABLE Disk DROP COLUMN replacesDiskId;
       ALTER TABLE Disk DROP COLUMN ataSsdAttributes;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 5
+            ORDER BY created_at DESC LIMIT 6
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -178,6 +181,7 @@ describe("0009_host_collector_version", () => {
       "0019_pool_scan_progress",
       "0020_pool_archive",
       "0021_disk_ata_ssd_attributes",
+      "0022_disk_disposal",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -225,13 +229,16 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Pool DROP COLUMN scanProgressAt;
       ALTER TABLE Pool DROP COLUMN archivedAt;
       ALTER TABLE Pool DROP COLUMN archiveNote;
+      DROP INDEX Disk_replacesDiskId_key;
+      ALTER TABLE Disk DROP COLUMN disposal;
+      ALTER TABLE Disk DROP COLUMN replacesDiskId;
       ALTER TABLE Disk DROP COLUMN ataSsdAttributes;
       ALTER TABLE Vdev DROP COLUMN role;
       ALTER TABLE Vdev DROP COLUMN spareState;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 13
+            ORDER BY created_at DESC LIMIT 14
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -257,6 +264,7 @@ describe("0009_host_collector_version", () => {
       "0019_pool_scan_progress",
       "0020_pool_archive",
       "0021_disk_ata_ssd_attributes",
+      "0022_disk_disposal",
     ]);
     expect(
       sqlite
@@ -280,11 +288,14 @@ describe("0018_vdev_role_backfill", () => {
       ALTER TABLE Pool DROP COLUMN scanProgressAt;
       ALTER TABLE Pool DROP COLUMN archivedAt;
       ALTER TABLE Pool DROP COLUMN archiveNote;
+      DROP INDEX Disk_replacesDiskId_key;
+      ALTER TABLE Disk DROP COLUMN disposal;
+      ALTER TABLE Disk DROP COLUMN replacesDiskId;
       ALTER TABLE Disk DROP COLUMN ataSsdAttributes;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 4
+            ORDER BY created_at DESC LIMIT 5
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -305,6 +316,7 @@ describe("0018_vdev_role_backfill", () => {
       "0019_pool_scan_progress",
       "0020_pool_archive",
       "0021_disk_ata_ssd_attributes",
+      "0022_disk_disposal",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -317,6 +329,71 @@ describe("0018_vdev_role_backfill", () => {
       { guid: "logfile", type: "file", role: "log" },
       { guid: "nopath", type: "log", role: "log" },
       { guid: "data", type: "disk", role: "normal" },
+    ]);
+  });
+});
+
+describe("0022_disk_disposal", () => {
+  it("moves sold overrides to a sold disposal dated by the diary", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DROP INDEX Disk_replacesDiskId_key;
+      ALTER TABLE Disk DROP COLUMN disposal;
+      ALTER TABLE Disk DROP COLUMN replacesDiskId;
+      DELETE FROM __drizzle_migrations
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 1
+        );
+      INSERT INTO Disk (id, stateOverride, lastState)
+        VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
+      INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title, data)
+        VALUES ('disk', 1, ${Date.parse("2026-03-01T12:00:00Z")}, 'auto', 'override-set', 'x',
+                '{"from":null,"to":"sold"}'),
+               ('disk', 1, ${Date.parse("2026-04-02T12:00:00Z")}, 'auto', 'override-set', 'x',
+                '{"from":null,"to":"sold"}'),
+               ('disk', 1, ${Date.parse("2026-05-01T12:00:00Z")}, 'auto', 'override-set', 'x',
+                '{"from":null,"to":"dead"}'),
+               ('disk', 2, ${Date.parse("2026-05-01T12:00:00Z")}, 'auto', 'state-changed', 'x',
+                '{"from":"spare","to":"sold"}');
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual(["0022_disk_disposal"]);
+    const today = new Date().toISOString().slice(0, 10);
+    expect(
+      (
+        sqlite
+          .prepare(
+            "SELECT id, stateOverride, lastState, disposal, replacesDiskId FROM Disk ORDER BY id",
+          )
+          .all() as { disposal: string | null }[]
+      ).map((row) => ({
+        ...row,
+        disposal: row.disposal && JSON.parse(row.disposal),
+      })),
+    ).toEqual([
+      {
+        id: 1,
+        stateOverride: null,
+        lastState: null,
+        disposal: { kind: "sold", on: "2026-04-02" },
+        replacesDiskId: null,
+      },
+      {
+        id: 2,
+        stateOverride: null,
+        lastState: null,
+        disposal: { kind: "sold", on: today },
+        replacesDiskId: null,
+      },
+      {
+        id: 3,
+        stateOverride: "dead",
+        lastState: "dead",
+        disposal: null,
+        replacesDiskId: null,
+      },
     ]);
   });
 });

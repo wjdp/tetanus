@@ -7,13 +7,7 @@ export const DISK_STATES = [
 ] as const;
 export type DiskState = (typeof DISK_STATES)[number];
 
-export const STATE_OVERRIDES = [
-  "spare",
-  "removed",
-  "dead",
-  "sold",
-  "retired",
-] as const;
+export const STATE_OVERRIDES = ["spare", "removed", "dead", "retired"] as const;
 export type StateOverride = (typeof STATE_OVERRIDES)[number];
 
 export type EffectiveDiskState = DiskState | StateOverride;
@@ -21,11 +15,28 @@ export type EffectiveDiskState = DiskState | StateOverride;
 export const HISTORY_STATES = [
   "dead",
   "retired",
-  "sold",
 ] as const satisfies readonly StateOverride[];
 
 export function isHistoryState(state: unknown): boolean {
   return (HISTORY_STATES as readonly unknown[]).includes(state);
+}
+
+export const DISPOSAL_KINDS = [
+  "sold",
+  "rma",
+  "recycled",
+  "given-away",
+] as const;
+export type DisposalKind = (typeof DISPOSAL_KINDS)[number];
+
+export interface Disposal {
+  kind: DisposalKind;
+  on: string;
+  salePrice?: number;
+}
+
+export function isDisposed(disk: { disposal: Disposal | null }): boolean {
+  return disk.disposal !== null;
 }
 
 export const DISK_PROTOCOLS = ["ata", "nvme", "scsi", "unknown"] as const;

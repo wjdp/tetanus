@@ -50,5 +50,11 @@ export const DIARY_EVENT_TYPES = [
   "fault-opened",
   "fault-state-changed",
   "fault-resolved",
+  "disposed",
+  "disposal-cleared",
+  "disposed-disk-seen",
+  "replaced-by",
+  "replaces",
+  "replacement-cleared",
 ] as const;
 export type DiaryEventType = (typeof DIARY_EVENT_TYPES)[number];
