@@ -15,7 +15,7 @@ const NOTIFICATIONS_LIMIT = 100;
 const POLL_INTERVAL_MS = 60_000;
 const UNCONFIGURED: NotificationsConfig = { pushover: null, webhook: null };
 
-const { data: settings } = await useFetch("/api/settings");
+const { data: settings } = await useSettings();
 const { data: notifications, refresh: refreshNotifications } = await useFetch(
   "/api/alerts",
   { query: { limit: NOTIFICATIONS_LIMIT }, default: () => [] },
