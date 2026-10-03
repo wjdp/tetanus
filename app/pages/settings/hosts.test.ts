@@ -137,6 +137,5 @@ describe("hosts page", () => {
     ].map((input) => input.placeholder);
     expect(placeholders).toEqual(["45", "55", "60", "70"]);
     expect(document.body.textContent).toContain("Temperature thresholds (°C)");
-    page.unmount();
   });
 });

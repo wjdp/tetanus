@@ -31,6 +31,7 @@ export default defineConfig({
         test: {
           name: "app",
           include: ["app/**/*.test.ts"],
+          setupFiles: ["test/appSetup.ts"],
         },
       }),
       {

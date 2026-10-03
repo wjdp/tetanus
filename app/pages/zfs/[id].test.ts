@@ -603,6 +603,5 @@ describe("pool page", () => {
         { scrubIntervalDays: 0, slowIoThreshold: null },
       ]),
     );
-    page.unmount();
   });
 });

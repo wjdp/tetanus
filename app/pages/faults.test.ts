@@ -169,8 +169,6 @@ const button = (scope: ReturnType<typeof row>, label: string) => {
   return found;
 };
 
-const mounted: Page[] = [];
-
 const mountPage = async (
   route = "/faults",
   settled = '[data-testid="fault-row"]',
@@ -179,13 +177,11 @@ const mountPage = async (
     route,
     attachTo: document.body,
   });
-  mounted.push(page);
   await vi.waitFor(() => expect(page.find(settled).exists()).toBe(true));
   return page;
 };
 
 beforeEach(() => {
-  for (const page of mounted.splice(0)) page.unmount();
   FakeEventSource.install();
   clearNuxtData();
   faults = FAULTS;

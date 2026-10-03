@@ -1,7 +1,7 @@
 // @vitest-environment nuxt
 import { mountSuspended } from "@nuxt/test-utils/runtime";
 import { flushPromises, type VueWrapper } from "@vue/test-utils";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { CLEARED_FILTERS, type InventoryFilterState } from "./filterDisks";
 import InventoryFilters from "./InventoryFilters.vue";
 import { emptyInventoryDisk, mirrorMembership } from "./testFixtures";
@@ -19,12 +19,6 @@ const DISKS = [
   disk({ id: 4, hostName: "venus", membership: tank }),
 ];
 
-const mounted: VueWrapper[] = [];
-
-afterEach(() => {
-  for (const wrapper of mounted.splice(0)) wrapper.unmount();
-});
-
 const mountFilters = async (filters: Partial<InventoryFilterState> = {}) => {
   const emitted: InventoryFilterState[] = [];
   const wrapper = await mountSuspended(InventoryFilters, {
@@ -37,7 +31,6 @@ const mountFilters = async (filters: Partial<InventoryFilterState> = {}) => {
     },
     attachTo: document.body,
   });
-  mounted.push(wrapper);
   return { wrapper, emitted };
 };
 

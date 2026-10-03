@@ -5,7 +5,7 @@ import {
   registerEndpoint,
 } from "@nuxt/test-utils/runtime";
 import { flushPromises } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SimulationView, SubjectScenarios } from "#shared/simulator";
 import SimulateFaultMenu from "./SimulateFaultMenu.vue";
 
@@ -44,16 +44,11 @@ const offered: SubjectScenarios = {
 };
 registerEndpoint("/api/simulate/disk/7", () => offered);
 
-const mounted: { unmount: () => void }[] = [];
-
-async function mountMenu() {
-  const component = await mountSuspended(SimulateFaultMenu, {
+const mountMenu = () =>
+  mountSuspended(SimulateFaultMenu, {
     props: { subjectType: "disk", subjectId: 7 },
     attachTo: document.body,
   });
-  mounted.push(component);
-  return component;
-}
 
 async function openMenu() {
   const component = await mountMenu();
@@ -75,10 +70,6 @@ beforeEach(() => {
   simulations.value = [];
   simulate.mockReset();
   restore.mockReset();
-});
-
-afterEach(() => {
-  for (const component of mounted.splice(0)) component.unmount();
 });
 
 describe("SimulateFaultMenu", () => {
