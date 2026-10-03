@@ -95,135 +95,186 @@ fixture resolves `poolId`, `zfs-receives` fixture parses.
 
 ## Stage 2: server
 
+Revised 2026-10-03 after the second review, which simulated this design on the prod
+copy; expected results per replication are in Agent findings.
+
 ### Model
 
 ```
 Replication       id, sourceDatasetId? (fk set null), targetDatasetId (fk cascade, unique),
-                  direction (received|inferred|manual|unknown), manualIntervalSec?,
-                  archivedAt?, archivedNote?, firstSeenAt, lastSeenAt
-ReplicationSync   id, replicationId (fk cascade), at, snapshotName, guid?,
-                  evidence (receive|snapshot)   unique(replicationId, snapshotName)
+                  direction (received|manual), manualIntervalSec?, lastSyncAt?,
+                  archivedAt?, archivedNote (default ''), firstSeenAt, lastSeenAt
+ReplicationSync   id, replicationId (fk cascade), at, snapshotName?, guid?,
+                  snapshots (count of finish lines)
+                  unique(replicationId, at); index(replicationId, at)
 ```
 
-Computed on read, not stored: learnt interval, group membership, health.
+Receive history is the only evidence. Every receive into a pool is in that pool's
+history, so GUID-only discovery (`inferred`) and `snapshot` evidence are cut: they had
+no real instance. Interval and health are computed from `lastSyncAt` and the last 10
+syncs; nothing else is stored.
 
-### Discovery and direction
+### Sync derivation
 
-- A `finish receiving <target>/%recv … snap=<name>` row creates or updates the
-  replication for `<target>`; `direction = received`.
-- A GUID shared by datasets on different pools (or hosts) with no receive evidence
-  creates one with `direction = inferred`: the side whose newest snapshot is newer than
-  the latest common one is the source; neither → `unknown`.
-- Source choice when a GUID is on more than two datasets (chain
-  `zeta/q/r` → `tank/copies/zeta/q/r` and → `vpool/zeta/q/r`):
-  prefer a candidate that is not itself a target, then the one holding the newest
-  common GUID, then the earliest `firstSeenAt`. Manual override wins.
-- Source null when no other monitored dataset holds the GUID (scenario 3).
-- A receive in the opposite direction on an existing pair (a restore) does not flip
-  it; diary note on the replication, user can override.
-- Datasets with `present = false` or in archived pools
-  ([047](047-Archive-pools.md)) take no part in discovery; an existing replication
-  whose side goes `present = false` is `gone`.
+A pure function over a host's receive history entries (`PoolHistory` rows):
 
-### Sync log
+- Finish line: `^finish receiving (\S+?)(?:/%recv)? \(\d+\) snap=(\S+)` (old
+  format has no `/%recv`: `finish receiving zeta/p.clone (1949) snap=…`).
+- Command line: `^zfs (?:receive|recv)\b.* (\S+)$`; its last argument is the target.
+  `-d`/`-e`/`-R` receives name a parent: the command closes the pending cluster of
+  every target equal to or under it.
+- Order by `at`; at equal `at`, finish lines before command lines. Never rely on `id`
+  (ingest order differs: `zfs-receives` backfill arrived after `zpool-history`).
+- One run logs a finish line per snapshot (mars: ~30 per dataset in a minute) and one
+  command line on completion. A sync is one run: the command line closes the target's
+  pending finish lines into one sync, `at` = command time, `snapshotName` = last
+  finish, `snapshots` = their count. A command with no pending finish lines is not a
+  sync.
+- Finish lines with no command (a tool that does not log one): a gap > 10 min starts
+  a new cluster; a cluster becomes a sync (`at` = its last line) once that line is
+  ≥ 15 min older than the payload's `receivedAt`.
+- `guid` = the target's `Snapshot.guid` for `snapshotName` when known, else null;
+  filled in later when snapshots arrive.
 
-- One `ReplicationSync` per `finish receiving` row (`at` = history time, now UTC).
-- Without receive evidence for the replication, one per newly seen common GUID
-  (`at` = ingest time; granularity = snapshot cadence).
-- Prune > 400 d.
+Population: after `observeZpoolHistory` for `zfs-receives` and `zpool-history`,
+re-derive syncs for the host from its receive rows over a trailing 48 h window and
+upsert on `(replicationId, at)` (idempotent). Backfill over all existing `PoolHistory`
+once at boot, following `server/services/faultsBackfill.ts`. Prune syncs > 400 d.
+Update `Replication.lastSyncAt`, `lastSeenAt`.
+
+### Discovery and source
+
+- A sync for a `<target>` naming a present dataset of the host, in a pool that is not
+  archived ([047](047-Archive-pools.md)), creates its `Replication`
+  (`direction = received`, diary `replication-discovered`). Targets with no present
+  dataset are skipped (old one-off receives: `zeta/p.clone`).
+- Source = a present dataset on another pool (same or other host) holding any GUID the
+  target holds. Several candidates (chain: `zeta/q` → `tank/copies/zeta/q` and
+  → `vpool/zeta/q`, with `syncoid_vault_…` snapshots flowing into both): prefer one that
+  is not itself a target, then the one holding the newest common GUID, then the
+  earliest `firstSeenAt`. Exclude datasets that are targets of a replication sourced
+  from this target (a restore does not make a cycle).
+- The source is decided once and stored; re-evaluated only while null (e.g. after
+  each snapshot ingest), never cleared automatically. Cross-host common GUIDs come and
+  go hourly (vault pairs share one snapshot; snapshot listings race the hourly sync),
+  so live evaluation would flap. `PATCH` sets it by hand (`direction = manual`).
+- Source null after evaluation: shown as "source not monitored". Old old hosts
+  replicas on mars are not discovered at all (receives older than the history tail,
+  no monitored source): accepted.
 
 ### Interval
 
-Learnt = median gap of the last 10 syncs of one evidence kind: `receive` when it has
-≥ 3, else `snapshot` with ≥ 3, else unknown (`learning`). Never mix kinds.
+Learnt = median gap between the last 10 syncs; needs ≥ 3 syncs, else `learning`.
 `manualIntervalSec` overrides.
-
-### Groups
-
-A replication whose source and target are children of another replication's source and
-target with the same relative path belongs to the topmost such replication's group.
-Renamed children do not group (accepted). Group status = worst member.
 
 ### Health
 
-`referenceAt = min(now, last ok zfs run of the target host, last ok zfs run of the
-source host when monitored)` (pattern: `diskSightingTimes`, `server/services/hosts.ts`).
-`dueAt = lastSyncAt + interval`, `overdue = referenceAt − dueAt`. A silent host freezes
-the status; `collector-silent` covers it.
+`referenceAt = min(now, last ok zfs-receives run of the target host)` (keyed per source
+in `lastRuns`, `server/services/hosts.ts`). `dueAt = lastSyncAt + interval`,
+`overdue = referenceAt − dueAt`. A silent target host freezes the status;
+`collector-silent` covers it.
 
 | status | colour | shape | when |
 | --- | --- | --- | --- |
-| `ok` | neutral | filled | not overdue |
+| `ok` | neutral | filled | not overdue past the late threshold |
 | `late` | warning | filled | overdue > max(late floor, late factor × interval) |
 | `stalled` | error | filled | overdue > max(stalled floor, stalled factor × interval) |
 | `learning` | neutral | hollow | interval unknown |
-| `gone` | neutral | hollow | a side is no longer present |
-| `archived` | neutral | hollow | marked no longer replicated |
+| `gone` | neutral | hollow | target or stored source no longer present |
+| `archived` | neutral | hollow | marked no longer replicated, or target pool archived |
 
 Add these to [037](037-Status-and-icon-vocabulary.md).
 
 Thresholds: keys in `settingsConfigSchema` / `settingsPatchSchema`
-(`shared/schemas/settings.ts`), shown on the settings page. Defaults: late floor 3 h,
-late factor 0.5, stalled floor 2 d, stalled factor 2.
+(`shared/schemas/settings.ts`; `getSettings` spreads the defaults), on the settings
+page. Defaults: late floor 3 h, late factor 0.5, stalled floor 2 d, stalled factor 2.
 
 ### Archiving
 
-Old replicas fault until the user archives them ("No longer replicated", optional
-note). Archived: row, sync log and ladder kept, no faults, open fault resolved. A sync
-after archiving un-archives it. Archiving a group root archives its members.
+"No longer replicated", optional note. Archived: row, syncs and ladder kept, no faults,
+open faults resolved. A new sync after archiving un-archives it (diary
+`replication-resumed`). Archiving a pool ([047](047-Archive-pools.md)) also resolves
+replication faults of targets in it (`resolvePoolFaults` resolves only pool subjects).
 
-### Faults and diary
+### Faults, diary, alerts
 
-- `FAULT_SUBJECT_TYPES` and `DIARY_SUBJECT_TYPES` gain `replication`; label and link
-  in `app/utils/diarySubjects.ts` and the faults page.
-- Kind `replication-overdue`: category `zfs`, lifetime `transient`, `warning` for
-  `late`, `error` for `stalled` (severity rise handled by `isSeverityRise`), one per
-  group root. Detected in `detectFaults` (`server/services/faults.ts`), which runs in
-  the alerts pass. Alerts ride the existing fault → notification path.
-- Diary auto events on the replication: `replication-discovered`,
-  `replication-archived`, `replication-resumed`, `replication-reversed`. Late and
-  stalled come from the fault diary entries (`writeFaultEvent`); no duplicates.
-- `StatusCounts` (`shared/navigation.ts`) gains `replications`.
+- New subject type `replication` in `FAULT_SUBJECT_TYPES` and `DIARY_SUBJECT_TYPES`,
+  and everywhere they are switched on: `DIARY_SUBJECT_ICON`
+  (`app/utils/diarySubjects.ts`), `subjectLink` (`DiaryTimeline.vue`),
+  `faultSubjectPath` (`app/utils/vocabulary/fault.ts`), `subjectLookup` /
+  `describeSubject` (`server/services/faults.ts`). Check `switch` defaults by hand; TS
+  will not flag them.
+- Two kinds, category `zfs`, lifetime `transient`, one per replication:
+  `replication-late` (warning) and `replication-stalled` (error); stalled supersedes
+  late (046 §Folding, `Supersession`). Escalation then writes its own diary entry and
+  alert; a severity rise on one kind would not (`nextState`, `refreshFault`).
+  Detected in `detectFaults`, reading one `Replication` row and its last 10 syncs each.
+- Alerts: `ALERT_RULES` entries (`shared/alerts.ts`), a `matchReplicationEntry` for
+  `fault-opened`, `describeSubject` + an `AlertContext.replication(id)` lookup, and the
+  archived skip, in `server/services/alerts/rules.ts`. Nothing generic exists.
+- Diary auto events: `replication-discovered`, `replication-archived`,
+  `replication-resumed`. Late/stalled come from the fault entries.
+- `NavigationCounts` (`shared/navigation.ts`) gains `replications` (late + stalled),
+  plus its query and a sidebar item.
 
 ### API
 
-- `GET /api/replications` → rows: source (host, pool, dataset)?, target, direction,
-  status, interval (and whether manual), lastSyncAt, dueAt, overdue, group root id.
-- `GET /api/replications/:id` → row + group members or root + sync log (newest first,
-  paged) + common snapshot ladder + diary + faults.
-- `PATCH /api/replications/:id` → source/direction override, `manualIntervalSec`,
-  `archived` + `archivedNote`. Schema in `shared/schemas/replications.ts`.
+- `GET /api/replications` → rows: id, source (host, pool, dataset)?, target (host,
+  pool, dataset), direction, status, intervalSec, intervalManual, lastSyncAt, dueAt,
+  overdueMs, syncCount, archivedAt.
+- `GET /api/replications/:id` → row + syncs (newest first, paged 100) + ladder + diary
+  + open faults. Ladder: both datasets' snapshots, newest first, joined by GUID into
+  rows `{ source?, target?, guid, creation }`, capped at 200.
+- `PATCH /api/replications/:id` → `sourceDatasetId` (sets `direction = manual`),
+  `manualIntervalSec` (null clears), `archived` + `archivedNote`. Schema in
+  `shared/schemas/replications.ts`.
 - `GET /api/pools/:id/datasets` gains per dataset
   `replications: { id, role (source|target), status }[]`.
 
 ### Simulator and demo
 
-- Simulator ([044](044-Fault-simulator.md)): subjects are disk/pool/host. Add a
-  pool-level "replication stalls" case that stops emitting receive lines for the
-  pool's targets.
-- Demo seed: `server/demo/zfs.ts` renders `zfs-snapshots` and `zpool-history`; teach
-  it shared GUIDs and receive lines for scenarios 1–3, one late, one stalled, one
-  archived, one recursive group.
+- Simulator ([044](044-Fault-simulator.md)): a pool-level case "replication stalls"
+  in `afterReplay`, like `backdateSighting` (`scenarios/presence.ts`): shift the
+  pool's targets' `ReplicationSync.at` and `lastSyncAt` back by N hours. Absence of
+  lines cannot be simulated through ingest (history dedupes).
+- Demo: `finish receiving` lines gain `snap=` (`server/demo/zpoolHistory.ts`); the
+  demo fleet gets at least one ok, one late and one stalled replication with matching
+  GUIDs on both sides.
 
-Tests: service against fixtures for scenarios 1–3 (pairing, chain source choice,
-restore reversal, interval per evidence kind, groups, silent host, archive/un-archive);
-fault detection; e2e for the routes.
+### Tests
+
+Fixtures: hand-written history bodies from the prod lines in Agent findings (no vault
+capture exists). Derivation: mars daily multi-snapshot runs, vault hourly, same-second
+command/finish, old format, `-d` receive, command with no finishes, cluster without
+command. Discovery: chain source choice, absent target, restore exclusion, source
+stored not flapping. Health: per status, silent host. Faults: late → stalled
+supersession, archive resolves. e2e for routes.
+
+### Steps (one commit each)
+
+1. Schema + migration, `shared/replications.ts` (statuses, types), settings keys.
+2. Sync derivation + population + backfill + discovery/source.
+3. Health, services, routes, pool datasets field, e2e.
+4. Subject type plumbing, fault kinds, alerts, navigation count, pool-archive
+   resolution, 037.
+5. PATCH (archive, interval, source), simulator case, demo.
 
 ## Stage 3: UI
 
-- **Replication page** `/replications`, sidebar entry with count
-  ([048](048-Sidebar-status-counts.md)). Sections by source host → target host;
-  one row per group root, expandable to members. Columns: source, target, members,
+- **Replications page** `/replications`, sidebar entry with count
+  ([048](048-Sidebar-status-counts.md)). Rows grouped visually by source host +
+  parent → target host + parent (e.g. mars `tank/*` → vault `vpool/tank/*`); group
+  header shows the worst member status. No stored groups. Columns: source, target,
   status dot, cadence ("hourly", "~daily"; marked when manual), last sync, next due.
   Archived in a collapsed section at the bottom.
-- **Detail page** `/replications/:id`: header (source → target, status, direction
-  badge saying how it was known), group members or link to root, cadence panel with
-  override, "No longer replicated" action, sync log (time, snapshot, gap since
-  previous, evidence; gaps over the interval highlighted), common snapshot ladder,
-  diary.
+- **Detail page** `/replications/:id`: header (source → target, status, direction),
+  cadence panel with override, source override, "No longer replicated" action, sync
+  log (time, snapshot, snapshots received, gap since previous; gaps over the interval
+  highlighted), snapshot ladder, diary.
 - **Pool page datasets tab** (`DatasetTree.vue`): replication column, one icon per
   replication (out for source, in for target) with status dot, linking to the detail
   page. Dataset page lists its replications too.
+- Settings page: the four thresholds.
 
 ## Out of scope
 
@@ -238,18 +289,25 @@ fault detection; e2e for the routes.
 1. Thresholds as above, global settings; per-replication later if needed.
 2. Exact GUID via `zfs list -j -p` without `--json-int`, verified on mars.
 3. `grep` in the collector is fine; the installer checks for it.
-4. Recursive replications are grouped under their root; renamed children do not group.
-5. Old replicas show and fault by default; the user archives them.
+4. ~~Recursive replications are grouped under their root.~~ Superseded by 12.
+5. ~~Old replicas show and fault by default.~~ Superseded by 13; archiving stays.
 6. Staged: collector first, then server, then UI.
 7. History collected with `TZ=UTC`.
 8. Snapshots collected hourly, not more often: listing is slow on hosts.
 9. `finish receiving` is reliable (vault: 10 063 for `vpool/zeta/q`); the gaps in the
    dev database were the collector's history tail.
 
-## Unanswered questions
+10. No `zfs send` evidence: every current target is monitored and logs receives.
+    Unmonitored targets are stubbed in
+    [053](053-Replication-to-unmonitored-targets.md).
+11. `replication` is the fault and diary subject (not the target dataset): faults link
+    to the detail page, groups and chains stay clean.
 
-1. `zfs send` lines as a third evidence kind (see chat 2026-10-03)?
-2. `replication` as fault and diary subject, or the target `dataset`?
+12. Groups are visual only: nothing groups on real data (no root dataset is itself
+    replicated). Faults per replication, no archive cascade.
+13. Old replicas that cannot be discovered (old hosts) stay invisible.
+14. Two fault kinds, late and stalled, stalled supersedes late.
+15. Keep the snapshot ladder.
 
 ## Agent findings
 
@@ -276,3 +334,46 @@ Done 2026-10-03, not yet deployed.
   both layouts. Drop the stub mappings and update the zpool-history parser test (its
   "every entry's pool is null" note) after the re-capture.
 - `shellcheck` not run (not installed).
+
+### Stage 1 deployed (prod copy 2026-10-03 21:32Z)
+
+mars and vault on 0.4.0, migration 0023 applied, no failed runs.
+
+- GUIDs: 0 saturated, 0 null across 1 853 snapshots.
+- History: every row has a pool; timestamps UTC (vault `…22:00:32-GMT01:00` stored
+  21:00:33Z).
+- Receives reach back to 2026-09-13 on mars `tank`, 2026-09-29 on vault `vpool`. vault hits
+  the 2 000-line tail (1 000 finish + 1 000 command lines, ~4.5 days); enough to learn
+  an hourly cadence.
+- **One run logs many `finish receiving` lines.** mars zeta → tank/copies sends
+  every intermediate snapshot: ~30 `finish receiving` lines per dataset in one 05:00Z
+  run, ~1 s apart, then one `zfs receive -s -F <target>` command line when the run
+  completes. vault: one of each per hour. So for stage 2:
+  - a sync = one `zfs receive|recv … <target>` command line (`at` = completion);
+    its newest snapshot = the last `finish receiving <target>/%recv` at or before it.
+    Fall back to clustering finish lines (gap > 10 min starts a new sync) when no
+    command line is present (other tools may not log one, e.g. `zfs recv` via a
+    library).
+  - the interval median must be over syncs, never over finish lines.
+- Old one-off receives exist (mars `zeta/p.clone`, `zeta/q/r.clone`,
+  2025-08-11; datasets gone): discovery skips targets with no present dataset.
+- tank/copies/zeta/* also receive vault's `syncoid_vault_…` snapshots (the chain
+  case in Discovery): vault pulls from mars `zeta/*`, the snapshot travels on to
+  tank/copies.
+
+### Second review: design simulated on the prod copy (2026-10-03 21:32Z)
+
+| Replication | syncs | interval | last sync | status |
+| --- | --- | --- | --- | --- |
+| mars zeta/{p,q,q/r} → tank/copies/zeta/* | 20–21 (~650 finish lines each) | 24 h | 05:00–05:01Z | ok |
+| mars tank/{a,b,c,c/d,e,f/g} → vault vpool/tank/* | 111 each | 1 h | 21:00Z | ok |
+| mars zeta/{p,q,q/r} → vault vpool/zeta/* | 111–112 | 1 h | 21:00Z | ok |
+| zeta/p.clone, zeta/q/r.clone (2025-08) | skipped, target absent | | | |
+| tank/copies/oldhost/* | not discovered | | | |
+
+Chain: "prefer a non-target" picks `zeta/*` as source for both tank/copies and vpool.
+19 same-second command/finish pairs have the command at the lower id; ordering by id
+creates a phantom empty sync. vault pairs share exactly one GUID, so the common
+snapshot vanishes for an hour roughly one hour in four. Collected history covers
+20 days on mars `tank`, 4.5 days on vault `vpool`. No `PoolHistory` pruning exists.
+The alerts pass runs after every ingest (~100/h), so health must read stored rows.
