@@ -37,6 +37,11 @@ const FIXED_ICONS: Partial<Record<DiaryEventType, string>> = {
   "fault-opened": "i-lucide-siren",
   "fault-state-changed": "i-lucide-siren",
   "fault-resolved": "i-lucide-siren",
+  "disposal-cleared": "i-lucide-undo-2",
+  "disposed-disk-seen": "i-lucide-scan-eye",
+  "replaced-by": "i-lucide-replace",
+  replaces: "i-lucide-replace",
+  "replacement-cleared": "i-lucide-unlink",
 };
 
 describe("diaryEventIcon", () => {
@@ -65,6 +70,22 @@ describe("diaryEventIcon", () => {
   it("falls back when an override is cleared", () => {
     expect(
       diaryEventIcon({ eventType: "override-set", data: { to: null } }),
+    ).toBe("i-lucide-circle");
+  });
+
+  it("uses the new disposal kind's icon for disposed", () => {
+    expect(
+      diaryEventIcon({
+        eventType: "disposed",
+        data: { from: null, to: { kind: "rma", on: "2026-10-02" } },
+      }),
+    ).toBe("i-lucide-package-open");
+    expect(diaryEventIcon({ eventType: "disposed" })).toBe("i-lucide-circle");
+  });
+
+  it("leaves a legacy sold override to the unknown icon", () => {
+    expect(
+      diaryEventIcon({ eventType: "override-set", data: { to: "sold" } }),
     ).toBe("i-lucide-circle");
   });
 

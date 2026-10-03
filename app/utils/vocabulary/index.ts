@@ -2,6 +2,7 @@ export * from "./capacity";
 export * from "./colour";
 export * from "./deviceStatus";
 export * from "./diaryEvent";
+export * from "./disposal";
 export * from "./entity";
 export * from "./fault";
 export * from "./lifecycle";

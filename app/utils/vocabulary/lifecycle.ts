@@ -18,5 +18,4 @@ export const LIFECYCLE_VOCABULARY: Record<
   unseen: { colour: "neutral", icon: "i-lucide-eye-off", label: "Unseen" },
   dead: { colour: "neutral", icon: "i-lucide-skull", label: "Dead" },
   retired: { colour: "neutral", icon: "i-lucide-archive", label: "Retired" },
-  sold: { colour: "neutral", icon: "i-lucide-banknote", label: "Sold" },
 };

@@ -4,10 +4,13 @@ export { DIARY_EVENT_TYPES, type DiaryEventType } from "#shared/diary";
 
 import {
   DISK_STATES,
+  DISPOSAL_KINDS,
+  type DisposalKind,
   type EffectiveDiskState,
   STATE_OVERRIDES,
 } from "#shared/disk";
 import { DEVICE_STATUSES, type DeviceStatus } from "#shared/smart/status";
+import { DISPOSAL_VOCABULARY } from "./disposal";
 import { ENTITY_ICON } from "./entity";
 import { LIFECYCLE_VOCABULARY } from "./lifecycle";
 import { vdevTypeVocabulary } from "./vdevType";
@@ -38,6 +41,10 @@ const dataField = (data: unknown, key: string): unknown =>
 const isLifecycleState = (value: unknown): value is EffectiveDiskState =>
   typeof value === "string" && LIFECYCLE_STATES.includes(value);
 
+const isDisposalKind = (value: unknown): value is DisposalKind =>
+  typeof value === "string" &&
+  (DISPOSAL_KINDS as readonly string[]).includes(value);
+
 const isDeviceStatus = (value: unknown): value is DeviceStatus =>
   typeof value === "string" &&
   (DEVICE_STATUSES as readonly string[]).includes(value);
@@ -46,6 +53,13 @@ const newLifecycleStateIcon = (data: unknown) => {
   const to = dataField(data, "to");
   return isLifecycleState(to)
     ? LIFECYCLE_VOCABULARY[to].icon
+    : UNKNOWN_EVENT_ICON;
+};
+
+const newDisposalIcon = (data: unknown) => {
+  const kind = dataField(dataField(data, "to"), "kind");
+  return isDisposalKind(kind)
+    ? DISPOSAL_VOCABULARY[kind].icon
     : UNKNOWN_EVENT_ICON;
 };
 
@@ -104,6 +118,12 @@ const DIARY_EVENT_ICON: Record<
   "fault-opened": () => ENTITY_ICON.fault,
   "fault-state-changed": () => ENTITY_ICON.fault,
   "fault-resolved": () => ENTITY_ICON.fault,
+  disposed: newDisposalIcon,
+  "disposal-cleared": () => "i-lucide-undo-2",
+  "disposed-disk-seen": () => "i-lucide-scan-eye",
+  "replaced-by": () => "i-lucide-replace",
+  replaces: () => "i-lucide-replace",
+  "replacement-cleared": () => "i-lucide-unlink",
 };
 
 const isDiaryEventType = (value: string): value is DiaryEventType =>

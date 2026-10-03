@@ -7,8 +7,16 @@ import { diskFixture } from "./testFixtures";
 
 const disks = [
   { ...diskFixture(1, { state: "missing", alias: "LOST" }), hostName: "mars" },
-  { ...diskFixture(2, { state: "sold", alias: "GONE" }), hostName: null },
+  {
+    ...diskFixture(2, {
+      state: "removed",
+      alias: "GONE",
+      disposal: { kind: "sold", on: "2026-09-01" },
+    }),
+    hostName: null,
+  },
   { ...diskFixture(3, { state: "dead", alias: "DEAD" }), hostName: null },
+  { ...diskFixture(4, { state: "retired", alias: "OLD" }), hostName: null },
 ];
 
 const mountRail = () =>
@@ -34,6 +42,13 @@ describe("TopologyDiskRail", () => {
     expect(rail.get('[data-testid="history-toggle"]').text()).toContain("2");
     expect(listShown(rail, "history")).toBe(false);
     expect(listShown(rail, "missing")).toBe(true);
+  });
+
+  it("leaves a disposed disk off the rail", async () => {
+    const rail = await mountRail();
+
+    expect(rail.text()).not.toContain("GONE");
+    expect(rail.find('[data-group="removed"]').exists()).toBe(false);
   });
 
   it("opens History on toggle and remembers it", async () => {

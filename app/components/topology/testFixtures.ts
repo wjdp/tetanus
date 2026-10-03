@@ -83,6 +83,7 @@ export function diskFixture(
     tempThresholds: TEMPERATURE_DEFAULTS.hdd,
     present: false,
     lastSeenHostId: null,
+    disposal: null,
     ...overrides,
   };
 }

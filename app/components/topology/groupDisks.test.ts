@@ -113,6 +113,9 @@ describe("vdevGroups", () => {
   });
 });
 
+const sold = { kind: "sold", on: "2026-09-01", salePrice: 40 } as const;
+const rma = { kind: "rma", on: "2026-10-02" } as const;
+
 const keysAndIds = (groups: { key: string; disks: TopologyDisk[] }[]) =>
   groups.map((group) => [group.key, group.disks.map((row) => row.id)]);
 
@@ -126,7 +129,6 @@ describe("railGroups", () => {
       disk(9, { state: "spare", present: true, lastSeenHostId: 1 }),
       disk(10, { state: "missing" }),
       disk(11, { state: "unseen" }),
-      disk(12, { state: "sold" }),
       disk(13, { state: "dead" }),
       disk(14, { state: "retired", purpose: "system" }),
       disk(15, { state: "removed" }),
@@ -136,7 +138,20 @@ describe("railGroups", () => {
       ["missing", [10]],
       ["removed", [15]],
       ["unseen", [11]],
-      ["history", [12, 13, 14]],
+      ["history", [13, 14]],
+    ]);
+  });
+
+  it("puts disposed disks in no rail, whatever their state", () => {
+    const disks = [
+      disk(1, { state: "removed", disposal: sold }),
+      disk(2, { state: "missing", disposal: rma }),
+      disk(3, { state: "dead", disposal: rma }),
+      disk(4, { state: "dead" }),
+    ];
+
+    expect(keysAndIds(railGroups(disks, new Set()))).toEqual([
+      ["history", [4]],
     ]);
   });
 
@@ -154,7 +169,7 @@ describe("hostDiskGroups", () => {
 
   it("splits the host's present disks outside pools into system and other", () => {
     const disks = [
-      disk(1, { ...live, state: "sold" }),
+      disk(1, { ...live, state: "retired" }),
       disk(2, { ...live, state: "dead" }),
       disk(3, { ...live, state: "in-use" }),
       disk(4, { ...live, state: "spare", purpose: "other" }),
@@ -175,6 +190,11 @@ describe("hostDiskGroups", () => {
     ]);
   });
 
+  it("leaves out a disposed disk seen on the host again", () => {
+    const seenAgain = disk(1, { ...live, state: "in-use", disposal: rma });
+    expect(hostDiskGroups([seenAgain], 1, new Set())).toEqual([]);
+  });
+
   it("omits an empty group", () => {
     expect(keysAndIds(hostDiskGroups([disk(1, live)], 1, new Set()))).toEqual([
       ["other", [1]],
@@ -188,7 +208,6 @@ describe("tileStateMark", () => {
       tileStateMark(disk(1, { state }))?.icon ?? null;
     expect(mark("dead")).toBe("i-lucide-skull");
     expect(mark("removed")).toBe("i-lucide-unplug");
-    expect(mark("sold")).toBe("i-lucide-banknote");
     expect(mark("retired")).toBe("i-lucide-archive");
     expect(mark("in-use")).toBeNull();
     expect(mark("spare")).toBeNull();
@@ -205,6 +224,15 @@ describe("hostDiskSummary", () => {
         disk(4, { media: null }),
       ]),
     ).toEqual({ count: 4, hdd: 2, ssd: 1, rawBytes: 36e12 });
+  });
+
+  it("leaves disposed disks out of the counts", () => {
+    expect(
+      hostDiskSummary([
+        disk(1, { media: "hdd", capacityBytes: 18e12 }),
+        disk(2, { media: "hdd", capacityBytes: 8e12, disposal: rma }),
+      ]),
+    ).toEqual({ count: 1, hdd: 1, ssd: 0, rawBytes: 18e12 });
   });
 
   it("has no raw capacity when none is known", () => {

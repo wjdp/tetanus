@@ -1,6 +1,8 @@
 import {
+  type Disposal,
   type EffectiveDiskState,
   HISTORY_STATES,
+  isDisposed,
   isHistoryState,
   type StateOverride,
 } from "#shared/disk";
@@ -61,6 +63,7 @@ export interface TopologyDisk extends TopologyDiskFacts {
   stateOverride: StateOverride | null;
   present: boolean;
   lastSeenHostId: number | null;
+  disposal: Disposal | null;
 }
 
 export interface TopologyPool {
@@ -265,6 +268,9 @@ function groupBy<Disk extends TopologyDisk>(
     .filter((group) => group.disks.length > 0);
 }
 
+export const ownedDisks = <Disk extends TopologyDisk>(disks: Disk[]): Disk[] =>
+  disks.filter((disk) => !isDisposed(disk));
+
 export function hostDiskGroups<Disk extends TopologyDisk>(
   disks: Disk[],
   hostId: number,
@@ -272,7 +278,7 @@ export function hostDiskGroups<Disk extends TopologyDisk>(
 ): DiskGroup<Disk>[] {
   return groupBy(
     HOST_GROUPS,
-    disks.filter(
+    ownedDisks(disks).filter(
       (disk) =>
         disk.present && disk.lastSeenHostId === hostId && !inPool.has(disk.id),
     ),
@@ -285,7 +291,7 @@ export function railGroups<Disk extends TopologyDisk>(
 ): DiskGroup<Disk>[] {
   return groupBy(
     RAIL_GROUPS,
-    disks.filter((disk) => !disk.present && !inPool.has(disk.id)),
+    ownedDisks(disks).filter((disk) => !disk.present && !inPool.has(disk.id)),
   );
 }
 
@@ -296,7 +302,8 @@ export interface HostDiskSummary {
   rawBytes: number | null;
 }
 
-export function hostDiskSummary(disks: TopologyDisk[]): HostDiskSummary {
+export function hostDiskSummary(allDisks: TopologyDisk[]): HostDiskSummary {
+  const disks = ownedDisks(allDisks);
   const capacities = disks
     .map((disk) => disk.capacityBytes)
     .filter((bytes): bytes is number => bytes !== null);

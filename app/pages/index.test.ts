@@ -161,6 +161,7 @@ function disk(
     present: true,
     lastSeenHostId: 1,
     hostName: "mars",
+    disposal: null,
     ...overrides,
   };
 }
@@ -202,6 +203,10 @@ describe("index page", () => {
       disk(2, "K2", "in-use"),
       disk(4, "Z9", "spare"),
       disk(5, "OLD1", "missing", { present: false }),
+      disk(6, "GONE", "removed", {
+        present: false,
+        disposal: { kind: "sold", on: "2026-09-01" },
+      }),
     ];
 
     const page = await mountPage();
@@ -238,6 +243,7 @@ describe("index page", () => {
     expect(rail).toContain("OLD1");
     expect(rail).not.toContain("Z9");
     expect(rail).not.toContain("K1");
+    expect(rail).not.toContain("GONE");
   });
 
   it("shows a dead disk plugged into boxy under boxy, not in the rail", async () => {
