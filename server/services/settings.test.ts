@@ -60,6 +60,22 @@ describe("settings", () => {
     );
   });
 
+  it("reads the default currency from a config stored before it existed", async () => {
+    ensureSettings();
+    db.update(setting)
+      .set({ config: { missingAfterDays: 9 } })
+      .run();
+    expect((await getSettings()).config).toMatchObject({
+      missingAfterDays: 9,
+      currency: "GBP",
+    });
+  });
+
+  it("patches the currency", async () => {
+    await updateSettings({ config: { currency: "EUR" } });
+    expect((await getSettings()).config.currency).toBe("EUR");
+  });
+
   it("keeps the alert cursor when config is patched", async () => {
     setAlertCursor(42);
     await updateSettings({ config: { missingAfterDays: 3 } });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_CURRENCY, isSupportedCurrency } from "../money";
 
 const secret = z.string().trim().min(1).max(500);
 
@@ -26,8 +27,15 @@ export type PushoverConfig = z.infer<typeof pushoverConfigSchema>;
 export type WebhookConfig = z.infer<typeof webhookConfigSchema>;
 export type NotificationsConfig = z.infer<typeof notificationsConfigSchema>;
 
+export const currencySchema = z
+  .string()
+  .length(3)
+  .toUpperCase()
+  .refine(isSupportedCurrency, "Unknown ISO 4217 currency code");
+
 export const settingsConfigSchema = z.object({
   missingAfterDays: z.number().int().min(1).max(365),
+  currency: currencySchema,
   notifications: notificationsConfigSchema,
   alertCursor: z.number().int().min(0),
   smartPolicyVersion: z.number().int().min(0),
@@ -38,6 +46,7 @@ export type SettingsConfig = z.infer<typeof settingsConfigSchema>;
 
 export const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
   missingAfterDays: 7,
+  currency: DEFAULT_CURRENCY,
   notifications: { pushover: null, webhook: null },
   alertCursor: 0,
   smartPolicyVersion: 0,
@@ -46,6 +55,7 @@ export const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
 export const settingsPatchSchema = z.strictObject({
   config: z.strictObject({
     missingAfterDays: settingsConfigSchema.shape.missingAfterDays.optional(),
+    currency: currencySchema.optional(),
     notifications: notificationsConfigSchema.partial().optional(),
   }),
 });

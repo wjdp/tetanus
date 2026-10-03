@@ -33,6 +33,22 @@ describe("/api/settings", () => {
     const settings = await $fetch("/api/settings");
     expect(settings.enrolToken).toMatch(/^[0-9a-f]{64}$/);
     expect(settings.config.missingAfterDays).toBe(7);
+    expect(settings.config.currency).toBe("GBP");
+  });
+
+  it("patches the currency and 400s for an unknown one", async () => {
+    const settings = await $fetch("/api/settings", {
+      method: "PATCH",
+      body: { config: { currency: "usd" } },
+    });
+    expect(settings.config.currency).toBe("USD");
+
+    const response = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ config: { currency: "XYZ" } }),
+    });
+    expect(response.status).toBe(400);
   });
 
   it("patches config", async () => {

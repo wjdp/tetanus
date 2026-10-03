@@ -59,4 +59,15 @@ describe("settingsPatchSchema", () => {
       }),
     ).toThrow();
   });
+
+  it("upper-cases a currency code", () => {
+    expect(
+      settingsPatchSchema.parse({ config: { currency: "usd" } }).config
+        .currency,
+    ).toBe("USD");
+  });
+
+  it.each(["XYZ", "GB", "POUND"])("rejects the currency %s", (currency) => {
+    expect(() => settingsPatchSchema.parse({ config: { currency } })).toThrow();
+  });
 });
