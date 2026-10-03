@@ -1,5 +1,7 @@
 export type ZfsStateColour = "success" | "warning" | "error";
 
+export const MISSING_POOL_STATE = "MISSING";
+
 export const ZFS_STATE_COLOUR: Record<string, ZfsStateColour> = {
   ONLINE: "success",
   AVAIL: "success",
@@ -10,6 +12,7 @@ export const ZFS_STATE_COLOUR: Record<string, ZfsStateColour> = {
   FAULTED: "error",
   UNAVAIL: "error",
   SUSPENDED: "error",
+  [MISSING_POOL_STATE]: "warning",
 };
 
 export function zfsStateColour(state: string): ZfsStateColour {

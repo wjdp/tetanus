@@ -100,6 +100,7 @@ Applies to pool, vdev and leaf state strings everywhere: pool badge, vdev group 
 | `FAULTED` | error | | |
 | `UNAVAIL` | error | | |
 | `SUSPENDED` | error | | |
+| `MISSING` | warning | | tetanus's word, not ZFS's: pool absent from the host's latest scan; shown in place of the pool's last-seen state, fault `pool-missing` ([049](049-Missing-pool-display-state.md)) |
 | anything else | warning | | unknown word from a newer ZFS |
 
 A leaf tile's dot is the worst of its disk's SMART status and its vdev state

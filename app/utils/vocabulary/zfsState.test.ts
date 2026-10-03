@@ -12,6 +12,7 @@ describe("zfsStateColour", () => {
     ["FAULTED", "error"],
     ["UNAVAIL", "error"],
     ["SUSPENDED", "error"],
+    ["MISSING", "warning"],
     ["SOMETHING_NEW", "warning"],
     ["constructor", "warning"],
   ])("colours %s as %s", (state, colour) => {
