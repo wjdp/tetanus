@@ -2,10 +2,14 @@
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import type { VueWrapper } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
+import { nextTick } from "vue";
 import { clearNuxtData } from "#app";
+import InventoryColumnPicker from "~/components/inventory/InventoryColumnPicker.vue";
 import InventoryFilters, {
   CLEARED_FILTERS,
 } from "~/components/inventory/InventoryFilters.vue";
+import { INVENTORY_PREFERENCES_COOKIE } from "~/composables/useInventoryPreferences";
+import { clearCookie, writeCookie } from "~~/test/cookies";
 import DisksPage from "./index.vue";
 
 const disk = (overrides: Record<string, unknown>) => ({
@@ -44,9 +48,16 @@ const disk = (overrides: Record<string, unknown>) => ({
 let disks: unknown[] = [];
 registerEndpoint("/api/disks", () => disks);
 
+const storePreferences = (preferences: object) =>
+  writeCookie(INVENTORY_PREFERENCES_COOKIE, JSON.stringify(preferences));
+
 beforeEach(() => {
   clearNuxtData();
+  clearCookie(INVENTORY_PREFERENCES_COOKIE);
 });
+
+const headers = (page: VueWrapper) =>
+  page.findAll("thead th").map((th) => th.text());
 
 const aliasColumn = (page: VueWrapper) =>
   page.findAll("tbody tr").map((row) => row.find("td").text());
@@ -162,6 +173,7 @@ describe("disks inventory page", () => {
       page.findAll("tbody tr").map((row) => row.text());
 
     it("shows media, interface and recording, and the display model", async () => {
+      storePreferences({ columns: { interface: true, recording: true } });
       disks = [
         disk({
           id: 1,
@@ -191,24 +203,29 @@ describe("disks inventory page", () => {
       disks = [disk({ id: 1, alias: "K1", ...sataHdd })];
       const page = await mountSuspended(DisksPage);
 
-      expect(page.findAll("thead th").map((th) => th.text())).not.toContain(
-        "Sectors",
-      );
-      expect(page.text()).not.toContain("512e");
+      expect(headers(page)).not.toContain("Sectors");
+      expect(page.find("tbody").text()).not.toContain("512e");
     });
 
-    it("reveals and hides the sector column from the toolbar toggle", async () => {
+    it("shows and hides columns from the column picker", async () => {
       disks = [disk({ id: 1, alias: "K1", ...sataHdd })];
       const page = await mountSuspended(DisksPage);
-      const headers = () => page.findAll("thead th").map((th) => th.text());
-      const toggle = page.get('button[data-testid="show-sectors"]');
+      const picker = page.getComponent(InventoryColumnPicker);
+      const cardLabels = () => page.findAll("dt").map((dt) => dt.text());
+      const cardsBefore = cardLabels();
 
-      await toggle.trigger("click");
-      expect(headers()).toContain("Sectors");
-      expect(page.text()).toContain("512e");
+      picker.vm.$emit("toggle", "sectors", true);
+      picker.vm.$emit("toggle", "host", false);
+      await nextTick();
+      expect(headers(page)).toContain("Sectors");
+      expect(headers(page)).not.toContain("Host");
+      expect(page.find("tbody").text()).toContain("512e");
+      expect(cardLabels()).toEqual(cardsBefore);
 
-      await toggle.trigger("click");
-      expect(headers()).not.toContain("Sectors");
+      picker.vm.$emit("reset");
+      await nextTick();
+      expect(headers(page)).not.toContain("Sectors");
+      expect(headers(page)).toContain("Host");
     });
 
     it("filters by media, interface, recording and vendor", async () => {
@@ -241,5 +258,30 @@ describe("disks inventory page", () => {
       await filter("Filter by vendor", "-");
       expect(aliasColumn(page)).toEqual(["K3"]);
     });
+  });
+
+  it("swaps the table for cards from the view toggle", async () => {
+    disks = [disk({ id: 1, alias: "K1" })];
+    const page = await mountSuspended(DisksPage);
+    const cards = () => page.get('[data-testid="inventory-cards"]');
+
+    expect(page.find('[data-testid="inventory-table"]').exists()).toBe(true);
+    expect(cards().classes()).toContain("md:hidden");
+
+    await page.get('[data-testid="view-cards"]').trigger("click");
+    expect(page.find('[data-testid="inventory-table"]').exists()).toBe(false);
+    expect(cards().classes()).not.toContain("md:hidden");
+    expect(page.findComponent(InventoryColumnPicker).exists()).toBe(false);
+
+    await page.get('[data-testid="view-table"]').trigger("click");
+    expect(page.find('[data-testid="inventory-table"]').exists()).toBe(true);
+  });
+
+  it("renders the stored view on first load", async () => {
+    storePreferences({ view: "cards" });
+    disks = [disk({ id: 1, alias: "K1" })];
+    const page = await mountSuspended(DisksPage);
+
+    expect(page.find('[data-testid="inventory-table"]').exists()).toBe(false);
   });
 });

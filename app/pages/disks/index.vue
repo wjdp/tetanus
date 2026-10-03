@@ -37,7 +37,8 @@ onUnmounted(() => {
 
 const filters = ref<InventoryFilterState>({ ...CLEARED_FILTERS });
 
-const showSectors = ref(false);
+const { visibleColumns, setColumnVisible, resetColumns, isCustomised, view } =
+  useInventoryPreferences();
 
 const sorting = ref<SortingState>([{ id: "alias", desc: false }]);
 
@@ -160,20 +161,55 @@ const countLabel = computed(() =>
     </div>
 
     <template v-else>
-      <InventoryFilters
-        v-model="filters"
-        v-model:show-sectors="showSectors"
-        :hosts="hosts" :pools="pools" :states="states" />
+      <div class="flex items-start gap-2">
+        <InventoryFilters
+          v-model="filters"
+          :hosts="hosts"
+          :pools="pools"
+          :states="states"
+          class="min-w-0 flex-1"
+        />
+        <div class="hidden shrink-0 items-center gap-2 md:flex">
+          <InventoryColumnPicker
+            v-if="view === 'table'"
+            :visible-columns="visibleColumns"
+            :customised="isCustomised"
+            @toggle="setColumnVisible"
+            @reset="resetColumns"
+          />
+          <UFieldGroup>
+            <UButton
+              color="neutral"
+              :variant="view === 'table' ? 'subtle' : 'outline'"
+              icon="i-lucide-table-2"
+              aria-label="Table view"
+              :aria-pressed="view === 'table'"
+              data-testid="view-table"
+              @click="view = 'table'"
+            />
+            <UButton
+              color="neutral"
+              :variant="view === 'cards' ? 'subtle' : 'outline'"
+              icon="i-lucide-layout-grid"
+              aria-label="Card view"
+              :aria-pressed="view === 'cards'"
+              data-testid="view-cards"
+              @click="view = 'cards'"
+            />
+          </UFieldGroup>
+        </div>
+      </div>
       <InventoryTable
+        v-if="view === 'table'"
         v-model:sorting="sorting"
-        v-model:show-sectors="showSectors"
         :disks="visibleDisks"
+        :visible-columns="visibleColumns"
         class="hidden md:block"
       />
       <InventoryCards
         v-model:sorting="sorting"
         :disks="visibleDisks"
-        class="md:hidden"
+        :class="{ 'md:hidden': view === 'table' }"
       />
     </template>
   </AppPanel>
