@@ -1,4 +1,6 @@
-export type NavigationBadge = "faults";
+import type { NavigationCounts } from "#shared/navigation";
+
+export type NavigationBadge = keyof NavigationCounts;
 
 export interface NavigationEntry {
   label: string;
@@ -10,8 +12,13 @@ export interface NavigationEntry {
 export const NAVIGATION: NavigationEntry[] = [
   { label: "Topology", icon: "i-lucide-network", to: "/" },
   { label: "Faults", icon: "i-lucide-siren", to: "/faults", badge: "faults" },
-  { label: "Disks", icon: "i-lucide-hard-drive", to: "/disks" },
-  { label: "ZFS", icon: "i-lucide-database", to: "/zfs" },
+  {
+    label: "Disks",
+    icon: "i-lucide-hard-drive",
+    to: "/disks",
+    badge: "disks",
+  },
+  { label: "ZFS", icon: "i-lucide-database", to: "/zfs", badge: "pools" },
   { label: "Diary", icon: "i-lucide-notebook-pen", to: "/diary" },
   { label: "Settings", icon: "i-lucide-settings", to: "/settings" },
 ];

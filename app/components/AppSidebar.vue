@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { BadgeProps, NavigationMenuItem } from "@nuxt/ui";
+import type { NavigationMenuItem } from "@nuxt/ui";
 import { APP_NAME } from "#shared/app";
+import type { StatusCounts } from "#shared/navigation";
 import type { NavigationBadge } from "~/utils/navigation";
 
 const { version } = useRuntimeConfig().public;
@@ -16,26 +17,27 @@ const searchLinks: NavigationMenuItem[] = [
   },
 ];
 
-const { badge: faultBadge } = useFaults(OPEN_ERRORS_QUERY);
+const navigationCounts = useNavigationCounts();
 
-const badgeCounts = computed<Record<NavigationBadge, number>>(() => ({
-  faults: faultBadge.value,
-}));
+const countsFor = (item: NavigationMenuItem) =>
+  navigationCounts.value[item.countsKey as NavigationBadge];
 
-const toBadge = (name: NavigationBadge | undefined): BadgeProps | undefined => {
-  const count = name ? badgeCounts.value[name] : 0;
-  return count > 0
-    ? { label: String(count), color: "error", variant: "solid", size: "sm" }
-    : undefined;
+const worstColour = ({ error, warning }: StatusCounts) => {
+  if (error > 0) return "error";
+  if (warning > 0) return "warning";
+  return undefined;
 };
 
-const mainLinks = computed<NavigationMenuItem[]>(() =>
-  NAVIGATION.map(({ badge, ...entry }) => ({
-    ...entry,
-    badge: toBadge(badge),
-    exact: entry.to === "/",
-  })),
-);
+const mainLinks = (collapsed: boolean): NavigationMenuItem[] =>
+  NAVIGATION.map(({ badge, ...entry }) => {
+    const colour = badge && worstColour(navigationCounts.value[badge]);
+    return {
+      ...entry,
+      countsKey: collapsed ? undefined : badge,
+      chip: collapsed && colour ? { color: colour } : undefined,
+      exact: entry.to === "/",
+    };
+  });
 
 const navLinkUi = {
   link: "px-2 data-[active]:text-highlighted data-[active]:before:bg-accented",
@@ -82,12 +84,16 @@ const navLinkUi = {
         </template>
       </UNavigationMenu>
       <UNavigationMenu
-        :items="mainLinks"
+        :items="mainLinks(collapsed)"
         :collapsed="collapsed"
         orientation="vertical"
         tooltip
         :ui="navLinkUi"
-      />
+      >
+        <template #item-trailing="{ item }">
+          <AppNavCounts v-if="item.countsKey" :counts="countsFor(item)" />
+        </template>
+      </UNavigationMenu>
 
       <AppTaskIndicator :collapsed="collapsed" class="mt-auto" />
     </template>

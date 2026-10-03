@@ -13,11 +13,18 @@ describe("NAVIGATION", () => {
     ]);
   });
 
-  it("badges Faults with the fault count", () => {
+  it("badges Faults, Disks and ZFS with their status counts", () => {
     expect(NAVIGATION.find(({ to }) => to === "/faults")).toMatchObject({
       icon: "i-lucide-siren",
       badge: "faults",
     });
+    expect(
+      NAVIGATION.flatMap(({ to, badge }) => (badge ? [[to, badge]] : [])),
+    ).toEqual([
+      ["/faults", "faults"],
+      ["/disks", "disks"],
+      ["/zfs", "pools"],
+    ]);
   });
 });
 
