@@ -16,6 +16,19 @@ export {
   recordSyncs,
 } from "./replications/population";
 export {
+  type AssessedReplication,
+  assessReplication,
+  datasetReplications,
+  getReplication,
+  listReplications,
+  type ReplicationContext,
+  type ReplicationDetail,
+  type ReplicationSyncPage,
+  receiveSightingTimes,
+  replicationContext,
+  replicationThresholds,
+} from "./replications/queries";
+export {
   chooseSource,
   resolveReplicationSources,
 } from "./replications/sources";

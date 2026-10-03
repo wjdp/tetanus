@@ -39,6 +39,7 @@ const dataset = (
   latestSnapshotAt: null,
   snapshotCount: 0,
   depth: name.split("/").length - 1,
+  replications: [],
   ...extra,
 });
 
