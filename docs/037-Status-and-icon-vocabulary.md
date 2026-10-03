@@ -177,7 +177,7 @@ Collector version (`collectorStatus`): `current` nothing shown, `outdated` warni
 | state | severity | gutter | nav badge, banner |
 | --- | --- | --- | --- |
 | `open` | `error` | 3 px `error` left border | counted, badge `error`; banner |
-| `open` | `warning` | 3 px `warning` | not counted |
+| `open` | `warning` | 3 px `warning` | counted, badge `warning`; no banner ([048](048-Sidebar-status-counts.md)) |
 | `acknowledged` | any | 3 px `warning` | not counted |
 | `accepted` | any | none | not counted |
 | `resolved` | any | none, row at 60 % opacity, "resolved 3 d ago" | not counted |

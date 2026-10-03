@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Sidebar status counts
@@ -83,3 +83,14 @@ Badges in order red, amber, neutral. A zero count hides its badge.
 - `AppSidebar.test.ts`: mock `useNavigationCounts`; badges per entry, zeros hidden,
   order red → amber → neutral, collapsed chip colour and no chip expanded.
 - e2e: `GET /api/navigation` shape.
+
+## Built
+
+- `server/services/navigation.ts`, `GET /api/navigation`; every entry is a
+  `StatusCounts` (`shared/navigation.ts`), Faults' `neutral` always 0.
+- Disk counts read the stored `Disk.latestStatus`, so acknowledged/accepted
+  behaviour comes from `effectiveDeviceStatus`; the service test seeds statuses
+  directly rather than replaying acceptances.
+- `HISTORY_STATES` / `isHistoryState` in `shared/disk.ts`.
+- `useNavigationCounts`, `AppNavCounts`; collapsed items carry `chip` and no counts.
+- `FaultsResponse.badge` and `faultBadge()` gone.
