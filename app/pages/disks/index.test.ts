@@ -4,6 +4,8 @@ import type { VueWrapper } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 import { clearNuxtData } from "#app";
+import { NO_DISK_FAULTS } from "#shared/faults";
+import { NO_COUNTERS } from "#shared/smart/counters";
 import { CLEARED_FILTERS } from "~/components/inventory/filterDisks";
 import InventoryColumnPicker from "~/components/inventory/InventoryColumnPicker.vue";
 import InventoryFilters from "~/components/inventory/InventoryFilters.vue";
@@ -41,6 +43,8 @@ const disk = (overrides: Record<string, unknown>) => ({
   logicalBlockSize: null,
   physicalBlockSize: null,
   hardware: null,
+  counters: NO_COUNTERS,
+  faultCounts: NO_DISK_FAULTS,
   ...overrides,
 });
 

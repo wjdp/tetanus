@@ -335,5 +335,11 @@ Server half of build step 8.
 - Usage column: plain text like Pool, no badge (`usageShort`: `zfs`, `ext4 /boot`,
   dimmed `empty`, `—` unknown); the pool name is left to Pool. `usageColour`
   removed; `DiskStateControl` shows usage as plain text too.
+- Cards: fixed header plus six fields in three columns (Capacity, Media, Host,
+  Pool, Temp, Power-on); Pool falls back to Usage text and purpose badge when the
+  disk is in no pool. Interface, Recording and Warranty dropped. Attention row
+  (`InventoryCardAttention.vue`) only when something needs a look: fault badges,
+  non-passed counters labelled (`Pending 8`), warranty under
+  `WARRANTY_WARNING_DAYS` and not expired.
 - ATA SSD wear acceptance and evaluation: deferred to
   [052](052-SSD-wear-monitoring.md).

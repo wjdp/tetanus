@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { displayModel } from "#shared/model";
+import { PURPOSE_BADGE } from "~/utils/vocabulary";
 import { findColumn, INVENTORY_COLUMNS, sortDisks } from "./columns";
+import InventoryCardAttention from "./InventoryCardAttention.vue";
 import InventoryCell from "./InventoryCell.vue";
 import type { InventoryDisk, SortingState } from "./types";
 
@@ -19,15 +21,11 @@ const CARD_HEADER_COLUMNS = ["status", "state"];
 
 const CARD_FIELD_COLUMNS = [
   "capacity",
+  "media",
   "host",
   "pool",
   "temp",
   "powerOn",
-  "warranty",
-  "media",
-  "interface",
-  "recording",
-  "usage",
 ];
 
 const columnsById = (ids: string[]) =>
@@ -35,6 +33,7 @@ const columnsById = (ids: string[]) =>
 
 const headerColumns = columnsById(CARD_HEADER_COLUMNS);
 const fieldColumns = columnsById(CARD_FIELD_COLUMNS);
+const usageColumn = findColumn("usage");
 
 const sortId = computed({
   get: () => sorting.value[0]?.id ?? "alias",
@@ -113,15 +112,31 @@ const sortedDisks = computed(() => sortDisks(props.disks, sorting.value));
               v-for="column in fieldColumns"
               :key="column.id"
               class="flex min-w-0 flex-col items-start"
-              :class="{ 'col-span-3': column.id === 'usage' }"
               :data-testid="`inventory-card-${column.id}`"
             >
-              <dt class="text-dimmed text-xs">{{ column.label }}</dt>
-              <dd class="max-w-full truncate">
-                <InventoryCell :column="column" :disk="disk" :linked="false" />
-              </dd>
+              <template v-if="column.id === 'pool' && !disk.membership && usageColumn">
+                <dt class="text-dimmed text-xs">{{ usageColumn.label }}</dt>
+                <dd class="flex max-w-full min-w-0 items-center gap-1">
+                  <InventoryCell :column="usageColumn" :disk="disk" :linked="false" />
+                  <UBadge
+                    v-if="disk.purpose"
+                    v-bind="PURPOSE_BADGE[disk.purpose]"
+                    class="shrink-0"
+                    :class="{ italic: disk.purposeInferred }"
+                    :title="disk.purposeInferred ? 'Purpose inferred from usage' : undefined"
+                  />
+                </dd>
+              </template>
+              <template v-else>
+                <dt class="text-dimmed text-xs">{{ column.label }}</dt>
+                <dd class="max-w-full truncate">
+                  <InventoryCell :column="column" :disk="disk" :linked="false" />
+                </dd>
+              </template>
             </div>
           </dl>
+
+          <InventoryCardAttention :disk="disk" />
         </NuxtLink>
       </li>
     </ul>
