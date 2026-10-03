@@ -26,6 +26,26 @@ describe("diskSearchEntry", () => {
     });
   });
 
+  it("badges a disposed disk with its disposal", () => {
+    const disposed = {
+      id: 3,
+      alias: "K2",
+      model: "WDC",
+      serial: "VK0ABC",
+      disposal: { kind: "rma", on: "2026-10-02" },
+      replacedByDiskId: 9,
+    } as const;
+
+    expect(diskSearchEntry(disposed, () => "K7").badge).toMatchObject({
+      label: "RMA · replaced by K7",
+      icon: "i-lucide-package-open",
+      color: "neutral",
+    });
+    expect(
+      diskSearchEntry({ ...disposed, disposal: null }).badge,
+    ).toBeUndefined();
+  });
+
   it("drops missing parts and falls back to the id", () => {
     expect(
       diskSearchEntry({ id: 4, alias: null, model: "WDC", serial: "S1" }).label,

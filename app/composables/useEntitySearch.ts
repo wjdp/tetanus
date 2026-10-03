@@ -1,10 +1,17 @@
-import { ENTITY_ICON } from "~/utils/vocabulary";
+import type { BadgeProps } from "@nuxt/ui";
+import type { Disposal } from "#shared/disk";
+import {
+  DISPOSAL_VOCABULARY,
+  disposalLabel,
+  ENTITY_ICON,
+} from "~/utils/vocabulary";
 
 export interface EntitySearchEntry {
   id: string;
   label: string;
   icon: string;
   to: string;
+  badge?: BadgeProps;
 }
 
 interface SearchableDisk {
@@ -12,6 +19,8 @@ interface SearchableDisk {
   alias: string | null;
   model: string | null;
   serial: string | null;
+  disposal?: Disposal | null;
+  replacedByDiskId?: number | null;
 }
 
 interface SearchablePool {
@@ -23,13 +32,40 @@ interface SearchablePool {
 const joinLabel = (parts: (string | null | undefined)[]) =>
   parts.filter((part) => part).join(" · ");
 
-export function diskSearchEntry(disk: SearchableDisk): EntitySearchEntry {
+function disposalBadge(
+  disposal: Disposal,
+  replacedByDiskId: number | null,
+  aliasOf: (id: number) => string | null | undefined,
+): BadgeProps {
+  return {
+    label: disposalLabel(disposal, {
+      replacedByDiskId,
+      replacedByLabel:
+        replacedByDiskId === null ? null : aliasOf(replacedByDiskId),
+    }),
+    icon: DISPOSAL_VOCABULARY[disposal.kind].icon,
+    color: DISPOSAL_VOCABULARY[disposal.kind].colour,
+    variant: "subtle",
+  };
+}
+
+export function diskSearchEntry(
+  disk: SearchableDisk,
+  aliasOf: (id: number) => string | null | undefined = () => null,
+): EntitySearchEntry {
   return {
     id: `disk-${disk.id}`,
     label:
       joinLabel([disk.alias, disk.model, disk.serial]) || `Disk ${disk.id}`,
     icon: ENTITY_ICON.disk,
     to: `/disks/${disk.id}`,
+    ...(disk.disposal && {
+      badge: disposalBadge(
+        disk.disposal,
+        disk.replacedByDiskId ?? null,
+        aliasOf,
+      ),
+    }),
   };
 }
 
@@ -61,7 +97,10 @@ export const useEntitySearch = () => {
         $fetch("/api/disks"),
         $fetch("/api/pools"),
       ]);
-      disks.value = diskRows.map(diskSearchEntry);
+      const aliases = new Map(diskRows.map((row) => [row.id, row.alias]));
+      disks.value = diskRows.map((row) =>
+        diskSearchEntry(row, (id) => aliases.get(id)),
+      );
       pools.value = poolRows.map(poolSearchEntry);
     } catch (error) {
       console.error("Could not load disks and pools for search", error);

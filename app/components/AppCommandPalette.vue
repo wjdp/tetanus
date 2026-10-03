@@ -17,11 +17,18 @@ interface PaletteTarget {
   label: string;
   icon: string;
   to: string;
+  badge?: CommandPaletteItem["badge"];
 }
 
-const toItem = ({ label, icon, to }: PaletteTarget): CommandPaletteItem => ({
+const toItem = ({
   label,
   icon,
+  to,
+  badge,
+}: PaletteTarget): CommandPaletteItem => ({
+  label,
+  icon,
+  badge,
   onSelect: () => goTo(to),
 });
 
