@@ -7,6 +7,7 @@ export * from "./entity";
 export * from "./fault";
 export * from "./lifecycle";
 export * from "./media";
+export * from "./replication";
 export * from "./usage";
 export * from "./vdevType";
 export * from "./zfsState";

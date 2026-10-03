@@ -201,7 +201,10 @@ settings: late floor 3 h, late factor 0.5, stalled floor 2 d, stalled factor 2.
 | `archived` | neutral | hollow | marked no longer replicated, or target pool archived |
 
 Nav entry `i-lucide-arrow-right-left`, counts stalled red, late amber, the rest but
-archived neutral.
+archived neutral. Worst first: stalled, late, gone, learning, ok, archived (group
+headers). Role icons beside a dataset: `i-lucide-upload` source, `i-lucide-download`
+target, each with its status dot. Cadence reads "hourly", "~daily", "every 6 h"
+(`formatCadence`); an interval set by hand carries `i-lucide-pencil`.
 
 ## Faults (`Fault.state`, `Fault.severity`)
 
