@@ -12,3 +12,9 @@ export function displayName(disk: Nameable): string | null {
     return `${disk.hostName} · ${disk.purpose}`;
   return null;
 }
+
+export function diskLabel(
+  disk: Nameable & { id: number; serial: string | null },
+): string {
+  return displayName(disk) ?? disk.serial ?? `disk ${disk.id}`;
+}

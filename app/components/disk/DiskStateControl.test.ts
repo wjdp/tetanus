@@ -15,6 +15,7 @@ const disk = (overrides: Partial<DiskDetail>) =>
     membership: null,
     purpose: null,
     purposeInferred: false,
+    disposal: null,
     ...overrides,
   }) as unknown as DiskDetail;
 
@@ -50,6 +51,32 @@ describe("DiskStateControl", () => {
     expect(badge.html()).toContain("i-lucide:skull");
     expect(control.getComponent(LifecycleBadge).props("overridden")).toBe(true);
     expect(control.text()).toContain("inferred in-use");
+  });
+
+  it("offers no sold state, and a Dispose button beside the override", async () => {
+    const control = await mountSuspended(DiskStateControl, {
+      props: { disk: disk({}) },
+    });
+
+    expect(control.find('[data-testid="dispose-disk"]').text()).toBe(
+      "Dispose…",
+    );
+    expect(
+      control.get('[aria-label="State override"]').attributes("disabled"),
+    ).toBeUndefined();
+  });
+
+  it("is read-only while disposed", async () => {
+    const control = await mountSuspended(DiskStateControl, {
+      props: {
+        disk: disk({ disposal: { kind: "rma", on: "2026-10-02" } }),
+      },
+    });
+
+    expect(control.find('[data-testid="dispose-disk"]').exists()).toBe(false);
+    expect(
+      control.get('[aria-label="State override"]').attributes("disabled"),
+    ).toBeDefined();
   });
 
   it("shows usage as plain neutral text, dimmed when empty", async () => {

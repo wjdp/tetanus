@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
-import { displayName } from "~/components/disk/displayName";
+import { diskLabel, displayName } from "~/components/disk/displayName";
 import type { DiskDetail } from "~/components/disk/types";
 
 const route = useRoute();
@@ -21,8 +21,25 @@ const heading = computed(
 
 useSeoMeta({ title: () => getPageTitle(heading.value) });
 
+const { data: allDisks, refresh: refreshDiskList } = useDiskList();
+
+const labelOf = (id: number | null) => {
+  if (id === null) return null;
+  const found = allDisks.value.find((candidate) => candidate.id === id);
+  return found ? diskLabel(found) : null;
+};
+
+const label = computed(() =>
+  disk.value ? diskLabel(disk.value) : `disk ${diskId.value}`,
+);
+
+const disposedDisk = computed(() =>
+  disk.value?.disposal ? { ...disk.value, disposal: disk.value.disposal } : null,
+);
+
 const onUpdated = (updated: DiskDetail) => {
   disk.value = updated;
+  refreshDiskList();
 };
 </script>
 
@@ -61,11 +78,27 @@ const onUpdated = (updated: DiskDetail) => {
       </p>
 
       <template v-else>
-        <DiskNameplate :disk="disk" @updated="onUpdated" />
+        <DiskDisposalBanner
+          v-if="disposedDisk"
+          :disk="disposedDisk"
+          :label="label"
+          :replaced-by-label="labelOf(disposedDisk.replacedByDiskId)"
+          @updated="onUpdated"
+        />
+
+        <DiskNameplate
+          :disk="disk"
+          :replaces-label="labelOf(disk.replacesDiskId)"
+          @updated="onUpdated"
+        />
 
         <section class="flex flex-col gap-4">
           <h2 class="text-highlighted text-lg font-semibold">Inventory</h2>
-          <DiskInventoryForm :disk="disk" @updated="onUpdated" />
+          <DiskInventoryForm
+            :disk="disk"
+            :disks="allDisks"
+            @updated="onUpdated"
+          />
         </section>
 
         <DiskSpecs :disk="disk" />

@@ -1,9 +1,12 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { flushPromises } from "@vue/test-utils";
-import { beforeEach, describe, expect, it } from "vitest";
+import { readBody } from "h3";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearNuxtData } from "#app";
-import DiskInventoryForm from "./DiskInventoryForm.vue";
+import DiskInventoryForm, {
+  type ReplacementCandidate,
+} from "./DiskInventoryForm.vue";
 import type { DiskDetail } from "./types";
 
 const mountForm = (inventory: Record<string, unknown>, line: string | null) =>
@@ -72,5 +75,107 @@ describe("DiskInventoryForm price", () => {
     expect(form.get('input[name="purchasePrice"]').attributes("step")).toBe(
       step,
     );
+  });
+});
+
+describe("DiskInventoryForm replaces", () => {
+  const patched = vi.fn();
+  registerEndpoint("/api/disks/7", {
+    method: "PATCH",
+    handler: async (event) => {
+      patched(await readBody(event));
+      return { id: 7 };
+    },
+  });
+
+  const candidate = (overrides: Partial<ReplacementCandidate>) => ({
+    id: 1,
+    alias: null,
+    serial: null,
+    hostName: null,
+    purpose: null,
+    disposal: null,
+    replacedByDiskId: null,
+    inventory: {},
+    ...overrides,
+  });
+
+  const rma = { kind: "rma", on: "2026-10-02" } as const;
+
+  const DISKS = [
+    candidate({
+      id: 4,
+      alias: "K1",
+      disposal: rma,
+      inventory: { warrantyExpiry: "2027-05-01" },
+    }),
+    candidate({ id: 5, alias: "K3", disposal: rma, replacedByDiskId: 9 }),
+    candidate({
+      id: 6,
+      alias: "K4",
+      disposal: { kind: "sold", on: "2026-09-01" },
+    }),
+    candidate({ id: 7, alias: "K7" }),
+  ];
+
+  const mountWith = (replacesDiskId: number | null) =>
+    mountSuspended(DiskInventoryForm, {
+      props: {
+        disk: {
+          id: 7,
+          alias: "K7",
+          notes: "",
+          media: "hdd",
+          vendor: "seagate",
+          inventory: {},
+          ageDays: null,
+          warrantyDaysLeft: null,
+          specs: null,
+          replacesDiskId,
+        } as unknown as DiskDetail,
+        disks: DISKS,
+      },
+      attachTo: document.body,
+    });
+
+  it("lists RMA'd disks not yet replaced", async () => {
+    const form = await mountWith(null);
+
+    await form.get('button[aria-label="Replaces"]').trigger("keydown", {
+      key: "Enter",
+    });
+    await flushPromises();
+
+    expect(
+      [...document.body.querySelectorAll('[role="option"]')].map((option) =>
+        option.textContent?.trim(),
+      ),
+    ).toEqual(["—", "K1"]);
+    form.unmount();
+  });
+
+  it("offers the replaced disk's warranty and saves the link", async () => {
+    const form = await mountWith(4);
+    const copy = '[data-testid="warranty-copy"]';
+
+    expect(form.get(copy).text()).toBe("Copy warranty from K1");
+    await form.get(`${copy} button`).trigger("click");
+
+    expect(
+      (form.get('input[name="warrantyExpiry"]').element as HTMLInputElement)
+        .value,
+    ).toBe("2027-05-01");
+    expect(form.find(copy).exists()).toBe(false);
+
+    await form.get("form").trigger("submit");
+    await vi.waitFor(() =>
+      expect(patched).toHaveBeenCalledWith(
+        expect.objectContaining({
+          replacesDiskId: 4,
+          inventory: expect.objectContaining({ warrantyExpiry: "2027-05-01" }),
+        }),
+      ),
+    );
+    form.unmount();
   });
 });

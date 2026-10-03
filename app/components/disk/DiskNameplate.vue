@@ -6,7 +6,10 @@ import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary"
 import { displayName } from "./displayName";
 import type { DiskDetail } from "./types";
 
-const props = defineProps<{ disk: DiskDetail }>();
+const props = withDefaults(
+  defineProps<{ disk: DiskDetail; replacesLabel?: string | null }>(),
+  { replacesLabel: null },
+);
 defineEmits<{ updated: [disk: DiskDetail] }>();
 
 const name = computed(() => displayName(props.disk));
@@ -76,6 +79,20 @@ const facts = computed(() => [
           <span v-if="disk.serial" class="text-default font-mono">
             · {{ disk.serial }}
           </span>
+        </p>
+        <p
+          v-if="disk.replacesDiskId"
+          class="text-muted flex items-center gap-1.5 text-sm"
+          data-testid="nameplate-replaces"
+        >
+          <UIcon name="i-lucide-replace" class="size-4" />
+          Replaces
+          <NuxtLink
+            :to="`/disks/${disk.replacesDiskId}`"
+            class="text-default hover:text-primary font-medium"
+          >
+            {{ replacesLabel ?? `disk ${disk.replacesDiskId}` }}
+          </NuxtLink>
         </p>
       </div>
       <div class="flex flex-col items-end gap-2">

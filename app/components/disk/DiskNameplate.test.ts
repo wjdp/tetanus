@@ -48,6 +48,21 @@ const smartStatus = '[data-testid="nameplate-smart-status"]';
 const temperature = '[data-testid="nameplate-temperature"]';
 
 describe("DiskNameplate", () => {
+  it("links the disk it replaces", async () => {
+    const nameplate = await mountSuspended(DiskNameplate, {
+      props: { disk: disk({ replacesDiskId: 4 }), replacesLabel: "K1" },
+    });
+
+    const replaces = nameplate.get('[data-testid="nameplate-replaces"]');
+    expect(replaces.text()).toBe("Replaces K1");
+    expect(replaces.get("a").attributes("href")).toBe("/disks/4");
+    expect(
+      (await mountNameplate())
+        .find('[data-testid="nameplate-replaces"]')
+        .exists(),
+    ).toBe(false);
+  });
+
   it.each([
     ["passed", "success", "filled", "SMART passed"],
     ["warning", "warning", "filled", "SMART warning"],

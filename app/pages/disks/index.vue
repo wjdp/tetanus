@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
-import { displayName } from "~/components/disk/displayName";
+import { diskLabel } from "~/components/disk/displayName";
 import {
   disksInScope,
   filterDisks,
@@ -44,10 +44,7 @@ const countLabel = computed(() =>
 const diskLabels = computed(
   () =>
     new Map(
-      allDisks.value.map((disk) => [
-        disk.id,
-        displayName(disk) ?? disk.serial ?? `disk ${disk.id}`,
-      ]),
+      allDisks.value.map((disk) => [disk.id, diskLabel(disk)]),
     ),
 );
 </script>
