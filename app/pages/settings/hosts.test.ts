@@ -2,6 +2,7 @@
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
 import { nextTick } from "vue";
+import { COLLECTOR_VERSION } from "#shared/collector";
 import HostsPage from "./hosts.vue";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -36,7 +37,7 @@ const host = (
 });
 
 registerEndpoint("/api/hosts", () => [
-  host(1, "mars", "0.3.1", {
+  host(1, "mars", COLLECTOR_VERSION, {
     "zpool-status": { receivedAt: hoursAgo(0), ok: true },
     "smartctl-xall": { receivedAt: hoursAgo(3), ok: true },
   }),
@@ -46,7 +47,7 @@ registerEndpoint("/api/hosts", () => [
   host(
     5,
     "bench",
-    "0.3.1",
+    COLLECTOR_VERSION,
     { "zpool-status": { receivedAt: hoursAgo(24 * 9), ok: true } },
     true,
   ),
@@ -67,7 +68,7 @@ describe("hosts page", () => {
     const page = await mountSuspended(HostsPage);
 
     expect(rowText(page, "mars")).not.toContain("available");
-    expect(rowText(page, "pihost")).toContain("0.3.1 available");
+    expect(rowText(page, "pihost")).toContain(`${COLLECTOR_VERSION} available`);
     expect(rowText(page, "venus")).toContain("needs 0.3.0+");
     expect(rowText(page, "ceres")).toContain("unknown");
   });
