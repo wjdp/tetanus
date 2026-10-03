@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Currency setting
@@ -42,7 +42,7 @@ convert (copy on the setting says so).
 
 - Settings › General: currency `USelectMenu`, searchable, items from
   `Intl.supportedValuesOf("currency")` with `Intl.DisplayNames` names
-  (`GBP — British pound`).
+  (`GBP: British pound`).
 - `DiskInventoryForm`: leading symbol and `step` from the setting.
 - 050 Price and price-per-TB columns use `formatMoney`.
 
@@ -53,6 +53,19 @@ convert (copy on the setting says so).
 - Settings schema: default applied to old config; invalid code rejected.
 - Settings page: saving currency patches config.
 - Inventory form: symbol follows setting.
+
+## As built
+
+- `useSettings()` wraps `useFetch("/api/settings", { key: "settings" })`;
+  `useCurrency()` reads from it. Home and Settings › General use it; Settings ›
+  Alerts still has its own unkeyed fetch (not shared).
+- `shared/money.ts` also exports `DEFAULT_CURRENCY`, `isSupportedCurrency`,
+  `moneyPerTb` (number, for sorting), `moneyPerTbLabel` and `currencyItems`
+  (select items; Node ICU names read `GBP: British Pound`).
+  `formatMoneyPerTb` takes a nullable amount and returns `null` without price or
+  capacity. TB is decimal (1e12 bytes).
+- Settings › General gains a Display section above Collectors; the select saves
+  on change, toast on failure.
 
 ## Questions
 
