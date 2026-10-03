@@ -1,6 +1,7 @@
 // @vitest-environment nuxt
 import { mountSuspended } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
+import { INVENTORY_COLUMNS } from "./columns";
 import InventoryTable from "./InventoryTable.vue";
 import type { InventoryDisk } from "./types";
 
@@ -37,8 +38,15 @@ const disk = (overrides: Partial<InventoryDisk>): InventoryDisk => ({
   ...overrides,
 });
 
-const mountTable = (disks: InventoryDisk[]) =>
-  mountSuspended(InventoryTable, { props: { disks } });
+const ALL_COLUMNS = new Set(INVENTORY_COLUMNS.map(({ id }) => id));
+
+const mountTable = (
+  disks: InventoryDisk[],
+  visibleColumns: ReadonlySet<string> = ALL_COLUMNS,
+) => mountSuspended(InventoryTable, { props: { disks, visibleColumns } });
+
+const headers = (table: Awaited<ReturnType<typeof mountTable>>) =>
+  table.findAll("thead th").map((th) => th.text());
 
 describe("InventoryTable", () => {
   it("draws the media glyph for hdd and ssd, nothing for unknown", async () => {
@@ -103,14 +111,40 @@ describe("InventoryTable", () => {
     expect(table.get("tbody tr").text()).toContain("sys");
   });
 
+  describe("column visibility", () => {
+    it("renders only the visible columns, in registry order", async () => {
+      const table = await mountTable(
+        [disk({ id: 1 })],
+        new Set(["alias", "temp", "capacity"]),
+      );
+
+      expect(headers(table)).toEqual(["Alias", "Capacity", "Temp"]);
+      expect(table.findAll("tbody tr td")).toHaveLength(3);
+    });
+
+    it("always shows the locked alias column", async () => {
+      const table = await mountTable([disk({ id: 1 })], new Set(["temp"]));
+
+      expect(headers(table)).toEqual(["Alias", "Temp"]);
+    });
+
+    it("shows the default columns when none are given", async () => {
+      const table = await mountSuspended(InventoryTable, {
+        props: { disks: [disk({ id: 1 })] },
+      });
+
+      expect(headers(table)).toContain("Warranty");
+      expect(headers(table)).not.toContain("Sectors");
+    });
+  });
+
   describe("empty cells", () => {
     const cellText = (
       table: Awaited<ReturnType<typeof mountTable>>,
       header: string,
       row = 0,
     ) => {
-      const headers = table.findAll("thead th").map((th) => th.text());
-      const index = headers.indexOf(header);
+      const index = headers(table).indexOf(header);
       expect(index).toBeGreaterThanOrEqual(0);
       return table.findAll("tbody tr")[row].findAll("td")[index].text();
     };
@@ -129,6 +163,32 @@ describe("InventoryTable", () => {
       ]);
 
       expect(cellText(table, "Recording")).toBe("—");
+    });
+
+    it("dims a dash in every column with no value", async () => {
+      const table = await mountTable([
+        disk({
+          id: 1,
+          alias: null,
+          model: null,
+          capacityBytes: null,
+          hostName: null,
+          latestTemp: null,
+          latestPowerOnHours: null,
+          ageDays: null,
+          warrantyDaysLeft: null,
+        }),
+      ]);
+      const emptyHeaders = headers(table).filter(
+        (header) => !["Usage", "State", "Status"].includes(header),
+      );
+
+      for (const header of emptyHeaders) {
+        expect(cellText(table, header), header).toBe("—");
+      }
+      expect(
+        table.findAll("tbody td .text-dimmed").length,
+      ).toBeGreaterThanOrEqual(emptyHeaders.length);
     });
   });
 });

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { TEMPERATURE_DEFAULTS } from "#shared/temperature";
 import { UNKNOWN_USAGE } from "#shared/usage";
-import { SORT_FIELDS, sortDisks } from "./inventorySort";
+import {
+  DEFAULT_VISIBLE_COLUMNS,
+  findColumn,
+  INVENTORY_COLUMNS,
+  sortDisks,
+} from "./columns";
 import type { InventoryDisk } from "./types";
 
 const disk = (
@@ -71,13 +76,12 @@ describe("sortDisks", () => {
 describe("pin33 field", () => {
   const taped = disk(1, { inventory: { pin33Taped: true } });
   const untaped = disk(2, { inventory: { pin33Taped: false } });
-  const unset = disk(3);
+  const unset = disk(3, {});
 
   it("is null unless taped", () => {
-    expect(
-      SORT_FIELDS.find(({ id }) => id === "pin33")?.value(untaped),
-    ).toBeNull();
-    expect(SORT_FIELDS.find(({ id }) => id === "pin33")?.value(taped)).toBe(1);
+    expect(findColumn("pin33")?.value(untaped)).toBeNull();
+    expect(findColumn("pin33")?.value(unset)).toBeNull();
+    expect(findColumn("pin33")?.value(taped)).toBe(1);
   });
 
   it("sorts untaped last in both directions", () => {
@@ -89,7 +93,7 @@ describe("pin33 field", () => {
 });
 
 const fieldValue = (id: string, target: InventoryDisk) =>
-  SORT_FIELDS.find((field) => field.id === id)?.value(target);
+  findColumn(id)?.value(target);
 
 describe("pool and usage fields", () => {
   const member = disk(1, {
@@ -109,7 +113,7 @@ describe("pool and usage fields", () => {
   });
 
   it("orders usage directly after pool", () => {
-    const ids = SORT_FIELDS.map(({ id }) => id);
+    const ids = INVENTORY_COLUMNS.map(({ id }) => id);
     expect(ids.indexOf("usage")).toBe(ids.indexOf("pool") + 1);
   });
 
@@ -171,5 +175,19 @@ describe("hardware sorting", () => {
     expect(
       ids(sortDisks(recording, [{ id: "recording", desc: true }])),
     ).toEqual([2, 1]);
+  });
+});
+
+describe("INVENTORY_COLUMNS", () => {
+  it("has unique ids", () => {
+    const ids = INVENTORY_COLUMNS.map(({ id }) => id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("shows locked columns by default", () => {
+    for (const { id } of INVENTORY_COLUMNS.filter(({ locked }) => locked)) {
+      expect(DEFAULT_VISIBLE_COLUMNS.has(id)).toBe(true);
+    }
+    expect(findColumn("alias")?.locked).toBe(true);
   });
 });
