@@ -38,9 +38,13 @@ beforeEach(() => {
   useToast().clear();
 });
 
-const mountModal = (id = 7, disposal: object | null = null) =>
+const mountModal = (id = 7, disposal: object | null = null, present = false) =>
   mountSuspended(DiskDisposeModal, {
-    props: { disk: { id, disposal } as never, label: "K2", open: true },
+    props: {
+      disk: { id, disposal, present, hostName: "mars" } as never,
+      label: "K2",
+      open: true,
+    },
     attachTo: document.body,
   });
 
@@ -95,6 +99,34 @@ describe("DiskDisposeModal", () => {
         disposal: { kind: "rma", on: "2026-10-02" },
       }),
     );
+  });
+
+  it("warns and refuses to submit while the disk is still attached", async () => {
+    await mountModal(7, null, true);
+    await flushPromises();
+
+    expect(
+      document.querySelector('[data-testid="dispose-still-attached"]')
+        ?.textContent,
+    ).toContain("K2 is still attached to mars");
+    expect(
+      document.querySelector<HTMLButtonElement>(
+        'button[form="disk-dispose-form"]',
+      )?.disabled,
+    ).toBe(true);
+
+    form()?.requestSubmit();
+    await flushPromises();
+    expect(patched).not.toHaveBeenCalled();
+  });
+
+  it("lets an existing disposal be edited while the disk is attached", async () => {
+    await mountModal(7, { kind: "rma", on: "2026-10-02" }, true);
+    await flushPromises();
+
+    expect(
+      document.querySelector('[data-testid="dispose-still-attached"]'),
+    ).toBeNull();
   });
 
   it("surfaces the server's refusal", async () => {

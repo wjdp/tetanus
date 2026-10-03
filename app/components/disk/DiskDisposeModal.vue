@@ -6,7 +6,7 @@ import { localToday } from "./disposal";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{
-  disk: Pick<DiskDetail, "id" | "disposal">;
+  disk: Pick<DiskDetail, "id" | "disposal" | "present" | "hostName">;
   label: string;
 }>();
 
@@ -47,7 +47,12 @@ const disposal = computed<Disposal>(() => {
     : { kind: kind.value, on: on.value };
 });
 
+const stillAttached = computed(
+  () => props.disk.disposal === null && props.disk.present,
+);
+
 const submit = async () => {
+  if (stillAttached.value) return;
   saving.value = true;
   try {
     const updated = await $fetch<DiskDetail>(`/api/disks/${props.disk.id}`, {
@@ -75,6 +80,16 @@ const submit = async () => {
     description="Hidden from lists and topology. The disk page, SMART history and diary stay."
   >
     <template #body>
+      <UAlert
+        v-if="stillAttached"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-plug"
+        :title="`${label} is still attached to ${disk.hostName ?? 'a host'}`"
+        description="Remove it from the host before disposing of it."
+        class="mb-4"
+        data-testid="dispose-still-attached"
+      />
       <form
         id="disk-dispose-form"
         class="flex flex-col gap-4 text-sm"
@@ -127,6 +142,7 @@ const submit = async () => {
           :icon="DISPOSAL_VOCABULARY[kind].icon"
           :label="disk.disposal ? 'Save' : 'Dispose'"
           :loading="saving"
+          :disabled="stillAttached"
         />
       </div>
     </template>
