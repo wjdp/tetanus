@@ -7,6 +7,7 @@ import { parse as vdevIdConf } from "./vdev-id-conf";
 import { parse as versions } from "./versions";
 import { parse as zedEvent } from "./zed-event";
 import { parse as zfsList } from "./zfs-list";
+import { parse as zfsReceives } from "./zfs-receives";
 import { parse as zfsSnapshots } from "./zfs-snapshots";
 import { parse as zpoolEvents } from "./zpool-events";
 import { parse as zpoolHistory } from "./zpool-history";
@@ -25,6 +26,7 @@ export const PARSERS: Record<IngestSource, Parser<unknown>> = {
   "zfs-list": zfsList,
   "zfs-snapshots": zfsSnapshots,
   "zpool-history": zpoolHistory,
+  "zfs-receives": zfsReceives,
   "zpool-events": zpoolEvents,
   "zed-event": zedEvent,
 };

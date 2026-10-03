@@ -232,7 +232,7 @@ author's day; none blocks another except where noted.
 9. Ingest auth: bearer enrol token required from day one, plus `Tetanus-Host`.
    Multi-host from day one; no local producer in v1.
 10. Scrutiny reuse: (b), parse smartctl JSON in TS server-side; (a) stays under Later.
-11. Collector cadence: ZFS every 10 min, SMART hourly, snapshots every 6 h; three timers,
+11. Collector cadence: ZFS every 10 min, SMART hourly, snapshots hourly (6 h until [015](015-Replication-health.md)); three timers,
     one template unit. Collector stays bash until it needs per-device config.
 12. `zpool iostat` dropped from v1.
 

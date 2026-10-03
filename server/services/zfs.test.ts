@@ -15,6 +15,7 @@ import {
 } from "~~/server/database/schema";
 import type { IngestContext } from "~~/server/ingest/handlers";
 import { parse as parseZedEvent } from "~~/server/ingest/zed-event";
+import { parse as parseZfsReceives } from "~~/server/ingest/zfs-receives";
 import type { ZfsEvent } from "~~/server/ingest/zfsEvent";
 import { parse as parseZpoolEvents } from "~~/server/ingest/zpool-events";
 import { parse as parseZpoolHistory } from "~~/server/ingest/zpool-history";
@@ -935,6 +936,33 @@ describe("zpool-history", () => {
       .get();
     expect(db.select().from(poolHistory).all()).toMatchObject([
       { poolId: tankRow?.id, text: "zpool scrub tank" },
+    ]);
+  });
+
+  it("stores zfs-receives alongside zpool-history without duplicates", () => {
+    run("zpool-status", marsStatus());
+    const receive =
+      "2026-10-02.06:00:12 [txg:5632348] finish receiving tank/copies/zeta/q/%recv (812) snap=autosnap_2026-10-02_00:00:02_daily   [on mars]";
+    run(
+      "zpool-history",
+      parseZpoolHistory(`History for 'tank':\n${receive}\n`, {}).data,
+    );
+    run(
+      "zfs-receives",
+      parseZfsReceives(`History for 'tank':\n${receive}\n`, {}).data,
+    );
+    const tankRow = db
+      .select()
+      .from(pool)
+      .where(eq(pool.guid, TANK_GUID))
+      .get();
+    expect(db.select().from(poolHistory).all()).toMatchObject([
+      {
+        poolId: tankRow?.id,
+        at: new Date("2026-10-02T06:00:12Z"),
+        internal: true,
+        text: "finish receiving tank/copies/zeta/q/%recv (812) snap=autosnap_2026-10-02_00:00:02_daily",
+      },
     ]);
   });
 });

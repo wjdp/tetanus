@@ -22,7 +22,7 @@ describe("collectorStatus", () => {
     ["0.1.12", "incompatible"],
     [MIN_COLLECTOR_VERSION, "outdated"],
     [COLLECTOR_VERSION, "current"],
-    ["0.3.10", "current"],
+    ["0.4.10", "current"],
     ["1.0.0", "current"],
   ] as const)("%s is %s", (version, status) => {
     expect(collectorStatus(version)).toBe(status);

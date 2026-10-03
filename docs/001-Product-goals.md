@@ -94,7 +94,7 @@ After v1, in [004](004-Project-plan.md) §After v1:
 | Home screen | Pool topology |
 | Host actions | Read-only in v1 |
 | vdev_id.conf | Read + propose, never write |
-| SMART cadence | Hourly, keep every reading. ZFS every 10 min, snapshots every 6 h |
+| SMART cadence | Hourly, keep every reading. ZFS every 10 min, snapshots hourly |
 | Warranty | Expiry date entered by hand |
 | Scrutiny code reuse | Vendor metadata; parse smartctl JSON in TS server-side. Running their collector is a Later option |
 | Chart library | Decide later |

@@ -105,6 +105,7 @@ export const ZFS_HANDLERS: Partial<Record<IngestSource, IngestHandler<any>>> = {
   "zpool-events": zpoolEvents,
   "zed-event": zedEvent,
   "zpool-history": zpoolHistory,
+  "zfs-receives": zpoolHistory,
   "zfs-list": zfsList,
   "zfs-snapshots": zfsSnapshots,
 };

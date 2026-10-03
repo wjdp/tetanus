@@ -18,6 +18,7 @@ export interface ZfsSnapshotsResult {
 
 function parseJson(body: string): Record<string, unknown> {
   if (body.trim() === "") throw new ParseError("Empty zfs-snapshots body");
+  // Collectors before 0.4.0 send numeric guids, which JSON.parse rounds above 2^53.
   const withStringGuids = body.replace(
     /("guid":\s*\{\s*"value":\s*)(\d+)(?=[,}\s])/g,
     '$1"$2"',
@@ -52,6 +53,9 @@ function propertyValue(
   return toNumber(property.value, label);
 }
 
+/** `zfs list --json-int` saturates guids ≥ 2^63 to this (collectors before 0.4.0). */
+const SATURATED_GUID = "9223372036854775807";
+
 function guidValue(
   properties: Record<string, unknown>,
   label: string,
@@ -59,6 +63,7 @@ function guidValue(
   const property = properties.guid as Record<string, unknown> | undefined;
   if (!property) return null;
   const { value } = property;
+  if (value === SATURATED_GUID) return null;
   if (typeof value === "string" && /^\d+$/.test(value)) return value;
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
     return String(value);

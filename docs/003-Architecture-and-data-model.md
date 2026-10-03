@@ -62,8 +62,9 @@ Sources (v1):
 | `zpool-status` | `zpool status -j --json-flat-vdevs --json-int -Ppvs` (no `-L`: it resolves `by-vdev` paths to `/dev/sdX` and drops `guid`, `path`, `devid`, `state` from leaf vdevs; verified on OpenZFS 2.4.1) |
 | `zpool-list` | `zpool list -j --json-int -pv` |
 | `zfs-list` | `zfs list -j --json-int -p -t filesystem,volume -o <cols>` |
-| `zfs-snapshots` | `zfs list -j --json-int -p -t snapshot -o name,guid,used,referenced,written,creation -s creation` |
-| `zpool-history` | `zpool history -il \| tail -n 500` |
+| `zfs-snapshots` | `zfs list -j -p -t snapshot -o name,guid,used,referenced,written,creation -s creation` (no `--json-int`: it saturates u64 guids at INT64_MAX; values arrive as strings) |
+| `zpool-history` | per pool from `zpool list -H -o name`: `History for '<pool>':` then `TZ=UTC zpool history -il <pool> \| tail -n 500` |
+| `zfs-receives` | as `zpool-history`, piped through `grep -E 'finish receiving \|zfs (recv\|receive) ' \| tail -n 2000` instead of the tail ([015](015-Replication-health.md)) |
 | `zpool-events` | `zpool events -vH` (poll) |
 | `zed-event` | ZED hook posts `KEY=value` lines for every `ZEVENT_*` env var (push) |
 

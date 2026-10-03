@@ -44,15 +44,18 @@ It then enables the timers, restarts ZED and runs a `--dry-run` as a smoke check
 
 | timer | when | sources |
 | --- | --- | --- |
-| `tetanus-collect-zfs` | every 10 min | `versions`, `zpool-status`, `zpool-list`, `zfs-list`, `zpool-history`, `zpool-events`, `vdev-id-conf` |
+| `tetanus-collect-zfs` | every 10 min | `versions`, `zpool-status`, `zpool-list`, `zfs-list`, `zpool-history`, `zfs-receives`, `zpool-events`, `vdev-id-conf` |
 | `tetanus-collect-smart` | hourly | `lsblk`, `udev` (per disk), `smartctl-scan`, `smartctl-xall` (per scanned device) |
-| `tetanus-collect-snapshots` | every 6 h | `zfs-snapshots` |
+| `tetanus-collect-snapshots` | hourly | `zfs-snapshots` |
 | ZED hook | every ZFS event | `zed-event` |
 
 Each source is one command whose stdout is POSTed to `/api/ingest/<source>`:
 
 - `zpool status -j --json-flat-vdevs --json-int -Ppvs`, `zpool list -j --json-int -pv`,
-  `zfs list -j --json-int -p …`, `zpool history -il | tail -n 500`, `zpool events -vH`
+  `zfs list -j --json-int -p …` (snapshots without `--json-int`), `zpool events -vH`
+- `zpool history -il <pool>` per pool in UTC, under a `History for '<pool>':` header:
+  tailed to 500 lines (`zpool-history`), and filtered to receive lines with `grep`
+  (`zfs-receives`)
 - `cat /etc/zfs/vdev_id.conf`, `lsblk -J -b -o …`, `cat /run/udev/data/b<maj>:<min>`
 - `smartctl --scan --json`, then `smartctl --xall --json -n standby [-d <type>] <device>`
   per device; `-n standby` leaves sleeping disks asleep, and the exit status (a

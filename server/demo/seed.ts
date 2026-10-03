@@ -258,6 +258,10 @@ const IDEMPOTENT_SOURCES = new Set<IngestSource>([
   "lsblk",
   "udev",
 ]);
+const HISTORY_SOURCES = new Set<IngestSource>([
+  "zpool-history",
+  "zfs-receives",
+]);
 const HISTORY_HEADER = /^History for '[^']+':$/;
 const HISTORY_TIMESTAMP = /^\d{4}-\d{2}-\d{2}\.\d{2}:\d{2}:\d{2} /;
 
@@ -304,16 +308,17 @@ function unseenHistory(body: string, seen: Set<string>): string | null {
  */
 function replayTrimmer() {
   const lastBodies = new Map<string, string>();
-  const seenHistory = new Map<HostName, Set<string>>();
+  const seenHistory = new Map<string, Set<string>>();
   return (
     hostName: HostName,
     payloads: HostPayload[],
     { xallForAll, isLast }: { xallForAll: boolean; isLast: boolean },
   ): HostPayload[] =>
     payloads.flatMap((posted): HostPayload[] => {
-      const seen = seenHistory.get(hostName) ?? new Set<string>();
-      seenHistory.set(hostName, seen);
-      if (posted.source === "zpool-history") {
+      if (HISTORY_SOURCES.has(posted.source)) {
+        const historyKey = `${hostName}|${posted.source}`;
+        const seen = seenHistory.get(historyKey) ?? new Set<string>();
+        seenHistory.set(historyKey, seen);
         const unseen = unseenHistory(posted.body, seen);
         if (isLast) return [posted];
         return unseen === null ? [] : [{ ...posted, body: unseen }];

@@ -5,7 +5,7 @@ import type { DemoWorld } from "./world";
 import { hostPoolsAt, txgAt } from "./zfsCommon";
 import { type SnapshotActivity, snapshotActivity } from "./zfsDatasets";
 
-/** The collector pipes `zpool history -il` through `tail -n 500`. */
+/** The collector pipes each pool's `zpool history -il` through `tail -n 500`. */
 export const HISTORY_TAIL_LINES = 500;
 
 const INITIAL_WINDOW_MS = 2 * DAY_MS;
@@ -124,39 +124,63 @@ function poolItems(
   );
 }
 
-/** One pool's block of `zpool history -il`, trimmed to what a `tail` of `budget` lines keeps. */
-function poolBlock(
+function poolLines(
+  world: DemoWorld,
+  host: HostModel,
+  pool: PoolModel,
+  from: Date,
+  t: Date,
+) {
+  return poolItems(world, host, pool, from, t).flatMap((item) => item.lines);
+}
+
+/** One pool's `zpool history -il <pool>` piped through `tail -n 500`. */
+function poolTail(
   world: DemoWorld,
   host: HostModel,
   pool: PoolModel,
   t: Date,
-  budget: number,
 ): string[] {
   for (let window = INITIAL_WINDOW_MS; ; window *= 4) {
     const from = new Date(ms(t) - window);
     const complete = ms(from) < ms(pool.createdAt);
-    const lines = poolItems(world, host, pool, from, t).flatMap(
-      (item) => item.lines,
-    );
-    const block = complete
-      ? [`History for '${pool.name}':`, ...lines, ""]
-      : [...lines, ""];
-    if (complete || block.length >= budget) return block.slice(-budget);
+    const lines = poolLines(world, host, pool, from, t);
+    if (complete || lines.length >= HISTORY_TAIL_LINES) {
+      return lines.slice(-HISTORY_TAIL_LINES);
+    }
   }
 }
+
+const header = (pool: PoolModel) => `History for '${pool.name}':`;
+
+const RECEIVE_LINE = /finish receiving |zfs (recv|receive) /;
+
+/** The collector greps each pool's whole history for receives and keeps the last 2000. */
+export const RECEIVES_TAIL_LINES = 2000;
+const RECEIVES_WINDOW_MS = 14 * DAY_MS;
 
 export function renderZpoolHistory(
   world: DemoWorld,
   host: HostModel,
   t: Date,
 ): string {
-  const blocks: string[][] = [];
-  let budget = HISTORY_TAIL_LINES;
-  for (const pool of hostPoolsAt(world, host, t).reverse()) {
-    if (budget <= 0) break;
-    const block = poolBlock(world, host, pool, t, budget);
-    blocks.unshift(block);
-    budget -= block.length;
-  }
-  return `${blocks.flat().join("\n")}\n`;
+  return `${hostPoolsAt(world, host, t)
+    .flatMap((pool) => [header(pool), ...poolTail(world, host, pool, t)])
+    .join("\n")}\n`;
+}
+
+export function renderZfsReceives(
+  world: DemoWorld,
+  host: HostModel,
+  t: Date,
+): string {
+  const from = new Date(ms(t) - RECEIVES_WINDOW_MS);
+  return `${hostPoolsAt(world, host, t)
+    .flatMap((pool) => [
+      header(pool),
+      ...poolLines(world, host, pool, from, t)
+        .filter((line) => RECEIVE_LINE.test(line))
+        .slice(-RECEIVES_TAIL_LINES),
+    ])
+    .join("\n")}\n`;
 }

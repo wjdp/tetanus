@@ -71,9 +71,19 @@ capture() {
 capture_tail() {
   local name=$1 lines=$2
   shift 2
+  mkdir -p "$(dirname "$raw/$name")"
   "$@" 2>"$raw/$name.stderr" | tail -n "$lines" >"$raw/$name.txt"
   local status=${PIPESTATUS[0]}
   record "$name" "$status" "$(quote_argv "$@") | tail -n $lines"
+}
+
+capture_receives() {
+  local name=$1
+  shift
+  mkdir -p "$(dirname "$raw/$name")"
+  "$@" 2>"$raw/$name.stderr" | grep -E 'finish receiving |zfs (recv|receive) ' | tail -n 2000 >"$raw/$name.txt"
+  local status=${PIPESTATUS[0]}
+  record "$name" "$status" "$(quote_argv "$@") | grep -E 'finish receiving |zfs (recv|receive) ' | tail -n 2000"
 }
 
 capture zfs-version txt zfs version
@@ -90,9 +100,13 @@ capture zpool-list json zpool list -j --json-int -pv
 capture zpool-iostat txt zpool iostat -vpl 1 2
 capture zfs-list json zfs list -j --json-int -p -t filesystem,volume \
   -o name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
-capture zfs-snapshots json zfs list -j --json-int -p -t snapshot \
+capture zfs-snapshots json zfs list -j -p -t snapshot \
   -o name,guid,used,referenced,written,creation -s creation
-capture_tail zpool-history 500 zpool history -il
+capture zpool-names txt zpool list -H -o name
+while IFS= read -r pool; do
+  TZ=UTC capture_tail "zpool-history/$pool" 500 zpool history -il "$pool"
+  TZ=UTC capture_receives "zfs-receives/$pool" zpool history -il "$pool"
+done <"$raw/zpool-names.txt"
 capture zpool-events txt zpool events -vH
 
 capture vdev-id-conf txt cat /etc/zfs/vdev_id.conf

@@ -54,10 +54,44 @@ test_token_never_on_the_command_line() {
   assert_not_contains "$(<"$STUB_LOG")" "$test_token"
 }
 
-test_zpool_history_is_tailed() {
+test_zpool_history_is_per_pool_in_utc_with_headers() {
   run_collect --dry-run --only zpool-history
-  assert_eq "$(grep '^zpool ' "$STUB_LOG")" "zpool history -il"
-  assert_eq "$(manifest_argv zpool-history)" "zpool history -il | tail -n 500"
+  assert_eq "$status" 0
+  assert_eq "$(grep 'zpool ' "$STUB_LOG")" \
+    $'zpool list -H -o name\nTZ=UTC zpool history -il tank\nTZ=UTC zpool history -il zeta'
+  assert_contains "$output" "History for 'tank':"
+  assert_contains "$output" "History for 'zeta':"
+  local tank_lines
+  tank_lines=$(sed -n "/^History for 'tank':$/,/^History for 'zeta':$/p" <<<"$output" | wc -l)
+  ((tank_lines <= 502)) || fail "tank history not tailed: $tank_lines lines"
+}
+
+test_zpool_history_skipped_without_pools() {
+  rm "$test_dir/bin/zpool"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"$test_dir/bin/zpool"
+  chmod +x "$test_dir/bin/zpool"
+  run_collect --dry-run --only zpool-history
+  assert_eq "$status" 0
+  assert_contains "$errors" "zpool-history: skipped, no pools"
+  assert_eq "$(dry_run_posts)" ""
+}
+
+test_receive_lines_keeps_receives_only() {
+  # shellcheck source=host/tetanus-collect
+  source "$collector"
+  local history
+  history=$(cat <<'HISTORY'
+History for 'vpool':
+2026-10-02.22:00:19 zfs receive -s -F vpool/zeta/q [user 0 (root) on vault:linux]
+2026-10-02.22:00:19 (362ms) ioctl receive
+    input:
+        snapname: 'vpool/zeta/q@syncoid_vault_2026-10-02:23:00:19-GMT01:00'
+2026-10-02.22:00:19 [txg:85264673] finish receiving vpool/zeta/q/%recv (52213) snap=syncoid_vault_2026-10-02:23:00:19-GMT01:00 [on vault]
+2026-10-02.22:00:20 zfs destroy vpool/zeta/q@syncoid_vault_2026-10-02:22:00:19-GMT01:00 [user 0 (root) on vault:linux]
+HISTORY
+  )
+  assert_eq "$(receive_lines <<<"$history")" \
+    "$(sed -n '2p;6p' <<<"$history")"
 }
 
 test_full_run_matches_every_manifest_argv() {
@@ -70,14 +104,14 @@ test_full_run_matches_every_manifest_argv() {
   assert_eq "$(grep -c '/udev?' <<<"$posts")" "$disks"
   assert_eq "$(grep -c '/smartctl-xall?' <<<"$posts")" 20
   assert_eq "$(sed 's/?.*//; s|.*/||' <<<"$posts" | uniq | paste -sd ' ')" \
-    "versions zpool-status zpool-list zfs-list zfs-snapshots zpool-history zpool-events vdev-id-conf lsblk udev smartctl-scan smartctl-xall"
+    "versions zpool-status zpool-list zfs-list zfs-snapshots zpool-history zfs-receives zpool-events vdev-id-conf lsblk udev smartctl-scan smartctl-xall"
 }
 
 test_groups_select_their_sources() {
   local group expected
   for group in zfs smart snapshots; do
     case $group in
-      zfs) expected="versions zpool-status zpool-list zfs-list zpool-history zpool-events vdev-id-conf" ;;
+      zfs) expected="versions zpool-status zpool-list zfs-list zpool-history zfs-receives zpool-events vdev-id-conf" ;;
       smart) expected="lsblk udev smartctl-scan smartctl-xall" ;;
       snapshots) expected="zfs-snapshots" ;;
     esac

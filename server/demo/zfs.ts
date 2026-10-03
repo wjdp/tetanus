@@ -4,7 +4,7 @@ import type { DemoWorld } from "./world";
 import { hostPoolsAt } from "./zfsCommon";
 import { renderZfsList, renderZfsSnapshots, snapshotsAt } from "./zfsDatasets";
 import { renderZpoolEvents } from "./zpoolEvents";
-import { renderZpoolHistory } from "./zpoolHistory";
+import { renderZfsReceives, renderZpoolHistory } from "./zpoolHistory";
 import { renderZpoolList, renderZpoolStatus } from "./zpoolStatus";
 
 const payload = (source: IngestSource, body: string): HostPayload => ({
@@ -40,6 +40,7 @@ export function renderZfs(
         ]
       : []),
     payload("zpool-history", renderZpoolHistory(world, host, t)),
+    payload("zfs-receives", renderZfsReceives(world, host, t)),
     ...(events === null ? [] : [payload("zpool-events", events)]),
   ];
 }

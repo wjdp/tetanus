@@ -14,7 +14,7 @@ describe("recordIngest", () => {
   });
 
   it.each([
-    ["tetanus-collect/0.3.1", "0.3.1", "current"],
+    ["tetanus-collect/0.4.0", "0.4.0", "current"],
     ["tetanus-zed/0.3.1", null, "unknown"],
     [null, null, "unknown"],
   ])("takes the collector version from %s", (producer, version, status) => {

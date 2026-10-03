@@ -65,6 +65,7 @@ const ZFS_SOURCES = [
   "zfs-list",
   "zfs-snapshots",
   "zpool-history",
+  "zfs-receives",
   "zpool-events",
 ];
 
@@ -97,10 +98,29 @@ describe("renderZfs", () => {
     );
   });
 
-  it("keeps the last 500 lines of zpool history", () => {
+  it("keeps the last 500 lines of each pool's history under its header", () => {
     for (const model of fleet.hosts) {
-      const lines = payloadOf(model.name, "zpool-history").body.split("\n");
-      expect(lines.length - 1).toBeLessThanOrEqual(HISTORY_TAIL_LINES);
+      const blocks = payloadOf(model.name, "zpool-history")
+        .body.trimEnd()
+        .split(/^(?=History for ')/m);
+      for (const block of blocks) {
+        const [first, ...rest] = block.trimEnd().split("\n");
+        expect(first).toMatch(/^History for '[^']+':$/);
+        expect(rest.length).toBeLessThanOrEqual(HISTORY_TAIL_LINES);
+      }
+    }
+  });
+
+  it("posts only receive lines in zfs-receives", () => {
+    for (const model of fleet.hosts) {
+      const lines = payloadOf(model.name, "zfs-receives")
+        .body.trimEnd()
+        .split("\n");
+      for (const line of lines) {
+        expect(line).toMatch(
+          /^History for '|finish receiving |zfs (recv|receive) /,
+        );
+      }
     }
   });
 });

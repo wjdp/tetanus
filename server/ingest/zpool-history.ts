@@ -8,7 +8,10 @@ export interface ZpoolHistoryUser {
 
 export interface ZpoolHistoryEntry {
   pool: string | null;
-  /** ISO string built by treating the local `YYYY-MM-DD.HH:MM:SS` timestamp as UTC. */
+  /**
+   * ISO string built by treating the `YYYY-MM-DD.HH:MM:SS` timestamp as UTC. Collector
+   * 0.4.0 runs `zpool history` with `TZ=UTC`; older collectors sent host local time.
+   */
   at: string;
   /** The timestamp exactly as printed. */
   timestamp: string;
@@ -49,10 +52,13 @@ function isoFromLocalTimestamp(
   ).toISOString();
 }
 
-export const parse: Parser<ZpoolHistoryResult> = (body) => {
+export function parseHistory(
+  body: string,
+  { source, allowEmpty }: { source: string; allowEmpty: boolean },
+) {
   const normalised = body.replace(/\r\n/g, "\n");
-  if (normalised.trim() === "") {
-    throw new ParseError("Empty zpool-history body");
+  if (normalised.trim() === "" && !allowEmpty) {
+    throw new ParseError(`Empty ${source} body`);
   }
 
   const entries: ZpoolHistoryEntry[] = [];
@@ -157,8 +163,8 @@ export const parse: Parser<ZpoolHistoryResult> = (body) => {
   }
   flush();
 
-  if (entries.length === 0) {
-    throw new ParseError("No zpool-history entries found");
+  if (entries.length === 0 && !allowEmpty) {
+    throw new ParseError(`No ${source} entries found`);
   }
 
   const pools = new Set(
@@ -166,4 +172,7 @@ export const parse: Parser<ZpoolHistoryResult> = (body) => {
   ).size;
 
   return { data: { entries }, summary: { entries: entries.length, pools } };
-};
+}
+
+export const parse: Parser<ZpoolHistoryResult> = (body) =>
+  parseHistory(body, { source: "zpool-history", allowEmpty: false });

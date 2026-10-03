@@ -17,7 +17,7 @@ export interface HostPayloads {
 }
 
 /**
- * How `host/tetanus-collect` 0.3.0 posts each source, so renderers build the same `meta`.
+ * How `host/tetanus-collect` 0.4.0 posts each source, so renderers build the same `meta`.
  * `zed-event` is push-only (ZED hook) and the demo does not produce it.
  */
 export const SOURCE_META = {
@@ -26,7 +26,9 @@ export const SOURCE_META = {
   "zpool-list": "none",
   "zfs-list": "none",
   "zfs-snapshots": "none",
-  "zpool-history": "none",
+  "zpool-history":
+    "none; one `History for '<pool>':` block per pool, timestamps in UTC",
+  "zfs-receives": "none; as zpool-history, receive lines only",
   "zpool-events": "none",
   "vdev-id-conf": "none; only on hosts with vdevIdConf, otherwise not posted",
   lsblk:

@@ -48,6 +48,64 @@ describe("zfs-snapshots parser", () => {
     expect(parse(body, {}).data.snapshots[0].guid).toBe("17747342225710399424");
   });
 
+  it("reads the string form zfs prints without --json-int", () => {
+    const body = JSON.stringify({
+      output_version: { command: "zfs list", vers_major: 0, vers_minor: 1 },
+      datasets: {
+        "tank/a@autosnap_2025-10-01_00:00:07_monthly": {
+          name: "tank/a@autosnap_2025-10-01_00:00:07_monthly",
+          type: "SNAPSHOT",
+          pool: "tank",
+          createtxg: "5632348",
+          dataset: "tank/a",
+          snapshot_name: "autosnap_2025-10-01_00:00:07_monthly",
+          properties: {
+            guid: {
+              value: "18101820395123456789",
+              source: { type: "NONE", data: "-" },
+            },
+            used: { value: "1024", source: { type: "NONE", data: "-" } },
+            referenced: { value: "2048", source: { type: "NONE", data: "-" } },
+            written: { value: "512", source: { type: "NONE", data: "-" } },
+            creation: {
+              value: "1759276807",
+              source: { type: "NONE", data: "-" },
+            },
+          },
+        },
+      },
+    });
+    expect(parse(body, {}).data.snapshots[0]).toMatchObject({
+      guid: "18101820395123456789",
+      used: 1024,
+      referenced: 2048,
+      written: 512,
+      creation: 1759276807,
+    });
+  });
+
+  it.each([
+    ["numeric", "9223372036854775807"],
+    ["string", '"9223372036854775807"'],
+  ])("treats a %s guid saturated at INT64_MAX as null", (_, guid) => {
+    const body = `{
+      "output_version": {"command": "zfs list", "vers_major": 0, "vers_minor": 1},
+      "datasets": {
+        "tank/a@s1": {
+          "name": "tank/a@s1",
+          "properties": {
+            "guid": {"value": ${guid}},
+            "used": {"value": 10},
+            "referenced": {"value": 20},
+            "written": {"value": 5},
+            "creation": {"value": 1700000000}
+          }
+        }
+      }
+    }`;
+    expect(parse(body, {}).data.snapshots[0].guid).toBeNull();
+  });
+
   it("treats a missing guid as null", () => {
     const withoutGuid = fixture("zfs-snapshots.json").replace(
       /"guid":\s*\{[^}]*\{[^}]*\}\s*\},?/g,

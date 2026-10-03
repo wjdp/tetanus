@@ -119,6 +119,7 @@ restart_zed() {
 install_collector() {
   local unit
   command -v curl >/dev/null || die "curl is required"
+  command -v grep >/dev/null || die "grep is required"
   command -v zpool >/dev/null || say "warning: zpool not found; ZFS sources will be skipped"
   command -v smartctl >/dev/null || say "warning: smartctl not found; SMART sources will be skipped"
 

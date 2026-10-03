@@ -19,6 +19,7 @@ export const SOURCE_GROUPS: readonly SourceGroup[] = [
       "zpool-list",
       "zfs-list",
       "zpool-history",
+      "zfs-receives",
       "zpool-events",
       "vdev-id-conf",
     ],
@@ -32,7 +33,7 @@ export const SOURCE_GROUPS: readonly SourceGroup[] = [
   {
     name: "snapshots",
     sources: ["zfs-snapshots"],
-    cadenceMs: 6 * 60 * 60 * 1000,
+    cadenceMs: 60 * 60 * 1000,
   },
 ];
 

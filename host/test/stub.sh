@@ -7,7 +7,7 @@ set -uo pipefail
 
 name=${0##*/}
 argv="$name $*"
-printf '%s\n' "$argv" >>"$STUB_LOG"
+printf '%s\n' "${TZ:+TZ=$TZ }$argv" >>"$STUB_LOG"
 
 replay() {
   local fixture=$STUB_FIXTURES/$1 ext
@@ -22,8 +22,15 @@ while IFS=$'\t' read -r fixture _ recorded; do
   [[ ${recorded% | tail -n *} == "$argv" ]] && replay "$fixture"
 done <"$STUB_FIXTURES/manifest.txt"
 
+# Until mars is re-captured with collector 0.4.0's commands (docs/015-Replication-health.md).
 case $argv in
   "zpool version") replay zfs-version ;;
+  "zpool list -H -o name")
+    printf 'tank\nzeta\n'
+    exit 0
+    ;;
+  "zpool history -il "*) replay zpool-history ;;
+  "zfs list -j -p -t snapshot "*) replay zfs-snapshots ;;
   cat*)
     command -p cat "$@"
     exit

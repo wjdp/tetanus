@@ -34,5 +34,18 @@ post zpool-list "" "$m/zpool-list.json"
 post zfs-list "" "$m/zfs-list.json"
 post zfs-snapshots "" "$m/zfs-snapshots.json"
 post zpool-events "" "$m/zpool-events.txt"
-post zpool-history "" "$m/zpool-history.txt"
+# Captures from collector 0.4.0 on are per pool, each file a pool's tail without its header.
+per_pool_history() {
+  local file
+  for file in "$1"/*.txt; do
+    printf "History for '%s':\n" "$(basename "$file" .txt)"
+    cat "$file"
+  done
+}
+if [[ -d $m/zpool-history ]]; then
+  post zpool-history "" <(per_pool_history "$m/zpool-history")
+  post zfs-receives "" <(per_pool_history "$m/zfs-receives")
+else
+  post zpool-history "" "$m/zpool-history.txt"
+fi
 post zpool-events "" "$fixtures/events/q2-failure-2025-05.txt"

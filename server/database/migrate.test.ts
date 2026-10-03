@@ -34,7 +34,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 23;
+const MIGRATION_COUNT = 24;
 
 const openConnections: Database.Database[] = [];
 
@@ -161,7 +161,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 6
+            ORDER BY created_at DESC LIMIT 7
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -182,6 +182,7 @@ describe("0009_host_collector_version", () => {
       "0020_pool_archive",
       "0021_disk_ata_ssd_attributes",
       "0022_disk_disposal",
+      "0023_guid_saturation_and_unattributed_history",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -238,7 +239,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 14
+            ORDER BY created_at DESC LIMIT 15
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -265,6 +266,7 @@ describe("0009_host_collector_version", () => {
       "0020_pool_archive",
       "0021_disk_ata_ssd_attributes",
       "0022_disk_disposal",
+      "0023_guid_saturation_and_unattributed_history",
     ]);
     expect(
       sqlite
@@ -295,7 +297,7 @@ describe("0018_vdev_role_backfill", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 5
+            ORDER BY created_at DESC LIMIT 6
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -317,6 +319,7 @@ describe("0018_vdev_role_backfill", () => {
       "0020_pool_archive",
       "0021_disk_ata_ssd_attributes",
       "0022_disk_disposal",
+      "0023_guid_saturation_and_unattributed_history",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -344,7 +347,7 @@ describe("0022_disk_disposal", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY created_at DESC LIMIT 2
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -359,7 +362,10 @@ describe("0022_disk_disposal", () => {
                 '{"from":"spare","to":"sold"}');
     `);
 
-    expect(runMigrations(sqlite, db).applied).toEqual(["0022_disk_disposal"]);
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0022_disk_disposal",
+      "0023_guid_saturation_and_unattributed_history",
+    ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
       (
@@ -394,6 +400,45 @@ describe("0022_disk_disposal", () => {
         disposal: null,
         replacesDiskId: null,
       },
+    ]);
+  });
+});
+
+describe("0023_guid_saturation_and_unattributed_history", () => {
+  it("nulls saturated snapshot guids and drops history with no pool", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DELETE FROM __drizzle_migrations
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 1
+        );
+      INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
+      INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
+        VALUES (1, '1', 'tank', 'ONLINE', 0, 0);
+      INSERT INTO Dataset (poolId, name, type, used, referenced, available, creation,
+                           firstSeenAt, lastSeenAt)
+        VALUES (1, 'tank', 'filesystem', 0, 0, 0, 0, 0, 0);
+      INSERT INTO Snapshot (datasetId, name, guid, used, referenced, written, creation,
+                            lastSeenAt)
+        VALUES (1, 'a', '9223372036854775807', 0, 0, 0, 0, 0),
+               (1, 'b', '18101820395123456789', 0, 0, 0, 0, 0);
+      INSERT INTO PoolHistory (hostId, poolId, at, internal, text)
+        VALUES (1, NULL, 0, 0, 'unattributed'), (1, 1, 0, 0, 'attributed');
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0023_guid_saturation_and_unattributed_history",
+    ]);
+    expect(
+      sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),
+    ).toEqual([
+      { name: "a", guid: null },
+      { name: "b", guid: "18101820395123456789" },
+    ]);
+    expect(sqlite.prepare("SELECT text FROM PoolHistory").all()).toEqual([
+      { text: "attributed" },
     ]);
   });
 });

@@ -145,7 +145,7 @@ describe("cadence overrides", () => {
     const lastRuns = {
       "zpool-status": at(90 * 60_000),
       lsblk: at(90 * 60_000),
-      "zfs-snapshots": at(5 * 60 * 60_000),
+      "zfs-snapshots": at(50 * 60_000),
     };
     expect(
       allGroupFreshness(lastRuns, now).map((group) => group.status),

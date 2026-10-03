@@ -13,6 +13,7 @@ export const INGEST_SOURCES = [
   "zfs-list",
   "zfs-snapshots",
   "zpool-history",
+  "zfs-receives",
   "zpool-events",
   "zed-event",
 ] as const;

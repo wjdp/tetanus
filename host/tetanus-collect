@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-readonly version=0.3.1
+readonly version=0.4.0
 readonly default_config=/etc/tetanus/collect.env
 readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
 readonly sources=(
@@ -19,6 +19,7 @@ readonly sources=(
   zfs-list
   zfs-snapshots
   zpool-history
+  zfs-receives
   zpool-events
   vdev-id-conf
   lsblk
@@ -26,7 +27,7 @@ readonly sources=(
   smartctl-scan
   smartctl-xall
 )
-readonly zfs_group=(versions zpool-status zpool-list zfs-list zpool-history zpool-events vdev-id-conf)
+readonly zfs_group=(versions zpool-status zpool-list zfs-list zpool-history zfs-receives zpool-events vdev-id-conf)
 readonly smart_group=(lsblk udev smartctl-scan smartctl-xall)
 readonly snapshots_group=(zfs-snapshots)
 
@@ -247,15 +248,44 @@ collect_zfs_list() {
   collect zfs-list "" zfs list -j --json-int -p -t filesystem,volume -o "$zfs_list_columns"
 }
 
+# No --json-int: it saturates u64 guids at INT64_MAX; without it every value is a string.
 collect_zfs_snapshots() {
-  collect zfs-snapshots "" zfs list -j --json-int -p -t snapshot \
+  collect zfs-snapshots "" zfs list -j -p -t snapshot \
     -o name,guid,used,referenced,written,creation -s creation
 }
 
+# history_per_pool <source> <filter...>: each pool's `zpool history -il` in UTC under its
+# own header, so a tail never cuts the header or lets one pool crowd out another.
+history_per_pool() {
+  local source=$1 body=$workdir/$1.out pools pool status
+  shift
+  : >"$body"
+  pools=$(zpool list -H -o name </dev/null)
+  status=$?
+  if [[ $status -eq 0 && -z $pools ]]; then
+    log "$source: skipped, no pools"
+    return 0
+  fi
+  while IFS= read -r pool; do
+    [[ -n $pool ]] || continue
+    printf "History for '%s':\n" "$pool" >>"$body"
+    TZ=UTC zpool history -il "$pool" </dev/null | "$@" >>"$body"
+    local codes=("${PIPESTATUS[@]}")
+    ((codes[0] == 0)) || status=${codes[0]}
+  done <<<"$pools"
+  submit "$source" "" "$status" "$body"
+}
+
 collect_zpool_history() {
-  local body=$workdir/zpool-history.out
-  zpool history -il </dev/null | tail -n 500 >"$body"
-  submit zpool-history "" "${PIPESTATUS[0]}" "$body"
+  history_per_pool zpool-history tail -n 500
+}
+
+receive_lines() {
+  grep -E 'finish receiving |zfs (recv|receive) ' | tail -n 2000
+}
+
+collect_zfs_receives() {
+  history_per_pool zfs-receives receive_lines
 }
 
 collect_zpool_events() {
@@ -359,6 +389,7 @@ run_source() {
     zfs-list) collect_zfs_list ;;
     zfs-snapshots) collect_zfs_snapshots ;;
     zpool-history) collect_zpool_history ;;
+    zfs-receives) collect_zfs_receives ;;
     zpool-events) collect_zpool_events ;;
     vdev-id-conf) collect_vdev_id_conf ;;
     lsblk) collect_lsblk ;;
