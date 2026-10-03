@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: in-progress
 ---
 
 # Disk disposal
@@ -224,6 +224,25 @@ replaces link).
 - Existing tests relying on a `sold` state move to disposal: `fleet.test.ts`,
   `seed.seeded.test.ts`, `simulator/run.seeded.test.ts`, `navigation.test.ts`,
   `groupDisks.test.ts`, `DiskRail.test.ts`, `test/api/disks.e2e.test.ts`.
+
+## As built
+
+Browser check pending. Deviations from the contract above:
+
+- `DiskSummary` also carries `replacedByDiskId` (reverse of `replacesDiskId`).
+- Any non-null `disposal` in a patch writes a `disposed` entry, unchanged or not: that
+  is the re-confirm. The banner has Edit…, Undo disposal and (while seen) Re-confirm.
+- Sold titles include the date: `sold for £40.00 on 2026-10-02`.
+- `AlertDisk` gains `disposal` rather than a `disposed` boolean (the detail needs the
+  kind).
+- Fault resolution reason travels as `FaultScan.withdrawn`; backfill tracks history
+  and disposed disks separately.
+- Replaces picker is saved with the inventory form; it shows only when candidates
+  exist.
+- Demo: W1 sold, A18 RMA'd (new inventory-only disk), A6 its replacement.
+- Not handled: `poolFaults.ts` still counts a disposed `missing` disk among missing
+  pool members; `detectIdentityConflicts` still runs on disposed disks (their alerts
+  are dropped).
 
 ## Out of scope
 
