@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { UNKNOWN_USAGE } from "#shared/usage";
 import { db } from "~~/server/database/client";
@@ -9,10 +9,13 @@ import {
   diaryEntry,
   disk,
   diskKey,
+  fault,
   pool,
+  smartAttribute,
   vdev,
 } from "~~/server/database/schema";
 import { parse as parseSmartctl } from "~~/server/ingest/smartctl-xall";
+import { acceptFault } from "~~/server/services/acceptance";
 import { listDiary } from "~~/server/services/diary";
 import {
   type DiskRow,
@@ -28,6 +31,7 @@ import {
 import { DRIVE_DB_SNAPSHOT } from "~~/server/services/drive-db/lookup";
 import { updateHost, upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
+import { reapplySmartPolicy } from "~~/server/services/smartPolicy";
 import { archivePool } from "~~/server/services/zfs";
 import { flushDb } from "~~/test/db";
 import { replayBundle } from "~~/test/diagnostics";
@@ -1178,5 +1182,122 @@ describe.each([
       seenAtPlus(DAY_MS + 3 * HOUR_MS),
     );
     expect(await stateOf(seenAtPlus(DAY_MS + 3 * HOUR_MS))).toBe("missing");
+  });
+});
+
+describe("health counters and fault counts", () => {
+  const SDB = readFixture("mars/smartctl/xall-sdb-auto.json");
+  const SDB_SERIAL = JSON.parse(SDB).serial_number as string;
+
+  beforeEach(() => {
+    flushDb();
+  });
+
+  async function summaryOf(diskId: number) {
+    const summary = (await listDisks(seenAt)).find((row) => row.id === diskId);
+    if (!summary) throw new Error(`disk ${diskId} not listed`);
+    return summary;
+  }
+
+  function insertFault(
+    subjectId: number,
+    key: string,
+    state: (typeof fault.$inferInsert)["state"],
+    severity: (typeof fault.$inferInsert)["severity"],
+    subjectType: (typeof fault.$inferInsert)["subjectType"] = "disk",
+  ) {
+    db.insert(fault)
+      .values({
+        kind: "smart-attribute",
+        category: "disk",
+        subjectType,
+        subjectId,
+        key,
+        severity,
+        openedAt: seenAt,
+        lastSeenAt: seenAt,
+        resolvedAt: state === "resolved" ? seenAt : null,
+        state,
+        stateChangedAt: seenAt,
+      })
+      .run();
+  }
+
+  it("follows a policy re-apply and an acceptance without an ingest", async () => {
+    ingest("smartctl-xall", SDB, "/dev/sdb");
+    const { id } = diskBySerial(SDB_SERIAL);
+    expect((await summaryOf(id)).counters.reallocated).toEqual({
+      value: 0,
+      status: "passed",
+    });
+
+    db.update(smartAttribute)
+      .set({ rawValue: 400, rawString: "400" })
+      .where(and(eq(smartAttribute.diskId, id), eq(smartAttribute.attrId, "5")))
+      .run();
+    reapplySmartPolicy(seenAt);
+    const reapplied = (await summaryOf(id)).counters.reallocated;
+    expect(reapplied?.value).toBe(400);
+    expect(reapplied?.status).not.toBe("passed");
+
+    acceptFault({ diskId: id, attrId: "5", now: seenAt });
+    expect((await summaryOf(id)).counters.reallocated).toEqual({
+      value: 400,
+      status: "accepted",
+    });
+  });
+
+  it("reads counters from the newest reading, not the last inserted", async () => {
+    const older = JSON.parse(SDB);
+    older.ata_smart_attributes.table.find(
+      (row: { id: number }) => row.id === 5,
+    ).raw = { value: 7, string: "7" };
+    ingest("smartctl-xall", SDB, "/dev/sdb");
+    ingest(
+      "smartctl-xall",
+      JSON.stringify(older),
+      "/dev/sdb",
+      "mars",
+      new Date(seenAt.getTime() - 60 * 60 * 1000),
+    );
+    const { id } = diskBySerial(SDB_SERIAL);
+    expect((await summaryOf(id)).counters.reallocated?.value).toBe(0);
+  });
+
+  it("has null counters for a disk with no reading", async () => {
+    ingestLsblk();
+    const [first] = await listDisks(seenAt);
+    expect(first.counters).toEqual({
+      reallocated: null,
+      pending: null,
+      uncorrectable: null,
+      wearPercent: null,
+      bytesWritten: null,
+      bytesWrittenInferred: false,
+    });
+    expect(first.faultCounts).toEqual({
+      error: 0,
+      warning: 0,
+      acknowledged: 0,
+    });
+  });
+
+  it("counts live disk faults: open by severity, acknowledged of any severity", async () => {
+    ingest("smartctl-xall", SDB, "/dev/sdb");
+    const { id } = diskBySerial(SDB_SERIAL);
+    insertFault(id, "a", "open", "error");
+    insertFault(id, "b", "open", "error");
+    insertFault(id, "c", "open", "warning");
+    insertFault(id, "d", "acknowledged", "warning");
+    insertFault(id, "e", "acknowledged", "error");
+    insertFault(id, "f", "accepted", "error");
+    insertFault(id, "g", "resolved", "error");
+    insertFault(id, "h", "open", "error", "pool");
+
+    expect((await summaryOf(id)).faultCounts).toEqual({
+      error: 2,
+      warning: 1,
+      acknowledged: 2,
+    });
   });
 });

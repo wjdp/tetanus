@@ -230,7 +230,9 @@ Disk            id, alias? (unique), scrutinyUuid, model, modelFull, serial, fir
                 rotationRate, protocol (ata|nvme|scsi), transport, formFactor,
                 firstSeenAt, lastSeenAt, lastSeenHostId, lastDevicePath, lastDeviceType,
                 stateOverride?, notes (md), inventory (json, see below), latestRaw (json),
-                latestStatus, latestTemp, latestPowerOnHours, latestPowerCycles
+                latestStatus, latestTemp, latestPowerOnHours, latestPowerCycles,
+                ataSsdAttributes? (json: { wear: attrId?, written: { attrId, unitBytes,
+                inferred }? }, SATA SSD attribute ids by smartctl name, set at ingest)
 DiskKey         diskId, kind, value            unique(kind, value)
 SmartReading    id, diskId, hostId, takenAt, devicePath, deviceType, smartPassed, exitStatus,
                 temp, powerOnHours, powerCycles, deviceStatus

@@ -367,3 +367,15 @@ export interface FaultsResponse {
   faults: FaultView[];
   counts: FaultCounts;
 }
+
+export interface DiskFaultCounts {
+  error: number;
+  warning: number;
+  acknowledged: number;
+}
+
+export const NO_DISK_FAULTS: DiskFaultCounts = {
+  error: 0,
+  warning: 0,
+  acknowledged: 0,
+};

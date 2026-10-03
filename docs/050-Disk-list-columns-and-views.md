@@ -269,3 +269,41 @@ Sort for all: numeric, nulls last. HDDs have no wear; SSDs no pending: `—`.
 - e2e `GET /api/disks` carries `latestCounters` and fault counts.
 
 
+
+## As built: server columns
+
+Server half of build step 8. UI columns not yet built.
+
+- `DiskSummary.counters: DiskCounters` and `faultCounts: DiskFaultCounts`, also on
+  `getDisk` (shared `summarise`). `ataSsdAttributes` rides along from the row.
+  ```ts
+  interface StatusCounter { value: number; status: AttributeDisplayStatus }
+  interface DiskCounters {
+    reallocated: StatusCounter | null;
+    pending: StatusCounter | null;
+    uncorrectable: StatusCounter | null;
+    wearPercent: StatusCounter | null;
+    bytesWritten: number | null;
+    bytesWrittenInferred: boolean;
+  }
+  interface DiskFaultCounts { error: number; warning: number; acknowledged: number }
+  ```
+- Latest reading is the newest `takenAt` (id breaks ties), a correlated subquery per
+  disk on `SmartReading_diskId_takenAt_idx`, not `max(id)`: scrutiny imports insert
+  older readings after newer ones. Agrees with `latestReading`.
+- `countersFrom(rows, ataSsdAttributes, acceptances)`: no protocol argument, the
+  counter ids are disjoint across protocols, so disks with no known protocol still
+  get counters; acceptances passed in to keep it pure.
+- Colour uses `AttributeDisplayStatus`, so "error" is `failed`. Worst-of ranks
+  `passed < accepted < acknowledged < warning < failed`.
+- Wear: ≥ 80 % `warning`, ≥ 100 % `failed` for both protocols. NVMe takes the worse
+  of that and the attribute's status, unless the attribute is accepted or
+  acknowledged, which stands. ATA wear has thresholds only, no overlay, clamped at 0.
+- Written: ATA attribute `241` only, unit from its smartctl name; Intel's duplicate
+  `233 Total_LBAs_Written` is ignored. No block size → 512, inferred.
+- Ingest writes `ataSsdAttributes` on every latest reading, `null` when not a SATA
+  SSD, so a reclassified disk does not keep stale ids.
+- Backfill `backfillAtaSsdAttributesOnce` runs synchronously in the migrate plugin
+  after `applySmartPolicyIfStale` (parsing tens of `latestRaw` is quick), gated by
+  `config.ataSsdAttributesBackfilledAt`; not a queued task.
+- e2e asserts `counters`, not `latestCounters`.

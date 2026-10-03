@@ -1,4 +1,14 @@
-import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  sql,
+} from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/sqlite-core";
 import type {
   DiskKey,
@@ -8,6 +18,11 @@ import type {
   EffectiveDiskState,
 } from "#shared/disk";
 import {
+  type DiskFaultCounts,
+  LIVE_FAULT_STATES,
+  NO_DISK_FAULTS,
+} from "#shared/faults";
+import {
   interfaceLabel,
   type SectorFormat,
   sectorFormat,
@@ -16,6 +31,13 @@ import type { IngestMeta } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
 import { resolveModelShort } from "#shared/model";
 import type { DiskPatch } from "#shared/schemas/disks";
+import {
+  counterAttributeIds,
+  countersFrom,
+  type DiskCounters,
+  NO_COUNTERS,
+} from "#shared/smart/counters";
+import type { AcceptedLevel } from "#shared/smart/status";
 import {
   resolveTemperatureThresholds,
   type TemperatureThresholds,
@@ -28,7 +50,17 @@ import {
 } from "#shared/usage";
 import { detectVendor } from "#shared/vendor";
 import { db } from "~~/server/database/client";
-import { disk, diskKey, host, pool, vdev } from "~~/server/database/schema";
+import {
+  disk,
+  diskKey,
+  fault,
+  faultAcceptance,
+  host,
+  pool,
+  smartAttribute,
+  smartReading,
+  vdev,
+} from "~~/server/database/schema";
 import type { LsblkResult } from "~~/server/ingest/lsblk";
 import type { SmartctlXallResult } from "~~/server/ingest/smartctl-xall";
 import type { UdevResult } from "~~/server/ingest/udev";
@@ -126,6 +158,8 @@ export interface DiskSummary
   stateAsOf: Date | null;
   modelShort: string | null;
   tempThresholds: TemperatureThresholds;
+  counters: DiskCounters;
+  faultCounts: DiskFaultCounts;
 }
 
 export interface DiskDetail extends DiskSummary {
@@ -661,6 +695,121 @@ function diskIdsInPools(): Set<number> {
   return new Set(rows.map((row) => row.diskId as number));
 }
 
+function latestReadingIdOf(diskId: typeof disk.id) {
+  return db
+    .select({ id: smartReading.id })
+    .from(smartReading)
+    .where(eq(smartReading.diskId, diskId))
+    .orderBy(desc(smartReading.takenAt), desc(smartReading.id))
+    .limit(1);
+}
+
+function latestCounterAttributes(rows: DiskRow[]) {
+  const attrIds = new Set(
+    rows.flatMap((row) => counterAttributeIds(row.ataSsdAttributes)),
+  );
+  const latestReadingIds = db
+    .select({ id: sql<number>`(${latestReadingIdOf(disk.id)})` })
+    .from(disk)
+    .where(
+      inArray(
+        disk.id,
+        rows.map((row) => row.id),
+      ),
+    );
+  return db
+    .select({
+      diskId: smartAttribute.diskId,
+      attrId: smartAttribute.attrId,
+      value: smartAttribute.value,
+      transformedValue: smartAttribute.transformedValue,
+      status: smartAttribute.status,
+    })
+    .from(smartAttribute)
+    .where(
+      and(
+        inArray(smartAttribute.readingId, latestReadingIds),
+        inArray(smartAttribute.attrId, [...attrIds]),
+      ),
+    )
+    .all();
+}
+
+function activeAcceptancesOf(diskIds: number[]) {
+  const rows = db
+    .select({
+      diskId: faultAcceptance.diskId,
+      attrId: faultAcceptance.attrId,
+      kind: faultAcceptance.kind,
+      acceptedValue: faultAcceptance.acceptedValue,
+    })
+    .from(faultAcceptance)
+    .where(
+      and(
+        inArray(faultAcceptance.diskId, diskIds),
+        isNull(faultAcceptance.supersededAt),
+        isNull(faultAcceptance.clearedAt),
+      ),
+    )
+    .orderBy(asc(faultAcceptance.id))
+    .all();
+  const byDisk = new Map<number, Map<string, AcceptedLevel>>();
+  for (const { diskId, attrId, ...level } of rows) {
+    const levels = byDisk.get(diskId) ?? new Map<string, AcceptedLevel>();
+    levels.set(attrId, level);
+    byDisk.set(diskId, levels);
+  }
+  return byDisk;
+}
+
+function countersOf(rows: DiskRow[]): Map<number, DiskCounters> {
+  if (rows.length === 0) return new Map();
+  const attributesByDisk = Map.groupBy(
+    latestCounterAttributes(rows),
+    (attribute) => attribute.diskId,
+  );
+  const acceptances = activeAcceptancesOf(rows.map((row) => row.id));
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      countersFrom(
+        attributesByDisk.get(row.id) ?? [],
+        row.ataSsdAttributes,
+        acceptances.get(row.id) ?? new Map(),
+      ),
+    ]),
+  );
+}
+
+function faultCountsOf(diskIds: number[]): Map<number, DiskFaultCounts> {
+  if (diskIds.length === 0) return new Map();
+  const rows = db
+    .select({
+      diskId: fault.subjectId,
+      state: fault.state,
+      severity: fault.severity,
+      total: count(),
+    })
+    .from(fault)
+    .where(
+      and(
+        eq(fault.subjectType, "disk"),
+        inArray(fault.subjectId, diskIds),
+        inArray(fault.state, LIVE_FAULT_STATES),
+      ),
+    )
+    .groupBy(fault.subjectId, fault.state, fault.severity)
+    .all();
+  const byDisk = new Map<number, DiskFaultCounts>();
+  for (const { diskId, state, severity, total } of rows) {
+    const counts = byDisk.get(diskId) ?? { ...NO_DISK_FAULTS };
+    const bucket = state === "acknowledged" ? "acknowledged" : severity;
+    counts[bucket] += total;
+    byDisk.set(diskId, counts);
+  }
+  return byDisk;
+}
+
 interface StateSnapshot {
   inferredState: DiskState;
   state: EffectiveDiskState;
@@ -756,6 +905,8 @@ function summarise(
   const diskIds = rows.map((row) => row.id);
   const keys = keysOf(diskIds);
   const memberships = membershipsOf(diskIds);
+  const counters = countersOf(rows);
+  const faultCounts = faultCountsOf(diskIds);
   const hosts = new Map(
     db
       .select({
@@ -793,6 +944,8 @@ function summarise(
       interfaceLabel: interfaceLabel(row.interface, row.link),
       modelShort: resolveModelShort(row.inventory, row.specs, row.model),
       tempThresholds: resolveTemperatureThresholds(lastHost, row.media),
+      counters: counters.get(row.id) ?? NO_COUNTERS,
+      faultCounts: faultCounts.get(row.id) ?? NO_DISK_FAULTS,
     };
   });
 }

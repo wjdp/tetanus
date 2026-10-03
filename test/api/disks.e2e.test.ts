@@ -140,6 +140,35 @@ describe("/api/disks", () => {
     );
   });
 
+  it("carries health counters and live fault counts", async () => {
+    const response = await ingest(
+      "smartctl-xall",
+      readFixture("mars/smartctl/xall-sdn-auto.json"),
+      "/dev/sdn",
+    );
+    expect(response.status).toBe(200);
+    const id = diskIdBySerial("XSXY857331MO995ENO");
+    sqlite
+      .prepare(
+        `INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
+           openedAt, lastSeenAt, state, stateChangedAt)
+         VALUES ('smart-attribute', 'disk', 'disk', ?, 'e2e', 'warning', 0, 0, 'open', 0)`,
+      )
+      .run(id);
+    const disks: DiskListing[] = await (await fetch("/api/disks")).json();
+    expect(disks.find((row) => row.id === id)).toMatchObject({
+      counters: {
+        reallocated: { value: 0, status: "passed" },
+        pending: { value: 0, status: "passed" },
+        uncorrectable: { value: 0, status: "passed" },
+        wearPercent: { value: 0, status: "passed" },
+        bytesWritten: 1327539 * 32 * 1024 ** 2,
+        bytesWrittenInferred: false,
+      },
+      faultCounts: { error: 0, warning: 1, acknowledged: 0 },
+    });
+  });
+
   it("404s for a missing disk", async () => {
     expect((await fetch("/api/disks/99999")).status).toBe(404);
   });
