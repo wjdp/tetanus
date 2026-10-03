@@ -333,6 +333,54 @@ describe("backfillFaults", () => {
     );
   });
 
+  it("takes a disposed disk out of service until cleared, and a legacy sold override too", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const rma = insertDisk("C1", "spare");
+    const sold = db
+      .insert(disk)
+      .values({
+        alias: "D1",
+        lastSeenAt: t0,
+        disposal: { kind: "sold", on: "2026-09-01" },
+      })
+      .returning()
+      .get().id;
+    for (const diskId of [rma, sold]) {
+      insertReading(diskId, mars.id, false, HOUR_MS);
+      insertReading(diskId, mars.id, false, 3 * HOUR_MS);
+      insertReading(diskId, mars.id, false, 5 * HOUR_MS);
+    }
+    const disposal = { kind: "rma", on: "2026-09-01" };
+    event("disk", rma, "disposed", { from: null, to: disposal }, 2 * HOUR_MS);
+    event(
+      "disk",
+      rma,
+      "disposal-cleared",
+      { from: disposal, to: null },
+      4 * HOUR_MS,
+    );
+    event(
+      "disk",
+      sold,
+      "override-set",
+      { from: null, to: "sold" },
+      2 * HOUR_MS,
+    );
+
+    await backfillFaults(at(6 * HOUR_MS));
+
+    const healthFaults = (diskId: number) =>
+      faultRows()
+        .filter((row) => row.kind === "smart-health-failed")
+        .filter((row) => row.subjectId === diskId)
+        .map((row) => [row.openedAt, row.resolvedAt]);
+    expect(healthFaults(rma)).toEqual([
+      [at(HOUR_MS), at(2 * HOUR_MS)],
+      [at(5 * HOUR_MS), null],
+    ]);
+    expect(healthFaults(sold)).toEqual([[at(HOUR_MS), at(2 * HOUR_MS)]]);
+  });
+
   it("replays leaf states, leaf errors and data errors into the ZFS kinds", async () => {
     const mars = upsertHostByName("mars", t0);
     const vault = db

@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
-import { isHistoryState } from "#shared/disk";
+import { isDisposed, isHistoryState } from "#shared/disk";
 import {
   allowedActions,
   FAULT_KIND_DEFINITIONS,
@@ -69,9 +69,18 @@ export interface Supersession {
   by: FaultReference;
 }
 
+// A subject the detectors no longer watch: its live faults resolve with the
+// reason, as resolvePoolFaults does for an archived pool.
+export interface Withdrawal {
+  subjectType: FaultSubjectType;
+  subjectId: number;
+  reason: string;
+}
+
 export interface FaultScan {
   detections: Detection[];
   superseded: Supersession[];
+  withdrawn: Withdrawal[];
 }
 
 export interface DetectionContext {
@@ -88,8 +97,18 @@ const ACCEPTANCE_STATE = {
 
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
+export const DISPOSED_FAULT_REASON = "disposed";
+
 function inService(disks: DiskSummary[]) {
-  return disks.filter((row) => !isHistoryState(row.state));
+  return disks.filter((row) => !isHistoryState(row.state) && !isDisposed(row));
+}
+
+function withdrawDisposedDisks({ disks }: DetectionContext): Withdrawal[] {
+  return disks.filter(isDisposed).map((row) => ({
+    subjectType: "disk",
+    subjectId: row.id,
+    reason: DISPOSED_FAULT_REASON,
+  }));
 }
 
 function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
@@ -152,7 +171,12 @@ function detectMissing(
   suppressedDiskIds: Set<number>,
 ): Detection[] {
   return disks
-    .filter((row) => row.state === "missing" && !suppressedDiskIds.has(row.id))
+    .filter(
+      (row) =>
+        row.state === "missing" &&
+        !isDisposed(row) &&
+        !suppressedDiskIds.has(row.id),
+    )
     .map((row) => ({
       kind: "disk-missing",
       key: String(row.id),
@@ -281,6 +305,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...detectCollectorVersion(context),
     ],
     superseded: pools.superseded,
+    withdrawn: withdrawDisposedDisks(context),
   };
 }
 
@@ -465,6 +490,24 @@ export function resolvePoolFaults(poolId: number, reason: string, now: Date) {
   return rows.length;
 }
 
+function withdrawalOf(row: FaultRow, withdrawn: Withdrawal[]) {
+  return withdrawn.find(
+    (withdrawal) =>
+      withdrawal.subjectType === row.subjectType &&
+      withdrawal.subjectId === row.subjectId,
+  )?.reason;
+}
+
+function resolutionData(
+  row: FaultRow,
+  { superseded, withdrawn }: FaultScan,
+): FaultData {
+  const supersededBy = supersessionOf(row, superseded);
+  if (supersededBy) return { supersededBy };
+  const reason = withdrawalOf(row, withdrawn);
+  return reason ? { reason } : {};
+}
+
 function supersessionOf(row: FaultRow, superseded: Supersession[]) {
   return superseded.find(
     (supersession) =>
@@ -475,17 +518,14 @@ function supersessionOf(row: FaultRow, superseded: Supersession[]) {
   )?.by;
 }
 
-export function applyDetections(
-  { detections, superseded }: FaultScan,
-  now: Date,
-): number {
+export function applyDetections(scan: FaultScan, now: Date): number {
   return db.transaction(() => {
     const live = new Map(
       liveRows().map((row) => [identity(row.kind, row.key), row]),
     );
     const seen = new Set<string>();
     let changes = 0;
-    for (const detection of detections) {
+    for (const detection of scan.detections) {
       const id = identity(detection.kind, detection.key);
       if (seen.has(id)) continue;
       seen.add(id);
@@ -499,8 +539,7 @@ export function applyDetections(
     }
     for (const [id, row] of live) {
       if (seen.has(id)) continue;
-      const supersededBy = supersessionOf(row, superseded);
-      resolveFault(row, now, row.note, supersededBy ? { supersededBy } : {});
+      resolveFault(row, now, row.note, resolutionData(row, scan));
       changes += 1;
     }
     return changes;

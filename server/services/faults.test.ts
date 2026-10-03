@@ -1136,6 +1136,47 @@ describe("disk-missing", () => {
       data: { lastSeenAt: t0.toISOString() },
     });
   });
+
+  it("skips a disposed disk and resolves its open fault as disposed", async () => {
+    const mars = upsertHostByName("mars", t0);
+    recordRun(mars.id, "lsblk", at(3 * DAY_MS));
+    const insertMissing = (alias: string) =>
+      db
+        .insert(disk)
+        .values({
+          alias,
+          lastSeenAt: t0,
+          lastSeenHostId: mars.id,
+          lastState: "spare",
+        })
+        .returning()
+        .get().id;
+    const k2 = insertMissing("K2");
+    const k3 = insertMissing("K3");
+    db.update(disk)
+      .set({ disposal: { kind: "sold", on: "2026-09-02" } })
+      .where(eq(disk.id, k3))
+      .run();
+
+    await syncFaults(at(3 * DAY_MS));
+    expect(liveFault("disk-missing", String(k2))).toBeDefined();
+    expect(faultsOf("disk-missing").map((row) => row.subjectId)).toEqual([k2]);
+
+    db.update(disk)
+      .set({ disposal: { kind: "rma", on: "2026-09-04" } })
+      .where(eq(disk.id, k2))
+      .run();
+    await syncFaults(at(4 * DAY_MS));
+
+    expect(faultsOf("disk-missing")).toMatchObject([
+      { subjectId: k2, state: "resolved", resolvedAt: at(4 * DAY_MS) },
+    ]);
+    expect(
+      faultEvents()
+        .filter((entry) => entry.eventType === "fault-resolved")
+        .map((entry) => entry.data.reason),
+    ).toEqual(["disposed"]);
+  });
 });
 
 describe("smart-attribute", () => {
@@ -1226,6 +1267,18 @@ describe("smart-attribute", () => {
     expect(
       faultsOf("smart-attribute").every((row) => row.state === "resolved"),
     ).toBe(true);
+  });
+
+  it("raises nothing for a disposed disk's failing attributes", async () => {
+    ingestSmart(SDB);
+    db.update(disk)
+      .set({ disposal: { kind: "rma", on: "2026-09-01" } })
+      .where(eq(disk.id, k2Id()))
+      .run();
+
+    await syncFaults(t0);
+
+    expect(faultsOf("smart-attribute")).toEqual([]);
   });
 });
 

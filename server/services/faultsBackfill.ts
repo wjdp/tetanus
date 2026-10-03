@@ -62,6 +62,8 @@ const REPLAYED_EVENTS = [
   "acknowledgement-cleared",
   "state-changed",
   "override-set",
+  "disposed",
+  "disposal-cleared",
   "pool-state-changed",
   "vdev-state-changed",
   "vdev-left",
@@ -246,11 +248,34 @@ interface ReplayContext {
   replay: FaultReplay;
   poolNames: Map<number, string>;
   diskLastSeen: Map<number, Date | null>;
-  outOfService: Set<number>;
+  historyDiskIds: Set<number>;
+  disposedDiskIds: Set<number>;
   leaves: Map<number, ReplayedLeaf>;
   leafCounts: Map<string, LeafCounts>;
   pools: Map<number, PoolReplayState>;
   archivedPoolIds: Set<number>;
+}
+
+// `sold` left the override set for a disposal record (040); diary entries
+// written before that still take the disk out of service.
+const LEGACY_SOLD_OVERRIDE = "sold";
+
+function isOutOfServiceState(state: unknown) {
+  return isHistoryState(state) || state === LEGACY_SOLD_OVERRIDE;
+}
+
+function isOutOfService(context: ReplayContext, diskId: number) {
+  return (
+    context.historyDiskIds.has(diskId) || context.disposedDiskIds.has(diskId)
+  );
+}
+
+function resolveSmartFaults(context: ReplayContext, diskId: number, at: Date) {
+  const { replay } = context;
+  for (const row of replay.liveOf(["smart-attribute"], `${diskId}:`)) {
+    replay.resolve(row, at);
+  }
+  replay.resolve(replay.get("smart-health-failed", String(diskId)), at);
 }
 
 function leaveOrReturnToService(
@@ -259,16 +284,12 @@ function leaveOrReturnToService(
   state: unknown,
   at: Date,
 ) {
-  if (!isHistoryState(state)) {
-    context.outOfService.delete(diskId);
+  if (!isOutOfServiceState(state)) {
+    context.historyDiskIds.delete(diskId);
     return;
   }
-  context.outOfService.add(diskId);
-  const { replay } = context;
-  for (const row of replay.liveOf(["smart-attribute"], `${diskId}:`)) {
-    replay.resolve(row, at);
-  }
-  replay.resolve(replay.get("smart-health-failed", String(diskId)), at);
+  context.historyDiskIds.add(diskId);
+  resolveSmartFaults(context, diskId, at);
 }
 
 function missingData(context: ReplayContext, diskId: number, at: Date) {
@@ -310,7 +331,7 @@ function replayDiskEntry(
         replay.resolve(replay.get("smart-attribute", key), at);
         return;
       }
-      if (context.outOfService.has(diskId)) return;
+      if (isOutOfService(context, diskId)) return;
       if (data.to !== "warning" && data.to !== "failed") return;
       replay.observe(
         {
@@ -326,7 +347,7 @@ function replayDiskEntry(
     }
     case "state-changed": {
       leaveOrReturnToService(context, diskId, data.to, at);
-      if (data.to === "missing") {
+      if (data.to === "missing" && !context.disposedDiskIds.has(diskId)) {
         replay.open(
           {
             kind: "disk-missing",
@@ -347,6 +368,16 @@ function replayDiskEntry(
       if (data.to) {
         replay.resolve(replay.get("disk-missing", String(diskId)), at);
       }
+      return;
+    }
+    case "disposed": {
+      context.disposedDiskIds.add(diskId);
+      resolveSmartFaults(context, diskId, at);
+      replay.resolve(replay.get("disk-missing", String(diskId)), at);
+      return;
+    }
+    case "disposal-cleared": {
+      context.disposedDiskIds.delete(diskId);
       return;
     }
     case "identity-conflict": {
@@ -741,7 +772,7 @@ function replayReading(context: ReplayContext, reading: SmartReadingRow) {
     replay.resolve(replay.get("smart-health-failed", key), takenAt);
     return;
   }
-  if (context.outOfService.has(reading.diskId)) return;
+  if (isOutOfService(context, reading.diskId)) return;
   replay.observe(
     {
       kind: "smart-health-failed",
@@ -803,7 +834,8 @@ export function replayFaultHistory(): ReplayedFault[] {
         .all()
         .map((row) => [row.id, row.lastSeenAt]),
     ),
-    outOfService: new Set(),
+    historyDiskIds: new Set(),
+    disposedDiskIds: new Set(),
     leaves: new Map(
       db
         .select({
