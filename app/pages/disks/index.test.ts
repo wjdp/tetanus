@@ -1,13 +1,12 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import type { VueWrapper } from "@vue/test-utils";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 import { clearNuxtData } from "#app";
+import { CLEARED_FILTERS } from "~/components/inventory/filterDisks";
 import InventoryColumnPicker from "~/components/inventory/InventoryColumnPicker.vue";
-import InventoryFilters, {
-  CLEARED_FILTERS,
-} from "~/components/inventory/InventoryFilters.vue";
+import InventoryFilters from "~/components/inventory/InventoryFilters.vue";
 import { INVENTORY_PREFERENCES_COOKIE } from "~/composables/useInventoryPreferences";
 import { clearCookie, writeCookie } from "~~/test/cookies";
 import DisksPage from "./index.vue";
@@ -56,6 +55,8 @@ beforeEach(() => {
   clearCookie(INVENTORY_PREFERENCES_COOKIE);
 });
 
+const mountPage = (route = "/disks") => mountSuspended(DisksPage, { route });
+
 const headers = (page: VueWrapper) =>
   page.findAll("thead th").map((th) => th.text());
 
@@ -65,7 +66,7 @@ const aliasColumn = (page: VueWrapper) =>
 describe("disks inventory page", () => {
   it("points at Settings › Hosts when there are no disks", async () => {
     disks = [];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
     expect(page.text()).toContain("No disks yet.");
     expect(page.find('a[href="/settings/hosts"]').exists()).toBe(true);
   });
@@ -76,7 +77,7 @@ describe("disks inventory page", () => {
       disk({ id: 2, alias: "K10" }),
       disk({ id: 3, alias: "K2", stateOverride: "spare", state: "spare" }),
     ];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
 
     expect(aliasColumn(page)).toEqual(["K2", "K10", "—"]);
     expect(page.get('[data-testid="disk-count"]').text()).toBe("· 3");
@@ -90,7 +91,7 @@ describe("disks inventory page", () => {
       disk({ id: 1, alias: "K1", serial: "AAA111" }),
       disk({ id: 2, alias: "K2", serial: "BBB222" }),
     ];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
     await page.get('input[aria-label="Search disks"]').setValue("bbb");
 
     expect(aliasColumn(page)).toEqual(["K2"]);
@@ -102,7 +103,7 @@ describe("disks inventory page", () => {
       disk({ id: 1, alias: "K1", warrantyDaysLeft: 30 }),
       disk({ id: 2, alias: "K2", warrantyDaysLeft: -10 }),
     ];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
 
     expect(page.get('[data-warranty-days="30"]').classes()).toContain(
       "text-warning",
@@ -116,7 +117,7 @@ describe("disks inventory page", () => {
     disks = [
       disk({ id: 1, alias: "K1", latestStatus: "unknown", latestTemp: 45 }),
     ];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
     const row = page.get("tbody tr");
 
     expect(row.get("[data-shape]").attributes("data-shape")).toBe("hollow");
@@ -139,7 +140,7 @@ describe("disks inventory page", () => {
       disk({ id: 2, alias: "K2", membership: { ...tank, vdevName: "K2" } }),
       disk({ id: 3, alias: "K3" }),
     ];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
 
     expect(page.findAll('a[href="/zfs/3"]').map((link) => link.text())).toEqual(
       ["tank", "tank"],
@@ -183,7 +184,7 @@ describe("disks inventory page", () => {
         }),
         disk({ id: 2, alias: "K2", ...nvmeSsd }),
       ];
-      const page = await mountSuspended(DisksPage);
+      const page = await mountPage();
       const [hdd, ssd] = rowTexts(page);
 
       expect(hdd).toContain("HDD 7200");
@@ -201,7 +202,7 @@ describe("disks inventory page", () => {
 
     it("hides the sector column by default", async () => {
       disks = [disk({ id: 1, alias: "K1", ...sataHdd })];
-      const page = await mountSuspended(DisksPage);
+      const page = await mountPage();
 
       expect(headers(page)).not.toContain("Sectors");
       expect(page.find("tbody").text()).not.toContain("512e");
@@ -209,7 +210,7 @@ describe("disks inventory page", () => {
 
     it("shows and hides columns from the column picker", async () => {
       disks = [disk({ id: 1, alias: "K1", ...sataHdd })];
-      const page = await mountSuspended(DisksPage);
+      const page = await mountPage();
       const picker = page.getComponent(InventoryColumnPicker);
       const cardLabels = () => page.findAll("dt").map((dt) => dt.text());
       const cardsBefore = cardLabels();
@@ -234,7 +235,7 @@ describe("disks inventory page", () => {
         disk({ id: 2, alias: "K2", ...nvmeSsd }),
         disk({ id: 3, alias: "K3" }),
       ];
-      const page = await mountSuspended(DisksPage);
+      const page = await mountPage();
       const filter = async (label: string, value: string) => {
         const key = label.replace("Filter by ", "");
         await page
@@ -242,27 +243,69 @@ describe("disks inventory page", () => {
           .vm.$emit("update:modelValue", { ...CLEARED_FILTERS, [key]: value });
       };
 
+      const shows = (expected: string[]) =>
+        vi.waitFor(() => expect(aliasColumn(page)).toEqual(expected));
+
       await filter("Filter by media", "ssd");
-      expect(aliasColumn(page)).toEqual(["K2"]);
+      await shows(["K2"]);
 
       await filter("Filter by interface", "sata");
-      expect(aliasColumn(page)).toEqual(["K1"]);
+      await shows(["K1"]);
       await filter("Filter by interface", "-");
-      expect(aliasColumn(page)).toEqual(["K3"]);
+      await shows(["K3"]);
 
       await filter("Filter by recording", "smr");
-      expect(aliasColumn(page)).toEqual(["K1"]);
+      await shows(["K1"]);
 
       await filter("Filter by vendor", "samsung");
-      expect(aliasColumn(page)).toEqual(["K2"]);
+      await shows(["K2"]);
       await filter("Filter by vendor", "-");
-      expect(aliasColumn(page)).toEqual(["K3"]);
+      await shows(["K3"]);
     });
+  });
+
+  it("filters by SMART status and writes it to the query string", async () => {
+    disks = [
+      disk({ id: 1, alias: "K1", latestStatus: "passed" }),
+      disk({ id: 2, alias: "K2", latestStatus: "failed" }),
+      disk({ id: 3, alias: "K3", latestStatus: "warning" }),
+    ];
+    const page = await mountPage();
+
+    await page.getComponent(InventoryFilters).vm.$emit("update:modelValue", {
+      ...CLEARED_FILTERS,
+      statuses: ["failed", "warning"],
+    });
+
+    await vi.waitFor(() => expect(aliasColumn(page)).toEqual(["K2", "K3"]));
+    expect(useRouter().currentRoute.value.query).toEqual({
+      status: "failed,warning",
+    });
+    expect(page.get('[data-testid="disk-count"]').text()).toBe("· 2 of 3");
+  });
+
+  it("pre-filters and sorts from the query string on load", async () => {
+    disks = [
+      disk({ id: 1, alias: "K1", hostName: "mars", latestTemp: 30 }),
+      disk({ id: 2, alias: "K2", hostName: "venus", latestTemp: 40 }),
+      disk({ id: 3, alias: "K3", hostName: "mars", latestTemp: 50 }),
+      disk({ id: 4, alias: "K4", hostName: "mars", latestStatus: "failed" }),
+    ];
+    const page = await mountPage(
+      "/disks?host=mars&status=passed&sort=-temp&q=k",
+    );
+
+    expect(aliasColumn(page)).toEqual(["K3", "K1"]);
+    expect(page.get('[data-testid="disk-count"]').text()).toBe("· 2 of 4");
+    expect(
+      page.get<HTMLInputElement>('input[aria-label="Search disks"]').element
+        .value,
+    ).toBe("k");
   });
 
   it("swaps the table for cards from the view toggle", async () => {
     disks = [disk({ id: 1, alias: "K1" })];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
     const cards = () => page.get('[data-testid="inventory-cards"]');
 
     expect(page.find('[data-testid="inventory-table"]').exists()).toBe(true);
@@ -280,7 +323,7 @@ describe("disks inventory page", () => {
   it("renders the stored view on first load", async () => {
     storePreferences({ view: "cards" });
     disks = [disk({ id: 1, alias: "K1" })];
-    const page = await mountSuspended(DisksPage);
+    const page = await mountPage();
 
     expect(page.find('[data-testid="inventory-table"]').exists()).toBe(false);
   });

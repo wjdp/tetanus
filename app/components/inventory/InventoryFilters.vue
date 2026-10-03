@@ -1,6 +1,14 @@
 <script setup lang="ts">
+import type { EffectiveDiskState } from "#shared/disk";
 import { PURPOSES, USAGE_KINDS } from "#shared/usage";
 import { VENDORS } from "#shared/vendor";
+import {
+  ALL,
+  CLEARED_FILTERS,
+  type InventoryFilterState,
+  isFiltered,
+  NONE,
+} from "./filterDisks";
 
 const props = defineProps<{
   hosts: string[];
@@ -11,117 +19,59 @@ const props = defineProps<{
 const filters = defineModel<InventoryFilterState>({ required: true });
 
 const hostItems = computed(() => [
-  { label: "All hosts", value: ALL_HOSTS },
+  { label: "All hosts", value: ALL },
   ...props.hosts.map((host) => ({ label: host, value: host })),
-  { label: "No host", value: NO_HOST },
+  { label: "No host", value: NONE },
 ]);
 
 const poolItems = computed(() => [
-  { label: "All pools", value: ALL_POOLS },
+  { label: "All pools", value: ALL },
   ...props.pools.map((pool) => ({ label: pool, value: pool })),
-  { label: "No pool", value: NO_POOL },
+  { label: "No pool", value: NONE },
 ]);
 
 const usageItems = [
-  { label: "All usage", value: ALL_USAGE },
+  { label: "All usage", value: ALL },
   ...USAGE_KINDS.map((kind) => ({ label: kind, value: kind })),
 ];
 
 const purposeItems = [
-  { label: "All purposes", value: ALL_PURPOSES },
+  { label: "All purposes", value: ALL },
   ...PURPOSES.map((purpose) => ({ label: purpose, value: purpose })),
-  { label: "No purpose", value: NO_PURPOSE },
+  { label: "No purpose", value: NONE },
 ];
 
 const mediaItems = [
-  { label: "All media", value: ALL_MEDIA },
+  { label: "All media", value: ALL },
   { label: "HDD", value: "hdd" },
   { label: "SSD", value: "ssd" },
-  { label: "Unknown media", value: NO_MEDIA },
+  { label: "Unknown media", value: NONE },
 ];
 
 const interfaceItems = [
-  { label: "All interfaces", value: ALL_INTERFACES },
+  { label: "All interfaces", value: ALL },
   { label: "SATA", value: "sata" },
   { label: "SAS", value: "sas" },
   { label: "NVMe", value: "nvme" },
   { label: "USB", value: "usb" },
-  { label: "No interface", value: NO_INTERFACE },
+  { label: "No interface", value: NONE },
 ];
 
 const recordingItems = [
-  { label: "All recording", value: ALL_RECORDING },
+  { label: "All recording", value: ALL },
   { label: "CMR", value: "cmr" },
   { label: "SMR", value: "smr" },
-  { label: "No recording", value: NO_RECORDING },
+  { label: "No recording", value: NONE },
 ];
 
 const vendorItems = [
-  { label: "All vendors", value: ALL_VENDORS },
+  { label: "All vendors", value: ALL },
   ...VENDORS.map((vendor) => ({ label: vendorLabel(vendor) ?? vendor, value: vendor })),
-  { label: "No vendor", value: NO_VENDOR },
+  { label: "No vendor", value: NONE },
 ];
-
-const isFiltered = computed(
-  () =>
-    filters.value.search ||
-    filters.value.host !== ALL_HOSTS ||
-    filters.value.pool !== ALL_POOLS ||
-    filters.value.usage !== ALL_USAGE ||
-    filters.value.purpose !== ALL_PURPOSES ||
-    filters.value.media !== ALL_MEDIA ||
-    filters.value.interface !== ALL_INTERFACES ||
-    filters.value.recording !== ALL_RECORDING ||
-    filters.value.vendor !== ALL_VENDORS ||
-    filters.value.states.length,
-);
 
 const update = (patch: Partial<InventoryFilterState>) => {
   filters.value = { ...filters.value, ...patch };
-};
-</script>
-
-<script lang="ts">
-export interface InventoryFilterState {
-  host: string;
-  pool: string;
-  usage: string;
-  purpose: string;
-  media: string;
-  interface: string;
-  recording: string;
-  vendor: string;
-  states: string[];
-  search: string;
-}
-
-export const ALL_HOSTS = "*";
-export const NO_HOST = "-";
-export const ALL_POOLS = "*";
-export const NO_POOL = "-";
-export const ALL_USAGE = "*";
-export const ALL_PURPOSES = "*";
-export const NO_PURPOSE = "-";
-export const ALL_MEDIA = "*";
-export const NO_MEDIA = "-";
-export const ALL_INTERFACES = "*";
-export const NO_INTERFACE = "-";
-export const ALL_RECORDING = "*";
-export const NO_RECORDING = "-";
-export const ALL_VENDORS = "*";
-export const NO_VENDOR = "-";
-
-export const CLEARED_FILTERS: InventoryFilterState = {
-  search: "",
-  host: ALL_HOSTS,
-  pool: ALL_POOLS,
-  usage: ALL_USAGE,
-  purpose: ALL_PURPOSES,
-  media: ALL_MEDIA,
-  interface: ALL_INTERFACES,
-  recording: ALL_RECORDING,
-  vendor: ALL_VENDORS,
-  states: [],
 };
 </script>
 
@@ -200,10 +150,10 @@ export const CLEARED_FILTERS: InventoryFilterState = {
       placeholder="All states"
       class="min-w-0 sm:w-48"
       aria-label="Filter by state"
-      @update:model-value="update({ states: $event as string[] })"
+      @update:model-value="update({ states: $event as EffectiveDiskState[] })"
     />
     <UButton
-      v-if="isFiltered"
+      v-if="isFiltered(filters)"
       color="neutral"
       variant="ghost"
       icon="i-lucide-x"
