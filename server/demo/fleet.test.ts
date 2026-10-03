@@ -15,7 +15,7 @@ const count = <T>(items: T[], predicate: (item: T) => boolean) =>
   items.filter(predicate).length;
 
 describe("demo fleet", () => {
-  it("has 17, 6, 3 and 2 disks on atlas, styx, pip and bench plus three inventory-only", () => {
+  it("has 17, 6, 3 and 2 disks on atlas, styx, pip and bench plus four inventory-only", () => {
     const active = fleet.disks.filter((disk) => !disk.inventoryOnly);
     expect(count(active, (disk) => disk.host === "atlas")).toBe(17);
     expect(count(active, (disk) => disk.host === "styx")).toBe(6);
@@ -25,10 +25,10 @@ describe("demo fleet", () => {
       fleet.disks
         .filter((disk) => disk.inventoryOnly)
         .map((disk) => disk.alias),
-    ).toEqual(["W1", "W2", "V2"]);
+    ).toEqual(["W1", "W2", "V2", "A18"]);
   });
 
-  it("gives every inventory-only disk a sold, retired or dead override and a removal date", () => {
+  it("gives every inventory-only disk a retired or dead override or a disposal, and a removal date", () => {
     const overrides = new Map(
       stories.seeds.overrides.map((seed) => [seed.alias, seed.stateOverride]),
     );
@@ -37,10 +37,16 @@ describe("demo fleet", () => {
     )) {
       expect(disk.removedAt).not.toBeNull();
     }
+    const disposals = new Map(
+      stories.seeds.disposals.map((seed) => [seed.alias, seed.disposal.kind]),
+    );
     expect(Object.fromEntries(overrides)).toEqual({
-      W1: "sold",
       W2: "retired",
       V2: "dead",
+    });
+    expect(Object.fromEntries(disposals)).toEqual({
+      W1: "sold",
+      A18: "rma",
     });
   });
 

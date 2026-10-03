@@ -18,6 +18,7 @@ import type {
   ArchivedPoolSeed,
   DatasetModel,
   DiskModel,
+  DisposalSeed,
   FaultActionSeed,
   HostModel,
   HostName,
@@ -29,6 +30,7 @@ import type {
   PoolHistoryEvent,
   PoolModel,
   PoolState,
+  ReplacementSeed,
   ScanState,
   SmartCounters,
   VdevModel,
@@ -932,6 +934,8 @@ export interface Seeds {
   acceptances: AcceptanceSeed[];
   faultActions: FaultActionSeed[];
   overrides: OverrideSeed[];
+  disposals: DisposalSeed[];
+  replacements: ReplacementSeed[];
   notifications: NotificationSeed[];
   archivedPools: ArchivedPoolSeed[];
 }
@@ -1162,12 +1166,6 @@ function createSeeds(
     ],
     overrides: [
       {
-        alias: "W1",
-        stateOverride: "sold",
-        at: new Date("2024-04-02T18:05:00Z"),
-        notes: "Sold on eBay, £120.",
-      },
-      {
         alias: "W2",
         stateOverride: "retired",
         at: new Date("2024-03-17T12:35:00Z"),
@@ -1178,6 +1176,25 @@ function createSeeds(
         stateOverride: "dead",
         at: timeline.v2DeclaredDeadAt,
         notes: "Failed in vault; replaced by V6.",
+      },
+    ],
+    disposals: [
+      {
+        alias: "W1",
+        disposal: { kind: "sold", on: "2024-04-02", salePrice: 120 },
+        at: new Date("2024-04-02T18:05:00Z"),
+      },
+      {
+        alias: "A18",
+        disposal: { kind: "rma", on: "2024-03-12" },
+        at: new Date("2024-03-12T09:30:00Z"),
+      },
+    ],
+    replacements: [
+      {
+        alias: "A6",
+        replacesAlias: "A18",
+        at: new Date("2024-03-16T12:00:00Z"),
       },
     ],
     notifications: [

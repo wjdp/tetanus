@@ -264,3 +264,51 @@ describe("/api/disks/:id/diagnostics", () => {
     expect((await fetch("/api/disks/999999/diagnostics")).status).toBe(404);
   });
 });
+
+describe("disk disposal", () => {
+  const absentDisk = () => {
+    const { id } = sqlite
+      .prepare("SELECT id FROM Disk ORDER BY id DESC LIMIT 1")
+      .get() as { id: number };
+    return id;
+  };
+
+  it("409s on disposing a disk that is still attached", async () => {
+    const response = await patchDisk(absentDisk(), {
+      disposal: { kind: "sold", on: "2024-04-02", salePrice: 120 },
+    });
+    expect(response.status).toBe(409);
+  });
+
+  it("400s on a sale price for an RMA", async () => {
+    sqlite
+      .prepare("UPDATE Disk SET lastSeenAt = 0 WHERE id = ?")
+      .run(absentDisk());
+    const response = await patchDisk(absentDisk(), {
+      disposal: { kind: "rma", on: "2024-04-02", salePrice: 120 },
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it("disposes of an absent disk and clears it again", async () => {
+    const id = absentDisk();
+    sqlite.prepare("UPDATE Disk SET lastSeenAt = 0 WHERE id = ?").run(id);
+    const disposed = await patchDisk(id, {
+      disposal: { kind: "sold", on: "2024-04-02", salePrice: 120 },
+    });
+    expect(disposed.status).toBe(200);
+    const detail = await disposed.json();
+    expect(detail.disposal).toEqual({
+      kind: "sold",
+      on: "2024-04-02",
+      salePrice: 120,
+    });
+    expect(
+      detail.diary.map((entry: { eventType: string }) => entry.eventType),
+    ).toContain("disposed");
+
+    const cleared = await patchDisk(id, { disposal: null });
+    expect(cleared.status).toBe(200);
+    expect((await cleared.json()).disposal).toBeNull();
+  });
+});

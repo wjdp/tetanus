@@ -1,5 +1,5 @@
 import type { AlertRule } from "#shared/alerts";
-import type { DiskProtocol, StateOverride } from "#shared/disk";
+import type { DiskProtocol, Disposal, StateOverride } from "#shared/disk";
 import type { FaultAction, FaultKind } from "#shared/faults";
 import type { IngestMeta, IngestSource } from "#shared/ingest";
 import type { Inventory } from "#shared/inventory-fields";
@@ -185,7 +185,7 @@ export interface DiskModel {
   installedAt: Date;
   /** Physically detached here; absent from lsblk, udev, smartctl from this instant. */
   removedAt: Date | null;
-  /** No longer attached anywhere at the anchor; carries a `sold`/`retired`/`dead` override. */
+  /** No longer attached anywhere at the anchor; carries a `retired`/`dead` override or a disposal. */
   inventoryOnly: boolean;
   inventory: Partial<Inventory>;
   /** Power-on hours already on the clock at `installedAt` (used, refurbished or factory burn-in). */
@@ -367,6 +367,20 @@ export interface OverrideSeed {
   stateOverride: StateOverride;
   at: Date;
   notes?: string;
+}
+
+/** For `updateDisk(id, { disposal }, at)`. The disk must be absent at `at`. */
+export interface DisposalSeed {
+  alias: string;
+  disposal: Disposal;
+  at: Date;
+}
+
+/** For `updateDisk(id, { replacesDiskId }, at)`; the replaced disk must already be RMA'd. */
+export interface ReplacementSeed {
+  alias: string;
+  replacesAlias: string;
+  at: Date;
 }
 
 /**

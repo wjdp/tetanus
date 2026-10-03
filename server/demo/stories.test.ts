@@ -286,6 +286,8 @@ describe("seeds", () => {
       acceptances,
       faultActions,
       overrides,
+      disposals,
+      replacements,
       notifications,
       archivedPools,
     } = stories.seeds;
@@ -294,6 +296,8 @@ describe("seeds", () => {
       ...acceptances,
       ...faultActions,
       ...overrides,
+      ...disposals,
+      ...replacements,
       ...notifications,
     ]) {
       expect(seed.at < DEMO_EPOCH, JSON.stringify(seed)).toBe(true);

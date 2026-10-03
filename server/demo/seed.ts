@@ -494,6 +494,23 @@ function replayActions(world: DemoWorld): ReplayAction[] {
           ),
       }),
     ),
+    ...seeds.disposals.map(
+      ({ alias, disposal, at }): ReplayAction => ({
+        at,
+        apply: () => updateDisk(diskIdOf(disk(alias)), { disposal }, at),
+      }),
+    ),
+    ...seeds.replacements.map(
+      ({ alias, replacesAlias, at }): ReplayAction => ({
+        at,
+        apply: () =>
+          updateDisk(
+            diskIdOf(disk(alias)),
+            { replacesDiskId: diskIdOf(disk(replacesAlias)) },
+            at,
+          ),
+      }),
+    ),
   ];
 }
 

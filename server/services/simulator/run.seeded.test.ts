@@ -27,7 +27,9 @@ beforeAll(async () => {
 
 describe("simulate", () => {
   it("offers nothing for a disk out of service", async () => {
-    const detached = (await listDisks(NOW)).find((row) => row.state === "sold");
+    const detached = (await listDisks(NOW)).find(
+      (row) => row.disposal?.kind === "sold",
+    );
     expect(detached).toBeDefined();
     expect(subjectScenarios("disk", detached?.id ?? 0).scenarios).toEqual([]);
   });

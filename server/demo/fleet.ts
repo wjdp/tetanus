@@ -572,6 +572,31 @@ function formerAtlasDisks(): DiskSpec[] {
   ];
 }
 
+/** Third refurbished HC550 of the March 2024 batch: failed on the bench dock, sent back; A6 came as its replacement. */
+function rmaedAtlasDisk(): DiskSpec {
+  const installedAt = date("2024-03-05T19:20:00Z");
+  return {
+    alias: "A18",
+    host: "atlas",
+    product: "hc550",
+    slot: hba("sds"),
+    membership: null,
+    installedAt,
+    removedAt: addMs(installedAt, 2 * DAY_MS),
+    inventoryOnly: true,
+    inventory: inventory(
+      "2024-03-02",
+      219.0,
+      "Bargain Hardware",
+      "refurbished",
+      "2027-03-02",
+    ),
+    powerOnHoursAtInstall: 10_204,
+    powerCyclesAtInstall: 44,
+    bytesWrittenPerDay: 1 * GB,
+  };
+}
+
 function styxDisks(timeline: Timeline): DiskSpec[] {
   const redPlus = (
     alias: string,
@@ -1286,6 +1311,7 @@ export function createFleet(timeline: Timeline): Fleet {
     ...styxDisks(timeline),
     ...pipDisks(timeline),
     ...benchDisks(),
+    rmaedAtlasDisk(),
   ].map(buildDisk);
   return {
     hosts: hosts(timeline),

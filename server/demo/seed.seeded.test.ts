@@ -72,7 +72,7 @@ describe("seed", () => {
       ["bench", "Test bench"],
     ]);
     expect(listPools()).toHaveLength(7);
-    expect(disks).toHaveLength(31);
+    expect(disks).toHaveLength(32);
     const present = disks.filter((row) => row.state === "in-use");
     expect(present).toHaveLength(
       stories.disksPresent("atlas", NOW).length +
@@ -86,9 +86,23 @@ describe("seed", () => {
         .map((row) => [row.alias, row.stateOverride]),
     ).toEqual([
       ["V2", "dead"],
-      ["W1", "sold"],
       ["W2", "retired"],
     ]);
+    expect(
+      disks
+        .filter((row) => row.disposal !== null)
+        .map((row) => [row.alias, row.disposal?.kind]),
+    ).toEqual([
+      ["A18", "rma"],
+      ["W1", "sold"],
+    ]);
+    const a18 = disks.find((row) => row.alias === "A18");
+    expect(disks.find((row) => row.alias === "A6")?.replacesDiskId).toBe(
+      a18?.id,
+    );
+    expect(a18?.replacedByDiskId).toBe(
+      disks.find((row) => row.alias === "A6")?.id,
+    );
   });
 
   it("names pip's disks by hand, since pip has no vdev_id.conf", () => {
@@ -230,13 +244,13 @@ describe("seed", () => {
   });
 
   describe("faults", () => {
-    it("counts six live, one accepted and eleven resolved", () => {
+    it("counts six live, one accepted and twelve resolved", () => {
       const { counts } = allFaults();
       expect(counts).toEqual({
         open: 3,
         acknowledged: 3,
         accepted: 1,
-        resolved: 11,
+        resolved: 12,
       });
       const zfsKinds = allFaults()
         .faults.filter((row) => row.category === "zfs")
