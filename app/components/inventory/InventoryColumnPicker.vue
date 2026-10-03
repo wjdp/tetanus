@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
-import { COLUMN_GROUPS, INVENTORY_COLUMNS } from "./columns";
+import { COLUMN_GROUPS, columnLabel, INVENTORY_COLUMNS } from "./columns";
 
 const props = defineProps<{
   visibleColumns: ReadonlySet<string>;
@@ -11,6 +11,8 @@ const emit = defineEmits<{
   toggle: [id: string, visible: boolean];
   reset: [];
 }>();
+
+const currency = useCurrency();
 
 const keepMenuOpen = (event: Event) => event.preventDefault();
 
@@ -24,11 +26,11 @@ const columnGroups = computed<DropdownMenuItem[][]>(() =>
       [
         { type: "label", label: group },
         ...columns.map(
-          ({ id, label }): DropdownMenuItem => ({
+          (column): DropdownMenuItem => ({
             type: "checkbox",
-            label,
-            checked: props.visibleColumns.has(id),
-            onUpdateChecked: (checked) => emit("toggle", id, checked),
+            label: columnLabel(column, currency.value),
+            checked: props.visibleColumns.has(column.id),
+            onUpdateChecked: (checked) => emit("toggle", column.id, checked),
             onSelect: keepMenuOpen,
           }),
         ),

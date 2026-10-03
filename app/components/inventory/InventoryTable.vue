@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 import {
+  columnLabel,
   DEFAULT_VISIBLE_COLUMNS,
   INVENTORY_COLUMNS,
+  type InventoryColumn,
 } from "./columns";
 import InventoryCell from "./InventoryCell.vue";
 import type { InventoryDisk, SortingState } from "./types";
@@ -19,12 +21,15 @@ const sorting = defineModel<SortingState>("sorting", {
   default: () => [{ id: "alias", desc: false }],
 });
 
+const currency = useCurrency();
+
 const UButton = resolveComponent("UButton");
 
 const sortableHeader =
-  (label: string): TableColumn<InventoryDisk>["header"] =>
+  (inventoryColumn: InventoryColumn): TableColumn<InventoryDisk>["header"] =>
   ({ column }) => {
     const direction = column.getIsSorted();
+    const label = columnLabel(inventoryColumn, currency.value);
     return h(UButton, {
       color: "neutral",
       variant: "ghost",
@@ -55,8 +60,14 @@ const columns: TableColumn<InventoryDisk>[] = INVENTORY_COLUMNS.map(
   (column) => ({
     id: column.id,
     accessorFn: (row) => column.value(row) ?? undefined,
-    header: sortableHeader(column.label),
-    cell: ({ row }) => h(InventoryCell, { column, disk: row.original }),
+    header: sortableHeader(column),
+    cell: ({ row }) =>
+      h(InventoryCell, {
+        column,
+        disk: row.original,
+        currency: currency.value,
+        serialShown: columnVisibility.value.serial,
+      }),
     sortingFn: column.id === "alias" ? "alphanumeric" : "auto",
     sortUndefined: "last",
   }),

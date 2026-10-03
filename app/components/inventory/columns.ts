@@ -1,6 +1,9 @@
+import type { DiskFaultCounts } from "#shared/faults";
 import { interfaceLabel, sectorFormat } from "#shared/hardware";
+import { moneyPerTb, moneyPerTbLabel } from "#shared/money";
 import { usageShort } from "#shared/usage";
-import type { InventoryDisk, SortingState } from "./types";
+import { markdownToPlainText } from "~/utils/markdown";
+import type { InventoryDisk, InventoryMembership, SortingState } from "./types";
 
 type SortValue = string | number | null;
 
@@ -17,11 +20,52 @@ export type ColumnGroup = (typeof COLUMN_GROUPS)[number];
 export interface InventoryColumn {
   id: string;
   label: string;
+  currencyLabel?: (currency: string) => string;
   group: ColumnGroup;
   value: (disk: InventoryDisk) => SortValue;
   defaultVisible: boolean;
   locked?: boolean;
 }
+
+export const columnLabel = (column: InventoryColumn, currency: string) =>
+  column.currencyLabel?.(currency) ?? column.label;
+
+export interface VdevPlacement {
+  type: string;
+  label: string;
+}
+
+export function vdevPlacement(
+  membership: InventoryMembership | null,
+): VdevPlacement | null {
+  if (!membership) return null;
+  const { groupType, groupName, vdevName } = membership;
+  if (groupType === "root") return { type: "disk", label: "stripe" };
+  return { type: groupType ?? "disk", label: groupName ?? vdevName };
+}
+
+const MAX_FAULTS_PER_BUCKET = 999;
+const FAULT_BUCKET_WEIGHT = MAX_FAULTS_PER_BUCKET + 1;
+
+export function faultRank({
+  error,
+  warning,
+  acknowledged,
+}: DiskFaultCounts): number | null {
+  if (error + warning + acknowledged === 0) return null;
+  const capped = (count: number) => Math.min(count, MAX_FAULTS_PER_BUCKET);
+  return (
+    (capped(error) * FAULT_BUCKET_WEIGHT + capped(warning)) *
+      FAULT_BUCKET_WEIGHT +
+    capped(acknowledged)
+  );
+}
+
+const timestamp = (value: string | null | undefined) =>
+  value ? Date.parse(value) : null;
+
+const blankToNull = (value: string | null | undefined) =>
+  value?.trim() ? value : null;
 
 export const INVENTORY_COLUMNS: InventoryColumn[] = [
   {
@@ -40,6 +84,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: true,
   },
   {
+    id: "serial",
+    label: "Serial",
+    group: "Identity",
+    value: (disk) => disk.serial,
+    defaultVisible: false,
+  },
+  {
     id: "capacity",
     label: "Capacity",
     group: "Hardware",
@@ -51,6 +102,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     label: "Vendor",
     group: "Identity",
     value: (disk) => vendorLabel(disk.vendor),
+    defaultVisible: false,
+  },
+  {
+    id: "firmware",
+    label: "Firmware",
+    group: "Identity",
+    value: (disk) => disk.firmware,
     defaultVisible: false,
   },
   {
@@ -83,11 +141,33 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: false,
   },
   {
+    id: "formFactor",
+    label: "Form factor",
+    group: "Hardware",
+    value: (disk) => disk.formFactor,
+    defaultVisible: false,
+  },
+  {
+    id: "trim",
+    label: "TRIM",
+    group: "Hardware",
+    value: (disk) =>
+      disk.trimSupported === null ? null : Number(disk.trimSupported),
+    defaultVisible: false,
+  },
+  {
     id: "host",
     label: "Host",
     group: "Placement",
     value: (disk) => disk.hostName,
     defaultVisible: true,
+  },
+  {
+    id: "device",
+    label: "Device",
+    group: "Placement",
+    value: (disk) => disk.lastDevicePath,
+    defaultVisible: false,
   },
   {
     id: "pool",
@@ -101,6 +181,20 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     label: "Usage",
     group: "Placement",
     value: (disk) => usageShort(disk.usage, disk.membership?.poolName ?? null),
+    defaultVisible: false,
+  },
+  {
+    id: "vdev",
+    label: "Vdev",
+    group: "Placement",
+    value: (disk) => vdevPlacement(disk.membership)?.label ?? null,
+    defaultVisible: false,
+  },
+  {
+    id: "vdevState",
+    label: "ZFS state",
+    group: "Health",
+    value: (disk) => disk.membership?.vdevState ?? null,
     defaultVisible: false,
   },
   {
@@ -118,6 +212,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: true,
   },
   {
+    id: "faults",
+    label: "Faults",
+    group: "Health",
+    value: (disk) => faultRank(disk.faultCounts),
+    defaultVisible: false,
+  },
+  {
     id: "temp",
     label: "Temp",
     group: "Health",
@@ -132,10 +233,103 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: true,
   },
   {
+    id: "powerCycles",
+    label: "Power cycles",
+    group: "Health",
+    value: (disk) => disk.latestPowerCycles,
+    defaultVisible: false,
+  },
+  {
+    id: "lastReading",
+    label: "Last reading",
+    group: "Health",
+    value: (disk) => timestamp(disk.latestReadingAt),
+    defaultVisible: false,
+  },
+  {
+    id: "reallocated",
+    label: "Reallocated",
+    group: "Health",
+    value: (disk) => disk.counters.reallocated?.value ?? null,
+    defaultVisible: false,
+  },
+  {
+    id: "pending",
+    label: "Pending",
+    group: "Health",
+    value: (disk) => disk.counters.pending?.value ?? null,
+    defaultVisible: false,
+  },
+  {
+    id: "uncorrectable",
+    label: "Uncorrectable",
+    group: "Health",
+    value: (disk) => disk.counters.uncorrectable?.value ?? null,
+    defaultVisible: false,
+  },
+  {
+    id: "wear",
+    label: "Wear",
+    group: "Health",
+    value: (disk) => disk.counters.wearPercent?.value ?? null,
+    defaultVisible: false,
+  },
+  {
+    id: "written",
+    label: "Written",
+    group: "Health",
+    value: (disk) => disk.counters.bytesWritten,
+    defaultVisible: false,
+  },
+  {
+    id: "firstSeen",
+    label: "First seen",
+    group: "Identity",
+    value: (disk) => timestamp(disk.firstSeenAt),
+    defaultVisible: false,
+  },
+  {
     id: "age",
     label: "Age",
     group: "Inventory",
     value: (disk) => disk.ageDays,
+    defaultVisible: false,
+  },
+  {
+    id: "purchased",
+    label: "Purchased",
+    group: "Inventory",
+    value: (disk) => timestamp(disk.inventory.purchaseDate),
+    defaultVisible: false,
+  },
+  {
+    id: "price",
+    label: "Price",
+    group: "Inventory",
+    value: (disk) => disk.inventory.purchasePrice ?? null,
+    defaultVisible: false,
+  },
+  {
+    id: "pricePerTb",
+    label: "Price/TB",
+    currencyLabel: moneyPerTbLabel,
+    group: "Inventory",
+    value: (disk) =>
+      moneyPerTb(disk.inventory.purchasePrice ?? null, disk.capacityBytes),
+    defaultVisible: false,
+  },
+  {
+    id: "supplier",
+    label: "Supplier",
+    group: "Inventory",
+    value: (disk) => blankToNull(disk.inventory.supplier),
+    defaultVisible: false,
+  },
+  {
+    id: "condition",
+    label: "Condition",
+    group: "Inventory",
+    value: (disk) => disk.inventory.purchaseCondition ?? null,
     defaultVisible: false,
   },
   {
@@ -150,6 +344,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     label: "3.3 V",
     group: "Inventory",
     value: (disk) => (disk.inventory.pin33Taped ? 1 : null),
+    defaultVisible: false,
+  },
+  {
+    id: "notes",
+    label: "Notes",
+    group: "Inventory",
+    value: (disk) => blankToNull(markdownToPlainText(disk.notes)),
     defaultVisible: false,
   },
 ];

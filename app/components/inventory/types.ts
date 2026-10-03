@@ -1,4 +1,5 @@
 import type { EffectiveDiskState, StateOverride } from "#shared/disk";
+import type { DiskFaultCounts } from "#shared/faults";
 import type {
   HardwareJson,
   Interface,
@@ -6,6 +7,7 @@ import type {
   RecordingTech,
 } from "#shared/hardware";
 import type { Inventory } from "#shared/inventory-fields";
+import type { DiskCounters } from "#shared/smart/counters";
 import type { DeviceStatus } from "#shared/smart/status";
 import {
   type TemperatureThresholds,
@@ -16,13 +18,25 @@ import type { Vendor } from "#shared/vendor";
 import { formatDays } from "~/utils/format";
 import { STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 
+export interface InventoryMembership {
+  poolId: number;
+  poolName: string;
+  vdevName: string;
+  groupName: string | null;
+  groupType: string | null;
+  vdevState: string;
+}
+
 export interface InventoryDisk {
   id: number;
   alias: string | null;
   model: string | null;
   serial: string | null;
+  firmware: string | null;
   capacityBytes: number | null;
   hostName: string | null;
+  lastDevicePath: string | null;
+  present: boolean;
   state: EffectiveDiskState;
   stateOverride: StateOverride | null;
   stateAsOf: string | null;
@@ -30,22 +44,30 @@ export interface InventoryDisk {
   latestTemp: number | null;
   tempThresholds: TemperatureThresholds;
   latestPowerOnHours: number | null;
+  latestPowerCycles: number | null;
+  latestReadingAt: string | null;
+  firstSeenAt: string | null;
   ageDays: number | null;
   warrantyDaysLeft: number | null;
   inventory: Partial<Inventory>;
-  membership: { poolId: number; poolName: string } | null;
+  notes: string;
+  membership: InventoryMembership | null;
   usage: DiskUsage;
   purpose: Purpose | null;
   purposeInferred: boolean;
   vendor: Vendor | null;
   media: Media | null;
   rotationRate: number | null;
+  formFactor: string | null;
+  trimSupported: boolean | null;
   interface: Interface | null;
   link: string | null;
   recordingTech: RecordingTech | null;
   logicalBlockSize: number | null;
   physicalBlockSize: number | null;
   hardware: HardwareJson | null;
+  counters: DiskCounters;
+  faultCounts: DiskFaultCounts;
 }
 
 export type SortingState = { id: string; desc: boolean }[];

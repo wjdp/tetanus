@@ -1,42 +1,39 @@
 // @vitest-environment nuxt
-import { mountSuspended } from "@nuxt/test-utils/runtime";
-import { describe, expect, it } from "vitest";
+import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
+import { flushPromises } from "@vue/test-utils";
+import { beforeEach, describe, expect, it } from "vitest";
+import { clearNuxtData } from "#app";
 import { INVENTORY_COLUMNS } from "./columns";
 import InventoryTable from "./InventoryTable.vue";
+import { emptyInventoryDisk } from "./testFixtures";
 import type { InventoryDisk } from "./types";
 
-const disk = (overrides: Partial<InventoryDisk>): InventoryDisk => ({
-  id: 1,
-  alias: "K1",
-  model: "ST4000VN008",
-  serial: "ZC100001",
-  capacityBytes: 4e12,
-  hostName: "mars",
-  state: "in-use",
-  stateOverride: null,
-  stateAsOf: null,
-  latestStatus: "passed",
-  latestTemp: 34,
-  tempThresholds: { warning: 45, error: 55 },
-  latestPowerOnHours: 20_000,
-  ageDays: 400,
-  warrantyDaysLeft: 500,
-  inventory: {},
-  membership: null,
-  usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
-  purpose: null,
-  purposeInferred: false,
-  vendor: null,
-  media: null,
-  rotationRate: null,
-  interface: null,
-  link: null,
-  recordingTech: null,
-  logicalBlockSize: null,
-  physicalBlockSize: null,
-  hardware: null,
-  ...overrides,
+let settingsConfig: Record<string, unknown> = {};
+registerEndpoint("/api/settings", () => ({
+  enrolToken: "x",
+  config: settingsConfig,
+}));
+
+beforeEach(() => {
+  settingsConfig = {};
+  clearNuxtData();
 });
+
+const disk = (overrides: Partial<InventoryDisk>): InventoryDisk =>
+  emptyInventoryDisk({
+    alias: "K1",
+    model: "ST4000VN008",
+    serial: "ZC100001",
+    capacityBytes: 4e12,
+    hostName: "mars",
+    latestTemp: 34,
+    tempThresholds: { warning: 45, error: 55 },
+    latestPowerOnHours: 20_000,
+    ageDays: 400,
+    warrantyDaysLeft: 500,
+    usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
+    ...overrides,
+  });
 
 const ALL_COLUMNS = new Set(INVENTORY_COLUMNS.map(({ id }) => id));
 
@@ -138,6 +135,65 @@ describe("InventoryTable", () => {
     });
   });
 
+  describe("detail columns", () => {
+    it("drops the serial line from Model when the Serial column shows", async () => {
+      const withoutSerial = await mountTable(
+        [disk({ id: 1 })],
+        new Set(["model"]),
+      );
+      const withSerial = await mountTable(
+        [disk({ id: 1 })],
+        new Set(["model", "serial"]),
+      );
+
+      expect(withoutSerial.get("tbody tr").text()).toContain("ZC100001");
+      expect(withSerial.findAll("tbody td")[1].text()).toBe("ST4000VN008");
+      expect(withSerial.findAll("tbody td")[2].text()).toBe("ZC100001");
+    });
+
+    it("labels and formats prices in the configured currency", async () => {
+      settingsConfig = { currency: "EUR" };
+      const table = await mountTable(
+        [disk({ id: 1, inventory: { purchasePrice: 200 } })],
+        new Set(["price", "pricePerTb"]),
+      );
+      await flushPromises();
+
+      expect(headers(table)).toEqual(["Alias", "Price", "€/TB"]);
+      expect(table.findAll("tbody td").map((td) => td.text())).toEqual([
+        "K1",
+        "€200.00",
+        "€50.00",
+      ]);
+    });
+
+    it("sorts faults by open errors first", async () => {
+      const table = await mountSuspended(InventoryTable, {
+        props: {
+          disks: [
+            disk({
+              id: 1,
+              alias: "K1",
+              faultCounts: { error: 0, warning: 4, acknowledged: 0 },
+            }),
+            disk({ id: 2, alias: "K2" }),
+            disk({
+              id: 3,
+              alias: "K3",
+              faultCounts: { error: 1, warning: 0, acknowledged: 0 },
+            }),
+          ],
+          visibleColumns: new Set(["faults"]),
+          sorting: [{ id: "faults", desc: true }],
+        },
+      });
+
+      expect(
+        table.findAll("tbody tr").map((row) => row.findAll("td")[0].text()),
+      ).toEqual(["K3", "K1", "K2"]);
+    });
+  });
+
   describe("empty cells", () => {
     const cellText = (
       table: Awaited<ReturnType<typeof mountTable>>,
@@ -171,6 +227,7 @@ describe("InventoryTable", () => {
           id: 1,
           alias: null,
           model: null,
+          serial: null,
           capacityBytes: null,
           hostName: null,
           latestTemp: null,

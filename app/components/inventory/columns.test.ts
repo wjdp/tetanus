@@ -1,49 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { TEMPERATURE_DEFAULTS } from "#shared/temperature";
-import { UNKNOWN_USAGE } from "#shared/usage";
+import { NO_COUNTERS } from "#shared/smart/counters";
 import {
+  COLUMN_GROUPS,
+  columnLabel,
   DEFAULT_VISIBLE_COLUMNS,
+  faultRank,
   findColumn,
   INVENTORY_COLUMNS,
   sortDisks,
+  vdevPlacement,
 } from "./columns";
+import { emptyInventoryDisk, mirrorMembership } from "./testFixtures";
 import type { InventoryDisk } from "./types";
 
-const disk = (
-  id: number,
-  overrides: Partial<InventoryDisk>,
-): InventoryDisk => ({
-  id,
-  alias: null,
-  model: null,
-  serial: null,
-  capacityBytes: null,
-  hostName: null,
-  state: "in-use",
-  stateOverride: null,
-  stateAsOf: null,
-  latestStatus: "passed",
-  latestTemp: null,
-  tempThresholds: TEMPERATURE_DEFAULTS.hdd,
-  latestPowerOnHours: null,
-  ageDays: null,
-  warrantyDaysLeft: null,
-  inventory: {},
-  membership: null,
-  usage: UNKNOWN_USAGE,
-  purpose: null,
-  purposeInferred: false,
-  vendor: null,
-  media: null,
-  rotationRate: null,
-  interface: null,
-  link: null,
-  recordingTech: null,
-  logicalBlockSize: null,
-  physicalBlockSize: null,
-  hardware: null,
-  ...overrides,
-});
+const disk = (id: number, overrides: Partial<InventoryDisk>) =>
+  emptyInventoryDisk({ id, ...overrides });
 
 const ids = (disks: InventoryDisk[]) => disks.map(({ id }) => id);
 
@@ -97,7 +68,7 @@ const fieldValue = (id: string, target: InventoryDisk) =>
 
 describe("pool and usage fields", () => {
   const member = disk(1, {
-    membership: { poolId: 1, poolName: "tank" },
+    membership: mirrorMembership(),
     usage: { kind: "zfs", fsTypes: ["zfs_member"], mounts: [], system: false },
     purpose: "other",
   });
@@ -189,5 +160,207 @@ describe("INVENTORY_COLUMNS", () => {
       expect(DEFAULT_VISIBLE_COLUMNS.has(id)).toBe(true);
     }
     expect(findColumn("alias")?.locked).toBe(true);
+  });
+});
+
+const NEW_COLUMN_IDS = [
+  "serial",
+  "firmware",
+  "device",
+  "vdev",
+  "vdevState",
+  "powerCycles",
+  "lastReading",
+  "firstSeen",
+  "formFactor",
+  "trim",
+  "purchased",
+  "price",
+  "pricePerTb",
+  "supplier",
+  "condition",
+  "notes",
+  "faults",
+  "reallocated",
+  "pending",
+  "uncorrectable",
+  "wear",
+  "written",
+];
+
+describe("detail columns", () => {
+  it("registers every one, hidden by default, in a known group", () => {
+    for (const id of NEW_COLUMN_IDS) {
+      const column = findColumn(id);
+      expect(column, id).toBeDefined();
+      expect(column?.defaultVisible, id).toBe(false);
+      expect(COLUMN_GROUPS, id).toContain(column?.group);
+    }
+  });
+
+  it("is null for every one on a disk that knows nothing", () => {
+    const blank = disk(1, {});
+    for (const id of NEW_COLUMN_IDS) {
+      expect(fieldValue(id, blank), id).toBeNull();
+    }
+  });
+
+  it("puts first seen under Identity", () => {
+    expect(findColumn("firstSeen")?.group).toBe("Identity");
+  });
+
+  it("sorts timestamps numerically, newest last ascending", () => {
+    const disks = [
+      disk(1, { latestReadingAt: "2026-10-02T12:00:00.000Z" }),
+      disk(2, { latestReadingAt: null }),
+      disk(3, { latestReadingAt: "2026-09-30T12:00:00.000Z" }),
+    ];
+    expect(ids(sortDisks(disks, [{ id: "lastReading", desc: false }]))).toEqual(
+      [3, 1, 2],
+    );
+    expect(ids(sortDisks(disks, [{ id: "lastReading", desc: true }]))).toEqual([
+      1, 3, 2,
+    ]);
+  });
+
+  it("sorts TRIM as a number, unknown last", () => {
+    const disks = [
+      disk(1, { trimSupported: true }),
+      disk(2, { trimSupported: null }),
+      disk(3, { trimSupported: false }),
+    ];
+    expect(ids(sortDisks(disks, [{ id: "trim", desc: false }]))).toEqual([
+      3, 1, 2,
+    ]);
+  });
+
+  it("treats blank notes and supplier as empty and strips markdown", () => {
+    expect(fieldValue("notes", disk(1, { notes: "  \n" }))).toBeNull();
+    expect(
+      fieldValue("notes", disk(1, { notes: "**Shucked** from a WD" })),
+    ).toBe("Shucked from a WD");
+    expect(
+      fieldValue("supplier", disk(1, { inventory: { supplier: " " } })),
+    ).toBeNull();
+  });
+});
+
+describe("vdev column", () => {
+  it("names the group vdev with its type", () => {
+    expect(vdevPlacement(mirrorMembership())).toEqual({
+      type: "mirror",
+      label: "mirror-0",
+    });
+  });
+
+  it("calls a top-level disk a stripe", () => {
+    expect(
+      vdevPlacement(mirrorMembership({ groupName: "tank", groupType: "root" })),
+    ).toEqual({ type: "disk", label: "stripe" });
+  });
+
+  it("falls back to the vdev name with no group", () => {
+    expect(
+      vdevPlacement(mirrorMembership({ groupName: null, groupType: null })),
+    ).toEqual({ type: "disk", label: "/dev/disk/by-id/ata-K1" });
+  });
+
+  it("reads the vdev state for ZFS state", () => {
+    expect(
+      fieldValue(
+        "vdevState",
+        disk(1, { membership: mirrorMembership({ vdevState: "DEGRADED" }) }),
+      ),
+    ).toBe("DEGRADED");
+  });
+});
+
+describe("faults column", () => {
+  it("is null with no live faults", () => {
+    expect(faultRank({ error: 0, warning: 0, acknowledged: 0 })).toBeNull();
+  });
+
+  it("ranks open errors over warnings over acknowledged", () => {
+    const disks = [
+      disk(1, { faultCounts: { error: 0, warning: 0, acknowledged: 5 } }),
+      disk(2, { faultCounts: { error: 1, warning: 0, acknowledged: 0 } }),
+      disk(3, { faultCounts: { error: 0, warning: 0, acknowledged: 0 } }),
+      disk(4, { faultCounts: { error: 0, warning: 2, acknowledged: 0 } }),
+      disk(5, { faultCounts: { error: 0, warning: 1, acknowledged: 9 } }),
+      disk(6, { faultCounts: { error: 1, warning: 1, acknowledged: 0 } }),
+    ];
+    expect(ids(sortDisks(disks, [{ id: "faults", desc: true }]))).toEqual([
+      6, 2, 4, 5, 1, 3,
+    ]);
+  });
+
+  it("keeps the order when a bucket overflows its weight", () => {
+    const flood = faultRank({ error: 0, warning: 5000, acknowledged: 5000 });
+    const oneError = faultRank({ error: 1, warning: 0, acknowledged: 0 });
+    expect(flood).toBeLessThan(oneError ?? 0);
+  });
+});
+
+describe("price columns", () => {
+  const priced = (id: number, purchasePrice: number, capacityBytes: number) =>
+    disk(id, { inventory: { purchasePrice }, capacityBytes });
+
+  it("divides price by capacity in TB", () => {
+    expect(fieldValue("pricePerTb", priced(1, 200, 4e12))).toBe(50);
+    expect(
+      fieldValue("pricePerTb", disk(1, { inventory: { purchasePrice: 200 } })),
+    ).toBeNull();
+  });
+
+  it("sorts by price per TB, not by price", () => {
+    const disks = [priced(1, 300, 12e12), priced(2, 100, 2e12), disk(3, {})];
+    expect(ids(sortDisks(disks, [{ id: "pricePerTb", desc: false }]))).toEqual([
+      1, 2, 3,
+    ]);
+    expect(ids(sortDisks(disks, [{ id: "price", desc: false }]))).toEqual([
+      2, 1, 3,
+    ]);
+  });
+
+  it("labels price per TB with the currency symbol", () => {
+    const column = findColumn("pricePerTb");
+    expect(column && columnLabel(column, "EUR")).toBe("€/TB");
+    expect(column && columnLabel(column, "GBP")).toBe("£/TB");
+    const price = findColumn("price");
+    expect(price && columnLabel(price, "EUR")).toBe("Price");
+  });
+});
+
+describe("health counter columns", () => {
+  const counters = (overrides: Partial<InventoryDisk["counters"]>) => ({
+    ...NO_COUNTERS,
+    ...overrides,
+  });
+
+  it("sorts counters by value with missing last", () => {
+    const disks = [
+      disk(1, {
+        counters: counters({ reallocated: { value: 8, status: "warning" } }),
+      }),
+      disk(2, {}),
+      disk(3, {
+        counters: counters({ reallocated: { value: 0, status: "passed" } }),
+      }),
+    ];
+    expect(ids(sortDisks(disks, [{ id: "reallocated", desc: true }]))).toEqual([
+      1, 3, 2,
+    ]);
+  });
+
+  it("reads wear and written, inferred or not", () => {
+    const ssd = disk(1, {
+      counters: counters({
+        wearPercent: { value: 12, status: "passed" },
+        bytesWritten: 44e12,
+        bytesWrittenInferred: true,
+      }),
+    });
+    expect(fieldValue("wear", ssd)).toBe(12);
+    expect(fieldValue("written", ssd)).toBe(44e12);
   });
 });

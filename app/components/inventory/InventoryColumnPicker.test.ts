@@ -25,7 +25,14 @@ describe("InventoryColumnPicker", () => {
     const { groups } = await menuItems();
     const labels = groups.map((group) => group.map(({ label }) => label));
 
-    expect(labels[0]).toEqual(["Identity", "Model", "Vendor"]);
+    expect(labels[0]).toEqual([
+      "Identity",
+      "Model",
+      "Serial",
+      "Vendor",
+      "Firmware",
+      "First seen",
+    ]);
     expect(labels.map((group) => group[0])).toEqual([
       "Identity",
       "Hardware",
@@ -39,7 +46,7 @@ describe("InventoryColumnPicker", () => {
 
   it("checks visible columns, keeps the menu open and reports toggles", async () => {
     const { picker, groups } = await menuItems();
-    const [model, vendor] = groups[0].slice(1);
+    const [model, , vendor] = groups[0].slice(1);
     const event = new Event("select", { cancelable: true });
 
     expect(model.checked).toBe(true);
@@ -48,6 +55,45 @@ describe("InventoryColumnPicker", () => {
     expect(event.defaultPrevented).toBe(true);
     vendor.onUpdateChecked?.(true);
     expect(picker.emitted("toggle")).toEqual([["vendor", true]]);
+  });
+
+  it("lists the detail columns in their groups, price per TB by currency", async () => {
+    const { groups } = await menuItems();
+    const group = (name: string) =>
+      groups
+        .find((items) => items[0].label === name)
+        ?.slice(1)
+        .map(({ label }) => label);
+
+    expect(group("Hardware")).toEqual(
+      expect.arrayContaining(["Form factor", "TRIM"]),
+    );
+    expect(group("Placement")).toEqual(
+      expect.arrayContaining(["Device", "Vdev"]),
+    );
+    expect(group("Health")).toEqual(
+      expect.arrayContaining([
+        "ZFS state",
+        "Faults",
+        "Power cycles",
+        "Last reading",
+        "Reallocated",
+        "Pending",
+        "Uncorrectable",
+        "Wear",
+        "Written",
+      ]),
+    );
+    expect(group("Inventory")).toEqual(
+      expect.arrayContaining([
+        "Purchased",
+        "Price",
+        "£/TB",
+        "Supplier",
+        "Condition",
+        "Notes",
+      ]),
+    );
   });
 
   it("offers reset only once customised", async () => {
