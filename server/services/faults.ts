@@ -1,5 +1,6 @@
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
+import { isHistoryState } from "#shared/disk";
 import {
   allowedActions,
   FAULT_KIND_DEFINITIONS,
@@ -80,8 +81,6 @@ export interface DetectionContext {
   cadences: CadenceOverrides;
 }
 
-export const LEFT_SERVICE_STATES = new Set(["dead", "retired", "sold"]);
-
 const ACCEPTANCE_STATE = {
   accepted: "accepted",
   acknowledged: "acknowledged",
@@ -90,7 +89,7 @@ const ACCEPTANCE_STATE = {
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
 function inService(disks: DiskSummary[]) {
-  return disks.filter((row) => !LEFT_SERVICE_STATES.has(row.state));
+  return disks.filter((row) => !isHistoryState(row.state));
 }
 
 function detectSmartAttributes({ disks }: DetectionContext): Detection[] {

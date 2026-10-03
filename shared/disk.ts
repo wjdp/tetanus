@@ -18,6 +18,16 @@ export type StateOverride = (typeof STATE_OVERRIDES)[number];
 
 export type EffectiveDiskState = DiskState | StateOverride;
 
+export const HISTORY_STATES = [
+  "dead",
+  "retired",
+  "sold",
+] as const satisfies readonly StateOverride[];
+
+export function isHistoryState(state: unknown): boolean {
+  return (HISTORY_STATES as readonly unknown[]).includes(state);
+}
+
 export const DISK_PROTOCOLS = ["ata", "nvme", "scsi", "unknown"] as const;
 export type DiskProtocol = (typeof DISK_PROTOCOLS)[number];
 

@@ -1,11 +1,11 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import type { DiskKey } from "#shared/disk";
+import { isHistoryState } from "#shared/disk";
 import { DEFAULT_SETTINGS_CONFIG } from "#shared/schemas/settings";
 import { db } from "~~/server/database/client";
 import { disk, diskKey } from "~~/server/database/schema";
 import { parse as parseUdev } from "~~/server/ingest/udev";
 import { PRESENT_WINDOW_MS } from "~~/server/services/disks";
-import { LEFT_SERVICE_STATES } from "~~/server/services/faults";
 import { diskSightingTimes } from "~~/server/services/hosts";
 import { extractKeys } from "~~/server/services/identity";
 import { ensureSettings } from "~~/server/services/settings";
@@ -126,7 +126,7 @@ function conflictPartners(subject: SubjectOf<"disk">) {
     .all()
     .filter(
       (row) =>
-        !(row.stateOverride && LEFT_SERVICE_STATES.has(row.stateOverride)) &&
+        !isHistoryState(row.stateOverride) &&
         udevPayloadOf(subject.host.id, row.id) !== undefined,
     );
 }

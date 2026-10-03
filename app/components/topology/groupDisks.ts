@@ -1,4 +1,9 @@
-import type { EffectiveDiskState, StateOverride } from "#shared/disk";
+import {
+  type EffectiveDiskState,
+  HISTORY_STATES,
+  isHistoryState,
+  type StateOverride,
+} from "#shared/disk";
 import type { Media } from "#shared/hardware";
 import type { DeviceStatus } from "#shared/smart/status";
 import type { TemperatureThresholds } from "#shared/temperature";
@@ -217,8 +222,6 @@ const HOST_GROUPS: GroupSpec[] = [
   },
 ];
 
-const HISTORY_STATES = new Set<EffectiveDiskState>(["dead", "retired", "sold"]);
-
 const MARKED_TILE_STATES = new Set<EffectiveDiskState>([
   ...HISTORY_STATES,
   "removed",
@@ -243,7 +246,7 @@ const RAIL_GROUPS: GroupSpec[] = [
     state: null,
     label: "History",
     icon: "i-lucide-history",
-    matches: (disk) => HISTORY_STATES.has(disk.state),
+    matches: (disk) => isHistoryState(disk.state),
   },
 ];
 

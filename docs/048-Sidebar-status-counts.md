@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: in-progress
 ---
 
 # Sidebar status counts

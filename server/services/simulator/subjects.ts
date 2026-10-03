@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
+import { isHistoryState } from "#shared/disk";
 import type { SimulationSubjectType } from "#shared/simulator";
 import { db } from "~~/server/database/client";
 import { disk, host, pool } from "~~/server/database/schema";
-import { LEFT_SERVICE_STATES } from "~~/server/services/faults";
 import { notFound } from "~~/server/utils/serviceError";
 import { storedPayloads } from "./payloads";
 import { serialOf } from "./smartctl";
@@ -31,7 +31,7 @@ export function loadSubject(
   }
   const row = db.select().from(disk).where(eq(disk.id, id)).get();
   if (!row) throw notFound(`No disk ${id}`);
-  if (row.stateOverride && LEFT_SERVICE_STATES.has(row.stateOverride)) {
+  if (isHistoryState(row.stateOverride)) {
     return undefined;
   }
   const owner = hostRow(row.lastSeenHostId);

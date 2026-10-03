@@ -1,5 +1,6 @@
 import { asc, inArray } from "drizzle-orm";
 import type { DiaryEventType } from "#shared/diary";
+import { isHistoryState } from "#shared/disk";
 import {
   FAULT_KIND_DEFINITIONS,
   FAULT_KINDS,
@@ -32,7 +33,6 @@ import {
   type FaultRow,
   faultDetectionContext,
   identityConflictKey,
-  LEFT_SERVICE_STATES,
   notifyFaultsChanged,
 } from "~~/server/services/faults";
 import {
@@ -259,7 +259,7 @@ function leaveOrReturnToService(
   state: unknown,
   at: Date,
 ) {
-  if (!LEFT_SERVICE_STATES.has(text(state))) {
+  if (!isHistoryState(state)) {
     context.outOfService.delete(diskId);
     return;
   }
