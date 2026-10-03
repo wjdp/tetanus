@@ -355,6 +355,8 @@ describe("disk page", () => {
     );
     expect(notedRows).toEqual([true, false, true, true]);
 
+    expect(page.find('[data-testid="attribute-detail"]').exists()).toBe(false);
+    await attributeRows()[0]?.trigger("click");
     const details = page.findAll('[data-testid="attribute-detail"]');
     expect(details).toHaveLength(1);
     const detail = details[0]?.text() ?? "";

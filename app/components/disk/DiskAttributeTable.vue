@@ -62,21 +62,6 @@ const visibilitySummary = computed(() =>
 
 const expanded = ref<Record<string, boolean>>({});
 
-watch(
-  ordered,
-  (current) => {
-    if (Object.values(expanded.value).some(Boolean)) return;
-    const firstFault = current.find(
-      (attribute) =>
-        attribute.displayStatus === "failed" ||
-        attribute.displayStatus === "warning" ||
-        attribute.displayStatus === "acknowledged",
-    );
-    expanded.value = firstFault ? { [firstFault.attrId]: true } : {};
-  },
-  { immediate: true },
-);
-
 const ROW_TINT = {
   failed: "bg-error/5",
   warning: "bg-warning/5",
