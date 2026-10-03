@@ -36,9 +36,13 @@ New:
 - **Aliases.** The author's `K1`/`L3`/`Z5` scheme is the disk's name everywhere. Kernel
   names (`/dev/sdX`) are shown but never used as identity. Aliases are unique across
   hosts.
-- **Lifecycle.** Each disk has a state: in-use, spare, removed, dead, sold. Inferred from
-  ZFS membership and device presence, overridable by hand. Removed disks keep their
+- **Lifecycle.** Each disk has a state: in-use, spare, removed, dead, retired. Inferred
+  from ZFS membership and device presence, overridable by hand. Removed disks keep their
   history.
+- **Disposal.** A disk that leaves your possession (sold, RMA'd, recycled, given away)
+  is recorded as disposed, with a date and, if sold, a price. It keeps its history and
+  diary, drops out of lists by default, and alerts if it is ever seen again. An RMA
+  replacement links to the disk it replaces.
 - **Inventory.** Purchase date, purchase price, supplier, purchase condition
   (new/used/refurbished/shucked), warranty expiry, 3.3 V pin tape flag, free-text notes.
   Age shown as calendar age and power-on time. Adding a field is one registry entry.

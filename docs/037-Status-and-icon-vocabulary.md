@@ -27,7 +27,8 @@ colour for it. No green surfaces, no green icons, no green text elsewhere except
 `improving` trends and recovery notices.
 
 Red and amber on the home page always mean a problem that exists now. A disk that is
-dead, sold or retired is history, not a problem: neutral.
+dead or retired is history, and a disposed disk is gone ([040](040-Disk-disposal.md)),
+not a problem: neutral.
 
 ## Dots
 
@@ -78,11 +79,23 @@ at reduced opacity with title "as of last scan 9 d ago"
 | `unseen` | neutral | `i-lucide-eye-off` | Unseen | Unseen |
 | `dead` | neutral | `i-lucide-skull` | Dead | History (collapsed) |
 | `retired` | neutral | `i-lucide-archive` | Retired | History (collapsed) |
-| `sold` | neutral | `i-lucide-banknote` | Sold | History (collapsed) |
 
 Change from today: `dead` drops from `error` to `neutral` (`diskStateColour`). It is an
 override the user set on purpose; the skull carries the meaning and the home page stays
 red-only-for-problems.
+
+## Disposal
+
+Disposed disks ([040](040-Disk-disposal.md)) are in no rail. The disposal badge
+replaces the state badge in the Disks list state column, on the disk page banner and in
+search. All neutral; a sighting after disposal turns the disk page banner `warning`.
+
+| kind | colour | icon | label |
+| --- | --- | --- | --- |
+| `sold` | neutral | `i-lucide-banknote` | Sold |
+| `rma` | neutral | `i-lucide-package-open` | RMA · awaiting replacement / RMA · replaced by K7 |
+| `recycled` | neutral | `i-lucide-recycle` | Recycled |
+| `given-away` | neutral | `i-lucide-gift` | Given away |
 
 ## ZFS state (`zfsStateColour`)
 

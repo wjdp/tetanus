@@ -163,7 +163,7 @@ inferred =
   device absent, seen within N days       → missing    (N default 7)
   device absent, not seen for N days      → removed
   never seen (inventory-only row)         → unseen
-override ∈ { none, spare, removed, dead, sold, retired }
+override ∈ { none, spare, removed, dead, retired }
 effective = override ?? inferred
 ```
 
@@ -174,6 +174,16 @@ itself (`collector-silent`) instead
 
 `missing` alerts once; `removed` is quiet. Override is manual and produces a diary
 entry. Transitions of `effective` produce diary entries.
+
+Disposal is separate from state ([040](040-Disk-disposal.md)): `Disk.disposal`
+(`{ kind: sold | rma | recycled | given-away, on, salePrice? }`, null while owned) says
+the disk has left your possession. Only an absent disk can be disposed. While disposed,
+transitions are frozen (no `state-changed` entries), and faults, alert rules, sidebar
+counts, Topology and the Disks list (unless `disposed=1`) leave the disk out; the disk
+page and search still show it. A sighting of a disposed disk writes one
+`disposed-disk-seen` diary entry per disposal, which alerts. `Disk.replacesDiskId`
+links an RMA replacement to the RMA'd disk it replaces (one replacement each); diary
+entries `replaced-by` / `replaces` / `replacement-cleared` record the link.
 
 ## SMART evaluation
 
@@ -229,7 +239,8 @@ Host            id, name (unique, hostname -s), displayName?, toolVersions (json
 Disk            id, alias? (unique), scrutinyUuid, model, modelFull, serial, firmware, capacityBytes,
                 rotationRate, protocol (ata|nvme|scsi), transport, formFactor,
                 firstSeenAt, lastSeenAt, lastSeenHostId, lastDevicePath, lastDeviceType,
-                stateOverride?, notes (md), inventory (json, see below), latestRaw (json),
+                stateOverride?, disposal? (json), replacesDiskId? (→ Disk, unique),
+                notes (md), inventory (json, see below), latestRaw (json),
                 latestStatus, latestTemp, latestPowerOnHours, latestPowerCycles,
                 ataSsdAttributes? (json: { wear: attrId?, written: { attrId, unitBytes,
                 inferred }? }, SATA SSD attribute ids by smartctl name, set at ingest)
