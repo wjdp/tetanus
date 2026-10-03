@@ -1,14 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { FAULT_STATES } from "#shared/faults";
-import { seed } from "~~/server/demo/seed";
-import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
 import { listDisks } from "~~/server/services/disks";
 import { listFaults } from "~~/server/services/faults";
 import { latestAttributes } from "~~/server/services/smart";
 import { dumpDatabase } from "~~/test/db";
+import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
 import { restore, simulate, simulatorStatus, subjectScenarios } from "./run";
 
-const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
+const NOW = SEEDED_AT;
 const LATER = new Date(NOW.getTime() + 10 * 60 * 1000);
 
 const liveFaults = () => listFaults({ state: ["open", "acknowledged"] }).faults;
@@ -22,9 +21,9 @@ async function diskWith(scenarioId: string) {
   throw new Error(`No disk offers ${scenarioId}`);
 }
 
-beforeAll(async () => {
-  await seed(NOW, { replay: "short" });
-}, 120_000);
+beforeAll(() => {
+  loadSeededDatabase();
+});
 
 describe("simulate", () => {
   it("offers nothing for a disk out of service", async () => {

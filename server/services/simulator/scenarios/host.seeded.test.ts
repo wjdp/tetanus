@@ -2,15 +2,15 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { type FaultKind, faultTitle } from "#shared/faults";
 import { allGroupFreshness, formatDuration } from "#shared/hostFreshness";
-import { seed } from "~~/server/demo/seed";
-import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
+import { HOUR_MS } from "~~/server/demo/timeline";
 import { listDiary } from "~~/server/services/diary";
 import { listFaults } from "~~/server/services/faults";
 import { listHosts } from "~~/server/services/hosts";
 import { dumpDatabase } from "~~/test/db";
+import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
 import { restore, simulate, subjectScenarios } from "../run";
 
-const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
+const NOW = SEEDED_AT;
 const LATER = new Date(NOW.getTime() + 10 * 60 * 1000);
 
 const hostNamed = (name: string) => {
@@ -32,9 +32,9 @@ const missingDiskFaultIds = () =>
 const scenarioIds = (hostId: number) =>
   subjectScenarios("host", hostId).scenarios.map((scenario) => scenario.id);
 
-beforeAll(async () => {
-  await seed(NOW, { replay: "short" });
-}, 120_000);
+beforeAll(() => {
+  loadSeededDatabase();
+});
 
 describe("host scenarios", () => {
   it("offers no silence on an intermittent host, which goes offline instead", () => {

@@ -1,14 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { temperatureColour } from "#shared/temperature";
-import { seed } from "~~/server/demo/seed";
-import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
 import { listDisks } from "~~/server/services/disks";
 import { listFaults } from "~~/server/services/faults";
 import { getSmartOverview, latestAttributes } from "~~/server/services/smart";
 import { dumpDatabase } from "~~/test/db";
+import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
 import { restore, simulate, subjectScenarios } from "../run";
 
-const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
+const NOW = SEEDED_AT;
 const LATER = new Date(NOW.getTime() + 10 * 60 * 1000);
 
 const liveFaults = (diskId: number) =>
@@ -36,9 +35,9 @@ async function summaryOf(diskId: number) {
 
 let before: ReturnType<typeof dumpDatabase>;
 
-beforeAll(async () => {
-  await seed(NOW, { replay: "short" });
-}, 120_000);
+beforeAll(() => {
+  loadSeededDatabase();
+});
 
 beforeEach(() => {
   before = dumpDatabase();

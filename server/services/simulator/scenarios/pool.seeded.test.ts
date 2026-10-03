@@ -1,17 +1,16 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FaultSeverity } from "#shared/faults";
 import type { SimulationParams } from "#shared/simulator";
-import { seed } from "~~/server/demo/seed";
-import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
 import { runAlertsPass } from "~~/server/services/alerts/dispatch";
 import { listFaults } from "~~/server/services/faults";
 import { recordIngest } from "~~/server/services/ingest";
 import { getPool, listPools, type PoolDetail } from "~~/server/services/zfs";
 import { dumpDatabase } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
+import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
 import { restore, simulate, subjectScenarios } from "../run";
 
-const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
+const NOW = SEEDED_AT;
 const LATER = new Date(NOW.getTime() + 10 * 60 * 1000);
 
 let pristine: ReturnType<typeof dumpDatabase>;
@@ -49,7 +48,7 @@ function flatten(node: ReturnType<typeof getPool>["vdevs"]) {
 }
 
 beforeAll(async () => {
-  await seed(NOW, { replay: "short" });
+  loadSeededDatabase();
   // mars's file-backed test pool: a mirror with a log, a cache and a spare.
   recordIngest({
     hostName: "mars",

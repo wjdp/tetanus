@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineVitestProject } from "@nuxt/test-utils/config";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 const rootAlias = {
   "~~": fileURLToPath(new URL(".", import.meta.url)),
@@ -21,6 +21,21 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["server/**/*.test.ts", "shared/**/*.test.ts"],
+          exclude: [...configDefaults.exclude, "**/*.seeded.test.ts"],
+          setupFiles: ["test/setup.ts"],
+          env: {
+            DATABASE_URL: ":memory:",
+          },
+        },
+      },
+      {
+        // Integration tests over the demo fleet. Seeding takes ~20s, so it runs
+        // once per run in global setup and each file copies the result.
+        resolve: { alias: rootAlias },
+        test: {
+          name: "seeded",
+          include: ["server/**/*.seeded.test.ts"],
+          globalSetup: ["test/seed.globalSetup.ts"],
           setupFiles: ["test/setup.ts"],
           env: {
             DATABASE_URL: ":memory:",

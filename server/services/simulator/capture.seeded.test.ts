@@ -2,14 +2,15 @@ import { eq, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "~~/server/database/client";
 import * as schema from "~~/server/database/schema";
-import { seed, tick } from "~~/server/demo/seed";
-import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
+import { tick } from "~~/server/demo/seed";
+import { HOUR_MS } from "~~/server/demo/timeline";
 import { addManualEntry } from "~~/server/services/diary";
 import { listDisks } from "~~/server/services/disks";
 import { dumpDatabase } from "~~/test/db";
+import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
 import { discardCapture, rollBackCapture, startCapture } from "./capture";
 
-const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
+const NOW = SEEDED_AT;
 
 function triggerCount() {
   return (
@@ -19,9 +20,9 @@ function triggerCount() {
   );
 }
 
-beforeAll(async () => {
-  await seed(NOW, { replay: "short" });
-}, 120_000);
+beforeAll(() => {
+  loadSeededDatabase();
+});
 
 describe("capture", () => {
   it("rolls back inserts, updates and cascading deletes exactly", async () => {

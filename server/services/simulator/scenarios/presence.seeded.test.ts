@@ -1,13 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { faultTitle } from "#shared/faults";
-import { seed } from "~~/server/demo/seed";
-import { DEMO_EPOCH, HOUR_MS } from "~~/server/demo/timeline";
 import { getDisk, listDisks } from "~~/server/services/disks";
 import { listFaults } from "~~/server/services/faults";
 import { dumpDatabase } from "~~/test/db";
+import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
 import { restore, simulate, subjectScenarios } from "../run";
 
-const NOW = new Date(DEMO_EPOCH.getTime() + 2 * HOUR_MS);
+const NOW = SEEDED_AT;
 const LATER = new Date(NOW.getTime() + 10 * 60 * 1000);
 
 const liveFaults = () => listFaults({ state: ["open", "acknowledged"] }).faults;
@@ -18,23 +17,26 @@ function scenarioOf(diskId: number, scenarioId: string) {
   );
 }
 
-async function inServiceDisks() {
-  return (await listDisks(NOW)).filter(
-    (row) => subjectScenarios("disk", row.id).scenarios.length > 0,
-  );
+/** The first `count` disks offering the scenario; offers are slow to build, so it stops there. */
+async function disksOffering(scenarioId: string, count = 1) {
+  const found = [];
+  for (const row of await listDisks(NOW)) {
+    if (!scenarioOf(row.id, scenarioId)) continue;
+    found.push(row);
+    if (found.length === count) break;
+  }
+  return found;
 }
 
-beforeAll(async () => {
-  await seed(NOW, { replay: "short" });
-}, 120_000);
+beforeAll(() => {
+  loadSeededDatabase();
+});
 
 describe("presence scenarios", () => {
-  it("shows every in-service disk as missing, last seen hours ago", async () => {
+  it("shows in-service disks as missing, last seen hours ago", async () => {
     const before = dumpDatabase();
-    const disks = (await inServiceDisks()).filter((row) =>
-      scenarioOf(row.id, "disk-missing"),
-    );
-    expect(disks.length).toBeGreaterThan(0);
+    const disks = await disksOffering("disk-missing", 2);
+    expect(disks).toHaveLength(2);
     for (const row of disks) {
       await simulate("disk", row.id, "disk-missing", { hours: 48 }, LATER);
     }
@@ -61,9 +63,7 @@ describe("presence scenarios", () => {
 
   it("opens an identity conflict with the chosen disk", async () => {
     const before = dumpDatabase();
-    const target = (await inServiceDisks()).find((row) =>
-      scenarioOf(row.id, "identity-conflict"),
-    );
+    const [target] = await disksOffering("identity-conflict");
     if (!target) throw new Error("No disk offers identity-conflict");
     const param = scenarioOf(target.id, "identity-conflict")?.params[0];
     if (param?.kind !== "select") throw new Error("Expected a disk select");
@@ -90,9 +90,7 @@ describe("presence scenarios", () => {
 
   it("leaves the disk as it was when smartctl cannot open it", async () => {
     const before = dumpDatabase();
-    const target = (await inServiceDisks()).find((row) =>
-      scenarioOf(row.id, "smartctl-unreadable"),
-    );
+    const [target] = await disksOffering("smartctl-unreadable");
     if (!target) throw new Error("No disk offers smartctl-unreadable");
 
     await simulate("disk", target.id, "smartctl-unreadable", {}, LATER);
