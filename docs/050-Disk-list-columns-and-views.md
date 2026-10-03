@@ -272,7 +272,7 @@ Sort for all: numeric, nulls last. HDDs have no wear; SSDs no pending: `—`.
 
 ## As built: server columns
 
-Server half of build step 8. UI columns not yet built.
+Server half of build step 8.
 
 - `DiskSummary.counters: DiskCounters` and `faultCounts: DiskFaultCounts`, also on
   `getDisk` (shared `summarise`). `ataSsdAttributes` rides along from the row.
@@ -307,3 +307,30 @@ Server half of build step 8. UI columns not yet built.
   after `applySmartPolicyIfStale` (parsing tens of `latestRaw` is quick), gated by
   `config.ataSsdAttributesBackfilledAt`; not a queued task.
 - e2e asserts `counters`, not `latestCounters`.
+
+## As built: client
+
+- Registry `app/components/inventory/columns.ts` (renamed from `inventorySort.ts`);
+  every cell through `InventoryCell.vue`, null → dimmed `—`. Cards use it with
+  `linked=false` (no links inside the card link).
+- Preferences: `useInventoryPreferences()` called once in the page and passed down
+  (two `useCookie` refs of one name do not sync within a tab). `maxAge` 400 days,
+  the browser cap. Reset disabled until customised.
+- Filters: `filterDisks.ts` holds the predicate, faceted counts and filter state;
+  sentinels are `ALL` / `NONE`. `InventoryFilterSelect.vue` is the one select with
+  glyphs and counts. `InventoryFilters` takes `disks` and derives options itself.
+- Active select uses `highlight` (primary ring): `color="primary" variant="soft"`
+  on `USelect` only greys the background. The Filters popover button is primary
+  soft.
+- Status filter icon `i-lucide-heart-pulse`, Media `i-lucide-hard-drive` when all.
+  State lists all eight lifecycle states, zero counts included. A host or pool named
+  in the URL but absent from data is kept as an option.
+- Sort changes push history. A third header click clears sort → alias ascending.
+- Columns: Vdev shows `stripe` for top-level disks (`groupType === "root"`), per
+  037 and `DiskZfsMembership`. TRIM: check / "no" / `—`. Purchased shows the ISO
+  date. Faults sort key `faultRank` packs error, warning, acknowledged (each capped
+  999). Price/TB header from `moneyPerTbLabel`; cards' sort select says `Price/TB`.
+  Counters render via `InventoryStatusCounter.vue` reusing the attribute table's
+  dot and label vocabulary. Notes via `app/utils/markdown.ts`.
+- ATA SSD wear acceptance and evaluation: deferred to
+  [052](052-SSD-wear-monitoring.md).
