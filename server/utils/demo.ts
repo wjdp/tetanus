@@ -1,7 +1,12 @@
+import { type CadenceOverrides, DEMO_CADENCES } from "#shared/hostFreshness";
 import { simulatorEnabled } from "#shared/simulator";
 
 export function isDemo(): boolean {
   return useRuntimeConfig().public.demo === true;
+}
+
+export function collectorCadences(): CadenceOverrides {
+  return isDemo() ? DEMO_CADENCES : {};
 }
 
 export function demoForbidden(message: string): never {

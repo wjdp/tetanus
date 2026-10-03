@@ -5,12 +5,12 @@ import {
   collectorStatus,
   MIN_COLLECTOR_VERSION,
 } from "#shared/collector";
-import { DEMO_CADENCES, SOURCE_GROUPS } from "#shared/hostFreshness";
+import { SOURCE_GROUPS } from "#shared/hostFreshness";
 import type { ScenarioParamOption } from "#shared/simulator";
 import { db } from "~~/server/database/client";
 import { collectorRun, disk, host, pool } from "~~/server/database/schema";
 import { getHost } from "~~/server/services/hosts";
-import { isDemo } from "~~/server/utils/demo";
+import { collectorCadences } from "~~/server/utils/demo";
 import { storedPayload } from "../payloads";
 import { defineScenario, type Scenario, type SubjectOf } from "../types";
 
@@ -31,7 +31,7 @@ function okRunAges(subject: SubjectOf<"host">, now: Date) {
 function silentAfterHours(subject: SubjectOf<"host">, now = new Date()) {
   const ages = okRunAges(subject, now);
   const latestAge = Math.min(...ages.values());
-  const cadences = isDemo() ? DEMO_CADENCES : {};
+  const cadences = collectorCadences();
   const shiftNeeded = SOURCE_GROUPS.map((group) => {
     const groupAges = group.sources.flatMap((source) => ages.get(source) ?? []);
     if (groupAges.length === 0) return 0;

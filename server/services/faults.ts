@@ -17,13 +17,7 @@ import {
   type FaultView,
   faultTitle,
 } from "#shared/faults";
-import {
-  allGroupFreshness,
-  type CadenceOverrides,
-  DEMO_CADENCES,
-  isEveryGroupSilent,
-  isHostOffline,
-} from "#shared/hostFreshness";
+import { type CadenceOverrides, isHostSilent } from "#shared/hostFreshness";
 import type { FaultsQuery } from "#shared/schemas/faults";
 import { healthStatus, overlayStatus } from "#shared/smart/status";
 import { db } from "~~/server/database/client";
@@ -44,7 +38,7 @@ import {
   latestReading,
 } from "~~/server/services/smart";
 import { useSseEvent } from "~~/server/sse";
-import { isDemo } from "~~/server/utils/demo";
+import { collectorCadences } from "~~/server/utils/demo";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type FaultRow = typeof fault.$inferSelect;
@@ -228,11 +222,7 @@ function detectCollectorSilent({
   cadences,
 }: DetectionContext): Detection[] {
   return hosts.flatMap((row) => {
-    const at = now.getTime();
-    if (isHostOffline(row, at, cadences)) return [];
-    if (!isEveryGroupSilent(allGroupFreshness(row.lastRuns, at, cadences))) {
-      return [];
-    }
+    if (!isHostSilent(row, now.getTime(), cadences)) return [];
     return {
       kind: "collector-silent",
       key: String(row.id),
@@ -275,10 +265,7 @@ function detectCollectorVersion({ hosts }: DetectionContext): Detection[] {
 
 export function detectFaults(context: DetectionContext): FaultScan {
   const silent = detectCollectorSilent(context);
-  const pools = detectPoolFaults(
-    context,
-    new Set(silent.map((detection) => detection.subjectId)),
-  );
+  const pools = detectPoolFaults(context);
   const suppressedDiskIds = new Set(
     pools.superseded
       .filter((supersession) => supersession.subjectType === "disk")
@@ -533,7 +520,7 @@ export function faultDetectionContext(
     now,
     disks,
     hosts: listHosts(),
-    cadences: isDemo() ? DEMO_CADENCES : {},
+    cadences: collectorCadences(),
   };
 }
 

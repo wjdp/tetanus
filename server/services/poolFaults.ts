@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNull, lte, max } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte } from "drizzle-orm";
 import type {
   FaultData,
   FaultKind,
@@ -6,7 +6,6 @@ import type {
   LeafCounts,
   PoolDegradedLeaf,
 } from "#shared/faults";
-import { isHostOffline } from "#shared/hostFreshness";
 import { resolvePoolConfig } from "#shared/schemas/pools";
 import { zfsMessage } from "#shared/zfsMessages";
 import {
@@ -17,7 +16,6 @@ import {
 } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
-  collectorRun,
   diaryEntry,
   fault,
   pool,
@@ -29,6 +27,10 @@ import type {
   DetectionContext,
   Supersession,
 } from "~~/server/services/faults";
+import {
+  poolPresence,
+  poolPresenceContext,
+} from "~~/server/services/poolPresence";
 
 type PoolRow = typeof pool.$inferSelect;
 type VdevRow = typeof vdev.$inferSelect;
@@ -96,20 +98,6 @@ export function countsRose(counts: LeafCounts, baseline: unknown) {
     counts.read > Number(level.read ?? 0) ||
     counts.write > Number(level.write ?? 0) ||
     counts.checksum > Number(level.checksum ?? 0)
-  );
-}
-
-function latestStatusTimes(): Map<number, Date> {
-  return new Map(
-    db
-      .select({ hostId: collectorRun.hostId, at: max(collectorRun.receivedAt) })
-      .from(collectorRun)
-      .where(
-        and(eq(collectorRun.source, "zpool-status"), eq(collectorRun.ok, true)),
-      )
-      .groupBy(collectorRun.hostId)
-      .all()
-      .flatMap(({ hostId, at }) => (at ? [[hostId, at] as const] : [])),
   );
 }
 
@@ -609,16 +597,13 @@ export interface PoolFaultScan {
   superseded: Supersession[];
 }
 
-export function detectPoolFaults(
-  { now, disks, hosts, cadences }: DetectionContext,
-  silentHostIds: Set<number>,
-): PoolFaultScan {
-  const latestStatus = latestStatusTimes();
-  const offlineHostIds = new Set(
-    hosts
-      .filter((row) => isHostOffline(row, now.getTime(), cadences))
-      .map((row) => row.id),
-  );
+export function detectPoolFaults({
+  now,
+  disks,
+  hosts,
+  cadences,
+}: DetectionContext): PoolFaultScan {
+  const presence = poolPresenceContext(now, hosts, cadences);
   const missingDiskIds = new Set(
     disks.filter((row) => row.state === "missing").map((row) => row.id),
   );
@@ -640,7 +625,8 @@ export function detectPoolFaults(
     .where(isNull(pool.archivedAt))
     .all()) {
     const vdevs = vdevsByPool.get(row.id) ?? [];
-    if (silentHostIds.has(row.hostId)) {
+    const seen = poolPresence(row, presence);
+    if (seen === "host-silent") {
       superseded.push({
         subjectType: "pool",
         subjectId: row.id,
@@ -649,9 +635,8 @@ export function detectPoolFaults(
       });
       continue;
     }
-    const statusAt = latestStatus.get(row.hostId);
-    if (!statusAt) continue;
-    if (row.lastSeenAt >= statusAt) {
+    if (seen === "present") {
+      const statusAt = presence.latestStatus.get(row.hostId) ?? now;
       current.push({
         row,
         vdevs,
@@ -660,7 +645,7 @@ export function detectPoolFaults(
       });
       continue;
     }
-    if (offlineHostIds.has(row.hostId)) continue;
+    if (seen !== "missing") continue;
     const by = { kind: "pool-missing" as const, key: String(row.id) };
     detections.push({
       ...by,

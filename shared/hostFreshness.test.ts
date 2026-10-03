@@ -4,6 +4,7 @@ import {
   DEMO_CADENCES,
   formatDuration,
   isHostOffline,
+  isHostSilent,
   MONITORED_SOURCES,
   sourceFreshness,
 } from "./hostFreshness";
@@ -79,6 +80,30 @@ describe("isHostOffline", () => {
     expect(
       isHostOffline({ intermittent: false, lastRuns: staleRuns }, now),
     ).toBe(false);
+  });
+});
+
+describe("isHostSilent", () => {
+  const now = Date.parse("2026-09-29T12:00:00Z");
+  const staleRuns = {
+    versions: { receivedAt: new Date(now - 24 * 60 * 60_000), ok: true },
+  };
+
+  it("is silent when every group is stale", () => {
+    expect(
+      isHostSilent({ intermittent: false, lastRuns: staleRuns }, now),
+    ).toBe(true);
+  });
+
+  it("is not silent when any group is fresh", () => {
+    const lastRuns = { versions: { receivedAt: new Date(now), ok: true } };
+    expect(isHostSilent({ intermittent: false, lastRuns }, now)).toBe(false);
+  });
+
+  it("is offline rather than silent when intermittent", () => {
+    expect(isHostSilent({ intermittent: true, lastRuns: staleRuns }, now)).toBe(
+      false,
+    );
   });
 });
 
