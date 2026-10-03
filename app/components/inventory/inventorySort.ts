@@ -64,7 +64,7 @@ export const SORT_FIELDS: SortField[] = [
   {
     id: "pin33",
     label: "3.3 V",
-    value: (disk) => (disk.inventory.pin33Taped ? 1 : 0),
+    value: (disk) => (disk.inventory.pin33Taped ? 1 : null),
   },
 ];
 

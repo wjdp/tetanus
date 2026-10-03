@@ -68,6 +68,26 @@ describe("sortDisks", () => {
   });
 });
 
+describe("pin33 field", () => {
+  const taped = disk(1, { inventory: { pin33Taped: true } });
+  const untaped = disk(2, { inventory: { pin33Taped: false } });
+  const unset = disk(3);
+
+  it("is null unless taped", () => {
+    expect(
+      SORT_FIELDS.find(({ id }) => id === "pin33")?.value(untaped),
+    ).toBeNull();
+    expect(SORT_FIELDS.find(({ id }) => id === "pin33")?.value(taped)).toBe(1);
+  });
+
+  it("sorts untaped last in both directions", () => {
+    const disks = [untaped, taped, unset];
+
+    expect(ids(sortDisks(disks, [{ id: "pin33", desc: false }]))[0]).toBe(1);
+    expect(ids(sortDisks(disks, [{ id: "pin33", desc: true }]))[0]).toBe(1);
+  });
+});
+
 const fieldValue = (id: string, target: InventoryDisk) =>
   SORT_FIELDS.find((field) => field.id === id)?.value(target);
 

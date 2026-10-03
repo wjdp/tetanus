@@ -102,4 +102,33 @@ describe("InventoryTable", () => {
 
     expect(table.get("tbody tr").text()).toContain("sys");
   });
+
+  describe("empty cells", () => {
+    const cellText = (
+      table: Awaited<ReturnType<typeof mountTable>>,
+      header: string,
+      row = 0,
+    ) => {
+      const headers = table.findAll("thead th").map((th) => th.text());
+      const index = headers.indexOf(header);
+      expect(index).toBeGreaterThanOrEqual(0);
+      return table.findAll("tbody tr")[row].findAll("td")[index].text();
+    };
+
+    it("shows a dash, never 0, for a 3.3 V pin that is not taped", async () => {
+      const table = await mountTable([
+        disk({ id: 1, alias: "K1", inventory: { pin33Taped: false } }),
+      ]);
+
+      expect(cellText(table, "3.3 V")).toBe("—");
+    });
+
+    it("shows a dash for an unknown recording technology", async () => {
+      const table = await mountTable([
+        disk({ id: 1, alias: "K1", recordingTech: null }),
+      ]);
+
+      expect(cellText(table, "Recording")).toBe("—");
+    });
+  });
 });

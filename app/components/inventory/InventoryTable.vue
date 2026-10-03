@@ -135,6 +135,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
         v-bind="recordingBadge(row.original)"
         size="xs"
       />
+      <span v-else class="text-dimmed">—</span>
     </template>
 
     <template #sectors-cell="{ row }">
@@ -236,6 +237,7 @@ const onSelectRow = (_event: Event, row: { original: InventoryDisk }) =>
         class="text-muted size-4"
         aria-label="3.3 V pin taped"
       />
+      <span v-else class="text-dimmed">—</span>
     </template>
   </UTable>
 </template>
