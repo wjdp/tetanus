@@ -15,6 +15,8 @@ import {
   pool,
   poolHistory,
   poolReading,
+  replication,
+  replicationSync,
   selfTest,
   setting,
   smartAttribute,
@@ -27,6 +29,8 @@ import {
 import { schemaTables } from "~~/server/services/simulator/capture";
 
 const TABLES_CHILDREN_FIRST = [
+  replicationSync,
+  replication,
   smartAttribute,
   smartReading,
   temperatureReading,

@@ -7,6 +7,10 @@ import type { ZpoolEventsResult } from "~~/server/ingest/zpool-events";
 import type { ZpoolHistoryResult } from "~~/server/ingest/zpool-history";
 import type { ZpoolListResult } from "~~/server/ingest/zpool-list";
 import type { ZpoolStatusResult } from "~~/server/ingest/zpool-status";
+import {
+  observeReceives,
+  observeSnapshotsForReplications,
+} from "./replications";
 import { observeZfsList, observeZfsSnapshots } from "./zfs/datasets";
 import { observeZfsEvents } from "./zfs/events";
 import { observeZpoolHistory } from "./zfs/history";
@@ -78,8 +82,13 @@ const zedEvent: IngestHandler<ZedEventResult> = ({
   observeZfsEvents(hostId, [data.event], receivedAt);
 };
 
-const zpoolHistory: IngestHandler<ZpoolHistoryResult> = ({ hostId, data }) => {
+const zpoolHistory: IngestHandler<ZpoolHistoryResult> = ({
+  hostId,
+  data,
+  receivedAt,
+}) => {
   observeZpoolHistory(hostId, data);
+  observeReceives(hostId, data.entries, receivedAt);
 };
 
 const zfsList: IngestHandler<ZfsListResult> = ({
@@ -96,6 +105,7 @@ const zfsSnapshots: IngestHandler<ZfsSnapshotsResult> = ({
   receivedAt,
 }) => {
   observeZfsSnapshots(hostId, data, receivedAt);
+  observeSnapshotsForReplications(receivedAt);
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: each handler narrows data to its own parser's output

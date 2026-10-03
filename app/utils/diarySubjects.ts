@@ -6,6 +6,7 @@ export const DIARY_SUBJECT_ICON: Record<DiarySubjectType, string> = {
   pool: ENTITY_ICON.pool,
   vdev: "i-lucide-layers",
   dataset: ENTITY_ICON.dataset,
+  replication: ENTITY_ICON.replication,
   host: ENTITY_ICON.host,
   system: ENTITY_ICON.diary,
 };

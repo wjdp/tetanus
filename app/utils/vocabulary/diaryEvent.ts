@@ -124,6 +124,9 @@ const DIARY_EVENT_ICON: Record<
   "replaced-by": () => "i-lucide-replace",
   replaces: () => "i-lucide-replace",
   "replacement-cleared": () => "i-lucide-unlink",
+  "replication-discovered": () => ENTITY_ICON.replication,
+  "replication-archived": () => "i-lucide-archive",
+  "replication-resumed": () => "i-lucide-archive-restore",
 };
 
 const isDiaryEventType = (value: string): value is DiaryEventType =>

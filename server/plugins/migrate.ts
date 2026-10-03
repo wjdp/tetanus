@@ -1,3 +1,4 @@
+import type { TaskName } from "#shared/tasks";
 import { databasePath, db, sqlite } from "~~/server/database/client";
 import { describeMigrations, runMigrations } from "~~/server/database/migrate";
 import { backfillAtaSsdAttributesOnce } from "~~/server/services/ataSsdAttributesBackfill";
@@ -6,11 +7,11 @@ import { applySmartPolicyIfStale } from "~~/server/services/smartPolicy";
 import { enqueueUnlessPending } from "~~/server/tasks/queueable/alertsTick";
 import { isDemo } from "~~/server/utils/demo";
 
-async function queueFaultsBackfill() {
+async function queueBackfill(name: TaskName) {
   try {
-    await enqueueUnlessPending("faults:backfill");
+    await enqueueUnlessPending(name);
   } catch (error) {
-    console.error("Could not queue faults:backfill", error);
+    console.error(`Could not queue ${name}`, error);
   }
 }
 
@@ -24,7 +25,10 @@ export default defineNitroPlugin(() => {
     applySmartPolicyIfStale();
     backfillAtaSsdAttributesOnce();
     if (!settings.config.faultsBackfilledAt && !isDemo()) {
-      void queueFaultsBackfill();
+      void queueBackfill("faults:backfill");
+    }
+    if (!settings.config.replicationsBackfilledAt && !isDemo()) {
+      void queueBackfill("replications:backfill");
     }
   } catch (error) {
     if (import.meta.dev) {

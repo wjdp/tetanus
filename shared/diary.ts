@@ -3,6 +3,7 @@ export const DIARY_SUBJECT_TYPES = [
   "pool",
   "vdev",
   "dataset",
+  "replication",
   "host",
   "system",
 ] as const;
@@ -56,5 +57,8 @@ export const DIARY_EVENT_TYPES = [
   "replaced-by",
   "replaces",
   "replacement-cleared",
+  "replication-discovered",
+  "replication-archived",
+  "replication-resumed",
 ] as const;
 export type DiaryEventType = (typeof DIARY_EVENT_TYPES)[number];

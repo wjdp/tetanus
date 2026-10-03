@@ -92,6 +92,8 @@ const subjectLink = (entry: TimelineEntry) => {
       return `/zfs/${entry.subjectId}`;
     case "dataset":
       return `/datasets/${entry.subjectId}`;
+    case "replication":
+      return `/replications/${entry.subjectId}`;
     case "host":
       return "/settings/hosts";
     default:

@@ -88,6 +88,16 @@ export function setFaultsBackfilledAt(at: Date) {
     .run();
 }
 
+export function setReplicationsBackfilledAt(at: Date) {
+  const row = ensureSettings();
+  db.update(setting)
+    .set({
+      config: { ...row.config, replicationsBackfilledAt: at.toISOString() },
+    })
+    .where(eq(setting.id, SETTING_ROW_ID))
+    .run();
+}
+
 export function setAtaSsdAttributesBackfilledAt(at: Date) {
   const row = ensureSettings();
   db.update(setting)
