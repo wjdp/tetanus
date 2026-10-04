@@ -17,7 +17,7 @@ export interface HostPayloads {
 }
 
 /**
- * How `host/tetanus-collect` 0.4.0 posts each source, so renderers build the same `meta`.
+ * How `host/tetanus-collect` 0.5.0 posts each source, so renderers build the same `meta`.
  * `zed-event` is push-only (ZED hook) and the demo does not produce it.
  */
 export const SOURCE_META = {
@@ -34,6 +34,7 @@ export const SOURCE_META = {
   lsblk:
     "none; columns NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE,ZONED,LOG-SEC,PHY-SEC,MOUNTPOINTS",
   udev: "one post per whole disk: device=b<maj>:<min> (e.g. b8:0, b259:0)",
+  enclosure: "none; not produced by the demo yet",
   "smartctl-scan": "none",
   "smartctl-xall":
     "one post per scanned device: device=<scan name> (/dev/sda, /dev/nvme0), type only when the scan type is not ata/scsi/sat (so type=nvme for NVMe), exitStatus=<smartctl exit bitmask>",

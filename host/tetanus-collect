@@ -9,8 +9,9 @@
 
 set -uo pipefail
 
-readonly version=0.4.0
+readonly version=0.5.0
 readonly default_config=/etc/tetanus/collect.env
+readonly enclosure_root=${TETANUS_ENCLOSURE_ROOT:-/sys/class/enclosure}
 readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
 readonly sources=(
   versions
@@ -24,11 +25,12 @@ readonly sources=(
   vdev-id-conf
   lsblk
   udev
+  enclosure
   smartctl-scan
   smartctl-xall
 )
 readonly zfs_group=(versions zpool-status zpool-list zfs-list zpool-history zfs-receives zpool-events vdev-id-conf)
-readonly smart_group=(lsblk udev smartctl-scan smartctl-xall)
+readonly smart_group=(lsblk udev enclosure smartctl-scan smartctl-xall)
 readonly snapshots_group=(zfs-snapshots)
 
 unset ZPOOL_VDEV_NAME_GUID ZPOOL_VDEV_NAME_FOLLOW_LINKS ZPOOL_VDEV_NAME_PATH
@@ -327,6 +329,38 @@ collect_udev() {
   done 3< <(disk_devnums "$workdir/lsblk.out")
 }
 
+# print_sysfs_file <root> <file>: "<path under root>\t<value>"; unreadable files are skipped
+# because SES attributes can fail with EIO while the enclosure is busy.
+print_sysfs_file() {
+  local root=$1 file=$2 value
+  [[ -f $file ]] || return 0
+  { value=$(<"$file"); } 2>/dev/null || return 0
+  printf '%s\t%s\n' "${file#"$root"/}" "$value"
+}
+
+# SES enclosures and their slots. A slot is any element directory with a `slot` file;
+# element names vary by vendor (ArrayDevice08, Slot 01, Disk001).
+enclosure_files() {
+  local root=$1 enclosure element file
+  for enclosure in "$root"/*/; do
+    for file in id components device/vendor device/model; do
+      print_sysfs_file "$root" "$enclosure$file"
+    done
+    for element in "$enclosure"*/; do
+      [[ -f ${element}slot ]] || continue
+      for file in "$element"{slot,status,locate,fault} "$element"device/block/*/dev; do
+        print_sysfs_file "$root" "$file"
+      done
+    done
+  done
+}
+
+# Posted even when empty, so an enclosure that has gone away is cleared.
+collect_enclosure() {
+  enclosure_files "$enclosure_root" >"$workdir/enclosure.out"
+  submit enclosure "" 0 "$workdir/enclosure.out"
+}
+
 ensure_smartctl_scan() {
   [[ -e $workdir/smartctl-scan.out ]] && return 0
   smartctl --scan --json >"$workdir/smartctl-scan.out" </dev/null
@@ -394,6 +428,7 @@ run_source() {
     vdev-id-conf) collect_vdev_id_conf ;;
     lsblk) collect_lsblk ;;
     udev) collect_udev ;;
+    enclosure) collect_enclosure ;;
     smartctl-scan) collect_smartctl_scan ;;
     smartctl-xall) collect_smartctl_xall ;;
   esac

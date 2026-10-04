@@ -1,4 +1,5 @@
 import type { IngestSource, Parser } from "#shared/ingest";
+import { parse as enclosure } from "./enclosure";
 import { parse as lsblk } from "./lsblk";
 import { parse as smartctlScan } from "./smartctl-scan";
 import { parse as smartctlXall } from "./smartctl-xall";
@@ -20,6 +21,7 @@ export const PARSERS: Record<IngestSource, Parser<unknown>> = {
   "smartctl-xall": smartctlXall,
   lsblk,
   udev,
+  enclosure,
   "vdev-id-conf": vdevIdConf,
   "zpool-status": zpoolStatus,
   "zpool-list": zpoolList,

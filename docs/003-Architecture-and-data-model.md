@@ -58,6 +58,7 @@ Sources (v1):
 | `smartctl-xall` | `smartctl --xall --json -n standby [-d type] <dev>` |
 | `lsblk` | `lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE` |
 | `udev` | `cat /run/udev/data/b<maj>:<min>` per disk |
+| `enclosure` | `<path>\t<value>` per SES file under `/sys/class/enclosure`: enclosure `id`, `components`, `device/{vendor,model}`; per slot `slot`, `status`, `locate`, `fault`, `device/block/*/dev` ([061](061-Physical-bay-mapping.md)) |
 | `vdev-id-conf` | `cat /etc/zfs/vdev_id.conf` |
 | `zpool-status` | `zpool status -j --json-flat-vdevs --json-int -Ppvs` (no `-L`: it resolves `by-vdev` paths to `/dev/sdX` and drops `guid`, `path`, `devid`, `state` from leaf vdevs; verified on OpenZFS 2.4.1) |
 | `zpool-list` | `zpool list -j --json-int -pv` |

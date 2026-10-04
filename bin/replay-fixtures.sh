@@ -23,6 +23,7 @@ post versions "" <(printf 'zfs=%s\nsmartctl=%s\n' \
   "$(head -1 "$m/smartctl-version.txt" | awk '{print $2}')")
 post lsblk "" "$m/lsblk.json"
 for u in "$m"/udev/*.txt; do post udev "?device=$(basename "$u" .txt)" "$u"; done
+[[ -e $m/enclosure.txt ]] && post enclosure "" "$m/enclosure.txt"
 post vdev-id-conf "" "$m/vdev-id-conf.txt"
 post smartctl-scan "" "$m/smartctl-scan.json"
 for x in "$m"/smartctl/xall-*-auto.json "$m"/smartctl/xall-nvme0.json; do

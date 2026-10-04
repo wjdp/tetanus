@@ -121,3 +121,4 @@ smartctl/xall-sdr-auto	0	smartctl --xall --json -n standby /dev/sdr
 smartctl/xall-sds	4	smartctl --xall --json -n standby -d scsi /dev/sds
 smartctl/xall-sds-auto	0	smartctl --xall --json -n standby /dev/sds
 smartctl/xall-nvme0	0	smartctl --xall --json -n standby -d nvme /dev/nvme0
+enclosure	0	bin/capture-enclosure.sh

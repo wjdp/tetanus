@@ -47,7 +47,7 @@ away (`--no-collect` to skip it).
 | timer | when | sources |
 | --- | --- | --- |
 | `tetanus-collect-zfs` | every 10 min | `versions`, `zpool-status`, `zpool-list`, `zfs-list`, `zpool-history`, `zfs-receives`, `zpool-events`, `vdev-id-conf` |
-| `tetanus-collect-smart` | hourly | `lsblk`, `udev` (per disk), `smartctl-scan`, `smartctl-xall` (per scanned device) |
+| `tetanus-collect-smart` | hourly | `lsblk`, `udev` (per disk), `enclosure`, `smartctl-scan`, `smartctl-xall` (per scanned device) |
 | `tetanus-collect-snapshots` | hourly | `zfs-snapshots` |
 | ZED hook | every ZFS event | `zed-event` |
 
@@ -59,6 +59,8 @@ Each source is one command whose stdout is POSTed to `/api/ingest/<source>`:
   tailed to 500 lines (`zpool-history`), and filtered to receive lines with `grep`
   (`zfs-receives`)
 - `cat /etc/zfs/vdev_id.conf`, `lsblk -J -b -o …`, `cat /run/udev/data/b<maj>:<min>`
+- SES enclosure slots read from `/sys/class/enclosure` (`slot`, `status`, `locate`,
+  `fault` and the attached block device), one `<path>\t<value>` line per file
 - `smartctl --scan --json`, then `smartctl --xall --json -n standby [-d <type>] <device>`
   per device; `-n standby` leaves sleeping disks asleep, and the exit status (a
   bitmask) is sent with the output

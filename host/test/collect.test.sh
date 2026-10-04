@@ -104,7 +104,7 @@ test_full_run_matches_every_manifest_argv() {
   assert_eq "$(grep -c '/udev?' <<<"$posts")" "$disks"
   assert_eq "$(grep -c '/smartctl-xall?' <<<"$posts")" 20
   assert_eq "$(sed 's/?.*//; s|.*/||' <<<"$posts" | uniq | paste -sd ' ')" \
-    "versions zpool-status zpool-list zfs-list zfs-snapshots zpool-history zfs-receives zpool-events vdev-id-conf lsblk udev smartctl-scan smartctl-xall"
+    "versions zpool-status zpool-list zfs-list zfs-snapshots zpool-history zfs-receives zpool-events vdev-id-conf lsblk udev enclosure smartctl-scan smartctl-xall"
 }
 
 test_groups_select_their_sources() {
@@ -112,7 +112,7 @@ test_groups_select_their_sources() {
   for group in zfs smart snapshots; do
     case $group in
       zfs) expected="versions zpool-status zpool-list zfs-list zpool-history zfs-receives zpool-events vdev-id-conf" ;;
-      smart) expected="lsblk udev smartctl-scan smartctl-xall" ;;
+      smart) expected="lsblk udev enclosure smartctl-scan smartctl-xall" ;;
       snapshots) expected="zfs-snapshots" ;;
     esac
     run_collect --dry-run --only "$group"
@@ -137,6 +137,68 @@ test_udev_once_per_disk_not_per_partition() {
   assert_not_contains "$posts" "device=b8:1"$'\n'
   assert_not_contains "$posts" "device=b7:"
   assert_contains "$(<"$STUB_LOG")" "cat /run/udev/data/b8:16"
+}
+
+# sysfs_tree_from <body>: builds a fake /sys/class/enclosure from "<path>\t<value>" lines.
+sysfs_tree_from() {
+  local root=$test_dir/enclosure path value
+  mkdir -p "$root"
+  while IFS=$'\t' read -r path value; do
+    mkdir -p "$root/$(dirname "$path")"
+    printf '%s\n' "$value" >"$root/$path"
+  done <"$1"
+  printf '%s' "$root"
+}
+
+test_enclosure_round_trips_the_mars_fixture() {
+  TETANUS_ENCLOSURE_ROOT=$(sysfs_tree_from "$fixtures/enclosure.txt") \
+    run_collect --only enclosure
+  assert_eq "$status" 0
+  assert_eq "$(<"$STUB_REQUESTS/0000.url")" "$test_url/api/ingest/enclosure"
+  cmp -s "$STUB_REQUESTS/0000.body" "$fixtures/enclosure.txt" ||
+    fail "posted body differs from the fixture"
+}
+
+test_enclosure_reads_slots_only_and_keeps_spaced_element_names() {
+  printf '%s\n' \
+    $'0:0:0:0/id\t0x5000000000000001' \
+    $'0:0:0:0/device/vendor\tACME    ' \
+    $'0:0:0:0/Slot 01/slot\t1' \
+    $'0:0:0:0/Slot 01/status\tOK' \
+    $'0:0:0:0/Slot 01/device/block/sdx/dev\t65:112' \
+    $'0:0:0:0/Fan 1/status\tOK' >"$test_dir/tree.txt"
+  local root
+  root=$(sysfs_tree_from "$test_dir/tree.txt")
+  TETANUS_ENCLOSURE_ROOT=$root run_collect --dry-run --only enclosure
+  assert_eq "$status" 0
+  assert_contains "$output" $'0:0:0:0/Slot 01/slot\t1'
+  assert_contains "$output" $'0:0:0:0/Slot 01/device/block/sdx/dev\t65:112'
+  assert_contains "$output" $'0:0:0:0/device/vendor\tACME    '
+  assert_not_contains "$output" "Fan 1"
+}
+
+test_enclosure_skips_unreadable_files() {
+  ((EUID == 0)) && return 0
+  printf '%s\n' $'0:0:0:0/Slot 01/slot\t1' $'0:0:0:0/Slot 01/fault\t0' >"$test_dir/tree.txt"
+  local root
+  root=$(sysfs_tree_from "$test_dir/tree.txt")
+  chmod 000 "$root/0:0:0:0/Slot 01/fault"
+  TETANUS_ENCLOSURE_ROOT=$root run_collect --dry-run --only enclosure
+  assert_eq "$status" 0
+  assert_contains "$output" $'0:0:0:0/Slot 01/slot\t1'
+  assert_not_contains "$output" "fault"
+  assert_eq "$errors" "${errors//Permission denied/}"
+}
+
+test_enclosure_posts_empty_body_without_enclosures() {
+  mkdir -p "$test_dir/empty"
+  TETANUS_ENCLOSURE_ROOT=$test_dir/empty run_collect --only enclosure
+  assert_eq "$status" 0
+  assert_eq "$(<"$STUB_REQUESTS/0000.url")" "$test_url/api/ingest/enclosure"
+  [[ ! -s $STUB_REQUESTS/0000.body ]] || fail "expected an empty body"
+  TETANUS_ENCLOSURE_ROOT=$test_dir/absent run_collect --dry-run --only enclosure
+  assert_eq "$status" 0
+  assert_eq "$(dry_run_posts)" "$test_url/api/ingest/enclosure"
 }
 
 test_smartctl_xall_queries_and_exit_status() {

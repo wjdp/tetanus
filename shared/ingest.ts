@@ -7,6 +7,7 @@ export const INGEST_SOURCES = [
   "smartctl-xall",
   "lsblk",
   "udev",
+  "enclosure",
   "vdev-id-conf",
   "zpool-status",
   "zpool-list",

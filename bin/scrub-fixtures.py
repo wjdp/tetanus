@@ -46,6 +46,7 @@ PREFIXED_WWN = re.compile(
 )
 PREFIXED_EUI = re.compile(r"eui\.([0-9a-fA-F]{32}|[0-9a-fA-F]{16})(?![0-9A-Za-z])")
 EVENT_GUID = re.compile(r"^\s*\w*guid = 0x([0-9a-fA-F]+)\s*$", re.MULTILINE)
+ENCLOSURE_ID = re.compile(r"^[^\t/]+/id\t(.*)$", re.MULTILINE)
 UDEV_PROPERTY = re.compile(r"^E:([A-Z_]+)=(.*)$", re.MULTILINE)
 UDEV_SERIAL_KEYS = ("ID_SERIAL_SHORT", "ID_SCSI_SERIAL", "SCSI_IDENT_SERIAL")
 UDEV_WWN_KEYS = (
@@ -426,6 +427,10 @@ def discover(files):
                 found.add_guid(properties.get("ID_FS_UUID_SUB"))
                 for key in UDEV_FS_LABEL_KEYS:
                     found.add_zfs_member_label(properties.get(key))
+
+        if name == "enclosure.txt":
+            for match in ENCLOSURE_ID.finditer(text):
+                found.add_wwn_or_eui(match.group(1))
 
         for serial in by_id_serials(text):
             for variant in serial_with_wd_variants(serial):

@@ -133,6 +133,8 @@ while IFS=: read -r major minor; do
   capture "udev/b$major-$minor" txt cat "/run/udev/data/b$major:$minor"
 done < <(list_disk_and_part_devnums)
 
+capture enclosure txt "$repo_root/bin/capture-enclosure.sh"
+
 capture smartctl-scan json smartctl --scan --json
 
 list_scanned_devices() {

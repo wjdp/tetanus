@@ -15,7 +15,7 @@ describe("HOST_HEADER", () => {
 
 describe("INGEST_SOURCES", () => {
   it("lists every v1 source once", () => {
-    expect(INGEST_SOURCES).toHaveLength(14);
+    expect(INGEST_SOURCES).toHaveLength(15);
     expect(new Set(INGEST_SOURCES).size).toBe(INGEST_SOURCES.length);
   });
 
