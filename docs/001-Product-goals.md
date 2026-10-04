@@ -98,7 +98,7 @@ After v1, in [004](004-Project-plan.md) §After v1:
 | Warranty | Expiry date entered by hand |
 | Scrutiny code reuse | Vendor metadata; parse smartctl JSON in TS server-side. Running their collector is a Later option |
 | Chart library | Decide later |
-| Minimum host | Ubuntu 26.04-like: OpenZFS 2.3+ (JSON output), smartmontools 7.4+ (mars has 7.5) |
+| Minimum host | Ubuntu 26.04-like: OpenZFS 2.3+ (JSON output), smartmontools 7.0+ (mars has 7.5); older runs degraded ([079](079-Unsupported-OpenZFS-fails-silently.md)) |
 | Scrutiny transition | Separate systems; cut over when ready |
 | Fixtures | Serials and WWNs scrubbed; project will be published |
 | Name | tetanus (was tetanus, decided 2026-09-28); keep it in one place. See [008](008-Branding-and-colour.md) |

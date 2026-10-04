@@ -47,18 +47,18 @@ SMART, history, events and ZED still arrive, and tetanus says plainly what is mi
   on: name the version found, the minimum, the sources that won't work, and the upgrade
   path. Don't fail the install.
 - Add host page: list the minimum versions next to the install command.
-- Server: parse `versions`. When OpenZFS < 2.3 (or smartmontools below its floor, see
-  Decision), open a `host-degraded` **warning** (amber) fault on the host. It names
-  the version, the minimum and the missing sources. It stays open until the user
-  **accepts** it through the existing `FaultAcceptance`. `acceptedValue` is the
-  version, encoded as an integer (`major*10000 + minor*100 + patch`), so a different
-  unsupported version raises it again. It resolves when a later `versions` meets the
-  minimum. It shows on the host page through `HostFaults` and in the fault banners
-  until accepted.
-- Collector: when a command fails with no output, still POST, or send a run-status
-  record, so the server sees the failed source rather than silence. Check how
-  `CollectorRun.ok`/`error` would represent it. Stays dumb: no version gating on the
-  host.
+- Server: parse `versions` (`shared/hostTools.ts`). When OpenZFS < 2.3 (or
+  smartmontools below its floor, see Decision), open a `host-degraded` **warning**
+  (amber) fault on the host. It names the version, the minimum and what's missing.
+  The only actions are accept and clear. The key is `<hostId>:<tool>:<version>`, so
+  accepting it quiets that version, and a different unsupported version opens a new
+  fault. No `FaultAcceptance` row is needed. It resolves when a later `versions` meets
+  the minimum. It shows on the host page through `HostFaults` until accepted. The
+  global banners show errors only, so it isn't there. It sends no alert.
+- Collector (0.6.0): when a command fails with no output, POST the tail of its stderr
+  with `?failed=<exit status>`. The server records a failed `CollectorRun` (`ok`
+  false, `exitStatus`, `error` "Command exited N: …") without parsing, and answers 200.
+  The collector stays dumb: no version gating on the host.
 - Host page: show, per source, when data was last received, so a source that is
   missing is visible.
 - State inference: on a degraded host, `inferState` treats a disk with a `zfs_member`

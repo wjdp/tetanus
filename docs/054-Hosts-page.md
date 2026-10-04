@@ -53,7 +53,8 @@ Shape follows `pages/replications/[id].vue`. `GET /api/hosts/:id` exists.
 
 ## Add host page
 
-- Requirements: bash, curl, OpenZFS 2.3+, smartmontools 7.4+.
+- Requirements: bash, curl, OpenZFS 2.3+, smartmontools 7.0+; older installs degraded
+  ([079](079-Unsupported-OpenZFS-fails-silently.md)).
 - `InstallCommand` with the server origin and enrol token.
 - `--host <name>` override, `--no-collect`, idempotent re-run.
 - What gets installed and the timer schedule, condensed from `host/README.md`.

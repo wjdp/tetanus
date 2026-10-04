@@ -297,6 +297,28 @@ test_scripts_are_executable() {
   [[ -x $collector && -x $zedlet && -x $installer ]] || fail "host scripts must be executable"
 }
 
+test_installer_warns_on_old_tool_versions() {
+  local out
+  rm -f "$test_dir/bin/zfs" "$test_dir/bin/smartctl"
+  printf '#!/usr/bin/env bash\necho zfs-2.2.2-0ubuntu9.1\necho zfs-kmod-2.2.2-0ubuntu9\n' >"$test_dir/bin/zfs"
+  printf '#!/usr/bin/env bash\necho "smartctl 6.6 2017-11-05 r4594 [x86_64-linux]"\n' >"$test_dir/bin/smartctl"
+  chmod +x "$test_dir/bin/zfs" "$test_dir/bin/smartctl"
+  out=$(TETANUS_INSTALL_SOURCED=1 bash -c 'source "$1"; check_tool_versions' _ "$installer")
+  assert_contains "$out" "warning: OpenZFS 2.2.2 is older than 2.3"
+  assert_contains "$out" "warning: smartmontools 6.6 is older than 7.0"
+  assert_contains "$out" "tetanus marks this host degraded"
+}
+
+test_installer_quiet_on_supported_tool_versions() {
+  local out
+  rm -f "$test_dir/bin/zfs" "$test_dir/bin/smartctl"
+  printf '#!/usr/bin/env bash\necho zfs-2.3.0-1\n' >"$test_dir/bin/zfs"
+  printf '#!/usr/bin/env bash\necho "smartctl 7.0 2018-12-30 r4883"\n' >"$test_dir/bin/smartctl"
+  chmod +x "$test_dir/bin/zfs" "$test_dir/bin/smartctl"
+  out=$(TETANUS_INSTALL_SOURCED=1 bash -c 'source "$1"; check_tool_versions' _ "$installer")
+  assert_eq "$out" ""
+}
+
 test_installer_refuses_non_root() {
   if ((EUID == 0)); then
     return 0

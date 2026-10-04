@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
+import { HOST_TOOL_REQUIREMENTS } from "#shared/hostTools";
 
 useSeoMeta({ title: getPageTitle("Add host") });
 
 const NEW_HOST_POLL_MS = 10_000;
+
+const { openzfs, smartmontools } = HOST_TOOL_REQUIREMENTS;
 
 const demo = useRuntimeConfig().public.demo;
 const requestUrl = useRequestURL();
@@ -85,9 +88,11 @@ const INSTALLED_FILES = [
 
       <section class="flex flex-col gap-3">
         <h2 class="text-highlighted font-semibold">Requirements</h2>
-        <p class="text-muted text-sm">
-          bash, curl, OpenZFS 2.3+ and smartmontools 7.4+, with systemd. Ubuntu
-          26.04 or similar.
+        <p class="text-muted text-sm" data-testid="requirements">
+          bash, curl, OpenZFS {{ openzfs.minVersion }}+ and smartmontools
+          {{ smartmontools.minVersion }}+, with systemd. Ubuntu 26.04, Debian 13
+          or similar. Older OpenZFS or smartmontools still installs, but the
+          host is marked degraded: no pool data, or no SMART data.
         </p>
       </section>
 

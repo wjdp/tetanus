@@ -5,7 +5,7 @@ status: planned
 
 # Non-Linux hosts
 
-Stub. The collector assumes a systemd Linux with OpenZFS 2.3+ and smartmontools 7.4+.
+Stub. The collector assumes a systemd Linux with OpenZFS 2.3+ and smartmontools 7.0+.
 Decide what to say to everyone else.
 
 ## Problem

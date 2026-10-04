@@ -122,12 +122,47 @@ restart_zed() {
   systemctl try-restart "$zed_unit" || say "could not restart $zed_unit; restart ZED yourself"
 }
 
+# version_below <version> <minimum>: true when version is older, part by part.
+version_below() {
+  local IFS=. index
+  local -a have want
+  read -ra have <<<"$1"
+  read -ra want <<<"$2"
+  for index in "${!want[@]}"; do
+    ((${have[index]:-0} == want[index])) && continue
+    ((${have[index]:-0} < want[index]))
+    return
+  done
+  return 1
+}
+
+# check_tool_version <label> <version> <minimum> <what is lost> <upgrade hint>
+check_tool_version() {
+  local label=$1 version=$2 minimum=$3 lost=$4 hint=$5
+  [[ -n $version ]] && version_below "$version" "$minimum" || return 0
+  say "warning: $label $version is older than $minimum: $lost."
+  say "  Installing anyway; tetanus marks this host degraded. $hint"
+}
+
+check_tool_versions() {
+  local zfs smartctl
+  zfs=$(zfs version 2>/dev/null | sed -n '1s/^zfs-\([0-9][0-9.]*[0-9]\).*/\1/p')
+  smartctl=$(smartctl --version 2>/dev/null | sed -n '1s/^smartctl \([0-9][0-9.]*[0-9]\).*/\1/p')
+  check_tool_version OpenZFS "$zfs" 2.3 \
+    "no pool, dataset or snapshot data (needs JSON output, zpool/zfs -j)" \
+    "Ubuntu 26.04, Debian 13 and Proxmox VE 9 ship OpenZFS 2.3 or later."
+  check_tool_version smartmontools "$smartctl" 7.0 \
+    "no SMART data (needs smartctl --json)" \
+    "Install smartmontools 7.0 or later from your distribution."
+}
+
 install_collector() {
   local unit
   command -v curl >/dev/null || die "curl is required"
   command -v grep >/dev/null || die "grep is required"
   command -v zpool >/dev/null || say "warning: zpool not found; ZFS sources will be skipped"
   command -v smartctl >/dev/null || say "warning: smartctl not found; SMART sources will be skipped"
+  check_tool_versions
 
   write_config
   fetch_sources
@@ -201,4 +236,4 @@ main() {
   fi
 }
 
-main "$@"
+[[ ${TETANUS_INSTALL_SOURCED:-0} == 1 ]] || main "$@"

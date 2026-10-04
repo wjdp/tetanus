@@ -2,8 +2,10 @@
 
 A bash script, three systemd timers and a ZED hook that run read-only ZFS, SMART and
 udev commands on a NAS host and POST their raw output to the tetanus server, which does
-all the parsing. Needs bash, curl, OpenZFS 2.3+ and smartmontools 7.4+ (Ubuntu 26.04 or
-similar). No jq, Python or Node.
+all the parsing. Needs bash, curl, OpenZFS 2.3+ and smartmontools 7.0+ (Ubuntu 26.04 or
+similar). Older versions install with a warning and the host is marked degraded
+(`host-degraded` fault): no pool, dataset or snapshot data below OpenZFS 2.3, no SMART
+data below smartmontools 7.0. No jq, Python or Node.
 
 ## Install
 
