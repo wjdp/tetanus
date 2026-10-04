@@ -37,6 +37,7 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "vdev-unredundant": "vdev-unredundant",
   "replication-late": "replication-late",
   "replication-stalled": "replication-stalled",
+  "replication-target-gone": "replication-target-gone",
   "identity-conflict": "identity-conflict",
   "disposed-disk-seen": null,
   "collector-incompatible": "collector-incompatible",
@@ -173,6 +174,11 @@ describe("faultTitle", () => {
       "replication-stalled",
       { targetName: "vpool/tank/a", lastSyncAt: "2026-09-07T10:00:00Z" },
       "Replication into vpool/tank/a stalled, last synced 3 d ago",
+    ],
+    [
+      "replication-target-gone",
+      { targetName: "vpool/tank/a", lastSyncAt: "2026-09-07T10:00:00Z" },
+      "Replication target vpool/tank/a no longer exists",
     ],
     [
       "pool-status",

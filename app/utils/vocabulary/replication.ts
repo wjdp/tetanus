@@ -17,9 +17,20 @@ export const REPLICATION_STATUS_VOCABULARY: Record<
   ReplicationStatus,
   ReplicationStatusVocabulary
 > = {
+  "target-gone": {
+    colour: "error",
+    shape: "filled",
+    label: "Target gone",
+    rank: 6,
+  },
   stalled: { colour: "error", shape: "filled", label: "Stalled", rank: 5 },
   late: { colour: "warning", shape: "filled", label: "Late", rank: 4 },
-  gone: { colour: "neutral", shape: "hollow", label: "Gone", rank: 3 },
+  "source-gone": {
+    colour: "neutral",
+    shape: "hollow",
+    label: "Source gone",
+    rank: 3,
+  },
   learning: { colour: "neutral", shape: "hollow", label: "Learning", rank: 2 },
   ok: { colour: "neutral", shape: "filled", label: "OK", rank: 1 },
   archived: { colour: "neutral", shape: "hollow", label: "Archived", rank: 0 },

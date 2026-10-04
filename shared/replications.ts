@@ -6,7 +6,8 @@ export const REPLICATION_STATUSES = [
   "late",
   "stalled",
   "learning",
-  "gone",
+  "target-gone",
+  "source-gone",
   "archived",
 ] as const;
 export type ReplicationStatus = (typeof REPLICATION_STATUSES)[number];
@@ -56,7 +57,8 @@ export function learntIntervalMs(syncTimes: readonly Date[]): number | null {
 
 export interface ReplicationHealthInput {
   archived: boolean;
-  gone: boolean;
+  targetGone: boolean;
+  sourceGone: boolean;
   lastSyncAt: Date | null;
   intervalMs: number | null;
   referenceAt: Date;
@@ -71,7 +73,8 @@ export interface ReplicationHealth {
 export function replicationHealth(
   {
     archived,
-    gone,
+    targetGone,
+    sourceGone,
     lastSyncAt,
     intervalMs,
     referenceAt,
@@ -85,7 +88,8 @@ export function replicationHealth(
   const overdueMs = dueAt ? referenceAt.getTime() - dueAt.getTime() : null;
   const health = (status: ReplicationStatus) => ({ status, dueAt, overdueMs });
   if (archived) return health("archived");
-  if (gone) return health("gone");
+  if (targetGone) return health("target-gone");
+  if (sourceGone) return health("source-gone");
   if (intervalMs === null || overdueMs === null) return health("learning");
   const past = (floorHours: number, factor: number) =>
     overdueMs > Math.max(floorHours * HOUR_MS, factor * intervalMs);

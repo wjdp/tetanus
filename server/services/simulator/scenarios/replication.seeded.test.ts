@@ -85,14 +85,31 @@ describe("replication scenarios", () => {
     expect(openKinds(id)).toEqual(["replication-stalled"]);
   }, 60_000);
 
-  it.each([["replication-target-destroyed"], ["replication-source-destroyed"]])(
-    "%s leaves the replication gone",
-    async (scenario) => {
-      const { id } = replicationInto("vault/replica/tank/photos");
-      await simulate("replication", id, scenario, {}, LATER);
-      expect(statusOf(id)).toBe("gone");
-      expect(ids(id)).not.toContain(scenario);
-    },
-    60_000,
-  );
+  it("target destroyed leaves the replication target gone with a fault", async () => {
+    const { id } = replicationInto("vault/replica/tank/photos");
+    await simulate(
+      "replication",
+      id,
+      "replication-target-destroyed",
+      {},
+      LATER,
+    );
+    expect(statusOf(id)).toBe("target-gone");
+    expect(openKinds(id)).toEqual(["replication-target-gone"]);
+    expect(ids(id)).not.toContain("replication-target-destroyed");
+  }, 60_000);
+
+  it("source destroyed leaves the replication source gone with no fault", async () => {
+    const { id } = replicationInto("vault/replica/tank/photos");
+    await simulate(
+      "replication",
+      id,
+      "replication-source-destroyed",
+      {},
+      LATER,
+    );
+    expect(statusOf(id)).toBe("source-gone");
+    expect(openKinds(id)).toEqual([]);
+    expect(ids(id)).not.toContain("replication-source-destroyed");
+  }, 60_000);
 });

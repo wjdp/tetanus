@@ -27,6 +27,11 @@ import {
   snapshot,
 } from "~~/server/database/schema";
 import { type DiaryEntryRow, listDiary } from "~~/server/services/diary";
+import {
+  type PoolPresenceContext,
+  poolPresence,
+  poolPresenceContext,
+} from "~~/server/services/poolPresence";
 import { ensureSettings } from "~~/server/services/settings";
 import { notFound } from "~~/server/utils/serviceError";
 
@@ -79,9 +84,13 @@ export function receiveSightingTimes(): Map<number, Date> {
 
 interface Endpoint extends ReplicationEndpoint {
   poolArchived: boolean;
+  poolMissing: boolean;
 }
 
-function endpoints(datasetIds: number[]): Map<number, Endpoint> {
+function endpoints(
+  datasetIds: number[],
+  presence: PoolPresenceContext,
+): Map<number, Endpoint> {
   if (datasetIds.length === 0) return new Map();
   return new Map(
     db
@@ -92,6 +101,7 @@ function endpoints(datasetIds: number[]): Map<number, Endpoint> {
         poolId: pool.id,
         poolName: pool.name,
         poolArchivedAt: pool.archivedAt,
+        poolLastSeenAt: pool.lastSeenAt,
         hostId: host.id,
         hostName: host.name,
         hostDisplayName: host.displayName,
@@ -116,6 +126,11 @@ function endpoints(datasetIds: number[]): Map<number, Endpoint> {
             present: row.present,
           },
           poolArchived: row.poolArchivedAt !== null,
+          poolMissing:
+            poolPresence(
+              { hostId: row.hostId, lastSeenAt: row.poolLastSeenAt },
+              presence,
+            ) === "missing",
         },
       ]),
   );
@@ -160,15 +175,18 @@ export function replicationContext(
     now,
     thresholds: currentThresholds(),
     sightings: receiveSightingTimes(),
-    endpoints: endpoints([
-      ...new Set(
-        rows.flatMap((row) =>
-          row.sourceDatasetId === null
-            ? [row.targetDatasetId]
-            : [row.targetDatasetId, row.sourceDatasetId],
+    endpoints: endpoints(
+      [
+        ...new Set(
+          rows.flatMap((row) =>
+            row.sourceDatasetId === null
+              ? [row.targetDatasetId]
+              : [row.targetDatasetId, row.sourceDatasetId],
+          ),
         ),
-      ),
-    ]),
+      ],
+      poolPresenceContext(now),
+    ),
   };
 }
 
@@ -177,6 +195,13 @@ export interface AssessedReplication extends ReplicationHealth {
   source: Endpoint | null;
   target: Endpoint | undefined;
   intervalMs: number | null;
+}
+
+// A missing pool keeps its datasets marked present, so only a dataset gone
+// from a pool still seen counts as destroyed.
+function isTargetGone(target: Endpoint | undefined) {
+  if (!target) return true;
+  return !target.dataset.present && !target.poolMissing;
 }
 
 export function assessReplication(
@@ -198,9 +223,8 @@ export function assessReplication(
   const health = replicationHealth(
     {
       archived: row.archivedAt !== null || target?.poolArchived === true,
-      gone:
-        target?.dataset.present !== true ||
-        (source !== null && !source.dataset.present),
+      targetGone: isTargetGone(target),
+      sourceGone: source !== null && !source.dataset.present,
       lastSyncAt: row.lastSyncAt,
       intervalMs,
       referenceAt,
@@ -213,7 +237,7 @@ export function assessReplication(
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
 function endpointView(endpoint: Endpoint): ReplicationEndpoint {
-  const { poolArchived: _archived, ...view } = endpoint;
+  const { poolArchived: _archived, poolMissing: _missing, ...view } = endpoint;
   return view;
 }
 

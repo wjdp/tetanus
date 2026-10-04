@@ -19,7 +19,8 @@ describe("REPLICATION_STATUS_VOCABULARY", () => {
     ["late", "warning", "filled"],
     ["stalled", "error", "filled"],
     ["learning", "neutral", "hollow"],
-    ["gone", "neutral", "hollow"],
+    ["target-gone", "error", "filled"],
+    ["source-gone", "neutral", "hollow"],
     ["archived", "neutral", "hollow"],
   ] as const)("draws %s as a %s %s dot", (status, colour, shape) => {
     expect(REPLICATION_STATUS_VOCABULARY[status]).toMatchObject({
@@ -30,7 +31,13 @@ describe("REPLICATION_STATUS_VOCABULARY", () => {
 });
 
 describe("worstReplicationStatus", () => {
-  it("ranks stalled over late over the quiet statuses", () => {
+  it("ranks target gone over stalled over late over the quiet statuses", () => {
+    expect(worstReplicationStatus(["stalled", "target-gone"])).toBe(
+      "target-gone",
+    );
+    expect(worstReplicationStatus(["learning", "source-gone"])).toBe(
+      "source-gone",
+    );
     expect(worstReplicationStatus(["ok", "stalled", "late"])).toBe("stalled");
     expect(worstReplicationStatus(["ok", "late", "learning"])).toBe("late");
     expect(worstReplicationStatus(["ok", "archived"])).toBe("ok");

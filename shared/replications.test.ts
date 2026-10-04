@@ -34,7 +34,8 @@ describe("replicationHealth", () => {
     replicationHealth(
       {
         archived: false,
-        gone: false,
+        targetGone: false,
+        sourceGone: false,
         lastSyncAt: at(0),
         intervalMs: HOUR_MS,
         referenceAt: at(1),
@@ -69,10 +70,13 @@ describe("replicationHealth", () => {
     expect(hourly({ lastSyncAt: null }).status).toBe("learning");
   });
 
-  it("puts archived before gone before anything measured", () => {
+  it("puts archived before target gone before source gone before anything measured", () => {
     const stalled = { referenceAt: at(100) };
-    expect(hourly({ ...stalled, gone: true }).status).toBe("gone");
-    expect(hourly({ ...stalled, gone: true, archived: true }).status).toBe(
+    const bothGone = { targetGone: true, sourceGone: true };
+    expect(hourly({ ...stalled, sourceGone: true }).status).toBe("source-gone");
+    expect(hourly({ ...stalled, targetGone: true }).status).toBe("target-gone");
+    expect(hourly({ ...stalled, ...bothGone }).status).toBe("target-gone");
+    expect(hourly({ ...stalled, ...bothGone, archived: true }).status).toBe(
       "archived",
     );
   });

@@ -129,7 +129,7 @@ describe("navigationCounts", () => {
     });
   });
 
-  it("buckets replications stalled red, late amber, archived left out", () => {
+  it("buckets replications stalled and target gone red, late amber, archived left out", () => {
     const vault = upsertHostByName("vault", t0);
     const vpool = db
       .insert(pool)
@@ -148,6 +148,7 @@ describe("navigationCounts", () => {
       name: string,
       lastSyncHoursAgo: number,
       archivedAt: Date | null = null,
+      present = true,
     ) => {
       const targetDatasetId = db
         .insert(dataset)
@@ -161,6 +162,7 @@ describe("navigationCounts", () => {
           creation: t0,
           firstSeenAt: t0,
           lastSeenAt: t0,
+          present,
         })
         .returning()
         .get().id;
@@ -191,9 +193,10 @@ describe("navigationCounts", () => {
     insertReplication("vpool/b", 5);
     insertReplication("vpool/c", 60);
     insertReplication("vpool/d", 60, t0);
+    insertReplication("vpool/e", 1, null, false);
 
     expect(navigationCounts(t0).replications).toEqual({
-      error: 1,
+      error: 2,
       warning: 1,
       neutral: 1,
     });

@@ -73,8 +73,10 @@ describe("statusSummary", () => {
         replicationRow(3, { status: "stalled" }),
         replicationRow(4, { status: "late" }),
         replicationRow(5, { status: "archived" }),
+        replicationRow(6, { status: "source-gone" }),
+        replicationRow(7, { status: "target-gone" }),
       ]),
-    ).toBe("1 stalled · 2 late");
+    ).toBe("1 target gone · 1 stalled · 2 late · 1 source gone");
     expect(statusSummary([replicationRow(1)])).toBe("");
   });
 });

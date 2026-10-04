@@ -83,11 +83,12 @@ function poolCounts(now: Date): StatusCounts {
 const REPLICATION_STATUS_BUCKET: Partial<
   Record<ReplicationStatus, keyof StatusCounts>
 > = {
+  "target-gone": "error",
   stalled: "error",
   late: "warning",
   ok: "neutral",
   learning: "neutral",
-  gone: "neutral",
+  "source-gone": "neutral",
 };
 
 function replicationCounts(now: Date): StatusCounts {

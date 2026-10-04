@@ -178,9 +178,10 @@ overdue and the global thresholds, rounded up to whole hours.
 - ✱ Stalled (status ok or late): hours [just past stalled] → `replication-stalled`,
   superseding late
 - Target dataset destroyed: the target host's `zfs-list` replayed without the dataset
-  and its children → `present = false`, status `gone`, no fault
+  and its children → `present = false`, status `target-gone`, opens
+  `replication-target-gone` (superseding late or stalled)
 - Source dataset destroyed (source monitored): the same on the source host's
-  `zfs-list`
+  `zfs-list` → status `source-gone`, no fault
 
 Pool page: "Replication stalls" moves every replication into the pool back by hours
 [96] (`backdateSyncsInto`).

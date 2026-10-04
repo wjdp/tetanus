@@ -180,14 +180,42 @@ describe("replication health", () => {
     expect(statusAt(100)).toEqual(["ok"]);
   });
 
-  it("is gone when the target or the stored source is no longer present", () => {
+  const markAbsent = (datasetId: number) =>
+    db
+      .update(dataset)
+      .set({ present: false })
+      .where(eq(dataset.id, datasetId))
+      .run();
+
+  it("is source gone when the stored source is no longer present", () => {
+    insertReplication(tankA, insertDataset(vpool, "vpool/tank/a"), hourly(10));
+    markAbsent(tankA);
+    expect(statusAt(100)).toEqual(["source-gone"]);
+  });
+
+  it("is target gone when the target is no longer present, even with the source gone", () => {
     const target = insertDataset(vpool, "vpool/tank/a");
     insertReplication(tankA, target, hourly(10));
-    db.update(dataset)
-      .set({ present: false })
-      .where(eq(dataset.id, tankA))
+    markAbsent(target);
+    expect(statusAt(100)).toEqual(["target-gone"]);
+    markAbsent(tankA);
+    expect(statusAt(100)).toEqual(["target-gone"]);
+  });
+
+  it("is measured, not target gone, while the target pool is missing", () => {
+    const target = insertDataset(vpool, "vpool/tank/a");
+    insertReplication(tankA, target, hourly(10));
+    markAbsent(target);
+    db.insert(collectorRun)
+      .values({
+        hostId: vault,
+        source: "zpool-status",
+        receivedAt: at(99.9),
+        ok: true,
+        bytes: 0,
+      })
       .run();
-    expect(statusAt(100)).toEqual(["gone"]);
+    expect(statusAt(100)).toEqual(["stalled"]);
   });
 
   it("is archived when marked so or when the target pool is archived", () => {

@@ -519,7 +519,7 @@ describe("deriveAlert", () => {
     ).toBeNull();
   });
 
-  it("alerts on a late or stalled replication, but not an archived one", () => {
+  it("alerts on a late, stalled or target-gone replication, but not an archived one", () => {
     const replicationEntry = (subjectId: number, kind: string) =>
       entry(
         "fault-opened",
@@ -544,6 +544,12 @@ describe("deriveAlert", () => {
     expect(
       deriveAlert(replicationEntry(5, "replication-late"), context)?.severity,
     ).toBe("notice");
+    expect(
+      deriveAlert(replicationEntry(5, "replication-target-gone"), context),
+    ).toMatchObject({ rule: "replication-target-gone", severity: "alert" });
+    expect(
+      deriveAlert(replicationEntry(6, "replication-target-gone"), context),
+    ).toBeNull();
     expect(
       deriveAlert(replicationEntry(6, "replication-stalled"), context),
     ).toBeNull();

@@ -188,4 +188,105 @@ describe("replication faults", () => {
       }),
     ]);
   });
+
+  describe("with a dataset gone", () => {
+    const setPresent = (side: "source" | "target", present: boolean) => {
+      const row = db
+        .select()
+        .from(replication)
+        .where(eq(replication.id, replicationId))
+        .get();
+      const datasetId =
+        side === "target" ? row?.targetDatasetId : row?.sourceDatasetId;
+      if (datasetId == null) throw new Error(`No ${side} dataset`);
+      db.update(dataset)
+        .set({ present })
+        .where(eq(dataset.id, datasetId))
+        .run();
+    };
+    const supersededBy = () =>
+      listDiary({ subjectType: "replication", subjectId: replicationId })
+        .filter((entry) => entry.eventType === "fault-resolved")
+        .map((entry) => [entry.data.kind, entry.data.supersededBy]);
+    const supersededByGone = (kind: string) => [
+      kind,
+      { kind: "replication-target-gone", key: String(replicationId) },
+    ];
+
+    it("opens target gone as an error, superseding stalled", async () => {
+      await syncFaults(at(60), []);
+      setPresent("target", false);
+      await syncFaults(at(61), []);
+      expect(faults()).toEqual([
+        expect.objectContaining({
+          kind: "replication-stalled",
+          state: "resolved",
+        }),
+        {
+          kind: "replication-target-gone",
+          severity: "error",
+          state: "open",
+          data: {
+            targetName: "vpool/tank/a",
+            sourceName: "tank/a",
+            hostName: "vault",
+            lastSyncAt: at(10).toISOString(),
+            intervalSec: 3600,
+          },
+        },
+      ]);
+      expect(supersededBy()[0]).toEqual(
+        supersededByGone("replication-stalled"),
+      );
+    });
+
+    it("supersedes late", async () => {
+      await syncFaults(at(15), []);
+      setPresent("target", false);
+      await syncFaults(at(16), []);
+      expect(faults().map((row) => [row.kind, row.state])).toEqual([
+        ["replication-late", "resolved"],
+        ["replication-target-gone", "open"],
+      ]);
+      expect(supersededBy()).toEqual([supersededByGone("replication-late")]);
+    });
+
+    it("resolves when the target reappears", async () => {
+      setPresent("target", false);
+      await syncFaults(at(11), []);
+      expect(faults().map((row) => row.state)).toEqual(["open"]);
+      setPresent("target", true);
+      db.update(replication)
+        .set({ lastSyncAt: at(11.5) })
+        .where(eq(replication.id, replicationId))
+        .run();
+      await syncFaults(at(12), []);
+      expect(faults().map((row) => [row.kind, row.state])).toEqual([
+        ["replication-target-gone", "resolved"],
+      ]);
+    });
+
+    it("resolves when the replication is archived", async () => {
+      setPresent("target", false);
+      await syncFaults(at(11), []);
+      db.update(replication)
+        .set({ archivedAt: at(12) })
+        .where(eq(replication.id, replicationId))
+        .run();
+      await syncFaults(at(13), []);
+      expect(faults().map((row) => [row.kind, row.state])).toEqual([
+        ["replication-target-gone", "resolved"],
+      ]);
+      expect(
+        listDiary({ subjectType: "replication", subjectId: replicationId })[0]
+          ?.data,
+      ).toMatchObject({ kind: "replication-target-gone", reason: "archived" });
+    });
+
+    it("opens nothing when only the source is gone", async () => {
+      setPresent("source", false);
+      await syncFaults(at(60), []);
+      expect(faults()).toEqual([]);
+    });
+  });
 });

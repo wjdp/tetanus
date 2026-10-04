@@ -197,11 +197,13 @@ settings: late floor 3 h, late factor 0.5, stalled floor 2 d, stalled factor 2.
 | `late` | warning | filled | overdue > max(late floor, late factor × interval); fault `replication-late` |
 | `stalled` | error | filled | overdue > max(stalled floor, stalled factor × interval); fault `replication-stalled`, superseding late |
 | `learning` | neutral | hollow | interval unknown: fewer than 3 syncs and none set by hand |
-| `gone` | neutral | hollow | target or stored source no longer present |
+| `target-gone` | error | filled | target dataset no longer present in its pool (pool present, not archived); fault `replication-target-gone`, superseding late and stalled; wins over `source-gone` |
+| `source-gone` | neutral | hollow | stored source dataset no longer present |
 | `archived` | neutral | hollow | marked no longer replicated, or target pool archived |
 
-Nav entry `i-lucide-arrow-right-left`, counts stalled red, late amber, the rest but
-archived neutral. Worst first: stalled, late, gone, learning, ok, archived (group
+Nav entry `i-lucide-arrow-right-left`, counts target gone and stalled red, late amber,
+the rest but archived neutral. Worst first: target gone, stalled, late, source gone,
+learning, ok, archived (group
 headers). Role icons beside a dataset: `i-lucide-upload` source, `i-lucide-download`
 target, each with its status dot. Cadence reads "hourly", "~daily", "every 6 h"
 (`formatCadence`); an interval set by hand carries `i-lucide-pencil`.

@@ -1,4 +1,5 @@
 import type { FaultKind } from "#shared/faults";
+import type { ReplicationStatus } from "#shared/replications";
 import { db } from "~~/server/database/client";
 import { replication } from "~~/server/database/schema";
 import type {
@@ -11,6 +12,7 @@ import { assessReplication, replicationContext } from "./queries";
 export const REPLICATION_FAULT_KINDS = [
   "replication-late",
   "replication-stalled",
+  "replication-target-gone",
 ] as const satisfies readonly FaultKind[];
 
 export const REPLICATION_ARCHIVED_REASON = "archived";
@@ -20,6 +22,22 @@ export interface ReplicationFaultScan {
   superseded: Supersession[];
   withdrawn: Withdrawal[];
 }
+
+type ReplicationFaultKind = (typeof REPLICATION_FAULT_KINDS)[number];
+
+const FAULT_KIND_OF_STATUS: Partial<
+  Record<ReplicationStatus, ReplicationFaultKind>
+> = {
+  late: "replication-late",
+  stalled: "replication-stalled",
+  "target-gone": "replication-target-gone",
+};
+
+const SUPERSEDED_BY: Record<ReplicationFaultKind, FaultKind[]> = {
+  "replication-late": [],
+  "replication-stalled": ["replication-late"],
+  "replication-target-gone": ["replication-late", "replication-stalled"],
+};
 
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
@@ -38,40 +56,33 @@ export function detectReplicationFaults(now: Date): ReplicationFaultScan {
       scan.withdrawn.push({ ...subject, reason: REPLICATION_ARCHIVED_REASON });
       continue;
     }
-    if (assessed.status !== "late" && assessed.status !== "stalled") continue;
+    const kind = FAULT_KIND_OF_STATUS[assessed.status];
+    if (!kind) continue;
     const key = String(row.id);
-    const data = {
-      targetName: assessed.target?.dataset.name ?? null,
-      sourceName: assessed.source?.dataset.name ?? null,
-      hostName: assessed.target?.host.name ?? null,
-      lastSyncAt: iso(row.lastSyncAt),
-      intervalSec:
-        assessed.intervalMs === null
-          ? null
-          : Math.round(assessed.intervalMs / 1000),
-    };
-    if (assessed.status === "stalled") {
-      scan.detections.push({
-        kind: "replication-stalled",
-        key,
-        subjectId: row.id,
-        severity: "error",
-        data,
-      });
-      scan.superseded.push({
-        ...subject,
-        kinds: ["replication-late"],
-        by: { kind: "replication-stalled", key },
-      });
-      continue;
-    }
     scan.detections.push({
-      kind: "replication-late",
+      kind,
       key,
       subjectId: row.id,
-      severity: "warning",
-      data,
+      severity: kind === "replication-late" ? "warning" : "error",
+      data: {
+        targetName: assessed.target?.dataset.name ?? null,
+        sourceName: assessed.source?.dataset.name ?? null,
+        hostName: assessed.target?.host.name ?? null,
+        lastSyncAt: iso(row.lastSyncAt),
+        intervalSec:
+          assessed.intervalMs === null
+            ? null
+            : Math.round(assessed.intervalMs / 1000),
+      },
     });
+    const supersedes = SUPERSEDED_BY[kind];
+    if (supersedes.length > 0) {
+      scan.superseded.push({
+        ...subject,
+        kinds: supersedes,
+        by: { kind, key },
+      });
+    }
   }
   return scan;
 }

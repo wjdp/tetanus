@@ -180,7 +180,8 @@ in `lastRuns`, `server/services/hosts.ts`). `dueAt = lastSyncAt + interval`,
 | `late` | warning | filled | overdue > max(late floor, late factor × interval) |
 | `stalled` | error | filled | overdue > max(stalled floor, stalled factor × interval) |
 | `learning` | neutral | hollow | interval unknown |
-| `gone` | neutral | hollow | target or stored source no longer present |
+| `target-gone` | error | filled | target dataset no longer present, its pool present and not archived |
+| `source-gone` | neutral | hollow | stored source no longer present (target present) |
 | `archived` | neutral | hollow | marked no longer replicated, or target pool archived |
 
 Add these to [037](037-Status-and-icon-vocabulary.md).
@@ -204,9 +205,12 @@ replication faults of targets in it (`resolvePoolFaults` resolves only pool subj
   `faultSubjectPath` (`app/utils/vocabulary/fault.ts`), `subjectLookup` /
   `describeSubject` (`server/services/faults.ts`). Check `switch` defaults by hand; TS
   will not flag them.
-- Two kinds, category `zfs`, lifetime `transient`, one per replication:
-  `replication-late` (warning) and `replication-stalled` (error); stalled supersedes
-  late (046 §Folding, `Supersession`). Escalation then writes its own diary entry and
+- Three kinds, category `zfs`, lifetime `transient`, one per replication:
+  `replication-late` (warning), `replication-stalled` (error) and
+  `replication-target-gone` (error); stalled supersedes late, target gone supersedes
+  both (046 §Folding, `Supersession`). Target gone resolves when the dataset reappears
+  (a later full receive recreates it) or the replication is archived. A source gone
+  opens nothing. Escalation then writes its own diary entry and
   alert; a severity rise on one kind would not (`nextState`, `refreshFault`).
   Detected in `detectFaults`, reading one `Replication` row and its last 10 syncs each.
 - Alerts: `ALERT_RULES` entries (`shared/alerts.ts`), a `matchReplicationEntry` for
@@ -214,7 +218,8 @@ replication faults of targets in it (`resolvePoolFaults` resolves only pool subj
   archived skip, in `server/services/alerts/rules.ts`. Nothing generic exists.
 - Diary auto events: `replication-discovered`, `replication-archived`,
   `replication-resumed`. Late/stalled come from the fault entries.
-- `NavigationCounts` (`shared/navigation.ts`) gains `replications` (late + stalled),
+- `NavigationCounts` (`shared/navigation.ts`) gains `replications` (late + stalled +
+  target gone),
   plus its query and a sidebar item.
 
 ### API
@@ -308,6 +313,7 @@ supersession, archive resolves. e2e for routes.
 13. Old replicas that cannot be discovered (old hosts) stay invisible.
 14. Two fault kinds, late and stalled, stalled supersedes late.
 15. Keep the snapshot ladder.
+16. Target dataset gone is a fault (red); source gone stays neutral.
 
 ## Agent findings
 
@@ -517,3 +523,16 @@ the backfill runs; or the demo):
 Done 2026-10-04. Replication is a simulator subject (044 §Replication): Running late,
 Stalled (defaults just past each threshold), Target / Source dataset destroyed
 (`gone`). The pool-level "Replication stalls" stays.
+
+### Target gone is a fault (decision 16)
+
+Done 2026-10-04. Status `gone` split: `target-gone` (error, filled, rank above
+stalled, nav red) opens `replication-target-gone` (alert, superseding late and
+stalled); `source-gone` (neutral, hollow, where `gone` ranked) opens nothing. Both
+gone reads `target-gone`. Status is computed on read, so no migration.
+
+- `replicationHealth` takes `targetGone` and `sourceGone` in place of `gone`.
+- A dataset in a missing pool is not target gone: ingest only marks datasets absent
+  for pools in the `zfs list`, so a missing pool's replications stay measured (late,
+  stalled) beside `pool-missing`, as before. Presence via `poolPresence`.
+- Fault title "Replication target … no longer exists".

@@ -230,6 +230,7 @@ function matchPoolEntry(entry: DiaryEntryRow, data: Data): Match | null {
 const REPLICATION_FAULT_RULES = new Set<AlertRule>([
   "replication-late",
   "replication-stalled",
+  "replication-target-gone",
 ]);
 
 function matchReplicationEntry(entry: DiaryEntryRow, data: Data): Match | null {

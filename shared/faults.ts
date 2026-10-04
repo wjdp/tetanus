@@ -50,6 +50,7 @@ export const FAULT_KINDS = [
   "vdev-unredundant",
   "replication-late",
   "replication-stalled",
+  "replication-target-gone",
   "collector-silent",
   "collector-incompatible",
   "collector-outdated",
@@ -310,6 +311,14 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: replicationTitle("stalled"),
+  },
+  "replication-target-gone": {
+    category: "zfs",
+    subjectType: "replication",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: (data) =>
+      `Replication target ${text(data.targetName)} no longer exists`,
   },
   "collector-silent": {
     category: "host",
