@@ -80,6 +80,7 @@ describe("pool scenarios", () => {
         "leaf-fails",
         "special-unredundant",
         "nearly-full",
+        "special-nearly-full",
         "error-burst",
       ]),
     );
@@ -249,7 +250,7 @@ describe("pool scenarios", () => {
     ]);
   }, 60_000);
 
-  it.each(["resilver-in-progress", "nearly-full", "fragmented", "error-burst"])(
+  it.each(["resilver-in-progress", "fragmented", "error-burst"])(
     "%s opens no fault",
     async (scenario) => {
       expect(await opened(poolId("styx", "vault"), scenario)).toEqual([]);
@@ -267,10 +268,20 @@ describe("pool scenarios", () => {
 
   it("fills the pool", async () => {
     const id = poolId("atlas", "tank");
-    await simulate("pool", id, "nearly-full", { cap: 92 }, LATER);
+    const faults = await opened(id, "nearly-full", { cap: 92 });
     const pool = getPool(id, LATER);
     expect(pool.cap).toBe(92);
     expect(pool.readings.some((reading) => reading.cap === 92)).toBe(true);
+    expect(kindsOf(faults)).toEqual([["pool-capacity", "pool", "error"]]);
+    expect(faults[0]?.key).toBe(String(id));
+  }, 60_000);
+
+  it("fills a special vdev", async () => {
+    const id = poolId("atlas", "tank");
+    const faults = await opened(id, "special-nearly-full", { cap: 85 });
+    expect(kindsOf(faults)).toEqual([["pool-capacity", "pool", "warning"]]);
+    expect(faults[0]?.data).toMatchObject({ role: "special", cap: 85 });
+    expect(faults[0]?.key).toBe(`${id}:${faults[0]?.data.vdevGuid}`);
   }, 60_000);
 
   it("adds an error burst to the events", async () => {

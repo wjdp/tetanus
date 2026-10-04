@@ -153,7 +153,8 @@ Errors and scans
   `scrub-overdue`
 
 Capacity (`zpool-list`)
-- Nearly full: cap [92 %]
+- ✱ Nearly full: cap [92 %] ([055](055-Pool-capacity-fault.md))
+- ✱ Special vdev nearly full: vdev [first special or dedup top-level vdev], cap [92 %]
 - Fragmented: frag [70 %]
 
 Events

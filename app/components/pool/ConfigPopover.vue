@@ -17,12 +17,16 @@ const saving = ref(false);
 const draft = reactive<Record<ConfigKey, number | "">>({
   scrubIntervalDays: "",
   slowIoThreshold: "",
+  capacityWarningPct: "",
+  capacityErrorPct: "",
 });
 const toast = useToast();
 
 const fillDraft = () => {
   draft.scrubIntervalDays = props.config?.scrubIntervalDays ?? "";
   draft.slowIoThreshold = props.config?.slowIoThreshold ?? "";
+  draft.capacityWarningPct = props.config?.capacityWarningPct ?? "";
+  draft.capacityErrorPct = props.config?.capacityErrorPct ?? "";
 };
 
 watch(open, (isOpen) => {
@@ -41,6 +45,17 @@ const FIELDS = [
     description:
       "A leaf gaining this many slow I/Os in 24 h is a fault. 0 disables.",
   },
+  {
+    key: "capacityWarningPct",
+    label: "Capacity warning (%)",
+    description:
+      "The pool, or a special or dedup vdev, this full is a fault. 0 disables.",
+  },
+  {
+    key: "capacityErrorPct",
+    label: "Capacity error (%)",
+    description: "This full raises the capacity fault to an error.",
+  },
 ] as const satisfies {
   key: ConfigKey;
   label: string;
@@ -58,6 +73,8 @@ const save = async () => {
     const body: PoolConfigPatch = {
       scrubIntervalDays: patchValue("scrubIntervalDays"),
       slowIoThreshold: patchValue("slowIoThreshold"),
+      capacityWarningPct: patchValue("capacityWarningPct"),
+      capacityErrorPct: patchValue("capacityErrorPct"),
     };
     await $fetch(`/api/pools/${props.poolId}/config`, {
       method: "PATCH",

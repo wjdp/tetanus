@@ -25,10 +25,13 @@ const nonNegativeInt = z.number().int().min(0);
 
 const scrubIntervalDays = nonNegativeInt.max(3650);
 const slowIoThreshold = nonNegativeInt;
+const capacityPct = nonNegativeInt.max(100);
 
 export const poolConfigSchema = z.strictObject({
   scrubIntervalDays: scrubIntervalDays.optional(),
   slowIoThreshold: slowIoThreshold.optional(),
+  capacityWarningPct: capacityPct.optional(),
+  capacityErrorPct: capacityPct.optional(),
 });
 
 export type PoolConfig = z.infer<typeof poolConfigSchema>;
@@ -37,6 +40,8 @@ export type PoolConfig = z.infer<typeof poolConfigSchema>;
 export const poolConfigPatchSchema = z.strictObject({
   scrubIntervalDays: scrubIntervalDays.nullable().optional(),
   slowIoThreshold: slowIoThreshold.nullable().optional(),
+  capacityWarningPct: capacityPct.nullable().optional(),
+  capacityErrorPct: capacityPct.nullable().optional(),
 });
 
 export type PoolConfigPatch = z.infer<typeof poolConfigPatchSchema>;
@@ -45,7 +50,12 @@ export type ResolvedPoolConfig = Required<PoolConfig>;
 export const POOL_CONFIG_DEFAULTS: ResolvedPoolConfig = {
   scrubIntervalDays: 35,
   slowIoThreshold: 10,
+  capacityWarningPct: 80,
+  capacityErrorPct: 90,
 };
+
+/** Percentage points below a capacity threshold a pool must drop to before its fault steps down. */
+export const CAPACITY_CLEAR_MARGIN = 2;
 
 export function resolvePoolConfig(
   config: PoolConfig | null | undefined,
@@ -55,6 +65,10 @@ export function resolvePoolConfig(
       config?.scrubIntervalDays ?? POOL_CONFIG_DEFAULTS.scrubIntervalDays,
     slowIoThreshold:
       config?.slowIoThreshold ?? POOL_CONFIG_DEFAULTS.slowIoThreshold,
+    capacityWarningPct:
+      config?.capacityWarningPct ?? POOL_CONFIG_DEFAULTS.capacityWarningPct,
+    capacityErrorPct:
+      config?.capacityErrorPct ?? POOL_CONFIG_DEFAULTS.capacityErrorPct,
   };
 }
 

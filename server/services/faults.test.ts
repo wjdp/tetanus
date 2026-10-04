@@ -649,15 +649,18 @@ describe("silent host", () => {
   it("raises no pool faults and resolves live ones as superseded", async () => {
     const mars = upsertHostByName("mars", t0);
     const vault = insertPool(mars.id, "DEGRADED", t0);
+    db.update(pool).set({ cap: 95 }).where(eq(pool.id, vault.id)).run();
     recordRun(mars.id, "zpool-status", t0);
     await syncFaults(t0);
 
     await syncFaults(at(DAY_MS));
 
     expect(liveKinds()).toEqual(["collector-silent"]);
-    expect(supersededBy("pool-degraded")).toEqual([
-      { kind: "collector-silent", key: String(mars.id) },
-    ]);
+    for (const kind of ["pool-degraded", "pool-capacity"]) {
+      expect(supersededBy(kind)).toEqual([
+        { kind: "collector-silent", key: String(mars.id) },
+      ]);
+    }
     expect(vault.id).toBeGreaterThan(0);
   });
 });
@@ -1083,6 +1086,91 @@ describe("vdev-unredundant", () => {
       severity: "warning",
       data: { name: "S1", poolName: "vault" },
     });
+  });
+});
+
+describe("pool-capacity", () => {
+  function fill(poolId: number, hostId: number, cap: number, offsetMs: number) {
+    db.update(pool).set({ cap, frag: 30 }).where(eq(pool.id, poolId)).run();
+    observePool(poolId, hostId, "ONLINE", at(offsetMs));
+    return syncFaults(at(offsetMs));
+  }
+
+  it("follows the pool's fill with a 2-point margin at both edges", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    const full = () => liveFault("pool-capacity", String(vault.id));
+
+    await fill(vault.id, mars.id, 79, 0);
+    expect(full()).toBeUndefined();
+    await fill(vault.id, mars.id, 80, HOUR_MS);
+    const opened = full() as FaultRow;
+    expect(opened).toMatchObject({
+      severity: "warning",
+      data: { poolName: "vault", cap: 80, frag: 30 },
+    });
+    await fill(vault.id, mars.id, 91, 2 * HOUR_MS);
+    expect(full()).toMatchObject({ id: opened.id, severity: "error" });
+    await fill(vault.id, mars.id, 88, 3 * HOUR_MS);
+    expect(full()?.severity).toBe("error");
+    await fill(vault.id, mars.id, 87, 4 * HOUR_MS);
+    expect(full()?.severity).toBe("warning");
+    await fill(vault.id, mars.id, 78, 5 * HOUR_MS);
+    expect(full()?.id).toBe(opened.id);
+    await fill(vault.id, mars.id, 77, 6 * HOUR_MS);
+    expect(full()).toBeUndefined();
+
+    expect(
+      faultEvents()
+        .filter((entry) => entry.data.kind === "pool-capacity")
+        .map((entry) => entry.eventType),
+    ).toEqual(["fault-opened", "fault-severity-raised", "fault-resolved"]);
+  });
+
+  it("watches top-level special and dedup vdevs, and is off when the warning level is 0", async () => {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    const root = insertVdev(vault.id, {
+      guid: "1",
+      name: "vault",
+      type: "root",
+    });
+    for (const [guid, name, role, allocBytes] of [
+      ["2", "mirror-1", "special", 85],
+      ["3", "D1", "dedup", null],
+      ["4", "raidz2-0", "normal", 95],
+    ] as const) {
+      const row = insertVdev(vault.id, {
+        guid,
+        name,
+        type: guid === "3" ? "disk" : "mirror",
+        role,
+        parentId: root.id,
+      });
+      db.update(vdev)
+        .set({ allocBytes, sizeBytes: 100 })
+        .where(eq(vdev.id, row.id))
+        .run();
+    }
+
+    await fill(vault.id, mars.id, 50, 0);
+    expect(
+      faultsOf("pool-capacity").map((row) => [row.key, row.severity]),
+    ).toEqual([[`${vault.id}:2`, "warning"]]);
+    expect(liveFault("pool-capacity", `${vault.id}:2`)?.data).toMatchObject({
+      cap: 85,
+      name: "mirror-1",
+      role: "special",
+      vdevGuid: "2",
+    });
+
+    db.update(pool)
+      .set({ config: { capacityWarningPct: 0 } })
+      .where(eq(pool.id, vault.id))
+      .run();
+    await fill(vault.id, mars.id, 99, HOUR_MS);
+    expect(liveFault("pool-capacity", `${vault.id}:2`)).toBeUndefined();
+    expect(liveFault("pool-capacity", String(vault.id))).toBeUndefined();
   });
 });
 

@@ -351,6 +351,24 @@ export function allocationClassMirrors(pool: StatusPool): StatusVdev[] {
   );
 }
 
+/** Top-level special and dedup vdevs that report their space. */
+export function allocationClassVdevs(pool: StatusPool): StatusVdev[] {
+  return topLevelOf(pool).filter(
+    (vdev) =>
+      ALLOCATION_CLASSES.has(vdev.class ?? "") &&
+      typeof vdev.total_space === "number",
+  );
+}
+
+export function setVdevCapacity(
+  pool: StatusPool,
+  name: string,
+  percent: number,
+) {
+  const target = vdevNamed(pool, name);
+  target.alloc_space = Math.round((Number(target.total_space) * percent) / 100);
+}
+
 export function leafLabel(vdev: StatusVdev): string {
   return vdev.name.replace(/^\/dev\/(disk\/by-[a-z-]+\/)?/, "");
 }

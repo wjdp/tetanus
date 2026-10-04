@@ -47,7 +47,7 @@ import {
 } from "~~/server/services/poolPresence";
 import { labelSubjects } from "~~/server/services/subjectLabels";
 import { resolvePurpose } from "~~/server/services/usage";
-import { notFound } from "~~/server/utils/serviceError";
+import { invalidRequest, notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
 import type { PoolRow, VdevRow } from "./topology";
 
@@ -381,6 +381,10 @@ export function updatePoolConfig(
     const value = patch[key];
     if (value === null) delete config[key];
     else if (value !== undefined) config[key] = value;
+  }
+  const { capacityWarningPct, capacityErrorPct } = resolvePoolConfig(config);
+  if (capacityWarningPct > 0 && capacityWarningPct >= capacityErrorPct) {
+    throw invalidRequest("Capacity warning must be below capacity error");
   }
   db.update(pool).set({ config }).where(eq(pool.id, id)).run();
   return getPool(id);

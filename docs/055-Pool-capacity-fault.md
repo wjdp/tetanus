@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Pool capacity fault
@@ -51,10 +51,12 @@ threshold helper, live-row context and alerting change; build after 057.
   against the resolved config and throws `ServiceError` 400.
 - **Value**: `Pool.cap` (integer percent) from the latest `zpool-list`. Opens on a single
   reading; fill changes slowly.
-- **Hysteresis, both edges**: margin 2 percentage points, via `thresholdSeverity`.
+- **Hysteresis, both edges**: margin 2 percentage points (`CAPACITY_CLEAR_MARGIN`), via
+  `thresholdSeverity`, with the live fault from `liveFaultsByKey`.
 - **Special/dedup vdevs**: same kind, one fault per top-level vdev (parent is the root
   vdev, as `detectVdevUnredundant`) with role `special` or `dedup`. Percent is
-  `Math.floor(100 × allocBytes / sizeBytes)`; skip when `sizeBytes` is null. Key
+  `Math.floor(100 × allocBytes / sizeBytes)`; skip when either is null. Shares
+  `topLevelVdevs` with `detectVdevUnredundant`. Key
   `String(poolId)` for the pool, `leafKey(poolId, guid)` for a vdev, so `dataFromKey`
   recovers the GUID. A replaced special gets a new GUID and its old fault resolves. The
   title names the vdev and role.
@@ -64,7 +66,6 @@ threshold helper, live-row context and alerting change; build after 057.
 - **Severity, accept, alerts**: as 057. Severity moves up within the same fault; generic
   `accepted` state; `ALERT_RULES` plus the fault-kind/alert-rule test map; alert on
   open and on `fault-severity-raised`.
-- **Simulator**: mark `nearly-full` ✱ → `pool-capacity` in
-  [044](044-Fault-simulator.md) (rename if useful). Add a `special-nearly-full` scenario
-  that applies when the pool has a special or dedup top-level vdev and sets its
-  `alloc_space` in the `zpool-status` payload; there isn't one today.
+- **Simulator**: `nearly-full` now opens `pool-capacity`. New `special-nearly-full`
+  applies when the pool has a special or dedup top-level vdev reporting its space, and
+  sets that vdev's `alloc_space` in the `zpool-status` payload.

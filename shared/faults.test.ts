@@ -36,6 +36,7 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "scrub-paused": "scrub-paused",
   "scan-stalled": "scan-stalled",
   "vdev-unredundant": "vdev-unredundant",
+  "pool-capacity": "pool-capacity",
   "replication-late": "replication-late",
   "replication-stalled": "replication-stalled",
   "replication-target-gone": "replication-target-gone",
@@ -262,6 +263,24 @@ describe("faultTitle", () => {
       "58 °C (limit 55 °C), hot for 2 h",
     ],
     ["temperature-high", {}, "Running hot"],
+    [
+      "pool-capacity",
+      { poolName: "tank", cap: 91, frag: 34 },
+      "Pool tank 91 % full · frag 34 %",
+    ],
+    [
+      "pool-capacity",
+      {
+        poolName: "tank",
+        cap: 85,
+        frag: null,
+        vdevGuid: "2",
+        name: "mirror-1",
+        role: "special",
+      },
+      "special mirror-1 in tank 85 % full",
+    ],
+    ["pool-capacity", { vdevGuid: "2" }, "Pool nearly full"],
   ] as const)("renders %s", (kind, data, title) => {
     expect(faultTitle({ kind, data }, now)).toBe(title);
   });

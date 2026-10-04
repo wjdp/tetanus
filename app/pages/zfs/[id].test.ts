@@ -600,7 +600,12 @@ describe("pool page", () => {
 
     await vi.waitFor(() =>
       expect(configPatches).toEqual([
-        { scrubIntervalDays: 0, slowIoThreshold: null },
+        {
+          scrubIntervalDays: 0,
+          slowIoThreshold: null,
+          capacityWarningPct: null,
+          capacityErrorPct: null,
+        },
       ]),
     );
   });

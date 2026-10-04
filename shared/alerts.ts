@@ -26,6 +26,7 @@ export const ALERT_RULES = {
   "scrub-paused": { label: "Scrub paused", severity: "notice" },
   "scan-stalled": { label: "Scan stalled", severity: "alert" },
   "vdev-unredundant": { label: "Single-device vdev", severity: "notice" },
+  "pool-capacity": { label: "Pool nearly full", severity: "alert" },
   "replication-late": { label: "Replication late", severity: "notice" },
   "replication-stalled": { label: "Replication stalled", severity: "alert" },
   "replication-target-gone": {

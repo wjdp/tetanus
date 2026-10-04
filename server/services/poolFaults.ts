@@ -1,12 +1,16 @@
 import { and, asc, desc, eq, gt, inArray, isNull, lte } from "drizzle-orm";
-import type {
-  FaultData,
-  FaultKind,
-  FaultSeverity,
-  LeafCounts,
-  PoolDegradedLeaf,
+import {
+  type FaultData,
+  type FaultKind,
+  type FaultSeverity,
+  type LeafCounts,
+  type PoolDegradedLeaf,
+  thresholdSeverity,
 } from "#shared/faults";
-import { resolvePoolConfig } from "#shared/schemas/pools";
+import {
+  CAPACITY_CLEAR_MARGIN,
+  resolvePoolConfig,
+} from "#shared/schemas/pools";
 import { zfsMessage } from "#shared/zfsMessages";
 import {
   LEAF_VDEV_TYPES,
@@ -27,6 +31,7 @@ import type {
   DetectionContext,
   Supersession,
 } from "~~/server/services/faults";
+import { type LiveFault, liveFaultsByKey } from "~~/server/services/liveFaults";
 import {
   poolPresence,
   poolPresenceContext,
@@ -46,6 +51,7 @@ export const POOL_FAULT_KINDS = [
   "scrub-paused",
   "scan-stalled",
   "vdev-unredundant",
+  "pool-capacity",
 ] as const satisfies readonly FaultKind[];
 
 const LEAF_FAULT_KINDS: FaultKind[] = ["leaf-errors", "leaf-slow"];
@@ -565,17 +571,27 @@ function detectScanStalled({ row, referenceAt }: PoolScope): Detection[] {
   ];
 }
 
-const UNREDUNDANT_ROLES: ReadonlySet<string> = new Set(["special", "dedup"]);
+const ALLOCATION_CLASS_ROLES: ReadonlySet<string> = new Set([
+  "special",
+  "dedup",
+]);
 
-// Losing a single-device special or dedup vdev loses the pool; a single log
-// device is survivable, so it is not listed.
-function detectVdevUnredundant({ row, vdevs, leaves }: PoolScope): Detection[] {
+function topLevelVdevs(vdevs: VdevRow[]) {
   const rootIds = new Set(
     vdevs.filter((candidate) => candidate.type === "root").map(({ id }) => id),
   );
-  return leaves.flatMap((leaf): Detection[] => {
-    if (!UNREDUNDANT_ROLES.has(leaf.role)) return [];
-    if (leaf.parentId === null || !rootIds.has(leaf.parentId)) return [];
+  return vdevs.filter(
+    (candidate) =>
+      candidate.parentId !== null && rootIds.has(candidate.parentId),
+  );
+}
+
+// Losing a single-device special or dedup vdev loses the pool; a single log
+// device is survivable, so it is not listed.
+function detectVdevUnredundant({ row, vdevs }: PoolScope): Detection[] {
+  return topLevelVdevs(vdevs).flatMap((leaf): Detection[] => {
+    if (!LEAF_VDEV_TYPES.has(leaf.type)) return [];
+    if (!ALLOCATION_CLASS_ROLES.has(leaf.role)) return [];
     return [
       {
         kind: "vdev-unredundant",
@@ -586,6 +602,60 @@ function detectVdevUnredundant({ row, vdevs, leaves }: PoolScope): Detection[] {
       },
     ];
   });
+}
+
+function allocatedPct({ allocBytes, sizeBytes }: VdevRow) {
+  if (allocBytes === null || !sizeBytes) return null;
+  return Math.floor((100 * allocBytes) / sizeBytes);
+}
+
+// A special or dedup vdev fills on its own and, once full, spills metadata
+// onto the data vdevs, so it is watched alongside the pool.
+function detectPoolCapacity(
+  { row, vdevs }: PoolScope,
+  live: Map<string, LiveFault>,
+): Detection[] {
+  const { capacityWarningPct, capacityErrorPct } = resolvePoolConfig(
+    row.config,
+  );
+  if (capacityWarningPct === 0) return [];
+  const levels = { warning: capacityWarningPct, error: capacityErrorPct };
+  const detect = (
+    key: string,
+    cap: number | null,
+    data: FaultData,
+  ): Detection[] => {
+    if (cap === null) return [];
+    const severity = thresholdSeverity(
+      live.get(key)?.severity ?? null,
+      cap,
+      levels,
+      CAPACITY_CLEAR_MARGIN,
+    );
+    if (!severity) return [];
+    return [
+      {
+        kind: "pool-capacity",
+        key,
+        subjectId: row.id,
+        severity,
+        data: { poolName: row.name, cap, ...data },
+      },
+    ];
+  };
+  return [
+    ...detect(String(row.id), row.cap, { frag: row.frag }),
+    ...topLevelVdevs(vdevs)
+      .filter((candidate) => ALLOCATION_CLASS_ROLES.has(candidate.role))
+      .flatMap((candidate) =>
+        detect(leafKey(row.id, candidate.guid), allocatedPct(candidate), {
+          frag: candidate.frag,
+          vdevGuid: candidate.guid,
+          name: candidate.name,
+          role: candidate.role,
+        }),
+      ),
+  ];
 }
 
 function memberDiskIds(vdevs: VdevRow[]) {
@@ -673,6 +743,7 @@ export function detectPoolFaults({
   const latestScans = latestPoolEntries(poolIds, SCAN_FINISHED_EVENTS);
   const latestScrubs = latestPoolEntries(poolIds, ["scrub-finished"]);
   const history = leafErrorHistory();
+  const liveCapacity = liveFaultsByKey("pool-capacity");
   for (const scope of current) {
     const { row } = scope;
     const degraded = detectPoolDegraded(scope, missingDiskIds);
@@ -715,6 +786,7 @@ export function detectPoolFaults({
       ...detectScrubPaused(scope),
       ...detectScanStalled(scope),
       ...detectVdevUnredundant(scope),
+      ...detectPoolCapacity(scope, liveCapacity),
     );
   }
   return { detections, superseded };

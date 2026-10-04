@@ -14,13 +14,19 @@ describe("resolvePoolConfig", () => {
     expect(resolvePoolConfig({})).toEqual({
       scrubIntervalDays: 35,
       slowIoThreshold: 10,
+      capacityWarningPct: 80,
+      capacityErrorPct: 90,
     });
   });
 
   it("keeps 0, which disables the check", () => {
-    expect(
-      resolvePoolConfig({ scrubIntervalDays: 0, slowIoThreshold: 25 }),
-    ).toEqual({ scrubIntervalDays: 0, slowIoThreshold: 25 });
+    const config = {
+      scrubIntervalDays: 0,
+      slowIoThreshold: 25,
+      capacityWarningPct: 0,
+      capacityErrorPct: 95,
+    };
+    expect(resolvePoolConfig(config)).toEqual(config);
   });
 });
 

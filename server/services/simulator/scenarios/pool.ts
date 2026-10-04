@@ -16,6 +16,7 @@ import { type StoredPayload, storedPayload } from "../payloads";
 import { defineScenario, type Scenario, type SubjectOf } from "../types";
 import {
   allocationClassMirrors,
+  allocationClassVdevs,
   appendEreports,
   cacheLeaves,
   detachToSingle,
@@ -46,6 +47,7 @@ import {
   setListFragmentation,
   setSlowIos,
   setStatusCapacity,
+  setVdevCapacity,
   showMessage,
   startResilver,
   statusPoolIn,
@@ -686,6 +688,28 @@ export const nearlyFull = defineScenario({
   }),
 });
 
+export const specialNearlyFull = defineScenario({
+  id: "special-nearly-full",
+  label: "Special vdev nearly full",
+  group: CAPACITY,
+  subjectType: "pool",
+  description:
+    "A special or dedup vdev fills up while the pool has room; new metadata spills onto the data vdevs.",
+  applies: (subject) =>
+    hasStatus(subject) && allocationClassVdevs(statusPool(subject)).length > 0,
+  params: (subject) => [
+    vdevParam("vdev", "Vdev", allocationClassVdevs(statusPool(subject))),
+    numberParam("cap", "Capacity", 92, { min: 0, max: 100, unit: "%" }),
+  ],
+  plan: (subject, params) => ({
+    replays: [
+      editStatus(subject, (pool) =>
+        setVdevCapacity(pool, String(params.vdev), Number(params.cap)),
+      ),
+    ],
+  }),
+});
+
 export const fragmented = defineScenario({
   id: "fragmented",
   label: "Fragmented",
@@ -804,6 +828,7 @@ export const POOL_SCENARIOS: Scenario<"pool">[] = [
   scanStalled,
   scrubOverdue,
   nearlyFull,
+  specialNearlyFull,
   fragmented,
   errorBurst,
   replicationStalls,

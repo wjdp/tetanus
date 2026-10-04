@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { eq, isNotNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { POOL_CONFIG_DEFAULTS } from "#shared/schemas/pools";
 import { db } from "~~/server/database/client";
 import {
   collectorRun,
@@ -1175,10 +1176,7 @@ describe("pool queries", () => {
       "vdev-left",
       "scrub-finished",
     ]);
-    expect(detail.resolvedConfig).toEqual({
-      scrubIntervalDays: 35,
-      slowIoThreshold: 10,
-    });
+    expect(detail.resolvedConfig).toEqual(POOL_CONFIG_DEFAULTS);
     expect(detail.historyScope).toBe("host");
     expect(detail.history).toHaveLength(50);
     expect(detail.events).toHaveLength(50);

@@ -50,6 +50,7 @@ export const FAULT_KINDS = [
   "scrub-paused",
   "scan-stalled",
   "vdev-unredundant",
+  "pool-capacity",
   "replication-late",
   "replication-stalled",
   "replication-target-gone",
@@ -181,6 +182,16 @@ function scanStalledTitle(data: FaultData, now: number) {
   const age = ageSince(data.progressAt, now);
   const stalled = `Pool ${text(data.poolName)} ${scan} stalled`;
   return age ? `${stalled} for ${age}` : stalled;
+}
+
+function poolCapacityTitle(data: FaultData) {
+  if (data.cap === undefined) return "Pool nearly full";
+  const subject =
+    data.vdevGuid === undefined
+      ? `Pool ${text(data.poolName)}`
+      : `${text(data.role)} ${leafLabel(data.name)} in ${text(data.poolName)}`;
+  const frag = typeof data.frag === "number" ? ` · frag ${data.frag} %` : "";
+  return `${subject} ${text(data.cap)} % full${frag}`;
 }
 
 function temperatureHighTitle(data: FaultData, now: number) {
@@ -325,6 +336,13 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
       `${text(data.role)} ${leafLabel(data.name)} in ${text(data.poolName)} is a single device`,
+  },
+  "pool-capacity": {
+    category: "zfs",
+    subjectType: "pool",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: poolCapacityTitle,
   },
   "replication-late": {
     category: "zfs",

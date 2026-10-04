@@ -167,6 +167,7 @@ function matchDiskEntry(
 // fault opens, and again if it is raised to error.
 const FAULT_OPENED_RULES = new Set<AlertRule>([
   "temperature-high",
+  "pool-capacity",
   "pool-missing",
   "scrub-overdue",
   "leaf-slow",
@@ -180,7 +181,10 @@ function isFaultOpenedRule(kind: unknown): kind is AlertRule {
   return FAULT_OPENED_RULES.has(kind as AlertRule);
 }
 
-const RAISED_ALERT_RULES = new Set<AlertRule>(["temperature-high"]);
+const RAISED_ALERT_RULES = new Set<AlertRule>([
+  "temperature-high",
+  "pool-capacity",
+]);
 
 function matchFaultEntry(entry: DiaryEntryRow, data: Data): Match | null {
   if (!isFaultKind(data.kind)) return null;

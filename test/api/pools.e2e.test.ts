@@ -198,6 +198,8 @@ describe("/api/pools", () => {
     expect(second.resolvedConfig).toEqual({
       scrubIntervalDays: 0,
       slowIoThreshold: 25,
+      capacityWarningPct: 80,
+      capacityErrorPct: 90,
     });
 
     const reset = await (await patch({ scrubIntervalDays: null })).json();
@@ -205,9 +207,14 @@ describe("/api/pools", () => {
     expect(reset.resolvedConfig).toEqual({
       scrubIntervalDays: 35,
       slowIoThreshold: 25,
+      capacityWarningPct: 80,
+      capacityErrorPct: 90,
     });
 
     expect((await patch({ scrubIntervalDays: -1 })).status).toBe(400);
+    expect((await patch({ capacityWarningPct: 95 })).status).toBe(400);
+    expect((await patch({ capacityWarningPct: 0 })).status).toBe(200);
+    expect((await patch({ capacityWarningPct: 101 })).status).toBe(400);
     expect((await patch({ colour: "red" })).status).toBe(400);
     expect((await patch({}, 99999)).status).toBe(404);
   });

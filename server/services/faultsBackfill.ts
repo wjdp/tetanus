@@ -659,6 +659,9 @@ function dataFromKey(kind: FaultKind, key: string): FaultData {
   if (LEAF_FAULT_KINDS.includes(kind) || kind === "vdev-unredundant") {
     return { vdevGuid: afterColon };
   }
+  if (kind === "pool-capacity" && key.includes(":")) {
+    return { vdevGuid: afterColon };
+  }
   if (kind === "pool-status") return { msgid: afterColon };
   return {};
 }
