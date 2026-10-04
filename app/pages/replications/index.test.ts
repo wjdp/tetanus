@@ -75,11 +75,15 @@ describe("replications page", () => {
       "vault/replica/tank/backups/laptops",
     );
     expect(late.text()).toContain("~daily");
-    expect(late.text()).toContain("overdue 14 h");
+    expect(late.get('[data-testid="replication-row-status"]').text()).toBe(
+      "Late · 14 h overdue",
+    );
     expect(late.find(".text-warning").exists()).toBe(true);
     expect(ok.text()).toContain("hourly");
     expect(ok.text()).toContain("30 min ago");
-    expect(ok.text()).toContain("in 30 min");
+    expect(ok.get('[data-testid="replication-row-status"]').text()).toBe(
+      "Due in 30 min",
+    );
     expect(ok.text()).not.toContain("OK");
   });
 
@@ -92,12 +96,13 @@ describe("replications page", () => {
     expect(stalled.attributes("href")).toBe("/replications/2");
     expect(stalled.text()).toContain("tank/backups/laptops");
     expect(stalled.text()).toContain("→ vault/replica/tank/backups/laptops");
+    expect(stalled.text()).toContain("Stalled · 3 d overdue");
     expect(stalled.get('[data-testid="replication-list-meta"]').text()).toMatch(
-      /Stalled ·\s*daily\s*· 4 d ago/,
+      /^daily\s*· 4 d ago$/,
     );
   });
 
-  it("drops the status column while every replication is on schedule", async () => {
+  it("merges status and next due into one column", async () => {
     rows = [
       replicationRow(1),
       replicationRow(5, { lastSyncAt: hoursAgo(0.2) }),
@@ -105,12 +110,12 @@ describe("replications page", () => {
     const page = await mountSuspended(ReplicationsPage);
 
     expect(page.findAll("thead th").map((th) => th.text())).toEqual([
-      "Status",
+      "Health",
       "Source",
       "Target",
       "Cadence",
       "Last sync",
-      "Next due",
+      "Status",
     ]);
     expect(page.get('[data-testid="replications-summary"]').text()).toBe(
       "2 replications · all on schedule",

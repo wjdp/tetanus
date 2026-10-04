@@ -5,19 +5,13 @@ import {
   STATUS_TEXT_CLASS,
 } from "~/utils/vocabulary";
 import { groupReplications, statusSummary, targetParts } from "./groups";
-import { dueText, lastSyncText } from "./timing";
+import { lastSyncText, statusText } from "./timing";
 
 const props = defineProps<{ rows: ReplicationRow[]; now: number }>();
 
 const groups = computed(() => groupReplications(props.rows));
 
-const isQuiet = (row: ReplicationRow) =>
-  row.status === "ok" || row.status === "archived";
-
-const showStatus = computed(() =>
-  props.rows.some((row) => !isQuiet(row)),
-);
-const columnCount = computed(() => (showStatus.value ? 6 : 5));
+const COLUMN_COUNT = 5;
 
 const statusTextClass = (status: ReplicationStatus) => {
   const { colour } = REPLICATION_STATUS_VOCABULARY[status];
@@ -77,8 +71,11 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
           >
             {{ row.source?.dataset.name ?? "source not monitored" }}
           </span>
-          <span class="tabular text-right" :class="statusTextClass(row.status)">
-            {{ dueText(row, now) }}
+          <span
+            class="tabular text-right whitespace-nowrap"
+            :class="statusTextClass(row.status)"
+          >
+            {{ statusText(row, now) }}
           </span>
           <span
             class="col-start-2 col-end-4 truncate font-mono"
@@ -93,9 +90,6 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
             class="text-muted col-start-2 col-end-4 text-xs"
             data-testid="replication-list-meta"
           >
-            <span v-if="!isQuiet(row)" :class="statusTextClass(row.status)">
-              {{ REPLICATION_STATUS_VOCABULARY[row.status].label }} ·
-            </span>
             <ReplicationCadence
               :interval-sec="row.intervalSec"
               :manual="row.intervalManual"
@@ -111,22 +105,18 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
         <col class="w-6" />
         <col />
         <col />
-        <col v-if="showStatus" class="w-24" />
         <col class="w-28" />
         <col class="w-28" />
-        <col class="w-32" />
+        <col class="w-48" />
       </colgroup>
       <thead>
         <tr class="text-highlighted border-default border-b text-left">
-          <th scope="col"><span class="sr-only">Status</span></th>
+          <th scope="col"><span class="sr-only">Health</span></th>
           <th scope="col" class="py-2 pr-4 font-semibold">Source</th>
           <th scope="col" class="py-2 pr-4 font-semibold">Target</th>
-          <th v-if="showStatus" scope="col" class="py-2 pr-4 font-semibold">
-            Status
-          </th>
           <th scope="col" class="py-2 pr-4 font-semibold">Cadence</th>
           <th scope="col" class="py-2 pr-4 font-semibold">Last sync</th>
-          <th scope="col" class="py-2 font-semibold">Next due</th>
+          <th scope="col" class="py-2 font-semibold">Status</th>
         </tr>
       </thead>
       <tbody
@@ -144,7 +134,7 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
           </td>
           <th
             scope="rowgroup"
-            :colspan="columnCount"
+            :colspan="COLUMN_COUNT"
             class="text-toned pt-6 pb-2 text-left font-semibold"
           >
             <span class="flex items-center gap-2">
@@ -205,15 +195,6 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
               >{{ targetParts(row).mirrored }}
             </NuxtLink>
           </td>
-          <td
-            v-if="showStatus"
-            class="py-2.5 pr-4"
-            :class="statusTextClass(row.status)"
-          >
-            <span v-if="!isQuiet(row)">
-              {{ REPLICATION_STATUS_VOCABULARY[row.status].label }}
-            </span>
-          </td>
           <td class="py-2.5 pr-4">
             <ReplicationCadence
               :interval-sec="row.intervalSec"
@@ -226,8 +207,12 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
           >
             {{ lastSyncText(row, now) }}
           </td>
-          <td class="tabular py-2.5" :class="statusTextClass(row.status)">
-            {{ dueText(row, now) }}
+          <td
+            class="tabular truncate py-2.5 whitespace-nowrap"
+            :class="statusTextClass(row.status)"
+            data-testid="replication-row-status"
+          >
+            {{ statusText(row, now) }}
           </td>
         </tr>
       </tbody>
