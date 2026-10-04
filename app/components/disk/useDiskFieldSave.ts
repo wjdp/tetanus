@@ -9,16 +9,14 @@ export function useDiskFieldSave(
   const saving = reactive<Record<string, boolean>>({});
   const errors = reactive<Record<string, string | null>>({});
 
-  const save = async (field: string, body: DiskPatch) => {
+  const saveWith = async (
+    field: string,
+    request: () => Promise<DiskDetail>,
+  ) => {
     saving[field] = true;
     errors[field] = null;
     try {
-      onUpdated(
-        await $fetch<DiskDetail>(`/api/disks/${toValue(diskId)}`, {
-          method: "PATCH",
-          body,
-        }),
-      );
+      onUpdated(await request());
     } catch (error) {
       errors[field] = fetchErrorMessage(error) ?? "Could not save";
       if (isNetworkFailure(error))
@@ -28,5 +26,13 @@ export function useDiskFieldSave(
     }
   };
 
-  return { saving, errors, save };
+  const save = (field: string, body: DiskPatch) =>
+    saveWith(field, () =>
+      $fetch<DiskDetail>(`/api/disks/${toValue(diskId)}`, {
+        method: "PATCH",
+        body,
+      }),
+    );
+
+  return { saving, errors, save, saveWith };
 }

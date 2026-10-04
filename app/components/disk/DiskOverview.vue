@@ -33,7 +33,7 @@ const SYSTEM_MOUNT_PATHS = ["/", "/boot"];
 const INFERRED_WRITTEN_TITLE =
   "Estimated: LBAs written × logical block size, the drive does not say its unit";
 
-const { saving, errors, save } = useDiskFieldSave(
+const { saving, errors, save, saveWith } = useDiskFieldSave(
   () => props.disk.id,
   (disk) => emit("updated", disk),
 );
@@ -62,6 +62,21 @@ const purposeItems: InlineItem[] =
 
 const inventoryValue = (key: InventoryKey): InlineValue =>
   props.disk.inventory[key] ?? null;
+
+const BAY_DESCRIPTION =
+  "Where the disk sits, as you call it. The label belongs to the place, so a disk moved here takes it.";
+
+const saveBay = (value: InlineValue) => {
+  const { bay, id, lastSeenHostId } = props.disk;
+  if (!bay || lastSeenHostId === null) return;
+  return saveWith("bay", async () => {
+    await $fetch(`/api/hosts/${lastSeenHostId}/bays`, {
+      method: "PATCH",
+      body: { [bay.locationKey]: value === null ? null : String(value) },
+    });
+    return await $fetch<DiskDetail>(`/api/disks/${id}`);
+  });
+};
 
 const saveInventory = (key: InventoryKey, value: InlineValue) =>
   save(key, { inventory: { [key]: value } } as DiskPatch);
@@ -312,6 +327,34 @@ const optionalDate = (value: string | null) =>
           >{{ disk.lastDevicePath }}</span
         >
       </DiskFact>
+      <InlineField
+        v-if="disk.bay"
+        type="text"
+        label="Bay"
+        :description="BAY_DESCRIPTION"
+        :value="disk.bay.label"
+        :saving="saving.bay"
+        :error="errors.bay"
+        data-field="bay"
+        @commit="saveBay"
+      >
+        <template #display="{ text }">
+          <span
+            v-if="text"
+            class="truncate"
+            :class="{ 'text-dimmed': !disk.present }"
+            :title="disk.present ? undefined : 'last known'"
+            >{{ text }}</span
+          >
+          <span
+            v-else
+            class="text-dimmed truncate"
+            :title="disk.bay.locationKey"
+            data-testid="bay-default"
+            >{{ disk.bay.defaultLabel }}</span
+          >
+        </template>
+      </InlineField>
       <DiskFact v-if="disk.membership" label="Pool">
         <DiskPoolBreadcrumb :membership="disk.membership" />
       </DiskFact>

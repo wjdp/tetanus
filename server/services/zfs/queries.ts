@@ -10,6 +10,7 @@ import {
   lt,
   or,
 } from "drizzle-orm";
+import type { Bay } from "#shared/bays";
 import type { Media } from "#shared/hardware";
 import { resolveModelShort } from "#shared/model";
 import {
@@ -38,6 +39,7 @@ import {
   vdevReading,
   zfsEvent,
 } from "~~/server/database/schema";
+import { baysOf } from "~~/server/services/bays";
 import type { DiaryEntryRow } from "~~/server/services/diary";
 import {
   poolDisplayState,
@@ -65,6 +67,7 @@ export interface VdevDisk {
   latestTemp: number | null;
   modelShort: string | null;
   tempThresholds: TemperatureThresholds;
+  bay: Bay | null;
 }
 
 export interface VdevNode extends Omit<VdevRow, "poolId" | "diskId"> {
@@ -120,6 +123,8 @@ function vdevDiskRows(diskIds: number[]) {
       specs: disk.specs,
       inventory: disk.inventory,
       latestUsage: disk.latestUsage,
+      lastSeenHostId: disk.lastSeenHostId,
+      lastLocationKey: disk.lastLocationKey,
     })
     .from(disk)
     .where(inArray(disk.id, diskIds))
@@ -129,11 +134,21 @@ function vdevDiskRows(diskIds: number[]) {
 type VdevDiskRow = ReturnType<typeof vdevDiskRows>[number];
 
 function toVdevDisk(
-  { model, specs, inventory, latestUsage, ...columns }: VdevDiskRow,
+  {
+    model,
+    specs,
+    inventory,
+    latestUsage,
+    lastSeenHostId: _lastSeenHostId,
+    lastLocationKey: _lastLocationKey,
+    ...columns
+  }: VdevDiskRow,
   poolHost: ThresholdHost | null,
+  bay: Bay | null,
 ): VdevDisk {
   return {
     ...columns,
+    bay,
     purpose: resolvePurpose(inventory, latestUsage).purpose,
     modelShort: resolveModelShort(inventory, specs, model),
     tempThresholds: resolveTemperatureThresholds(poolHost, columns.media),
@@ -167,10 +182,17 @@ function vdevTrees(poolIds: number[]): Map<number, VdevNode | null> {
       rows.flatMap((row) => (row.diskId === null ? [] : [row.diskId])),
     ).map((row) => [row.id, row]),
   );
+  const bays = baysOf([...diskRows.values()]);
   const poolHosts = poolThresholdHosts(poolIds);
   const vdevDisk = (diskId: number | null, poolId: number) => {
     const diskRow = diskId === null ? undefined : diskRows.get(diskId);
-    return diskRow ? toVdevDisk(diskRow, poolHosts.get(poolId) ?? null) : null;
+    return diskRow
+      ? toVdevDisk(
+          diskRow,
+          poolHosts.get(poolId) ?? null,
+          bays.get(diskRow.id) ?? null,
+        )
+      : null;
   };
   const nodes = new Map<number, VdevNode & { poolId: number }>();
   for (const { diskId, ...row } of rows) {

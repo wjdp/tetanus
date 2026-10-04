@@ -109,8 +109,22 @@ registerEndpoint("/api/disks/7", {
   },
 });
 
+const bayPatched = vi.fn();
+registerEndpoint("/api/hosts/3/bays", {
+  method: "PATCH",
+  handler: async (event) => {
+    bayPatched(await readBody(event));
+    return { enclosures: [], paths: [], orphans: [] };
+  },
+});
+registerEndpoint("/api/disks/7", {
+  method: "GET",
+  handler: () => response,
+});
+
 beforeEach(() => {
   patched.mockReset();
+  bayPatched.mockReset();
   response = {};
 });
 
@@ -370,6 +384,41 @@ describe("DiskOverview", () => {
     expect(purchased().get('[data-testid="inline-hint"]').text()).toBe(
       "5.7 y old",
     );
+  });
+
+  describe("Bay", () => {
+    const bay = {
+      locationKey: "enc:5001:8",
+      label: null,
+      defaultLabel: "RES2SV240 slot 8",
+    };
+
+    it("is hidden without a known location", async () => {
+      const wrapper = await mountOverview({ bay: null });
+      expect(wrapper.find('[data-field="bay"]').exists()).toBe(false);
+    });
+
+    it("shows the default dimmed until labelled", async () => {
+      const wrapper = await mountOverview({ bay, lastSeenHostId: 3 });
+      expect(
+        field(wrapper, "bay").get('[data-testid="bay-default"]').text(),
+      ).toBe("RES2SV240 slot 8");
+    });
+
+    it("labels the place through the host's bays and reloads the disk", async () => {
+      response = asDisk({ bay: { ...bay, label: "Bay 1" }, lastSeenHostId: 3 });
+      const wrapper = await mountOverview({ bay, lastSeenHostId: 3 });
+      const bayField = () => field(wrapper, "bay");
+
+      await bayField().get('[data-testid="inline-display"]').trigger("click");
+      await bayField().get("input").setValue("Bay 1");
+      await bayField().get("input").trigger("keydown", { key: "Enter" });
+      await flushPromises();
+
+      expect(bayPatched).toHaveBeenCalledWith({ "enc:5001:8": "Bay 1" });
+      expect(patched).not.toHaveBeenCalled();
+      expect((await emittedDisk(wrapper)).bay?.label).toBe("Bay 1");
+    });
   });
 
   it("shows price per TB", async () => {

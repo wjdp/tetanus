@@ -83,9 +83,11 @@ const lastSeen = computed(() =>
     : "",
 );
 
-const activeTab = ref("diary");
+const activeTab = ref("topology");
 
 const tabs = computed<TabsItem[]>(() => [
+  { label: "Topology", slot: "topology", value: "topology" },
+  { label: "Bays", slot: "bays", value: "bays" },
   {
     label: "Diary",
     slot: "diary",
@@ -146,38 +148,40 @@ const tabs = computed<TabsItem[]>(() => [
 
         <HostFaults :host-name="host.name" :now="now" />
 
-        <div
-          class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
-        >
-          <TopologyHostTopology
-            :host-id="host.id"
-            :pools="hostPools"
-            :disks="hostDisks"
-            :in-pool="inPool"
-            :now="now"
-          />
-          <aside class="flex flex-col gap-4">
-            <HostCollectorPanel
-              :collector-version="host.collectorVersion"
-              :tool-versions="host.toolVersions"
-            />
-            <section
-              v-if="host.notes.trim()"
-              class="border-default flex flex-col gap-2 rounded-lg border p-4"
-              data-testid="host-notes"
-            >
-              <h2 class="text-highlighted font-semibold">Notes</h2>
-              <DiaryMarkdown :source="host.notes" class="text-sm" />
-            </section>
-          </aside>
-        </div>
-
         <UTabs
           v-model="activeTab"
           :items="tabs"
           variant="link"
           class="w-full"
         >
+          <template #topology>
+            <div
+              class="grid grid-cols-1 gap-6 py-4 lg:grid-cols-[minmax(0,1fr)_20rem]"
+            >
+              <TopologyHostTopology
+                :host-id="host.id"
+                :pools="hostPools"
+                :disks="hostDisks"
+                :in-pool="inPool"
+                :now="now"
+              />
+              <aside class="flex flex-col gap-4">
+                <HostCollectorPanel
+                  :collector-version="host.collectorVersion"
+                  :tool-versions="host.toolVersions"
+                />
+                <section
+                  v-if="host.notes.trim()"
+                  class="border-default flex flex-col gap-2 rounded-lg border p-4"
+                  data-testid="host-notes"
+                >
+                  <h2 class="text-highlighted font-semibold">Notes</h2>
+                  <DiaryMarkdown :source="host.notes" class="text-sm" />
+                </section>
+              </aside>
+            </div>
+          </template>
+
           <template #diary>
             <div class="py-4">
               <DiaryPanel
@@ -187,6 +191,12 @@ const tabs = computed<TabsItem[]>(() => [
                 :show-heading="false"
                 @changed="refreshDiary"
               />
+            </div>
+          </template>
+
+          <template #bays>
+            <div class="py-4">
+              <HostBays :host-id="host.id" />
             </div>
           </template>
 

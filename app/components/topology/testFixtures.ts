@@ -45,6 +45,7 @@ export function vdevDiskFixture(
     latestTemp: null,
     modelShort: null,
     tempThresholds: TEMPERATURE_DEFAULTS.hdd,
+    bay: null,
     ...overrides,
   };
 }
@@ -81,6 +82,7 @@ export function diskFixture(
     latestTemp: null,
     modelShort: null,
     tempThresholds: TEMPERATURE_DEFAULTS.hdd,
+    bay: null,
     present: false,
     lastSeenHostId: null,
     disposal: null,

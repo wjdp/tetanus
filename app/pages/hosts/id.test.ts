@@ -1,6 +1,6 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
-import { flushPromises } from "@vue/test-utils";
+import { flushPromises, type VueWrapper } from "@vue/test-utils";
 import { getQuery, readBody } from "h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, nextTick } from "vue";
@@ -135,6 +135,14 @@ const mountPage = () =>
     global: { stubs: { UTooltip: TooltipPassthrough } },
   });
 
+const openTab = async (page: VueWrapper, label: string) => {
+  await page
+    .findAll('[role="tab"]')
+    .find((tab) => tab.text().startsWith(label))
+    ?.trigger("mousedown");
+  await nextTick();
+};
+
 describe("host page", () => {
   it("shows the header with the host's own disks", async () => {
     const page = await mountPage();
@@ -174,14 +182,14 @@ describe("host page", () => {
     expect(page.get('[data-testid="host-notes"]').html()).toContain(
       "<strong>stairs</strong>",
     );
+    await openTab(page, "Diary");
     expect(page.text()).toContain("Moved to the loft");
   });
 
   it("saves the settings", async () => {
     const page = await mountPage();
 
-    await page.findAll('[role="tab"]')[1].trigger("mousedown");
-    await nextTick();
+    await openTab(page, "Settings");
     const form = page.get('[data-testid="host-settings"]');
     const placeholders = form
       .findAll('input[type="number"]')

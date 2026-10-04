@@ -1,3 +1,4 @@
+import type { Bay } from "#shared/bays";
 import {
   type Disposal,
   type EffectiveDiskState,
@@ -31,6 +32,7 @@ export interface TopologyDiskFacts {
   latestTemp: number | null;
   modelShort: string | null;
   tempThresholds: TemperatureThresholds;
+  bay: Bay | null;
 }
 
 export interface TopologyVdevDisk extends TopologyDiskFacts {

@@ -68,6 +68,29 @@ describe("TopologyDiskTile", () => {
     expect(tile.find('[data-media="ssd"]').exists()).toBe(true);
   });
 
+  it("leads line 2 with the bay label only when one is set", async () => {
+    const bay = {
+      locationKey: "enc:5001:8",
+      label: "Bay 1",
+      defaultLabel: "RES2SV240 slot 8",
+    };
+    const labelled = await mountTile({
+      leaf: leafFixture("K2", 1, { disk: { ...exos, bay } }),
+    });
+    expect(labelled.get('[data-testid="disk-tile-model"]').text()).toBe(
+      "Bay 1 · Exos X18",
+    );
+
+    const unlabelled = await mountTile({
+      leaf: leafFixture("K2", 1, {
+        disk: { ...exos, bay: { ...bay, label: null } },
+      }),
+    });
+    expect(unlabelled.get('[data-testid="disk-tile-model"]').text()).toBe(
+      "Exos X18",
+    );
+  });
+
   it("marks a disk tile with its state only when the disk is gone", async () => {
     const dead = await mountTile({ disk: diskFixture(9, { state: "dead" }) });
     expect(

@@ -65,8 +65,12 @@ const temperature = computed(() => {
   };
 });
 
+const bayLabel = computed(() => facts.value?.bay?.label ?? null);
 const tooltip = computed(() =>
   [
+    facts.value?.bay
+      ? (facts.value.bay.label ?? facts.value.bay.defaultLabel)
+      : null,
     props.disk?.model,
     props.disk?.serial,
     props.disk?.interfaceLabel,
@@ -122,7 +126,11 @@ const tooltip = computed(() =>
       </span>
       <span v-else-if="!facts" class="text-dimmed">unlinked</span>
       <span v-else class="text-dimmed truncate" data-testid="disk-tile-model">
-        {{ facts.modelShort ?? "" }}
+        <span v-if="bayLabel" class="text-muted" data-testid="disk-tile-bay">{{
+          bayLabel
+        }}</span
+        >{{ bayLabel && facts.modelShort ? " · " : ""
+        }}{{ facts.modelShort ?? "" }}
       </span>
 
       <span class="flex items-center gap-1">
