@@ -20,6 +20,7 @@ import {
   faultTitle,
 } from "#shared/faults";
 import { type CadenceOverrides, isHostSilent } from "#shared/hostFreshness";
+import { unsupportedTools } from "#shared/hostTools";
 import { replicationLabel } from "#shared/replications";
 import type { FaultsQuery } from "#shared/schemas/faults";
 import { healthStatus, overlayStatus } from "#shared/smart/status";
@@ -307,6 +308,20 @@ function detectCollectorVersion({ hosts }: DetectionContext): Detection[] {
   });
 }
 
+function detectHostDegraded({ hosts }: DetectionContext): Detection[] {
+  return hosts.flatMap((row) =>
+    unsupportedTools(row.toolVersions).map(
+      (unsupported): Detection => ({
+        kind: "host-degraded",
+        key: `${row.id}:${unsupported.tool}:${unsupported.version}`,
+        subjectId: row.id,
+        severity: "warning",
+        data: { ...unsupported },
+      }),
+    ),
+  );
+}
+
 export function detectFaults(context: DetectionContext): FaultScan {
   const silent = detectCollectorSilent(context);
   const pools = detectPoolFaults(context);
@@ -326,6 +341,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...replications.detections,
       ...silent,
       ...detectCollectorVersion(context),
+      ...detectHostDegraded(context),
     ],
     superseded: [...pools.superseded, ...replications.superseded],
     withdrawn: [...withdrawDisposedDisks(context), ...replications.withdrawn],

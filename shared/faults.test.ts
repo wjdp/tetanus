@@ -47,6 +47,7 @@ const FAULT_KINDS_WITHOUT_ALERT_RULE: FaultKind[] = [
   "smart-health-failed",
   "collector-silent",
   "collector-outdated",
+  "host-degraded",
 ];
 
 const now = Date.parse("2026-09-10T10:00:00Z");
@@ -227,6 +228,16 @@ describe("faultTitle", () => {
       "collector-outdated",
       { version: "0.3.0", currentVersion: "0.3.1" },
       "Collector 0.3.0 is behind 0.3.1",
+    ],
+    [
+      "host-degraded",
+      { tool: "openzfs", version: "2.2.2", minVersion: "2.3" },
+      "OpenZFS 2.2.2 is older than 2.3: no pool, dataset or snapshot data",
+    ],
+    [
+      "host-degraded",
+      { tool: "smartmontools", version: "6.6", minVersion: "7.0" },
+      "smartmontools 6.6 is older than 7.0: no SMART data",
     ],
     [
       "disk-missing",

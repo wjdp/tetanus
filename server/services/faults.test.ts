@@ -260,6 +260,51 @@ describe("collector versions", () => {
   });
 });
 
+describe("host degraded", () => {
+  function setVersions(hostId: number, zfs: string) {
+    db.update(host)
+      .set({ toolVersions: { zfs, smartctl: "smartctl 7.4 2023-08-01 r5530" } })
+      .where(eq(host.id, hostId))
+      .run();
+  }
+
+  it("opens a warning per unsupported tool version, quiet once accepted", async () => {
+    const mars = upsertHostByName("mars", t0);
+    recordRun(mars.id, "versions", t0);
+    setVersions(mars.id, "zfs-2.2.2-0ubuntu9.1");
+
+    await syncFaults(t0);
+
+    const opened = liveFault("host-degraded", `${mars.id}:openzfs:2.2.2`);
+    expect(opened).toMatchObject({
+      severity: "warning",
+      state: "open",
+      data: { tool: "openzfs", version: "2.2.2", minVersion: "2.3" },
+    });
+
+    performFaultAction((opened as FaultRow).id, "accept", {
+      now: at(MINUTE_MS),
+    });
+    await syncFaults(at(2 * MINUTE_MS));
+    expect(
+      liveFault("host-degraded", `${mars.id}:openzfs:2.2.2`),
+    ).toMatchObject({
+      state: "accepted",
+    });
+
+    setVersions(mars.id, "zfs-2.2.6-1");
+    await syncFaults(at(3 * MINUTE_MS));
+    expect(faultsOf("host-degraded")).toMatchObject([
+      { key: `${mars.id}:openzfs:2.2.2`, state: "resolved" },
+      { key: `${mars.id}:openzfs:2.2.6`, state: "open" },
+    ]);
+
+    setVersions(mars.id, "zfs-2.3.4-1");
+    await syncFaults(at(4 * MINUTE_MS));
+    expect(faultsOf("host-degraded").every((row) => row.resolvedAt)).toBe(true);
+  });
+});
+
 interface VdevSpec {
   guid: string;
   name: string;

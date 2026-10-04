@@ -1,5 +1,6 @@
 import { COLLECTOR_VERSION } from "#shared/collector";
 import { formatDuration } from "#shared/hostFreshness";
+import { HOST_TOOL_REQUIREMENTS, type HostTool } from "#shared/hostTools";
 
 export const FAULT_STATES = [
   "open",
@@ -54,6 +55,7 @@ export const FAULT_KINDS = [
   "collector-silent",
   "collector-incompatible",
   "collector-outdated",
+  "host-degraded",
 ] as const;
 export type FaultKind = (typeof FAULT_KINDS)[number];
 
@@ -85,6 +87,13 @@ const plural = (count: number, noun: string) =>
 function ageSince(value: unknown, now: number) {
   const at = typeof value === "string" ? Date.parse(value) : Number.NaN;
   return Number.isNaN(at) ? null : formatDuration(now - at);
+}
+
+function hostDegradedTitle(data: FaultData) {
+  const requirement = HOST_TOOL_REQUIREMENTS[data.tool as HostTool];
+  const subject = `${requirement?.label ?? text(data.tool)} ${text(data.version)}`;
+  const older = `${subject} is older than ${text(data.minVersion)}`;
+  return requirement ? `${older}: ${requirement.missing}` : older;
 }
 
 function smartAttributeTitle(data: FaultData) {
@@ -347,6 +356,13 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     upgradeCommand: true,
     title: (data) =>
       `Collector ${text(data.version)} is behind ${text(data.currentVersion) || COLLECTOR_VERSION}`,
+  },
+  "host-degraded": {
+    category: "host",
+    subjectType: "host",
+    lifetime: "transient",
+    actions: ["accept", "clear"],
+    title: hostDegradedTitle,
   },
 };
 
