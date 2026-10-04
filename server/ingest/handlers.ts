@@ -6,8 +6,13 @@ import {
   observeUdev,
 } from "~~/server/services/disks";
 import { setToolVersions } from "~~/server/services/hosts";
+import {
+  observeEnclosures,
+  observeUdevLocation,
+} from "~~/server/services/locations";
 import { recordSmartReading } from "~~/server/services/smart";
 import { ZFS_HANDLERS } from "~~/server/services/zfs";
+import type { EnclosureResult } from "./enclosure";
 import type { LsblkResult } from "./lsblk";
 import type { SmartctlXallResult } from "./smartctl-xall";
 import type { UdevResult } from "./udev";
@@ -34,7 +39,16 @@ const lsblk: IngestHandler<LsblkResult> = ({ hostId, data, receivedAt }) => {
 };
 
 const udev: IngestHandler<UdevResult> = ({ hostId, data, receivedAt }) => {
-  observeUdev(hostId, data, receivedAt);
+  const row = observeUdev(hostId, data, receivedAt);
+  if (row) observeUdevLocation(row, hostId, data, receivedAt);
+};
+
+const enclosure: IngestHandler<EnclosureResult> = ({
+  hostId,
+  data,
+  receivedAt,
+}) => {
+  observeEnclosures(hostId, data, receivedAt);
 };
 
 const vdevIdConf: IngestHandler<VdevIdConfResult> = ({ data, receivedAt }) => {
@@ -65,6 +79,7 @@ export const HANDLERS: Partial<Record<IngestSource, IngestHandler<any>>> = {
   versions,
   lsblk,
   udev,
+  enclosure,
   "vdev-id-conf": vdevIdConf,
   "smartctl-xall": smartctlXall,
   ...ZFS_HANDLERS,

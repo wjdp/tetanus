@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import type { AlertChannel, NotificationRule } from "../../shared/alerts";
+import type { EnclosureSlotState, LastSlot } from "../../shared/bays";
 import type { CollectorStatus } from "../../shared/collector";
 import type { DiaryEntryKind, DiarySubjectType } from "../../shared/diary";
 import type {
@@ -165,6 +166,9 @@ export const disk = sqliteTable(
     }),
     lastDevicePath: text(),
     lastDeviceType: text(),
+    lastIdPath: text(),
+    lastSlot: json().$type<LastSlot>(),
+    lastLocationKey: text(),
     stateOverride: text().$type<StateOverride>(),
     lastState: text().$type<DiskState | StateOverride>(),
     notes: text().notNull().default(""),
@@ -186,6 +190,46 @@ export const disk = sqliteTable(
     uniqueIndex("Disk_replacesDiskId_key")
       .on(table.replacesDiskId)
       .where(sql`${table.replacesDiskId} IS NOT NULL`),
+  ],
+);
+
+export const enclosure = sqliteTable(
+  "Enclosure",
+  {
+    id: autoIncrementId(),
+    hostId: integer()
+      .notNull()
+      .references(() => host.id, { onDelete: "cascade" }),
+    enclosureId: text().notNull(),
+    name: text().notNull(),
+    vendor: text(),
+    model: text(),
+    slots: json().$type<EnclosureSlotState[]>().notNull().default([]),
+    lastSeenAt: datetime().notNull(),
+  },
+  (table) => [
+    uniqueIndex("Enclosure_hostId_enclosureId_key").on(
+      table.hostId,
+      table.enclosureId,
+    ),
+  ],
+);
+
+export const bay = sqliteTable(
+  "Bay",
+  {
+    id: autoIncrementId(),
+    hostId: integer()
+      .notNull()
+      .references(() => host.id, { onDelete: "cascade" }),
+    locationKey: text().notNull(),
+    label: text().notNull(),
+  },
+  (table) => [
+    uniqueIndex("Bay_hostId_locationKey_key").on(
+      table.hostId,
+      table.locationKey,
+    ),
   ],
 );
 

@@ -10,6 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/sqlite-core";
+import type { Bay } from "#shared/bays";
 import {
   type DiskKey,
   type DiskKeyKind,
@@ -68,6 +69,7 @@ import type { LsblkResult } from "~~/server/ingest/lsblk";
 import type { SmartctlXallResult } from "~~/server/ingest/smartctl-xall";
 import type { UdevResult } from "~~/server/ingest/udev";
 import type { VdevIdConfResult } from "~~/server/ingest/vdev-id-conf";
+import { baysOf } from "~~/server/services/bays";
 import {
   addAutoEvent,
   countDiary,
@@ -163,6 +165,7 @@ export interface DiskSummary
   tempThresholds: TemperatureThresholds;
   counters: DiskCounters;
   faultCounts: DiskFaultCounts;
+  bay: Bay | null;
 }
 
 export interface DisposedDiskSighting {
@@ -187,7 +190,7 @@ export interface StateContext {
 export const PRESENT_WINDOW_MS = 2 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function getDiskRow(id: number): DiskRow | undefined {
+export function getDiskRow(id: number): DiskRow | undefined {
   return db.select().from(disk).where(eq(disk.id, id)).get();
 }
 
@@ -225,7 +228,7 @@ function existingKeysMatching(keys: DiskKey[]) {
     .all();
 }
 
-function matchKeys(keys: DiskKey[]) {
+export function matchKeys(keys: DiskKey[]) {
   return matchDisks(keys, existingKeysMatching(keys));
 }
 
@@ -953,6 +956,7 @@ function summarise(
   const counters = countersOf(rows);
   const faultCounts = faultCountsOf(diskIds);
   const replacements = replacementsOf(diskIds);
+  const bays = baysOf(rows);
   const hosts = new Map(
     db
       .select({
@@ -993,6 +997,7 @@ function summarise(
       tempThresholds: resolveTemperatureThresholds(lastHost, row.media),
       counters: counters.get(row.id) ?? NO_COUNTERS,
       faultCounts: faultCounts.get(row.id) ?? NO_DISK_FAULTS,
+      bay: bays.get(row.id) ?? null,
     };
   });
 }

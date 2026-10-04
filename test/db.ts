@@ -3,10 +3,12 @@ import { serialize } from "node:v8";
 import { getTableConfig } from "drizzle-orm/sqlite-core";
 import { db, sqlite } from "~~/server/database/client";
 import {
+  bay,
   collectorRun,
   diaryEntry,
   disk,
   diskKey,
+  enclosure,
   fault,
   faultAcceptance,
   host,
@@ -43,6 +45,8 @@ const TABLES_CHILDREN_FIRST = [
   zfsEvent,
   fault,
   faultAcceptance,
+  enclosure,
+  bay,
   diskKey,
   disk,
   notification,

@@ -7,12 +7,14 @@ import { createDb } from "~~/server/database/client";
 import { describeMigrations, runMigrations } from "~~/server/database/migrate";
 
 const TABLES = [
+  "Bay",
   "CollectorRun",
   "Dataset",
   "DatasetReading",
   "DiaryEntry",
   "Disk",
   "DiskKey",
+  "Enclosure",
   "Fault",
   "FaultAcceptance",
   "Host",
@@ -36,7 +38,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 25;
+const MIGRATION_COUNT = 26;
 
 const openConnections: Database.Database[] = [];
 
@@ -162,10 +164,15 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Disk DROP COLUMN ataSsdAttributes;
       DROP TABLE ReplicationSync;
       DROP TABLE Replication;
+      DROP TABLE Bay;
+      DROP TABLE Enclosure;
+      ALTER TABLE Disk DROP COLUMN lastIdPath;
+      ALTER TABLE Disk DROP COLUMN lastSlot;
+      ALTER TABLE Disk DROP COLUMN lastLocationKey;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 8
+            ORDER BY created_at DESC LIMIT 9
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -188,6 +195,7 @@ describe("0009_host_collector_version", () => {
       "0022_disk_disposal",
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
+      "0025_bay_mapping",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -243,10 +251,15 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Vdev DROP COLUMN spareState;
       DROP TABLE ReplicationSync;
       DROP TABLE Replication;
+      DROP TABLE Bay;
+      DROP TABLE Enclosure;
+      ALTER TABLE Disk DROP COLUMN lastIdPath;
+      ALTER TABLE Disk DROP COLUMN lastSlot;
+      ALTER TABLE Disk DROP COLUMN lastLocationKey;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 16
+            ORDER BY created_at DESC LIMIT 17
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -275,6 +288,7 @@ describe("0009_host_collector_version", () => {
       "0022_disk_disposal",
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
+      "0025_bay_mapping",
     ]);
     expect(
       sqlite
@@ -304,10 +318,15 @@ describe("0018_vdev_role_backfill", () => {
       ALTER TABLE Disk DROP COLUMN ataSsdAttributes;
       DROP TABLE ReplicationSync;
       DROP TABLE Replication;
+      DROP TABLE Bay;
+      DROP TABLE Enclosure;
+      ALTER TABLE Disk DROP COLUMN lastIdPath;
+      ALTER TABLE Disk DROP COLUMN lastSlot;
+      ALTER TABLE Disk DROP COLUMN lastLocationKey;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 7
+            ORDER BY created_at DESC LIMIT 8
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -331,6 +350,7 @@ describe("0018_vdev_role_backfill", () => {
       "0022_disk_disposal",
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
+      "0025_bay_mapping",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -357,10 +377,15 @@ describe("0022_disk_disposal", () => {
       ALTER TABLE Disk DROP COLUMN replacesDiskId;
       DROP TABLE ReplicationSync;
       DROP TABLE Replication;
+      DROP TABLE Bay;
+      DROP TABLE Enclosure;
+      ALTER TABLE Disk DROP COLUMN lastIdPath;
+      ALTER TABLE Disk DROP COLUMN lastSlot;
+      ALTER TABLE Disk DROP COLUMN lastLocationKey;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 3
+            ORDER BY created_at DESC LIMIT 4
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -379,6 +404,7 @@ describe("0022_disk_disposal", () => {
       "0022_disk_disposal",
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
+      "0025_bay_mapping",
     ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
@@ -425,10 +451,15 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
     sqlite.exec(`
       DROP TABLE ReplicationSync;
       DROP TABLE Replication;
+      DROP TABLE Bay;
+      DROP TABLE Enclosure;
+      ALTER TABLE Disk DROP COLUMN lastIdPath;
+      ALTER TABLE Disk DROP COLUMN lastSlot;
+      ALTER TABLE Disk DROP COLUMN lastLocationKey;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 2
+            ORDER BY created_at DESC LIMIT 3
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -447,6 +478,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
+      "0025_bay_mapping",
     ]);
     expect(
       sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),

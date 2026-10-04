@@ -25,6 +25,7 @@ export const DIARY_EVENT_TYPES = [
   "acknowledgement-cleared",
   "disk-appeared",
   "moved-host",
+  "moved-bay",
   "pool-moved",
   "pool-archived",
   "pool-unarchived",

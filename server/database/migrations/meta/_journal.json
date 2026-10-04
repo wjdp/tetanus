@@ -176,6 +176,13 @@
       "when": 1791065883274,
       "tag": "0024_replication",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1791134393909,
+      "tag": "0025_bay_mapping",
+      "breakpoints": true
     }
   ]
 }
