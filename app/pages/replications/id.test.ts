@@ -1,5 +1,9 @@
 // @vitest-environment nuxt
-import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
+import {
+  mockNuxtImport,
+  mountSuspended,
+  registerEndpoint,
+} from "@nuxt/test-utils/runtime";
 import { flushPromises } from "@vue/test-utils";
 import { createError, getQuery, readBody } from "h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +14,7 @@ import type {
   ReplicationRow,
   ReplicationSyncView,
 } from "#shared/replications";
+import type { SubjectScenarios } from "#shared/simulator";
 import {
   endpoint,
   replicationRow,
@@ -76,6 +81,41 @@ const detail = (page: number) => ({
   ],
   faults: [],
 });
+
+mockNuxtImport("useSimulator", () => () => ({
+  enabled: true,
+  simulations: ref([]),
+  simulate: vi.fn(),
+  restore: vi.fn(),
+  refresh: vi.fn(),
+}));
+
+const SCENARIOS: SubjectScenarios = {
+  simulations: [],
+  scenarios: [
+    {
+      id: "replication-late",
+      label: "Running late",
+      group: "Replication",
+      params: [
+        {
+          key: "hours",
+          label: "Syncs moved back",
+          kind: "number",
+          default: 4,
+          min: 1,
+        },
+      ],
+    },
+    {
+      id: "replication-target-destroyed",
+      label: "Target dataset destroyed",
+      group: "Replication",
+      params: [],
+    },
+  ],
+};
+registerEndpoint("/api/simulate/replication/3", () => SCENARIOS);
 
 registerEndpoint("/api/replications/3", {
   method: "GET",
@@ -197,6 +237,19 @@ describe("replication page", () => {
         true,
       ),
     );
+  });
+
+  it("offers the replication's fault scenarios", async () => {
+    const page = await mountPage();
+    await page
+      .get('[data-testid="simulate-fault"]')
+      .trigger("keydown", { key: "Enter" });
+    await vi.waitFor(() => {
+      const labels = [
+        ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+      ].map((element) => element.textContent?.trim());
+      expect(labels).toEqual(["Running late…", "Target dataset destroyed"]);
+    });
   });
 
   it("logs syncs a page at a time with long gaps marked", async () => {

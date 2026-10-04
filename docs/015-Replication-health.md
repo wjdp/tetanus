@@ -511,3 +511,9 @@ the backfill runs; or the demo):
 - Pool datasets tab icons and dots link to the right replication; dataset page
   Replications section on a source and on a target.
 - Settings: thresholds show the defaults, save, and change a status on reload.
+
+### Simulator on the replication page
+
+Done 2026-10-04. Replication is a simulator subject (044 §Replication): Running late,
+Stalled (defaults just past each threshold), Target / Source dataset destroyed
+(`gone`). The pool-level "Replication stalls" stays.

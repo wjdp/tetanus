@@ -5,8 +5,8 @@ status: done
 
 # Fault simulator
 
-A "Simulate fault" dropdown on the disk page, pool page and each row of the hosts table
-that injects a fake fault so you can see how the app presents it: badges, fault banners,
+A "Simulate fault" dropdown on the disk page, pool page, replication page and each row
+of the hosts table that injects a fake fault so you can see how the app presents it: badges, fault banners,
 faults page, SMART table, vdev tree, diary, alerts. For dev (exercising UI states without
 a sick disk) and the public demo ([034](034-Cloudflare-Workers-demo.md)), where visitors
 can break things. "Restore" removes every trace.
@@ -55,17 +55,20 @@ Durable Object SQLite too (plain triggers and SQL).
   `subjects.ts`, `run.ts` (list scenarios for a subject, validate params, replay under
   capture, run the alerts pass so faults open at once, restore), helpers editing raw
   bodies (`smartctl.ts`, `zpool.ts`), and `scenarios/` by subject: `disk.ts`,
-  `presence.ts`, `pool.ts`, `host.ts`. A scenario is `{ id, label, group, subjectType,
+  `presence.ts`, `pool.ts`, `host.ts`, `replication.ts`. A scenario is `{ id, label, group, subjectType,
   applies?, params?, plan }`; `plan` returns edited payload copies to replay plus an
-  optional direct write (backdating `lastSeenAt`, `CollectorRun.receivedAt`).
+  optional direct write (backdating `lastSeenAt`, `CollectorRun.receivedAt`). A replay
+  may name another host (a replication's source host).
 - Routes under `/api/simulate`: `GET` (active simulations), `GET|POST
   /:subjectType/:id` (scenarios offered; run one with `{ scenario, params }`), `POST
   /restore`. 404 when the simulator is off.
 - App: `useSimulator`, `SimulateFaultMenu` (scenarios without params run on click,
   others open `SimulateFaultModal` pre-filled with defaults; Enter submits),
-  `AppSimulationBanner` in the layout. Menu in the disk page header, pool page header
-  and a column of the hosts table.
-- Disks out of service (sold, retired, dead) or with no host get no scenarios.
+  `AppSimulationBanner` in the layout. Menu in the disk page header, pool page header,
+  replication page header and a column of the hosts table.
+- Disks out of service (sold, retired, dead) or with no host get no scenarios; nor do
+  archived replications (marked, or target pool archived). A replication's host is its
+  target's, which collects its receives.
 - `pnpm demo:seed --reset` discards an active capture before wiping.
 
 Gating: `runtimeConfig.public.faultSimulator`, on when `import.meta.dev` or demo;
@@ -163,6 +166,24 @@ Events
   back (captured, so restore moves it forward)
 - ✱ Collector outdated: version [previous minor]; replays `versions` with that producer
 - ✱ Collector incompatible: version [below minimum]
+
+### Replication (replication page, group Replication)
+
+Since [015](015-Replication-health.md). Late and stalled need a known interval (not
+`learning`); defaults land 30 min past the threshold, from the interval, the current
+overdue and the global thresholds, rounded up to whole hours.
+
+- ✱ Running late (status ok): hours [just past late] → `replication-late`; moves this
+  replication's `ReplicationSync.at` and `lastSyncAt` back (`backdateSyncsOf`)
+- ✱ Stalled (status ok or late): hours [just past stalled] → `replication-stalled`,
+  superseding late
+- Target dataset destroyed: the target host's `zfs-list` replayed without the dataset
+  and its children → `present = false`, status `gone`, no fault
+- Source dataset destroyed (source monitored): the same on the source host's
+  `zfs-list`
+
+Pool page: "Replication stalls" moves every replication into the pool back by hours
+[96] (`backdateSyncsInto`).
 
 ## Gaps found while building
 

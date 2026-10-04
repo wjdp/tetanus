@@ -292,24 +292,32 @@ export function hasReplicationsInto(poolId: number) {
   return replicationIdsInto(poolId).length > 0;
 }
 
-/** Moves every sync into the pool back in time, as if receives had stopped. */
-export function backdateSyncsInto(poolId: number, byMs: number) {
-  const ids = replicationIdsInto(poolId);
-  if (ids.length === 0) return;
-  const into = inArray(replicationSync.replicationId, ids);
+function backdateSyncs(replicationIds: number[], byMs: number) {
+  if (replicationIds.length === 0) return;
+  const of = inArray(replicationSync.replicationId, replicationIds);
   // Negated first so no shifted row meets an unshifted one on (replicationId, at).
   db.update(replicationSync)
     .set({ at: sql`-(${replicationSync.at} - ${byMs})` })
-    .where(into)
+    .where(of)
     .run();
   db.update(replicationSync)
     .set({ at: sql`-${replicationSync.at}` })
-    .where(into)
+    .where(of)
     .run();
   db.update(replication)
     .set({ lastSyncAt: sql`${replication.lastSyncAt} - ${byMs}` })
-    .where(inArray(replication.id, ids))
+    .where(inArray(replication.id, replicationIds))
     .run();
+}
+
+/** Moves every sync into the pool back in time, as if receives had stopped. */
+export function backdateSyncsInto(poolId: number, byMs: number) {
+  backdateSyncs(replicationIdsInto(poolId), byMs);
+}
+
+/** Moves one replication's syncs back in time, as if its receives had stopped. */
+export function backdateSyncsOf(replicationId: number, byMs: number) {
+  backdateSyncs([replicationId], byMs);
 }
 
 export function observeSnapshotsForReplications(receivedAt: Date) {

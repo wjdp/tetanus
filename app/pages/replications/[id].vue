@@ -115,6 +115,11 @@ const tabs = computed<TabsItem[]>(() => [
             {{ REPLICATION_DIRECTION_LABEL[replication.direction] }}
           </UBadge>
           <div class="ms-auto flex items-center gap-2">
+            <SimulateFaultMenu
+              subject-type="replication"
+              :subject-id="replication.id"
+              size="sm"
+            />
             <UDropdownMenu :items="menuItems" :content="{ align: 'end' }">
               <UButton
                 color="neutral"

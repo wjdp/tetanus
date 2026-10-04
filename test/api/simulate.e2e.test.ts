@@ -93,4 +93,11 @@ describe("fault simulator routes", () => {
     });
     expect(response.status).toBe(400);
   });
+
+  it("accepts replications as subjects", async () => {
+    const unknown = await fetch("/api/simulate/replication/999999");
+    expect(unknown.status).toBe(404);
+    const invalid = await fetch("/api/simulate/dataset/1");
+    expect(invalid.status).toBe(400);
+  });
 });

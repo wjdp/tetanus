@@ -125,7 +125,7 @@ export async function simulate(
     .run();
   for (const replay of plan.replays) {
     const outcome = recordIngest({
-      hostName: subject.host.name,
+      hostName: replay.hostName ?? subject.host.name,
       source: replay.source,
       meta: replay.meta,
       body: replay.body,

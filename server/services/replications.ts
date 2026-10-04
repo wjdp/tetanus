@@ -15,6 +15,7 @@ export {
 } from "./replications/faults";
 export {
   backdateSyncsInto,
+  backdateSyncsOf,
   fillSyncGuids,
   hasReplicationsInto,
   observeReceives,
