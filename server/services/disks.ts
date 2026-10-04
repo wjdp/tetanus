@@ -85,7 +85,7 @@ import {
   recordingTechChanges,
   zonedChanges,
 } from "~~/server/services/hardware";
-import { diskSightingTimes } from "~~/server/services/hosts";
+import { diskSightingTimes, poolBlindHostIds } from "~~/server/services/hosts";
 import {
   extractKeys,
   isPartitionName,
@@ -157,6 +157,7 @@ export interface DiskSummary
   ageDays: number | null;
   warrantyDaysLeft: number | null;
   usage: DiskUsage;
+  poolsKnown: boolean;
   purpose: Purpose | null;
   purposeInferred: boolean;
   sectorFormat: SectorFormat | null;
@@ -880,8 +881,21 @@ interface StateSnapshot {
   stateAsOf: Date | null;
 }
 
+function poolsKnownResolver() {
+  const blind = poolBlindHostIds();
+  return (row: DiskRow) =>
+    row.lastSeenHostId === null || !blind.has(row.lastSeenHostId);
+}
+
+// A zfs-labelled disk on a host that can't report pools counts as in a pool:
+// calling it spare would invite wiping it.
+function isAssumedInPool(row: DiskRow, poolsKnown: boolean) {
+  return !poolsKnown && row.latestUsage?.kind === "zfs";
+}
+
 function stateResolver(now: Date, missingAfterDays: number) {
   const inPool = diskIdsInPools();
+  const poolsKnownFor = poolsKnownResolver();
   const sightingTimes = diskSightingTimes();
   const referenceFor = (row: DiskRow) => {
     const sightedAt =
@@ -894,7 +908,7 @@ function stateResolver(now: Date, missingAfterDays: number) {
     const referenceAt = referenceFor(row);
     const present = isPresent(row, referenceAt);
     const inferredState = inferState(row, {
-      inPool: inPool.has(row.id),
+      inPool: inPool.has(row.id) || isAssumedInPool(row, poolsKnownFor(row)),
       present,
       mounted: isMounted(row.latestUsage ?? UNKNOWN_USAGE),
       now: referenceAt,
@@ -971,6 +985,7 @@ function summarise(
   const faultCounts = faultCountsOf(diskIds);
   const replacements = replacementsOf(diskIds);
   const bays = baysOf(rows);
+  const poolsKnownFor = poolsKnownResolver();
   const hosts = new Map(
     db
       .select({
@@ -1004,6 +1019,7 @@ function summarise(
       membership,
       ...snapshot,
       ...resolveUsage(row, membership !== null),
+      poolsKnown: poolsKnownFor(row),
       hostName: lastHost?.name ?? null,
       replacedByDiskId: replacements.get(row.id) ?? null,
       ...inventoryDays(row.inventory, now),

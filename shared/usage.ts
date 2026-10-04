@@ -25,7 +25,7 @@ export const PURPOSES = ["system"] as const;
 export type Purpose = (typeof PURPOSES)[number];
 
 export function isMounted(usage: DiskUsage): boolean {
-  return usage.kind === "filesystem" && usage.mounts.length > 0;
+  return usage.mounts.length > 0;
 }
 
 function describeMounts(mounts: DiskMount[]): string {
@@ -44,10 +44,28 @@ function describeMounts(mounts: DiskMount[]): string {
     .join(", ");
 }
 
-export function usageDetail(usage: DiskUsage, poolName: string | null): string {
+function zfsDetail(
+  usage: DiskUsage,
+  poolName: string | null,
+  poolsKnown: boolean,
+) {
+  const unpooled = poolsKnown
+    ? "zfs label, no pool"
+    : "zfs label, pool unknown (OpenZFS too old)";
+  const pool = poolName ?? unpooled;
+  return usage.mounts.length
+    ? `${pool}; ${describeMounts(usage.mounts)}`
+    : pool;
+}
+
+export function usageDetail(
+  usage: DiskUsage,
+  poolName: string | null,
+  poolsKnown = true,
+): string {
   switch (usage.kind) {
     case "zfs":
-      return poolName ?? "zfs label, no pool";
+      return zfsDetail(usage, poolName, poolsKnown);
     case "filesystem":
       return usage.mounts.length
         ? describeMounts(usage.mounts)

@@ -15,7 +15,11 @@ const isDisposed = computed(() => !!props.disk.disposal);
 const SYSTEM_MOUNT_PATHS = ["/", "/boot"];
 
 const usageLabel = computed(() =>
-  usageDetail(props.disk.usage, props.disk.membership?.poolName ?? null),
+  usageDetail(
+    props.disk.usage,
+    props.disk.membership?.poolName ?? null,
+    props.disk.poolsKnown,
+  ),
 );
 
 const inferredFromPath = computed(() => {

@@ -188,7 +188,11 @@ const hostLink = computed(() =>
 );
 
 const usage = computed(() =>
-  usageDetail(props.disk.usage, props.disk.membership?.poolName ?? null),
+  usageDetail(
+    props.disk.usage,
+    props.disk.membership?.poolName ?? null,
+    props.disk.poolsKnown,
+  ),
 );
 
 const inferredFromPath = computed(() => {

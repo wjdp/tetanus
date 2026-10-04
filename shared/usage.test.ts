@@ -37,9 +37,20 @@ const system: DiskUsage = {
   system: true,
 };
 
+const zfsBoot: DiskUsage = {
+  kind: "zfs",
+  fsTypes: ["ext4", "vfat", "zfs_member"],
+  mounts: [
+    { fsType: "vfat", path: "/boot/efi", via: [] },
+    { fsType: "ext4", path: "/boot", via: [] },
+  ],
+  system: true,
+};
+
 describe("isMounted", () => {
-  it("is true only for a filesystem with mounts", () => {
+  it("is true whenever something is mounted, whatever the kind", () => {
     expect(isMounted(system)).toBe(true);
+    expect(isMounted(zfsBoot)).toBe(true);
     expect(isMounted(unmounted)).toBe(false);
     expect(isMounted(zfs)).toBe(false);
     expect(isMounted(UNKNOWN_USAGE)).toBe(false);
@@ -53,6 +64,18 @@ describe("usageDetail", () => {
 
   it("flags a zfs label without a pool", () => {
     expect(usageDetail(zfs, null)).toBe("zfs label, no pool");
+  });
+
+  it("says the pool is unknown when the host can't report pools", () => {
+    expect(usageDetail(zfs, null, false)).toBe(
+      "zfs label, pool unknown (OpenZFS too old)",
+    );
+  });
+
+  it("shows the mounts of a zfs disk's other partitions", () => {
+    expect(usageDetail(zfsBoot, "rpool")).toBe(
+      "rpool; vfat on /boot/efi, ext4 on /boot",
+    );
   });
 
   it("groups mounts by filesystem and mapper chain in first-seen order", () => {

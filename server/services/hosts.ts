@@ -4,6 +4,7 @@ import {
   collectorStatus,
   MIN_COLLECTOR_VERSION,
 } from "#shared/collector";
+import { unsupportedTools } from "#shared/hostTools";
 import type { HostPatch } from "#shared/schemas/hosts";
 import { db } from "~~/server/database/client";
 import { collectorRun, host } from "~~/server/database/schema";
@@ -183,4 +184,21 @@ export function recordCollectorVersion(
     data: { from, to, version, minVersion: MIN_COLLECTOR_VERSION },
     at,
   });
+}
+
+// Hosts whose OpenZFS is too old to report pools: their disks' pool
+// membership cannot be known (079).
+export function poolBlindHostIds(): Set<number> {
+  return new Set(
+    db
+      .select({ id: host.id, toolVersions: host.toolVersions })
+      .from(host)
+      .all()
+      .filter((row) =>
+        unsupportedTools(row.toolVersions).some(
+          (unsupported) => unsupported.tool === "openzfs",
+        ),
+      )
+      .map((row) => row.id),
+  );
 }

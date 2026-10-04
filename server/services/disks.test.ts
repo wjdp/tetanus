@@ -10,6 +10,7 @@ import {
   disk,
   diskKey,
   fault,
+  host,
   pool,
   smartAttribute,
   vdev,
@@ -993,6 +994,23 @@ describe("disk usage", () => {
       purposeInferred: false,
     });
     expect(sdc).toMatchObject({ state: "spare", usage: { kind: "unknown" } });
+  });
+
+  it("assumes a zfs disk is pooled on a host too old to report pools", async () => {
+    ingestSynthetic({ sda: zfsLabel });
+    const sdaOf = async () =>
+      (await listDisks(later)).find((row) => row.serial === "WD-WCC7K1234567");
+    expect(await sdaOf()).toMatchObject({ state: "spare", poolsKnown: true });
+
+    db.update(host)
+      .set({ toolVersions: { zfs: "zfs-2.2.2-0ubuntu9.1" } })
+      .where(eq(host.name, "mars"))
+      .run();
+
+    expect(await sdaOf()).toMatchObject({
+      state: "in-use",
+      poolsKnown: false,
+    });
   });
 
   it("keeps an unmounted filesystem spare", async () => {
