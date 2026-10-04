@@ -28,7 +28,84 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
 </script>
 
 <template>
-  <div class="overflow-x-auto" data-testid="replication-groups">
+  <div data-testid="replication-groups">
+    <div class="flex flex-col gap-6 md:hidden" data-testid="replication-list">
+      <section
+        v-for="group in groups"
+        :key="group.key"
+        data-testid="replication-list-group"
+      >
+        <h3
+          class="text-toned flex flex-wrap items-center gap-x-2 pb-2 text-sm font-semibold"
+        >
+          <TopologyStatusDot
+            :colour="REPLICATION_STATUS_VOCABULARY[group.status].colour"
+            :shape="REPLICATION_STATUS_VOCABULARY[group.status].shape"
+          />
+          <span v-if="group.sourceHost">{{ group.sourceHost }}</span>
+          <span v-else class="text-dimmed font-normal">
+            source not monitored
+          </span>
+          <UIcon name="i-lucide-arrow-right" class="text-dimmed size-4" />
+          <span>{{ group.targetHost }}</span>
+          <span class="text-dimmed tabular font-normal">
+            {{ group.rows.length }}
+          </span>
+          <span
+            v-if="statusSummary(group.rows)"
+            class="font-normal"
+            :class="statusTextClass(group.status)"
+          >
+            {{ statusSummary(group.rows) }}
+          </span>
+        </h3>
+        <NuxtLink
+          v-for="row in group.rows"
+          :key="row.id"
+          :to="`/replications/${row.id}`"
+          class="border-default hover:bg-elevated/50 grid grid-cols-[1rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-t py-2.5 text-sm"
+          data-testid="replication-list-item"
+        >
+          <TopologyStatusDot
+            class="self-center"
+            :colour="REPLICATION_STATUS_VOCABULARY[row.status].colour"
+            :shape="REPLICATION_STATUS_VOCABULARY[row.status].shape"
+          />
+          <span
+            class="truncate font-mono"
+            :class="row.source?.dataset.present ? 'text-toned' : 'text-dimmed'"
+          >
+            {{ row.source?.dataset.name ?? "source not monitored" }}
+          </span>
+          <span class="tabular text-right" :class="statusTextClass(row.status)">
+            {{ dueText(row, now) }}
+          </span>
+          <span
+            class="col-start-2 col-end-4 truncate font-mono"
+            :class="
+              row.target.dataset.present ? 'text-highlighted' : 'text-dimmed'
+            "
+          >
+            <span class="text-dimmed">→ {{ targetParts(row).prefix }}</span
+            >{{ targetParts(row).mirrored }}
+          </span>
+          <span
+            class="text-muted col-start-2 col-end-4 text-xs"
+            data-testid="replication-list-meta"
+          >
+            <span v-if="!isQuiet(row)" :class="statusTextClass(row.status)">
+              {{ REPLICATION_STATUS_VOCABULARY[row.status].label }} ·
+            </span>
+            <ReplicationCadence
+              :interval-sec="row.intervalSec"
+              :manual="row.intervalManual"
+            />
+            · {{ lastSyncText(row, now) }}
+          </span>
+        </NuxtLink>
+      </section>
+    </div>
+    <div class="hidden overflow-x-auto md:block">
     <table class="w-full min-w-3xl table-fixed text-sm">
       <colgroup>
         <col class="w-6" />
@@ -155,5 +232,6 @@ const open = (row: ReplicationRow) => navigateTo(`/replications/${row.id}`);
         </tr>
       </tbody>
     </table>
+    </div>
   </div>
 </template>

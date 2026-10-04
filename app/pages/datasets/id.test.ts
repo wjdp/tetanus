@@ -103,7 +103,7 @@ describe("dataset page", () => {
 
     const replications = page.get('[data-testid="dataset-replications"]');
     expect(replications.get("tbody th").text()).toMatch(/atlas\s*styx\s*1/);
-    expect(replications.get('a[href="/replications/8"]').text()).toBe(
+    expect(replications.get('table a[href="/replications/8"]').text()).toBe(
       "vault/replica/tank/media/photos",
     );
     expect(replications.text()).toContain("Late");

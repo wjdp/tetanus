@@ -83,6 +83,20 @@ describe("replications page", () => {
     expect(ok.text()).not.toContain("OK");
   });
 
+  it("lists each replication as a stacked item for phones", async () => {
+    const page = await mountSuspended(ReplicationsPage);
+    const list = page.get('[data-testid="replication-list"]');
+    expect(list.classes()).toContain("md:hidden");
+
+    const [stalled] = list.findAll('[data-testid="replication-list-item"]');
+    expect(stalled.attributes("href")).toBe("/replications/2");
+    expect(stalled.text()).toContain("tank/backups/laptops");
+    expect(stalled.text()).toContain("→ vault/replica/tank/backups/laptops");
+    expect(stalled.get('[data-testid="replication-list-meta"]').text()).toMatch(
+      /Stalled ·\s*daily\s*· 4 d ago/,
+    );
+  });
+
   it("drops the status column while every replication is on schedule", async () => {
     rows = [
       replicationRow(1),
