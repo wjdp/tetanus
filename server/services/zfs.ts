@@ -12,7 +12,7 @@ import {
   observeSnapshotsForReplications,
 } from "./replications";
 import { observeZfsList, observeZfsSnapshots } from "./zfs/datasets";
-import { observeZfsEvents } from "./zfs/events";
+import { observeZedEvent, observeZpoolEvents } from "./zfs/events";
 import { observeZpoolHistory } from "./zfs/history";
 import { observeZpoolList, observeZpoolStatus } from "./zfs/topology";
 
@@ -43,7 +43,7 @@ export {
   type SnapshotRow,
   searchDatasets,
 } from "./zfs/datasets";
-export { observeZfsEvents } from "./zfs/events";
+export { observeZedEvent, observeZpoolEvents } from "./zfs/events";
 export { observeZpoolHistory } from "./zfs/history";
 export * from "./zfs/queries";
 export {
@@ -71,15 +71,11 @@ const zpoolEvents: IngestHandler<ZpoolEventsResult> = ({
   data,
   receivedAt,
 }) => {
-  observeZfsEvents(hostId, data.events, receivedAt);
+  observeZpoolEvents(hostId, data.events, receivedAt);
 };
 
-const zedEvent: IngestHandler<ZedEventResult> = ({
-  hostId,
-  data,
-  receivedAt,
-}) => {
-  observeZfsEvents(hostId, [data.event], receivedAt);
+const zedEvent: IngestHandler<ZedEventResult> = ({ hostId, data }) => {
+  observeZedEvent(hostId, data.event);
 };
 
 const zpoolHistory: IngestHandler<ZpoolHistoryResult> = ({

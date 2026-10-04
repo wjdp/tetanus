@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # ZED zedlet: forward every ZFS event, as its ZEVENT_* variables, to tetanus as source
-# zed-event. ZED runs all-*.sh for every event class, so this never blocks, never fails
-# and says nothing: the POST runs in the background and its errors are discarded.
+# zed-event. ZED runs all-*.sh for every event class, so this never fails and says
+# nothing: errors are discarded and the POST gives up after 10 seconds. It waits for the
+# POST so a burst of events reaches the server roughly in order; ZED still runs
+# zedlets in parallel, so the server must not rely on order.
 
-readonly version=0.5.0
+readonly version=0.5.1
 
 config=${TETANUS_CONFIG:-/etc/tetanus/collect.env}
 [[ -r $config ]] || exit 0
@@ -31,6 +33,6 @@ printf '%s\n' "$event" |
     --header 'Content-Type: text/plain' \
     --data-binary @- \
     --output /dev/null \
-    "${TETANUS_URL%/}/api/ingest/zed-event" >/dev/null 2>&1 &
+    "${TETANUS_URL%/}/api/ingest/zed-event" >/dev/null 2>&1
 
 exit 0

@@ -818,7 +818,7 @@ describe("zfs events", () => {
     expect(diary()).toEqual([]);
   });
 
-  it("dedupes events without an eid on time and class", () => {
+  it("dedupes events without an eid", () => {
     const q2 = parseZpoolEvents(
       readFixture("events/q2-failure-2025-05.txt"),
       {},
@@ -855,7 +855,6 @@ describe("zfs events", () => {
       "zpool-events",
       {
         events: [
-          event(101, "2026-09-28T10:01:00Z"),
           event(105, "2026-09-28T10:05:00Z"),
           event(106, "2026-09-28T10:06:00Z"),
         ],
@@ -892,8 +891,108 @@ describe("zfs events", () => {
 
   it("records a reset when all new ids are below the stored ones", () => {
     run("zed-event", { event: event(500, "2026-09-01T10:00:00Z") });
-    run("zed-event", { event: event(3, "2026-09-28T10:00:00Z") });
+    run("zpool-events", { events: [event(3, "2026-09-28T10:00:00Z")] });
     expect(diary("events-reset")).toHaveLength(1);
+  });
+
+  it("accepts zed events in any order", () => {
+    const burst = [3, 1, 4, 2, 6, 5].map((eid) =>
+      event(eid, `2026-09-28T10:00:0${eid}Z`),
+    );
+    const hostId = run("zed-event", { event: burst[0] });
+    for (const zed of burst.slice(1)) run("zed-event", { event: zed });
+    run(
+      "zpool-events",
+      { events: [...burst].sort((a, b) => (a.eid ?? 0) - (b.eid ?? 0)) },
+      minutesAfter(10),
+    );
+
+    expect(diary()).toEqual([]);
+    const rows = db
+      .select()
+      .from(zfsEvent)
+      .where(eq(zfsEvent.hostId, hostId))
+      .orderBy(zfsEvent.eid)
+      .all();
+    expect(rows.map((row) => row.eid)).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it("ignores zed events newer than a dump", () => {
+    run("zpool-events", { events: [event(1, "2026-09-28T10:00:00Z")] });
+    run("zed-event", { event: event(3, "2026-09-28T10:03:00Z") });
+    run(
+      "zpool-events",
+      {
+        events: [
+          event(1, "2026-09-28T10:00:00Z"),
+          event(2, "2026-09-28T10:02:00Z"),
+        ],
+      },
+      minutesAfter(10),
+    );
+    expect(diary()).toEqual([]);
+  });
+
+  it("keeps distinct events that share a time and class", () => {
+    const hold = (dsname: string) =>
+      event(null, "2026-09-28T10:00:00Z", {
+        class: "sysevent.fs.zfs.history_event",
+        fields: { history_internal_name: "hold", history_dsname: dsname },
+      });
+    run("zpool-events", { events: [hold("tank/a@1"), hold("tank/a@2")] });
+    run("zpool-events", { events: [hold("tank/a@1"), hold("tank/a@2")] });
+    expect(db.select().from(zfsEvent).all()).toHaveLength(2);
+  });
+
+  it("dedupes a zed event against a dump copy with fewer fields", () => {
+    const fields = { history_internal_name: "snapshot", history_txg: "7" };
+    run("zpool-events", {
+      events: [event(null, "2026-09-28T10:00:00Z", { fields })],
+    });
+    run("zed-event", {
+      event: event(9, "2026-09-28T10:00:00Z", {
+        fields: { ...fields, subclass: "config_sync" },
+      }),
+    });
+    expect(db.select().from(zfsEvent).all()).toMatchObject([{ eid: 9 }]);
+  });
+
+  it("restores the eid of a stored event that lost it", () => {
+    const hostId = run("zpool-events", {
+      events: [event(7, "2026-09-28T10:00:00Z")],
+    });
+    db.update(zfsEvent).set({ eid: null }).run();
+    run("zpool-events", { events: [event(7, "2026-09-28T10:00:00Z")] });
+    expect(
+      db.select().from(zfsEvent).where(eq(zfsEvent.hostId, hostId)).all(),
+    ).toMatchObject([{ eid: 7 }]);
+  });
+
+  it("keeps zed events from the new boot when a dump shows a reset", () => {
+    run("zpool-events", {
+      events: [
+        event(1, "2026-09-01T10:00:00Z"),
+        event(2, "2026-09-01T10:01:00Z"),
+      ],
+    });
+    run("zed-event", { event: event(3, "2026-09-28T10:02:00Z") });
+    run(
+      "zpool-events",
+      {
+        events: [
+          event(1, "2026-09-28T10:00:00Z"),
+          event(2, "2026-09-28T10:01:00Z"),
+          event(3, "2026-09-28T10:02:00Z"),
+        ],
+      },
+      minutesAfter(10),
+    );
+
+    expect(diary("events-reset")).toMatchObject([
+      { data: { previousMaxEid: 2 } },
+    ]);
+    const rows = db.select().from(zfsEvent).orderBy(zfsEvent.at).all();
+    expect(rows.map((row) => row.eid)).toEqual([null, null, 1, 2, 3]);
   });
 });
 

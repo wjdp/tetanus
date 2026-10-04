@@ -1,4 +1,4 @@
-export const COLLECTOR_VERSION = "0.5.0";
+export const COLLECTOR_VERSION = "0.5.1";
 export const MIN_COLLECTOR_VERSION = "0.3.0";
 
 export const COLLECTOR_STATUSES = [

@@ -45,7 +45,10 @@ name is derived from the app-name constant like the script and unit names, with 
 prefix (RFC 6648).
 
 Pool GUIDs are global: a pool exported from one host and imported on another is the same
-`Pool` row with `hostId` moved. Event ids (`eid`) are per host. An archived pool
+`Pool` row with `hostId` moved. Event ids (`eid`) are per host. ZED posts arrive
+concurrently and out of order, so only a `zpool-events` dump (the whole ring buffer) is
+checked for an eid reset or a gap ([077](077-Out-of-order-ZED-events-trigger-false-gaps-and-resets.md)).
+An archived pool
 (`Pool.archivedAt`, [047](047-Archive-pools.md)) keeps ingesting quietly but is hidden
 from lists, raises no faults and sends no alerts; seeing it again does not unarchive it.
 
@@ -273,7 +276,7 @@ VdevReading     vdevId, at, readErrors, writeErrors, cksumErrors, slowIos, state
 Dataset         id, poolId, name, type, used, referenced, available, logicalUsed,
                 compressRatio, usedBySnapshots, mountpoint, quota, creation, lastSeenAt
 Snapshot        id, datasetId, name, used, referenced, written, creation, lastSeenAt
-ZfsEvent        hostId, eid, at, class, poolGuid?, vdevGuid?, payload (json)   unique(hostId, eid, at)
+ZfsEvent        hostId, eid, at, class, poolGuid?, vdevGuid?, payload (json)   unique(hostId, eid)
 PoolHistory     poolId, at, internal, text                                unique(poolId, at, text)
 DiaryEntry      id, subjectType (disk|pool|vdev|host|system), subjectId, at, kind (manual|auto),
                 eventType?, title, body (md), data (json)

@@ -38,7 +38,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 27;
+const MIGRATION_COUNT = 28;
 
 const openConnections: Database.Database[] = [];
 
@@ -172,7 +172,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 10
+            ORDER BY created_at DESC LIMIT 11
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -197,6 +197,7 @@ describe("0009_host_collector_version", () => {
       "0024_replication",
       "0025_bay_mapping",
       "0026_diary_titles_without_ids",
+      "0027_zfs_event_repair",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -260,7 +261,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 18
+            ORDER BY created_at DESC LIMIT 19
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -291,6 +292,7 @@ describe("0009_host_collector_version", () => {
       "0024_replication",
       "0025_bay_mapping",
       "0026_diary_titles_without_ids",
+      "0027_zfs_event_repair",
     ]);
     expect(
       sqlite
@@ -328,7 +330,7 @@ describe("0018_vdev_role_backfill", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 9
+            ORDER BY created_at DESC LIMIT 10
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -354,6 +356,7 @@ describe("0018_vdev_role_backfill", () => {
       "0024_replication",
       "0025_bay_mapping",
       "0026_diary_titles_without_ids",
+      "0027_zfs_event_repair",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -388,7 +391,7 @@ describe("0022_disk_disposal", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 5
+            ORDER BY created_at DESC LIMIT 6
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -409,6 +412,7 @@ describe("0022_disk_disposal", () => {
       "0024_replication",
       "0025_bay_mapping",
       "0026_diary_titles_without_ids",
+      "0027_zfs_event_repair",
     ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
@@ -463,7 +467,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 4
+            ORDER BY created_at DESC LIMIT 5
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -484,6 +488,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       "0024_replication",
       "0025_bay_mapping",
       "0026_diary_titles_without_ids",
+      "0027_zfs_event_repair",
     ]);
     expect(
       sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),
@@ -505,7 +510,7 @@ describe("0026_diary_titles_without_ids", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY created_at DESC LIMIT 2
         );
       INSERT INTO Disk (alias, model, serial, firstSeenAt)
         VALUES ('K1', NULL, NULL, 0), (NULL, 'ST18000NM', 'ZR2', 0);
@@ -517,12 +522,58 @@ describe("0026_diary_titles_without_ids", () => {
 
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0026_diary_titles_without_ids",
+      "0027_zfs_event_repair",
     ]);
     expect(
       sqlite.prepare("SELECT title FROM DiaryEntry ORDER BY id").all(),
     ).toEqual([
       { title: "replaced by ST18000NM ZR2" },
       { title: "appeared on unknown host" },
+    ]);
+  });
+});
+
+describe("0027_zfs_event_repair", () => {
+  it("drops false gap and reset entries and duplicate events", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DELETE FROM __drizzle_migrations
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 1
+        );
+      INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
+      INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title)
+        VALUES
+          ('host', 1, 0, 'auto', 'events-gap', 'Missed ZFS events 2–2'),
+          ('host', 1, 0, 'auto', 'events-reset', 'ZFS event ids restarted'),
+          ('host', 1, 0, 'manual', NULL, 'kept');
+      INSERT INTO ZfsEvent (id, hostId, eid, at, class, payload)
+        VALUES
+          (1, 1, NULL, 0, 'history', '{"name":"hold","ds":"a","subclass":"history"}'),
+          (2, 1, NULL, 0, 'history', '{"name":"hold","ds":"a"}'),
+          (3, 1, 9, 0, 'history', '{"name":"hold","ds":"a"}'),
+          (4, 1, NULL, 0, 'history', '{"name":"hold","ds":"b"}'),
+          (5, 1, NULL, 0, 'history', '{"name":"hold","ds":"b"}'),
+          (6, 1, NULL, 0, 'ereport', '{"zio_type":"1","state":"7","ena":"1"}'),
+          (7, 1, NULL, 0, 'ereport', '{"zio_type":"0x1 [READ]","state":"ONLINE","ena":"1"}'),
+          (8, 1, NULL, 0, 'ereport', '{"zio_type":"1","state":"7","ena":"2"}');
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0027_zfs_event_repair",
+    ]);
+    expect(sqlite.prepare("SELECT title FROM DiaryEntry").all()).toEqual([
+      { title: "kept" },
+    ]);
+    expect(
+      sqlite.prepare("SELECT id, eid FROM ZfsEvent ORDER BY id").all(),
+    ).toEqual([
+      { id: 3, eid: 9 },
+      { id: 4, eid: null },
+      { id: 6, eid: null },
+      { id: 8, eid: null },
     ]);
   });
 });
