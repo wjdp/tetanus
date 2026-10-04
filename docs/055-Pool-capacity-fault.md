@@ -10,9 +10,15 @@ nothing about it.
 
 ## Problem
 
-ZFS performance falls off past roughly 80 % and allocation turns pathological past
-90 %; a full pool can refuse the deletes that would free space. Nothing in tetanus
-raises a fault, alert or diary event as a pool approaches that. The user finds out from
+ZFS has no hard cliff at 80 % or 90 %; those are rules of thumb. What actually
+happens: performance degrades gradually as large free regions run out and
+fragmentation climbs (worse on HDDs, where writes land on slower tracks); each
+metaslab switches from first-fit to best-fit allocation when it drops below 4 % free
+(`metaslab_df_free_pct`), which is CPU-heavy and cuts IOPS; and the pool reports
+ENOSPC at about 97 % because 1/32 is reserved as slop (`spa_slop_shift`, capped at
+128 GiB), at which point deletes that need to write metadata can fail. Fragmentation
+(`frag`) predicts trouble at least as well as fill. Nothing in tetanus raises a fault,
+alert or diary event as a pool approaches any of that. The user finds out from
 the pool page's capacity figure, or from a failed write.
 
 ## Context
