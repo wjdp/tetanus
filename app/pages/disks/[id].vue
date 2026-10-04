@@ -25,7 +25,7 @@ const heading = computed(
   () =>
     (disk.value && displayName(disk.value)) ??
     disk.value?.model ??
-    `Disk ${diskId.value}`,
+    "Disk",
 );
 
 useSeoMeta({ title: () => getPageTitle(heading.value) });
@@ -39,7 +39,7 @@ const labelOf = (id: number | null) => {
 };
 
 const label = computed(() =>
-  disk.value ? diskLabel(disk.value) : `disk ${diskId.value}`,
+  disk.value ? diskLabel(disk.value) : "disk",
 );
 
 const disposedDisk = computed(() =>

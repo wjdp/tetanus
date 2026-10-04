@@ -10,6 +10,7 @@ import {
   parseEnclosureKey,
   pathOfKey,
 } from "#shared/bays";
+import { describeDisk } from "#shared/disk";
 import { db } from "~~/server/database/client";
 import { disk, enclosure, host, payload } from "~~/server/database/schema";
 import type { EnclosureResult } from "~~/server/ingest/enclosure";
@@ -211,7 +212,7 @@ export function observeEnclosures(
 
 type OccupantRow = Pick<
   DiskRow,
-  "id" | "alias" | "lastSeenAt" | "lastLocationKey"
+  "id" | "alias" | "model" | "serial" | "lastSeenAt" | "lastLocationKey"
 >;
 
 function occupantsOf(hostId: number, now: Date) {
@@ -219,6 +220,8 @@ function occupantsOf(hostId: number, now: Date) {
     .select({
       id: disk.id,
       alias: disk.alias,
+      model: disk.model,
+      serial: disk.serial,
       lastSeenAt: disk.lastSeenAt,
       lastLocationKey: disk.lastLocationKey,
     })
@@ -232,7 +235,7 @@ function occupantsOf(hostId: number, now: Date) {
   for (const row of rows) {
     const candidate = {
       id: row.id,
-      alias: row.alias,
+      label: describeDisk(row),
       present: isPresent(row, now),
       seenAt: row.lastSeenAt?.getTime() ?? 0,
     };
@@ -250,7 +253,7 @@ function occupantsOf(hostId: number, now: Date) {
 
 const bayDisk = (occupant: (BayDisk & { seenAt: number }) | undefined) =>
   occupant
-    ? { id: occupant.id, alias: occupant.alias, present: occupant.present }
+    ? { id: occupant.id, label: occupant.label, present: occupant.present }
     : null;
 
 export function listHostBays(hostId: number, now = new Date()): HostBays {

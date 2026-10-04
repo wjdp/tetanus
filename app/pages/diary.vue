@@ -22,54 +22,12 @@ const query = computed(() => ({
 }));
 
 const { data: entries, refresh } = await useFetch("/api/diary", { query });
-const { data: disks } = await useFetch("/api/disks", { lazy: true });
-const { data: pools } = await useFetch("/api/pools", { lazy: true });
-
-const datasetIds = computed(() => [
-  ...new Set(
-    (entries.value ?? []).flatMap((entry) =>
-      entry.subjectType === "dataset" && entry.subjectId !== null
-        ? [entry.subjectId]
-        : [],
-    ),
-  ),
-]);
-
-const { data: datasetLabels } = useLazyAsyncData(
-  () => `diary-dataset-labels:${datasetIds.value.join(",")}`,
-  async () => {
-    if (datasetIds.value.length === 0) return {};
-    const { datasets } = await $fetch("/api/datasets", {
-      query: { ids: datasetIds.value.join(",") },
-    });
-    return Object.fromEntries(
-      datasets.map((row) => [row.id, datasetLabel(row)]),
-    ) as Record<number, string>;
-  },
-  { server: false, default: () => ({}) as Record<number, string> },
-);
 
 const visibleEntries = computed(() =>
   (entries.value ?? []).filter(
     (entry) => kindFilter.value === ALL || entry.kind === kindFilter.value,
   ),
 );
-
-const subjectLabel = (subjectType: DiarySubjectType, id: number) => {
-  if (subjectType === "disk") {
-    const alias = disks.value?.find((row) => row.id === id)?.alias;
-    return alias ? `disk ${alias}` : `disk ${id}`;
-  }
-  if (subjectType === "pool") {
-    const name = pools.value?.find((row) => row.id === id)?.name;
-    return name ? `pool ${name}` : `pool ${id}`;
-  }
-  if (subjectType === "dataset") {
-    const label = datasetLabels.value[id];
-    return label ? `dataset ${label}` : `dataset ${id}`;
-  }
-  return `${subjectType} ${id}`;
-};
 
 const subjectItems = [
   { label: "All subjects", value: ALL },
@@ -135,7 +93,6 @@ const onSaved = async () => {
 
     <DiaryTimeline
       :entries="visibleEntries"
-      :subject-label="subjectLabel"
       empty="Nothing in the diary matches these filters."
       @changed="refresh"
     />

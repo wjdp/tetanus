@@ -33,7 +33,7 @@ describe("disposalLabel", () => {
       ),
     ).toBe("RMA · replaced by K7");
     expect(disposalLabel({ kind: "rma" }, { replacedByDiskId: 9 })).toBe(
-      "RMA · replaced by disk 9",
+      "RMA · replaced by another disk",
     );
   });
 });

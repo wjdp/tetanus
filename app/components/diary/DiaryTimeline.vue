@@ -11,18 +11,16 @@ interface TimelineEntry {
   data?: unknown;
   title: string;
   body: string;
+  subjectLabel: string | null;
 }
 
 const props = withDefaults(
   defineProps<{
     entries: TimelineEntry[];
-    subjectLabel?: (subjectType: DiarySubjectType, id: number) => string;
     empty?: string;
     showSubject?: boolean;
   }>(),
   {
-    subjectLabel: (subjectType: DiarySubjectType, id: number) =>
-      `${subjectType} ${id}`,
     empty: "No diary entries yet.",
     showSubject: true,
   },
@@ -155,7 +153,7 @@ const subjectLink = (entry: TimelineEntry) => {
                   :name="DIARY_SUBJECT_ICON[entry.subjectType]"
                   class="size-3.5"
                 />
-                {{ subjectLabel(entry.subjectType, entry.subjectId) }}
+                {{ entry.subjectLabel }}
               </NuxtLink>
               <span v-else class="text-muted">{{ entry.subjectType }}</span>
             </template>

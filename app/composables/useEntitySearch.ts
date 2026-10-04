@@ -1,5 +1,5 @@
 import type { BadgeProps } from "@nuxt/ui";
-import type { Disposal } from "#shared/disk";
+import { type Disposal, describeDisk, UNIDENTIFIED_DISK } from "#shared/disk";
 import {
   DISPOSAL_VOCABULARY,
   disposalLabel,
@@ -41,13 +41,13 @@ const joinLabel = (parts: (string | null | undefined)[]) =>
 function disposalBadge(
   disposal: Disposal,
   replacedByDiskId: number | null,
-  aliasOf: (id: number) => string | null | undefined,
+  labelOf: (id: number) => string | null | undefined,
 ): BadgeProps {
   return {
     label: disposalLabel(disposal, {
       replacedByDiskId,
       replacedByLabel:
-        replacedByDiskId === null ? null : aliasOf(replacedByDiskId),
+        replacedByDiskId === null ? null : labelOf(replacedByDiskId),
     }),
     icon: DISPOSAL_VOCABULARY[disposal.kind].icon,
     color: DISPOSAL_VOCABULARY[disposal.kind].colour,
@@ -57,19 +57,19 @@ function disposalBadge(
 
 export function diskSearchEntry(
   disk: SearchableDisk,
-  aliasOf: (id: number) => string | null | undefined = () => null,
+  labelOf: (id: number) => string | null | undefined = () => null,
 ): EntitySearchEntry {
   return {
     id: `disk-${disk.id}`,
     label:
-      joinLabel([disk.alias, disk.model, disk.serial]) || `Disk ${disk.id}`,
+      joinLabel([disk.alias, disk.model, disk.serial]) || UNIDENTIFIED_DISK,
     icon: ENTITY_ICON.disk,
     to: `/disks/${disk.id}`,
     ...(disk.disposal && {
       badge: disposalBadge(
         disk.disposal,
         disk.replacedByDiskId ?? null,
-        aliasOf,
+        labelOf,
       ),
     }),
   };
@@ -118,9 +118,11 @@ export const useEntitySearch = () => {
         $fetch("/api/pools"),
       ]);
       hosts.value = hostRows.map(hostSearchEntry);
-      const aliases = new Map(diskRows.map((row) => [row.id, row.alias]));
+      const labels = new Map(
+        diskRows.map((row) => [row.id, describeDisk(row)]),
+      );
       disks.value = diskRows.map((row) =>
-        diskSearchEntry(row, (id) => aliases.get(id)),
+        diskSearchEntry(row, (id) => labels.get(id)),
       );
       pools.value = poolRows.map(poolSearchEntry);
     } catch (error) {

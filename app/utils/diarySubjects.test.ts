@@ -46,7 +46,7 @@ describe("diary subject items", () => {
     ).toEqual([
       { label: "K1 · WDC WD80 · ABC", value: 1 },
       { label: "ST4000 · XYZ", value: 2 },
-      { label: "Disk 3", value: 3 },
+      { label: "Unidentified disk", value: 3 },
     ]);
   });
 

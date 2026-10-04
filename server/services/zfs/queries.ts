@@ -40,11 +40,12 @@ import {
   zfsEvent,
 } from "~~/server/database/schema";
 import { baysOf } from "~~/server/services/bays";
-import type { DiaryEntryRow } from "~~/server/services/diary";
+import type { DiaryEntry } from "~~/server/services/diary";
 import {
   poolDisplayState,
   poolPresenceContext,
 } from "~~/server/services/poolPresence";
+import { labelSubjects } from "~~/server/services/subjectLabels";
 import { resolvePurpose } from "~~/server/services/usage";
 import { notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
@@ -66,6 +67,7 @@ export interface VdevDisk {
   purpose: Purpose | null;
   latestTemp: number | null;
   modelShort: string | null;
+  serial: string | null;
   tempThresholds: TemperatureThresholds;
   bay: Bay | null;
 }
@@ -96,7 +98,7 @@ export type ZfsEventRow = typeof zfsEvent.$inferSelect;
 
 export interface PoolDetail extends PoolSummary {
   readings: PoolReadingRow[];
-  diary: DiaryEntryRow[];
+  diary: DiaryEntry[];
   history: PoolHistoryRow[];
   historyScope: "pool" | "host";
   events: ZfsEventRow[];
@@ -120,6 +122,7 @@ function vdevDiskRows(diskIds: number[]) {
       media: disk.media,
       latestTemp: disk.latestTemp,
       model: disk.model,
+      serial: disk.serial,
       specs: disk.specs,
       inventory: disk.inventory,
       latestUsage: disk.latestUsage,
@@ -312,13 +315,15 @@ function poolDiary(poolId: number) {
           eq(diaryEntry.subjectType, "vdev"),
           inArray(diaryEntry.subjectId, vdevIds),
         );
-  return db
-    .select()
-    .from(diaryEntry)
-    .where(vdevEntries ? or(poolEntries, vdevEntries) : poolEntries)
-    .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
-    .limit(POOL_DIARY_LIMIT)
-    .all();
+  return labelSubjects(
+    db
+      .select()
+      .from(diaryEntry)
+      .where(vdevEntries ? or(poolEntries, vdevEntries) : poolEntries)
+      .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
+      .limit(POOL_DIARY_LIMIT)
+      .all(),
+  );
 }
 
 function historyFor(poolRow: PoolRow) {

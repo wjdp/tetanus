@@ -54,3 +54,20 @@ export interface DiskKey {
   kind: DiskKeyKind;
   value: string;
 }
+
+export interface DescribableDisk {
+  alias?: string | null;
+  model?: string | null;
+  serial?: string | null;
+}
+
+export const UNIDENTIFIED_DISK = "Unidentified disk";
+
+export function describeDisk({
+  alias,
+  model,
+  serial,
+}: DescribableDisk): string {
+  if (alias) return alias;
+  return [model, serial].filter(Boolean).join(" ") || UNIDENTIFIED_DISK;
+}

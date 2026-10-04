@@ -1,3 +1,4 @@
+import { type DescribableDisk, describeDisk } from "#shared/disk";
 import type { Purpose } from "#shared/usage";
 
 interface Nameable {
@@ -13,8 +14,6 @@ export function displayName(disk: Nameable): string | null {
   return null;
 }
 
-export function diskLabel(
-  disk: Nameable & { id: number; serial: string | null },
-): string {
-  return displayName(disk) ?? disk.serial ?? `disk ${disk.id}`;
+export function diskLabel(disk: Nameable & DescribableDisk): string {
+  return displayName(disk) ?? describeDisk(disk);
 }

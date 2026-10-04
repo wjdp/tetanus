@@ -31,7 +31,6 @@ const columns = computed<TableColumn<BayRow>[]>(() => [
   ...(props.withStatus ? [{ id: "status", header: "SES status" }] : []),
 ]);
 
-const diskName = (disk: BayDisk) => disk.alias ?? `Disk ${disk.id}`;
 </script>
 
 <template>
@@ -66,7 +65,7 @@ const diskName = (disk: BayDisk) => disk.alias ?? `Disk ${disk.id}`;
         class="hover:underline"
         :class="row.original.disk.present ? 'text-default' : 'text-dimmed'"
         :title="row.original.disk.present ? undefined : 'last known'"
-        >{{ diskName(row.original.disk) }}</NuxtLink
+        >{{ row.original.disk.label }}</NuxtLink
       >
       <span v-else class="text-dimmed">—</span>
     </template>

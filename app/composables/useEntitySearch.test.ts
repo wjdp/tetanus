@@ -50,13 +50,13 @@ describe("diskSearchEntry", () => {
     ).toBeUndefined();
   });
 
-  it("drops missing parts and falls back to the id", () => {
+  it("drops missing parts and never falls back to the id", () => {
     expect(
       diskSearchEntry({ id: 4, alias: null, model: "WDC", serial: "S1" }).label,
     ).toBe("WDC · S1");
     expect(
       diskSearchEntry({ id: 5, alias: null, model: null, serial: null }).label,
-    ).toBe("Disk 5");
+    ).toBe("Unidentified disk");
   });
 });
 

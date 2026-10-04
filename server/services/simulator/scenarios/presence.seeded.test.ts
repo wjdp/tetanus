@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { describeDisk } from "#shared/disk";
 import { faultTitle } from "#shared/faults";
 import { listDiary } from "~~/server/services/diary";
-import { getDisk, listDisks } from "~~/server/services/disks";
+import { getDisk, getDiskRow, listDisks } from "~~/server/services/disks";
 import { listFaults } from "~~/server/services/faults";
 import { dumpDatabase } from "~~/test/db";
 import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
@@ -77,7 +78,7 @@ describe("presence scenarios", () => {
     );
     expect(conflict?.subject.id).toBe(target.id);
     expect(conflict && faultTitle(conflict)).toBe(
-      `Identity conflict with disk ${partner}`,
+      `Identity conflict with ${describeDisk(getDiskRow(partner) ?? {})}`,
     );
     const diary = listDiary({ subjectType: "disk", subjectId: target.id });
     expect(diary.map((entry) => entry.eventType)).toContain(

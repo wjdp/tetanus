@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
-import { isDisposed, isHistoryState } from "#shared/disk";
+import { describeDisk, isDisposed, isHistoryState } from "#shared/disk";
 import {
   allowedActions,
   FAULT_KIND_DEFINITIONS,
@@ -38,9 +38,12 @@ import {
   activeAcceptances,
   clearAcceptance,
 } from "~~/server/services/acceptance";
-import { diskLabel } from "~~/server/services/alerts/rules";
 import { addAutoEvent } from "~~/server/services/diary";
-import { type DiskSummary, listDisks } from "~~/server/services/disks";
+import {
+  type DiskSummary,
+  describeDisks,
+  listDisks,
+} from "~~/server/services/disks";
 import { type HostWithRuns, listHosts } from "~~/server/services/hosts";
 import { detectPoolFaults } from "~~/server/services/poolFaults";
 import { detectReplicationFaults } from "~~/server/services/replications/faults";
@@ -217,6 +220,9 @@ export function identityConflictKey(subjectId: number, diskIds: unknown) {
   return `${subjectId}:${[...ids].sort((a, b) => a - b).join(",")}`;
 }
 
+const otherDiskIds = (diskIds: unknown) =>
+  Array.isArray(diskIds) ? diskIds.slice(1).map(Number) : [];
+
 function detectIdentityConflicts(): Detection[] {
   const entries = db
     .select()
@@ -235,7 +241,11 @@ function detectIdentityConflicts(): Detection[] {
       key,
       subjectId: entry.subjectId,
       severity: "error",
-      data: { diskIds: entry.data.diskIds, conflictAt: iso(entry.at) },
+      data: {
+        diskIds: entry.data.diskIds,
+        others: describeDisks(otherDiskIds(entry.data.diskIds)),
+        conflictAt: iso(entry.at),
+      },
     });
   }
   return [...byKey.values()];
@@ -789,7 +799,7 @@ function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
     const found = lookup.disks.get(row.subjectId);
     return {
       ...base,
-      label: diskLabel(row.subjectId, found),
+      label: found ? describeDisk(found) : "removed disk",
       hostName: hostName(found?.lastSeenHostId),
     };
   }
@@ -797,7 +807,7 @@ function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
     const found = lookup.pools.get(row.subjectId);
     return {
       ...base,
-      label: found?.name ?? `pool ${row.subjectId}`,
+      label: found?.name ?? "removed pool",
       hostName: hostName(found?.hostId),
     };
   }
@@ -805,12 +815,12 @@ function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
     const found = lookup.replications.get(row.subjectId);
     return {
       ...base,
-      label: found ? replicationLabel(found) : `replication ${row.subjectId}`,
+      label: found ? replicationLabel(found) : "removed replication",
       hostName: hostName(found?.hostId),
     };
   }
   const name = hostName(row.subjectId);
-  return { ...base, label: name ?? `host ${row.subjectId}`, hostName: name };
+  return { ...base, label: name ?? "removed host", hostName: name };
 }
 
 function present(row: FaultRow, lookup: SubjectLookup): FaultView {

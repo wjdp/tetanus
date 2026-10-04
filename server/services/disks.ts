@@ -17,6 +17,7 @@ import {
   type DiskProtocol,
   type DiskState,
   type Disposal,
+  describeDisk,
   type EffectiveDiskState,
   isDisposed,
 } from "#shared/disk";
@@ -270,7 +271,7 @@ function hostName(hostId: number | null): string {
   if (hostId === null) return "unknown host";
   return (
     db.select({ name: host.name }).from(host).where(eq(host.id, hostId)).get()
-      ?.name ?? `host ${hostId}`
+      ?.name ?? "unknown host"
   );
 }
 
@@ -401,6 +402,17 @@ function sameIds(a: unknown, b: number[]) {
   );
 }
 
+export function describeDisks(ids: number[]) {
+  return db
+    .select()
+    .from(disk)
+    .where(inArray(disk.id, ids))
+    .orderBy(asc(disk.id))
+    .all()
+    .map(describeDisk)
+    .join(", ");
+}
+
 function recordConflict(
   diskIds: number[],
   keys: DiskKey[],
@@ -413,7 +425,7 @@ function recordConflict(
       subjectType: "disk",
       subjectId: olderId,
       eventType: "identity-conflict",
-      title: `identity conflict with disk ${diskIds.slice(1).join(", ")}`,
+      title: `identity conflict with ${describeDisks(diskIds.slice(1))}`,
       data: { diskIds, keys },
       at: receivedAt,
     });
@@ -579,12 +591,13 @@ function recordAliasDrift(
   alias: string,
   source: AliasSource,
   at: Date,
-  heldByDiskId?: number,
+  holder?: DiskRow,
 ) {
   const previous = latestAutoEvent("disk", row.id, "alias-drift");
   if (previous?.data.alias === alias) return;
-  const title = heldByDiskId
-    ? `${source} says ${alias}, already held by disk ${heldByDiskId}`
+  const heldByDiskId = holder?.id;
+  const title = holder
+    ? `${source} says ${alias}, already held by ${describeDisk(holder)}`
     : `${source} says ${alias}, stored alias is ${row.alias}`;
   addAutoEvent({
     subjectType: "disk",
@@ -609,7 +622,7 @@ export function applyAlias(
   }
   const holder = findDiskByAlias(alias);
   if (holder) {
-    recordAliasDrift(row, alias, source, at, holder.id);
+    recordAliasDrift(row, alias, source, at, holder);
     return row;
   }
   addAutoEvent({
@@ -1044,13 +1057,9 @@ function assertAliasFree(id: number, alias: string) {
   if (holder && holder.id !== id) {
     throw new ServiceError(
       409,
-      `Alias ${alias} is already used by disk ${holder.id}`,
+      `Alias ${alias} is already used by ${describeDisk(holder)}`,
     );
   }
-}
-
-function diskLabel(row: Pick<DiskRow, "id" | "alias">) {
-  return row.alias ?? `disk ${row.id}`;
 }
 
 const DISPOSAL_VERBS: Record<Disposal["kind"], string> = {
@@ -1076,7 +1085,7 @@ function assertDisposable(row: DiskRow, present: boolean) {
   if (row.disposal !== null || !present) return;
   throw new ServiceError(
     409,
-    `${diskLabel(row)} is still attached to ${hostName(row.lastSeenHostId)}`,
+    `${describeDisk(row)} is still attached to ${hostName(row.lastSeenHostId)}`,
   );
 }
 
@@ -1086,16 +1095,16 @@ function replacedDiskFor(id: number, replacesDiskId: number): DiskRow {
   }
   const replaced = getDiskRow(replacesDiskId);
   if (!replaced) {
-    throw new ServiceError(400, `Disk ${replacesDiskId} does not exist`);
+    throw new ServiceError(400, "The replaced disk does not exist");
   }
   if (replaced.disposal?.kind !== "rma") {
-    throw new ServiceError(409, `${diskLabel(replaced)} was not RMA'd`);
+    throw new ServiceError(409, `${describeDisk(replaced)} was not RMA'd`);
   }
   const replacement = replacementOf(replacesDiskId);
   if (replacement && replacement.id !== id) {
     throw new ServiceError(
       409,
-      `${diskLabel(replaced)} is already replaced by ${diskLabel(replacement)}`,
+      `${describeDisk(replaced)} is already replaced by ${describeDisk(replacement)}`,
     );
   }
   return replaced;
@@ -1110,7 +1119,7 @@ function recordReplacementCleared(
     subjectType: "disk",
     subjectId: replaced.id,
     eventType: "replacement-cleared",
-    title: `no longer replaced by ${diskLabel(replacement)}`,
+    title: `no longer replaced by ${describeDisk(replacement)}`,
     data: { diskId: replacement.id },
     at: now,
   });
@@ -1118,7 +1127,7 @@ function recordReplacementCleared(
     subjectType: "disk",
     subjectId: replacement.id,
     eventType: "replacement-cleared",
-    title: `no longer replaces ${diskLabel(replaced)}`,
+    title: `no longer replaces ${describeDisk(replaced)}`,
     data: { diskId: replaced.id },
     at: now,
   });
@@ -1129,7 +1138,7 @@ function recordReplacement(replaced: DiskRow, replacement: DiskRow, now: Date) {
     subjectType: "disk",
     subjectId: replaced.id,
     eventType: "replaced-by",
-    title: `replaced by ${diskLabel(replacement)}`,
+    title: `replaced by ${describeDisk(replacement)}`,
     data: { diskId: replacement.id },
     at: now,
   });
@@ -1137,7 +1146,7 @@ function recordReplacement(replaced: DiskRow, replacement: DiskRow, now: Date) {
     subjectType: "disk",
     subjectId: replacement.id,
     eventType: "replaces",
-    title: `replaces ${diskLabel(replaced)}`,
+    title: `replaces ${describeDisk(replaced)}`,
     data: { diskId: replaced.id },
     at: now,
   });

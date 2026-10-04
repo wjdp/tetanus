@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { describeDisk } from "#shared/disk";
 import { leafLabel } from "#shared/faults";
 import { formatTimestamp } from "./timestamp";
 import type { PoolVdev } from "./types";
@@ -86,7 +87,7 @@ const payloadText = (value: unknown) =>
             :to="`/disks/${event.vdev.disk.id}`"
             class="text-highlighted font-sans font-semibold hover:underline"
           >
-            {{ event.vdev.disk.alias ?? `#${event.vdev.disk.id}` }}
+            {{ describeDisk({ ...event.vdev.disk, model: event.vdev.disk.modelShort }) }}
           </NuxtLink>
         </span>
         <span v-else-if="event.vdevGuid" class="text-dimmed font-mono text-xs">

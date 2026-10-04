@@ -4,7 +4,7 @@ import {
   type AlertSeverity,
 } from "#shared/alerts";
 import type { DiarySubjectType } from "#shared/diary";
-import { type Disposal, isDisposed } from "#shared/disk";
+import { type Disposal, describeDisk, isDisposed } from "#shared/disk";
 import type { DiaryEntryRow } from "~~/server/services/diary";
 
 export interface AlertDisk {
@@ -140,7 +140,7 @@ function matchDiskEntry(
       return null;
     case "disposed-disk-seen": {
       const hostId = Number(data.hostId);
-      const hostName = context.host(hostId)?.name ?? `host ${hostId}`;
+      const hostName = context.host(hostId)?.name ?? "removed host";
       const kind = context.disk(diskId)?.disposal?.kind;
       const disposed = kind ? `disposed (${kind})` : "disposed";
       return {
@@ -284,13 +284,10 @@ function withHost(hostName: string | null, label: string) {
   return hostName ? `${hostName} · ${label}` : label;
 }
 
-export function diskLabel(
-  id: number,
+function diskLabel(
   found: Pick<AlertDisk, "alias" | "model" | "serial"> | undefined,
 ) {
-  if (found?.alias) return found.alias;
-  const described = [found?.model, found?.serial].filter(Boolean).join(" ");
-  return described || `disk ${id}`;
+  return found ? describeDisk(found) : "removed disk";
 }
 
 function describeSubject(
@@ -299,7 +296,7 @@ function describeSubject(
   context: AlertContext,
 ) {
   if (subjectType === "host") {
-    const hostName = context.host(subjectId)?.name ?? `host ${subjectId}`;
+    const hostName = context.host(subjectId)?.name ?? "removed host";
     return { host: hostName, subject: withHost(hostName, "collector") };
   }
   if (subjectType === "pool") {
@@ -307,7 +304,7 @@ function describeSubject(
     const hostName = found?.hostName ?? null;
     return {
       host: hostName,
-      subject: withHost(hostName, found?.name ?? `pool ${subjectId}`),
+      subject: withHost(hostName, found?.name ?? "removed pool"),
     };
   }
   if (subjectType === "replication") {
@@ -322,7 +319,7 @@ function describeSubject(
   const hostName = found?.hostName ?? null;
   return {
     host: hostName,
-    subject: withHost(hostName, diskLabel(subjectId, found)),
+    subject: withHost(hostName, diskLabel(found)),
   };
 }
 

@@ -1,6 +1,7 @@
 import type { Bay } from "#shared/bays";
 import {
   type Disposal,
+  describeDisk,
   type EffectiveDiskState,
   HISTORY_STATES,
   isDisposed,
@@ -341,7 +342,7 @@ export function leafLabel(leaf: TopologyVdev): string {
 }
 
 export function diskLabel(disk: TopologyDisk): string {
-  return disk.alias ?? disk.serial ?? `#${disk.id}`;
+  return disk.alias ?? disk.serial ?? describeDisk(disk);
 }
 
 export function hasErrors(leaf: TopologyVdev): boolean {

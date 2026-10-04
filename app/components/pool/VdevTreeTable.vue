@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { describeDisk } from "#shared/disk";
 import {
   DEVICE_STATUS_VOCABULARY,
   STATUS_TEXT_CLASS,
@@ -195,7 +196,7 @@ const deviceDetails = (node: PoolVdev) =>
             :to="`/disks/${row.original.node.disk.id}`"
             class="text-highlighted font-semibold hover:underline"
           >
-            {{ row.original.node.disk.alias ?? `#${row.original.node.disk.id}` }}
+            {{ describeDisk({ ...row.original.node.disk, model: row.original.node.disk.modelShort }) }}
           </NuxtLink>
         </span>
         <span

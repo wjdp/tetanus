@@ -32,7 +32,7 @@ import type {
 } from "~~/server/ingest/zfs-snapshots";
 import {
   addAutoEvent,
-  type DiaryEntryRow,
+  type DiaryEntry,
   listDiary,
 } from "~~/server/services/diary";
 import { notFound } from "~~/server/utils/serviceError";
@@ -525,7 +525,7 @@ export interface DatasetDetail extends DatasetSummary {
   children: DatasetChild[];
   snapshots: DatasetSnapshot[];
   readings: DatasetReadingRow[];
-  diary: DiaryEntryRow[];
+  diary: DiaryEntry[];
 }
 
 export interface DatasetCounts {

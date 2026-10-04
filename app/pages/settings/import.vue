@@ -237,7 +237,7 @@ const totals = computed(() =>
                 :to="`/disks/${row.original.diskId}`"
                 class="text-primary hover:underline"
               >
-                #{{ row.original.diskId }}
+                View disk
               </NuxtLink>
               <span v-else class="text-dimmed">—</span>
             </template>

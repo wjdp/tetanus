@@ -157,7 +157,7 @@ describe("disk locations", () => {
     ).enclosures[0]?.slots.find((slot) => slot.slot === 8);
     expect(slot8).toMatchObject({
       status: "not installed",
-      disk: { id: findDiskByAlias("K1")?.id, alias: "K1" },
+      disk: { id: findDiskByAlias("K1")?.id, label: "K1" },
     });
   });
 
@@ -212,7 +212,7 @@ describe("host bays", () => {
       label: "Bay 1",
       defaultLabel: "RES2SV240 slot 8",
       status: "OK",
-      disk: { alias: "K1", present: true },
+      disk: { label: "K1", present: true },
     });
     expect(expander?.slots[0]?.disk).toBeNull();
     expect(bays.paths.map((bay) => bay.defaultLabel)).toEqual(

@@ -26,7 +26,7 @@ import {
   replicationSync,
   snapshot,
 } from "~~/server/database/schema";
-import { type DiaryEntryRow, listDiary } from "~~/server/services/diary";
+import { type DiaryEntry, listDiary } from "~~/server/services/diary";
 import {
   type PoolPresenceContext,
   poolPresence,
@@ -396,7 +396,7 @@ function snapshotLadder(
 export interface ReplicationRecord extends ReplicationRow {
   syncs: ReplicationSyncPage;
   ladder: ReplicationLadderRow[];
-  diary: DiaryEntryRow[];
+  diary: DiaryEntry[];
 }
 
 export function replicationRecord(

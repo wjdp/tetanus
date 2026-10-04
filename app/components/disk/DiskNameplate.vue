@@ -66,7 +66,7 @@ const saveAlias = (alias: unknown) =>
           :to="`/disks/${disk.replacesDiskId}`"
           class="text-default hover:text-primary font-medium"
         >
-          {{ replacesLabel ?? `disk ${disk.replacesDiskId}` }}
+          {{ replacesLabel ?? "another disk" }}
         </NuxtLink>
       </p>
     </div>

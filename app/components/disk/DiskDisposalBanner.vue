@@ -85,7 +85,7 @@ const reconfirm = () =>
           :to="`/disks/${replacedByDiskId}`"
           class="hover:text-primary underline"
           data-testid="disposal-replaced-by"
-        >{{ replacedByLabel ?? `disk ${replacedByDiskId}` }}</NuxtLink></span>
+        >{{ replacedByLabel ?? "another disk" }}</NuxtLink></span>
         · {{ disk.disposal.on }}<template v-if="price"> · {{ price }}</template>
       </span>
       <span v-if="seen" class="text-warning" data-testid="disposal-seen">

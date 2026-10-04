@@ -7,9 +7,11 @@ import type {
 } from "#shared/schemas/diary";
 import { db } from "~~/server/database/client";
 import { diaryEntry } from "~~/server/database/schema";
+import { labelSubjects } from "~~/server/services/subjectLabels";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiaryEntryRow = typeof diaryEntry.$inferSelect;
+export type DiaryEntry = DiaryEntryRow & { subjectLabel: string | null };
 
 export const DEFAULT_DIARY_LIMIT = 100;
 
@@ -66,18 +68,20 @@ export function listDiary({
   subjectType,
   subjectId,
   limit = DEFAULT_DIARY_LIMIT,
-}: Partial<DiaryQuery> = {}): DiaryEntryRow[] {
+}: Partial<DiaryQuery> = {}): DiaryEntry[] {
   const filters: SQL[] = [];
   if (subjectType) filters.push(eq(diaryEntry.subjectType, subjectType));
   if (subjectId !== undefined)
     filters.push(eq(diaryEntry.subjectId, subjectId));
-  return db
-    .select()
-    .from(diaryEntry)
-    .where(and(...filters))
-    .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
-    .limit(limit)
-    .all();
+  return labelSubjects(
+    db
+      .select()
+      .from(diaryEntry)
+      .where(and(...filters))
+      .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
+      .limit(limit)
+      .all(),
+  );
 }
 
 export function countDiary(

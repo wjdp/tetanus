@@ -28,9 +28,12 @@ const bays = (): HostBaysData => ({
         slot(7, { status: "not installed" }),
         slot(8, {
           label: "Bay 1",
-          disk: { id: 1, alias: "K1", present: true },
+          disk: { id: 1, label: "K1", present: true },
         }),
-        slot(9, { fault: true, disk: { id: 2, alias: null, present: false } }),
+        slot(9, {
+          fault: true,
+          disk: { id: 2, label: "ST18000NM ZR1", present: false },
+        }),
       ],
     },
   ],
@@ -39,7 +42,7 @@ const bays = (): HostBaysData => ({
       locationKey: "path:pci-0000:06:00.1-ata-5",
       label: null,
       defaultLabel: "SATA port 5",
-      disk: { id: 3, alias: "Z3", present: true },
+      disk: { id: 3, label: "Z3", present: true },
     },
   ],
   orphans: [
@@ -86,7 +89,7 @@ describe("HostBays", () => {
     expect(rows[0]).toContain("not installed");
     expect(rows[1]).toContain("Bay 1");
     expect(rows[1]).toContain("K1");
-    expect(rows[2]).toContain("Disk 2");
+    expect(rows[2]).toContain("ST18000NM ZR1");
     expect(rows[2]).toContain("fault");
   });
 

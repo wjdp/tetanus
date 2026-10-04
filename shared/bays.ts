@@ -26,7 +26,7 @@ export interface Bay {
 
 export interface BayDisk {
   id: number;
-  alias: string | null;
+  label: string;
   present: boolean;
 }
 

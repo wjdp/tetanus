@@ -208,8 +208,8 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "until-acknowledged",
     actions: ["acknowledge"],
     title: (data) => {
-      const others = Array.isArray(data.diskIds) ? data.diskIds.slice(1) : [];
-      return `Identity conflict with disk ${others.join(", ")}`;
+      const others = typeof data.others === "string" ? data.others : "";
+      return `Identity conflict with ${others || "another disk"}`;
     },
   },
   "pool-degraded": {

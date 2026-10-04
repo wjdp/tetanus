@@ -233,7 +233,16 @@ describe("faultTitle", () => {
       { lastSeenAt: "2026-09-09T10:00:00Z" },
       "Missing, last seen 1 d ago",
     ],
-    ["identity-conflict", { diskIds: [3, 7] }, "Identity conflict with disk 7"],
+    [
+      "identity-conflict",
+      { diskIds: [3, 7], others: "K7" },
+      "Identity conflict with K7",
+    ],
+    [
+      "identity-conflict",
+      { diskIds: [3, 7] },
+      "Identity conflict with another disk",
+    ],
   ] as const)("renders %s", (kind, data, title) => {
     expect(faultTitle({ kind, data }, now)).toBe(title);
   });

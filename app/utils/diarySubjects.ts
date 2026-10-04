@@ -1,4 +1,5 @@
 import type { DiarySubjectType } from "#shared/diary";
+import { UNIDENTIFIED_DISK } from "#shared/disk";
 import { ENTITY_ICON } from "~/utils/vocabulary";
 
 export const DIARY_SUBJECT_ICON: Record<DiarySubjectType, string> = {
@@ -51,7 +52,8 @@ interface DatasetOption {
 
 export const diskSubjectItems = (disks: DiskOption[]): SubjectItem[] =>
   disks.map(({ id, alias, model, serial }) => ({
-    label: [alias, model, serial].filter(Boolean).join(" · ") || `Disk ${id}`,
+    label:
+      [alias, model, serial].filter(Boolean).join(" · ") || UNIDENTIFIED_DISK,
     value: id,
   }));
 

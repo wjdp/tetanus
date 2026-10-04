@@ -125,7 +125,7 @@ describe("import settings page", () => {
     expect(table.text()).toContain("2026-09-10");
     expect(table.text()).toContain("all");
     expect(table.text()).toContain("scrutiny returned HTTP 500");
-    expect(table.get('a[href="/disks/4"]').text()).toBe("#4");
+    expect(table.get('a[href="/disks/4"]').text()).toBe("View disk");
     expect(button(page, "Import").attributes("disabled")).toBeUndefined();
   });
 

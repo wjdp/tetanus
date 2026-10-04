@@ -30,5 +30,5 @@ export function disposalLabel(
   const { label } = DISPOSAL_VOCABULARY[disposal.kind];
   if (disposal.kind !== "rma") return label;
   if (replacedByDiskId === null) return `${label} · awaiting replacement`;
-  return `${label} · replaced by ${replacedByLabel ?? `disk ${replacedByDiskId}`}`;
+  return `${label} · replaced by ${replacedByLabel ?? "another disk"}`;
 }
