@@ -1,0 +1,111 @@
+name: collector matrix
+
+on:
+  pull_request:
+    paths:
+      - host/**
+      - server/ingest/**
+      - bin/parse-capture.ts
+      - .github/workflows/collector-matrix.yml
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: 24
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  script:
+    name: script on ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - debian:12
+          - debian:13
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+          - almalinux:9
+          - almalinux:10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install test dependencies
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -q && apt-get install -yq --no-install-recommends git ca-certificates
+          else
+            dnf -y install git diffutils findutils hostname
+          fi
+      - uses: actions/checkout@v7
+      - name: Tool versions
+        run: |
+          bash --version | head -n 1
+          awk -W version 2>/dev/null | head -n 1 || awk --version | head -n 1
+          grep --version | head -n 1
+          sed --version | head -n 1
+      - name: Test
+        run: bash host/test/run.sh --plain
+
+  vm:
+    name: VM ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - debian-12
+          - debian-13
+          - proxmox-9
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - ubuntu-26.04
+          - almalinux-9
+          - almalinux-10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install QEMU
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq --no-install-recommends qemu-system-x86 qemu-utils xorriso
+      - name: Capture in VM
+        run: host/test/matrix/vm.sh ${{ matrix.distro }} out/${{ matrix.distro }}
+      - uses: pnpm/action-setup@v6
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install
+      - name: Prepare Nuxt types
+        run: pnpm nuxt prepare
+      - name: Parse capture
+        run: |
+          pnpm exec tsx --tsconfig .nuxt/tsconfig.server.json bin/parse-capture.ts \
+            --label ${{ matrix.distro }} out/${{ matrix.distro }}/collect.txt \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload capture
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: capture-${{ matrix.distro }}
+          path: out/${{ matrix.distro }}
+          if-no-files-found: ignore
