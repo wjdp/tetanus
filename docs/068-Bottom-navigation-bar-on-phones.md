@@ -27,10 +27,11 @@ Disks, ZFS, Replications, Diary, Settings). Bottom bars hold three to five
 - Five slots: four primary sections plus **More**, which opens the existing sidebar
   drawer (`useDashboard().sidebarOpen` or equivalent), so every section stays reachable.
 - Primary sections marked in `NAVIGATION` (e.g. `bottomNav: true`) rather than a second
-  list; candidates: Topology, Faults, Disks, ZFS. Order follows `NAVIGATION`.
+  list: Topology, Faults, Disks, ZFS. Order follows `NAVIGATION`.
 - Badges: the worst-status chip the collapsed sidebar already uses (`worstColour` over
   `useNavigationCounts`), not full counts; extract it to share.
-- Active state as the sidebar (`exact` for `/`); icon plus short label, `aria-current`.
+- Active state as the sidebar (`exact` for `/`); icon with label underneath,
+  `aria-current`.
 - Theme colour ([043](043-Installable-PWA.md)) only covers the top; bar background is
   `bg-elevated` with a top border, matching the sidebar.
 
@@ -43,7 +44,8 @@ Disks, ZFS, Replications, Diary, Settings). Bottom bars hold three to five
   and pad the bar (and only the bar: top stays default so nothing sits under the notch).
 - Content must not be hidden behind the bar: pad the scroll container by the bar height.
 - Fault, demo and simulation banners stay at the top.
-- Command palette and the hamburger stay; the bar is an addition, not a replacement.
+- Hide the navbar hamburger (`AppPanel`) on phones; More replaces it. Command palette
+  stays.
 - Not in desktop or tablet widths, even when installed.
 
 ## Done when
@@ -54,10 +56,3 @@ Disks, ZFS, Replications, Diary, Settings). Bottom bars hold three to five
 - Nothing hidden under the bar or the home indicator on an installed iPhone.
 - `pnpm lint:ci`, `pnpm typecheck`, `pnpm test` green; component test for active state,
   chips and More opening the drawer.
-
-## Questions
-
-- Which four sections? Topology, Faults, Disks, ZFS proposed; Hosts and Diary are the
-  other candidates.
-- Labels under icons, or icons only?
-- Hide the top hamburger on phones once More exists?
