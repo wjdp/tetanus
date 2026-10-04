@@ -82,6 +82,12 @@ tetanus is designed as a single-user service and has **no authentication at all*
 
 In simple terms: use it on your home network, don't open it up to the internet. Use a VPN (e.g. Tailscale) for remote access.
 
+### Installing on a phone
+
+tetanus can be added to a home screen and opens as a standalone app. On Android, Chrome menu → Install app; on iOS, Share → Add to Home Screen. There is no offline mode: it needs to reach the server.
+
+Android and desktop Chrome only offer a proper install over HTTPS; over plain HTTP on a LAN you get a bookmark-style shortcut instead. iOS installs over HTTP. If your reverse proxy adds auth, the manifest is fetched with credentials so it still loads.
+
 ## Development
 
 Node 24 and pnpm 12. `pnpm install`, then:
