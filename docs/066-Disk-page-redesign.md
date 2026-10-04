@@ -44,7 +44,7 @@ Decided 2026-10-04:
 - Specs merges into a Hardware group. ZFS membership moves into the header strip.
 - One actions menu. Simulate fault stays its own button (dev and demo only).
 - Add the data the API already carries; warranty links stay in
-  [031](031-Vendor-detection-and-vendor-specific-inventory-fields.md), bays in
+  [080](080-Vendor-override-warranty-check-links-and-vendor-SMART-hints.md), bays in
   [061](061-Physical-bay-mapping.md), open fault rows in a follow-up.
 
 ## Header
@@ -276,5 +276,5 @@ moves to `shared/warranty.ts` (it is pure and 067 needs it).
 - Prev/next disk navigation on the page.
 - Open fault rows on the page (counts and the link only); a follow-up once the
   faults list has a compact row component.
-- Warranty check links (031), bays (061), identify light (064).
+- Warranty check links (080), bays (061), identify light (064).
 - Attribute chart for a selected attribute (014 contract, never built).

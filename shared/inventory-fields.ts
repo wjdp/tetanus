@@ -35,6 +35,8 @@ export const INVENTORY_FIELDS = [
     key: "pin33Taped",
     label: "3.3 V pin",
     type: "boolean",
+    when: ({ inventory }: FieldVisibilityContext) =>
+      inventory.purchaseCondition === "shucked" || inventory.pin33Taped != null,
     description:
       "Shucked drives only: some external-enclosure drives will not power up in a standard bay until the 3.3 V power-disable pin is masked, usually with Kapton tape. Record whether this drive needed it.",
   },
@@ -45,6 +47,16 @@ export const INVENTORY_FIELDS = [
     values: RECORDING_TECH_OVERRIDES,
     media: ["hdd"],
     group: "hardware",
+  },
+  {
+    key: "seagateBpid",
+    label: "BPID",
+    type: "text",
+    group: "identity",
+    when: ({ vendor, inventory }: FieldVisibilityContext) =>
+      vendor === "seagate" || Boolean(inventory.seagateBpid),
+    description:
+      "Seagate only: the number printed on the drive label that Seagate's warranty checker and RMA form ask for. No command can read it, so copy it from the label once.",
   },
 ] as const;
 
@@ -67,6 +79,7 @@ export function fieldGroup(field: InventoryField): InventoryFieldGroup {
 interface VisibilityGate {
   media?: readonly Media[];
   vendors?: readonly Vendor[];
+  when?: (context: FieldVisibilityContext) => boolean;
 }
 
 type GatedField = InventoryField & VisibilityGate;
@@ -74,6 +87,7 @@ type GatedField = InventoryField & VisibilityGate;
 export interface FieldVisibilityContext {
   media: Media | null;
   vendor: Vendor | null;
+  inventory: Readonly<Record<string, unknown>>;
 }
 
 function passesGate(
@@ -85,10 +99,14 @@ function passesGate(
 
 export function isFieldVisible(
   field: InventoryField,
-  { media, vendor }: FieldVisibilityContext,
+  context: FieldVisibilityContext,
 ): boolean {
   const gate: GatedField = field;
-  return passesGate(gate.media, media) && passesGate(gate.vendors, vendor);
+  return (
+    passesGate(gate.media, context.media) &&
+    passesGate(gate.vendors, context.vendor) &&
+    (gate.when?.(context) ?? true)
+  );
 }
 export type InventoryFieldType = InventoryField["type"];
 export type InventoryKey = InventoryField["key"];

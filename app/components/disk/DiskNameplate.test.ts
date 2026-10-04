@@ -39,6 +39,7 @@ const disk = (overrides: Partial<DiskDetail> = {}) =>
     purposeInferred: false,
     membership: null,
     faultCounts: { error: 0, warning: 0, acknowledged: 0 },
+    inventory: {},
     ...overrides,
   }) as unknown as DiskDetail;
 
@@ -82,6 +83,18 @@ describe("DiskNameplate", () => {
       expect(dot.attributes("data-shape")).toBe(shape);
     },
   );
+
+  it("shows the BPID beside the serial once recorded", async () => {
+    expect(
+      (await mountNameplate()).find('[data-testid="nameplate-bpid"]').exists(),
+    ).toBe(false);
+    const nameplate = await mountNameplate({
+      inventory: { seagateBpid: "1004526218" },
+    });
+    expect(nameplate.get('[data-testid="nameplate-bpid"]').text()).toBe(
+      "· BPID 1004526218",
+    );
+  });
 
   it("shows the media glyph beside the model", async () => {
     const nameplate = await mountNameplate();

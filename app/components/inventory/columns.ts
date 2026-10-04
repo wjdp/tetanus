@@ -170,6 +170,14 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: false,
   },
   {
+    id: "bay",
+    label: "Bay",
+    group: "Placement",
+    value: (disk) =>
+      disk.bay ? (disk.bay.label ?? disk.bay.defaultLabel) : null,
+    defaultVisible: false,
+  },
+  {
     id: "pool",
     label: "Pool",
     group: "Placement",
@@ -338,6 +346,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     group: "Inventory",
     value: (disk) => disk.warrantyDaysLeft,
     defaultVisible: true,
+  },
+  {
+    id: "bpid",
+    label: "BPID",
+    group: "Inventory",
+    value: (disk) => blankToNull(disk.inventory.seagateBpid),
+    defaultVisible: false,
   },
   {
     id: "pin33",

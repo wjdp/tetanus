@@ -439,8 +439,38 @@ describe("DiskOverview", () => {
     expect(patched).toHaveBeenCalledWith({ inventory: { pin33Taped: value } });
   });
 
+  it("shows the 3.3 V pin only on shucked disks or once recorded", async () => {
+    const pin = '[data-field="pin33Taped"]';
+    expect((await mountOverview()).find(pin).exists()).toBe(false);
+    expect(
+      (await mountOverview({ inventory: { purchaseCondition: "new" } }))
+        .find(pin)
+        .exists(),
+    ).toBe(false);
+    expect(
+      (await mountOverview({ inventory: { pin33Taped: false } }))
+        .find(pin)
+        .exists(),
+    ).toBe(true);
+  });
+
+  it("shows the BPID on Seagate disks or once recorded", async () => {
+    const bpid = '[data-field="seagateBpid"]';
+    expect((await mountOverview()).find(bpid).exists()).toBe(false);
+    expect(
+      (await mountOverview({ vendor: "seagate" })).find(bpid).exists(),
+    ).toBe(true);
+    expect(
+      (await mountOverview({ inventory: { seagateBpid: "1004526218" } }))
+        .find(bpid)
+        .exists(),
+    ).toBe(true);
+  });
+
   it("shows an unrecorded 3.3 V pin dimmed", async () => {
-    const wrapper = await mountOverview();
+    const wrapper = await mountOverview({
+      inventory: { purchaseCondition: "shucked" },
+    });
     const display = field(wrapper, "pin33Taped").get(
       '[data-testid="inline-display"] span',
     );

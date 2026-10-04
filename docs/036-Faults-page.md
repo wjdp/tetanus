@@ -292,7 +292,7 @@ Each of these adds a kind entry and a detector when it lands; the page needs no 
 | [018 Capacity forecast](018-Capacity-forecast.md) | `pool-filling` | transient | warning |
 | [019 SSD endurance](019-SSD-endurance.md) | `ssd-endurance-low` per disk | persistent | warning, error near the limit |
 | [020 Warranty nudge](020-Warranty-nudge.md) | `warranty-ending` per disk | transient | warning |
-| [031 Vendor detection](031-Vendor-detection-and-vendor-specific-inventory-fields.md) | `inventory-incomplete` per disk | transient | warning |
+| [080 Vendor override and warranty links](080-Vendor-override-warranty-check-links-and-vendor-SMART-hints.md) | `inventory-incomplete` per disk | transient | warning |
 
 ## Out of scope
 

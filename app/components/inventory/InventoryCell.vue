@@ -145,6 +145,14 @@ const INFERRED_WRITTEN_TITLE =
     {{ disk.lastDevicePath }}
   </span>
 
+  <span
+    v-else-if="column.id === 'bay' && disk.bay"
+    :class="{ 'text-dimmed': !disk.present || !disk.bay.label }"
+    :title="disk.present ? disk.bay.locationKey : 'Last known bay; the disk is not present now'"
+  >
+    {{ column.value(disk) }}
+  </span>
+
   <NuxtLink
     v-else-if="column.id === 'pool' && disk.membership && linked"
     :to="`/zfs/${disk.membership.poolId}`"
@@ -321,6 +329,10 @@ const INFERRED_WRITTEN_TITLE =
   </span>
 
   <span v-else-if="column.id === 'supplier'">{{ disk.inventory.supplier }}</span>
+
+  <span v-else-if="column.id === 'bpid'" class="font-mono text-xs">
+    {{ disk.inventory.seagateBpid }}
+  </span>
 
   <span v-else-if="column.id === 'condition'">
     {{ disk.inventory.purchaseCondition }}

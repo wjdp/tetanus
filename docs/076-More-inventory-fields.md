@@ -47,8 +47,9 @@ tech, plus the alias and notes. Things people keep track of that have no home ye
   the disk is unplugged, dimmed as "last known". Moving bays writes a `moved-bay`
   diary entry. A USB disk's bay is its USB port path (`ID_PATH`), so the adaptor
   question is answered there and in [078](078-USB-bridge-splits-a-disk-into-two-records.md).
-- BPID, vendor override (031) and the device type override / exclusion (073) are
-  covered in their own docs.
+- BPID (done, [031](031-Vendor-detection-and-vendor-specific-inventory-fields.md)), vendor
+  override ([080](080-Vendor-override-warranty-check-links-and-vendor-SMART-hints.md)) and the device type override / exclusion (073) are covered in
+  their own docs.
 
 ## Design
 
@@ -97,16 +98,17 @@ and on the RMA sheet.
 
 ### Visibility gates
 
-The new gates depend on other values (condition, presence, disposal), which
-`isFieldVisible` can't express. Add `when?: (inventory, disk) => boolean` to the gate
-and pass the needed context in. A hidden field keeps its value and still exports.
+`when?: (context) => boolean` landed with BPID (031, 2026-10-04); `FieldVisibilityContext`
+holds `media`, `vendor` and `inventory`, and the 3.3 V pin already uses it (shucked or
+recorded). Stored at also needs `present` and `disposal` in the context; the disk payload
+already carries both. A hidden field keeps its value and still exports.
 
 ## Out of scope
 
 - Burn-in tracking: no consistent practice or model for it yet.
 - Per-disk temperature limits.
 - Bay labels and enclosure discovery (061).
-- BPID and vendor override (031), device type override and exclusion (073).
+- BPID (031) and vendor override (080), device type override and exclusion (073).
 - Tag management (rename or merge across disks).
 
 ## Decisions

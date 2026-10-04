@@ -15,6 +15,7 @@ export const emptyInventoryDisk = (
   capacityBytes: null,
   hostName: null,
   lastDevicePath: null,
+  bay: null,
   present: true,
   state: "in-use",
   stateOverride: null,

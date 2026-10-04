@@ -52,6 +52,7 @@ const choicesOf = (values: readonly string[], label = (value: string) => value) 
 const modelShortField = fieldNamed("modelShort");
 const recordingField = fieldNamed("recordingTech");
 const purposeField = fieldNamed("purpose");
+const bpidField = fieldNamed("seagateBpid");
 
 const recordingItems: InlineItem[] =
   "values" in recordingField
@@ -115,6 +116,7 @@ const media = computed(() => {
 });
 
 const showsRecording = computed(() => isFieldVisible(recordingField, props.disk));
+const showsBpid = computed(() => isFieldVisible(bpidField, props.disk));
 
 const resolvedRecording = computed(() =>
   knownRecordingTech(props.disk.recordingTech)?.toUpperCase() ?? null,
@@ -405,6 +407,17 @@ const optionalDate = (value: string | null) =>
     <DiskFactGroup title="Identity" data-testid="group-identity">
       <DiskFact label="Model" :value="model" data-testid="fact-model" />
       <DiskFact label="Serial" :value="disk.serial" mono />
+      <InlineField
+        v-if="showsBpid"
+        type="text"
+        :label="bpidField.label"
+        :description="fieldDescription(bpidField)"
+        :value="inventoryValue('seagateBpid')"
+        :saving="saving.seagateBpid"
+        :error="errors.seagateBpid"
+        data-field="seagateBpid"
+        @commit="saveInventory('seagateBpid', $event)"
+      />
       <DiskFact v-if="wwn" label="WWN" :value="wwn" mono />
       <DiskFact v-if="disk.firmware" label="Firmware" :value="disk.firmware" mono />
       <InlineField

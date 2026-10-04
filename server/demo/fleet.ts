@@ -416,7 +416,9 @@ function atlasDisks(timeline: Timeline): DiskSpec[] {
       slot: hba(kernel),
       membership: member("tank", "normal", 1, position),
       installedAt: TANK_VDEV1_ADDED,
-      inventory: inventory("2021-03-24", 429.0, "Scan", "new", "2026-03-24"),
+      inventory: inventory("2021-03-24", 429.0, "Scan", "new", "2026-03-24", {
+        seagateBpid: "1004526218",
+      }),
       powerOnHoursAtInstall: 1,
       bytesWrittenPerDay: 60 * GB,
     }) satisfies DiskSpec;

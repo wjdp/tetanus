@@ -1,3 +1,4 @@
+import type { Bay } from "#shared/bays";
 import type { Disposal, EffectiveDiskState, StateOverride } from "#shared/disk";
 import type { DiskFaultCounts } from "#shared/faults";
 import type {
@@ -36,6 +37,7 @@ export interface InventoryDisk {
   capacityBytes: number | null;
   hostName: string | null;
   lastDevicePath: string | null;
+  bay: Bay | null;
   present: boolean;
   state: EffectiveDiskState;
   stateOverride: StateOverride | null;

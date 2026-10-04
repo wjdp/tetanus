@@ -54,6 +54,13 @@ const saveAlias = (alias: unknown) =>
         <span v-if="disk.serial" class="text-default font-mono text-sm">
           · {{ disk.serial }}
         </span>
+        <span
+          v-if="disk.inventory.seagateBpid"
+          class="text-default font-mono text-sm"
+          data-testid="nameplate-bpid"
+        >
+          · BPID {{ disk.inventory.seagateBpid }}
+        </span>
       </p>
       <p
         v-if="disk.replacesDiskId"

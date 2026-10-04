@@ -23,6 +23,7 @@ describe("inventorySchema", () => {
       warrantyExpiry: "2026-04-01",
       pin33Taped: true,
       recordingTech: "smr",
+      seagateBpid: "1012345678",
     };
     expect(inventorySchema.parse(inventory)).toEqual(inventory);
   });
@@ -64,7 +65,8 @@ describe("isFieldVisible", () => {
   const on = (
     media: FieldVisibilityContext["media"],
     vendor: FieldVisibilityContext["vendor"] = null,
-  ) => ({ media, vendor });
+    inventory: FieldVisibilityContext["inventory"] = {},
+  ) => ({ media, vendor, inventory });
 
   it("shows recording tech only on hdds", () => {
     const recordingTech = field("recordingTech");
@@ -79,6 +81,30 @@ describe("isFieldVisible", () => {
     const supplier = field("supplier");
     expect(isFieldVisible(supplier, on("ssd"))).toBe(true);
     expect(isFieldVisible(supplier, on(null))).toBe(true);
+  });
+
+  it("shows the 3.3 V pin on shucked disks, or once recorded", () => {
+    const pin = field("pin33Taped");
+    expect(
+      isFieldVisible(pin, on("hdd", null, { purchaseCondition: "shucked" })),
+    ).toBe(true);
+    expect(
+      isFieldVisible(pin, on("hdd", null, { purchaseCondition: "new" })),
+    ).toBe(false);
+    expect(isFieldVisible(pin, on("hdd"))).toBe(false);
+    expect(isFieldVisible(pin, on("hdd", null, { pin33Taped: false }))).toBe(
+      true,
+    );
+  });
+
+  it("shows the BPID on Seagate disks, or once recorded", () => {
+    const bpid = field("seagateBpid");
+    expect(isFieldVisible(bpid, on("hdd", "seagate"))).toBe(true);
+    expect(isFieldVisible(bpid, on("hdd", "western-digital"))).toBe(false);
+    expect(isFieldVisible(bpid, on("hdd", null))).toBe(false);
+    expect(
+      isFieldVisible(bpid, on("hdd", "other", { seagateBpid: "1012345678" })),
+    ).toBe(true);
   });
 });
 
@@ -98,6 +124,7 @@ describe("fieldGroup", () => {
       warrantyExpiry: "ownership",
       pin33Taped: "ownership",
       recordingTech: "hardware",
+      seagateBpid: "identity",
     });
   });
 });
