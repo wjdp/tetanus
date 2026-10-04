@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # More inventory fields
@@ -129,3 +129,4 @@ Built 2026-10-04:
 - Migration `0029_clear_purpose_other`; the demo's P3 is tagged `media` instead.
 - List: Stored at, Order ref, Shucked from and Tags columns; a tag filter in the Filters
   popover, shown once any disk has a tag. A disk matches a tag among several.
+- Browser-checked 2026-10-05: tags editor.
