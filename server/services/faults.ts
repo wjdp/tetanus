@@ -225,7 +225,8 @@ export function identityConflictKey(subjectId: number, diskIds: unknown) {
 const otherDiskIds = (diskIds: unknown) =>
   Array.isArray(diskIds) ? diskIds.slice(1).map(Number) : [];
 
-function detectIdentityConflicts(): Detection[] {
+function detectIdentityConflicts({ disks }: DetectionContext): Detection[] {
+  const disposedDiskIds = new Set(disks.filter(isDisposed).map(({ id }) => id));
   const entries = db
     .select()
     .from(diaryEntry)
@@ -235,6 +236,7 @@ function detectIdentityConflicts(): Detection[] {
   const byKey = new Map<string, Detection>();
   for (const entry of entries) {
     if (entry.subjectId === null) continue;
+    if (disposedDiskIds.has(entry.subjectId)) continue;
     const key = identityConflictKey(entry.subjectId, entry.data.diskIds);
     if (byKey.has(key)) continue;
     if (wasAcknowledgedSince("identity-conflict", key, entry.at)) continue;
@@ -338,7 +340,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...detectHealthFailed(context),
       ...detectTemperatureHigh(context),
       ...detectMissing(context, suppressedDiskIds),
-      ...detectIdentityConflicts(),
+      ...detectIdentityConflicts(context),
       ...pools.detections,
       ...replications.detections,
       ...silent,

@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Disk disposal
@@ -227,7 +227,7 @@ replaces link).
 
 ## As built
 
-Browser check pending. Deviations from the contract above:
+Browser-checked 2026-10-05 (list toggle, present-disk refusal, replaces picker, diary icons). Deviations from the contract above:
 
 - `DiskSummary` also carries `replacedByDiskId` (reverse of `replacesDiskId`).
 - Any non-null `disposal` in a patch writes a `disposed` entry, unchanged or not: that
@@ -240,9 +240,10 @@ Browser check pending. Deviations from the contract above:
 - Replaces picker is saved with the inventory form; it shows only when candidates
   exist.
 - Demo: W1 sold, A18 RMA'd (new inventory-only disk), A6 its replacement.
-- Not handled: `poolFaults.ts` still counts a disposed `missing` disk among missing
-  pool members; `detectIdentityConflicts` still runs on disposed disks (their alerts
-  are dropped).
+- `poolFaults.ts` leaves disposed disks out of a pool's missing members, so a
+  disposed leaf is not marked `(disk missing)`.
+- Identity conflicts on a disposed disk open no fault, live or in backfill; one already
+  open resolves as `disposed`.
 
 ## Out of scope
 

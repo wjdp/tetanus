@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gt, inArray, isNull, lte } from "drizzle-orm";
+import { isDisposed } from "#shared/disk";
 import {
   type FaultData,
   type FaultKind,
@@ -675,7 +676,9 @@ export function detectPoolFaults({
 }: DetectionContext): PoolFaultScan {
   const presence = poolPresenceContext(now, hosts, cadences);
   const missingDiskIds = new Set(
-    disks.filter((row) => row.state === "missing").map((row) => row.id),
+    disks
+      .filter((row) => row.state === "missing" && !isDisposed(row))
+      .map((row) => row.id),
   );
   const vdevsByPool = new Map<number, VdevRow[]>();
   for (const row of db

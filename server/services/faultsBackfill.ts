@@ -371,6 +371,9 @@ function replayDiskEntry(
       context.disposedDiskIds.add(diskId);
       resolveSmartFaults(context, diskId, at);
       replay.resolve(replay.get("disk-missing", String(diskId)), at);
+      for (const row of replay.liveOf(["identity-conflict"], `${diskId}:`)) {
+        replay.resolve(row, at);
+      }
       return;
     }
     case "disposal-cleared": {
@@ -378,6 +381,7 @@ function replayDiskEntry(
       return;
     }
     case "identity-conflict": {
+      if (context.disposedDiskIds.has(diskId)) return;
       replay.observe(
         {
           kind: "identity-conflict",

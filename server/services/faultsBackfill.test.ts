@@ -381,6 +381,24 @@ describe("backfillFaults", () => {
     expect(healthFaults(sold)).toEqual([[at(HOUR_MS), at(2 * HOUR_MS)]]);
   });
 
+  it("resolves a disposed disk's identity conflict and opens none while disposed", async () => {
+    const a = insertDisk("C1", "spare");
+    const b = insertDisk("C2", "spare");
+    const disposal = { kind: "rma", on: "2026-09-01" } as const;
+    db.update(disk).set({ disposal }).where(eq(disk.id, a)).run();
+    event("disk", a, "identity-conflict", { diskIds: [a, b] }, HOUR_MS);
+    event("disk", a, "disposed", { from: null, to: disposal }, 2 * HOUR_MS);
+    event("disk", a, "identity-conflict", { diskIds: [a, b] }, 3 * HOUR_MS);
+
+    await backfillFaults(at(4 * HOUR_MS));
+
+    expect(
+      faultRows()
+        .filter((row) => row.kind === "identity-conflict")
+        .map((row) => [row.openedAt, row.resolvedAt]),
+    ).toEqual([[at(HOUR_MS), at(2 * HOUR_MS)]]);
+  });
+
   it("replays leaf states, leaf errors and data errors into the ZFS kinds", async () => {
     const mars = upsertHostByName("mars", t0);
     const vault = db

@@ -549,6 +549,31 @@ describe("pool-degraded", () => {
     ).toMatchObject([{ diskId, state: "REMOVED", diskMissing: true }]);
   });
 
+  it("does not count a disposed disk among a pool's missing members", async () => {
+    const mars = upsertHostByName("mars", t0);
+    recordRun(mars.id, "lsblk", at(3 * DAY_MS));
+    recordRun(mars.id, "zpool-status", at(3 * DAY_MS));
+    const diskId = db
+      .insert(disk)
+      .values({
+        alias: "K3",
+        lastSeenAt: t0,
+        lastSeenHostId: mars.id,
+        lastState: "in-use",
+        disposal: { kind: "rma", on: "2026-09-02" },
+      })
+      .returning()
+      .get().id;
+    const vault = insertPool(mars.id, "DEGRADED", at(3 * DAY_MS));
+    insertVdev(vault.id, { guid: "13", name: "K3", state: "UNAVAIL", diskId });
+
+    await syncFaults(at(3 * DAY_MS));
+
+    expect(
+      liveFault("pool-degraded", String(vault.id))?.data.leaves,
+    ).toMatchObject([{ diskId, state: "UNAVAIL", diskMissing: false }]);
+  });
+
   it("resolves an open disk-missing it now explains", async () => {
     const mars = upsertHostByName("mars", t0);
     recordRun(mars.id, "lsblk", at(3 * DAY_MS));
@@ -1245,6 +1270,42 @@ describe("identity-conflict", () => {
     await syncFaults(at(5 * MINUTE_MS));
 
     expect(liveFault("identity-conflict", `${a}:${a},${b}`)).toBeUndefined();
+  });
+
+  it("skips a disposed disk and resolves its open conflict as disposed", async () => {
+    const [a, b] = [1, 2].map(
+      (n) =>
+        db
+          .insert(disk)
+          .values({ alias: `K${n}` })
+          .returning()
+          .get().id,
+    );
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: a,
+      eventType: "identity-conflict",
+      title: "identity conflict",
+      data: { diskIds: [a, b] },
+      at: t0,
+    });
+    await syncFaults(at(MINUTE_MS));
+    expect(liveFault("identity-conflict", `${a}:${a},${b}`)).toBeDefined();
+
+    db.update(disk)
+      .set({ disposal: { kind: "rma", on: "2026-09-02" } })
+      .where(eq(disk.id, a))
+      .run();
+    await syncFaults(at(2 * MINUTE_MS));
+
+    expect(faultsOf("identity-conflict")).toMatchObject([
+      { state: "resolved", resolvedAt: at(2 * MINUTE_MS) },
+    ]);
+    expect(
+      faultEvents()
+        .filter((entry) => entry.eventType === "fault-resolved")
+        .map((entry) => entry.data.reason),
+    ).toEqual(["disposed"]);
   });
 });
 
