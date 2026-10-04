@@ -62,7 +62,7 @@ describe("DiaryTimeline", () => {
     expect(timeline.find('a[href="/disks/4"]').text()).toBe("disk K2");
     expect(timeline.find('a[href="/disks/4"]').html()).toContain("hard-drive");
     expect(timeline.find('a[href="/zfs/7"]').exists()).toBe(true);
-    expect(timeline.find('a[href="/settings/hosts"]').exists()).toBe(true);
+    expect(timeline.find('a[href="/hosts/4"]').exists()).toBe(true);
     expect(timeline.find('a[href="/datasets/22"]').text()).toBe("dataset 22");
 
     const manual = timeline.findAll('[data-testid="diary-entry"]')[1];

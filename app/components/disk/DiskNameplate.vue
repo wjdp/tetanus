@@ -118,8 +118,8 @@ const facts = computed(() => [
         <dt class="text-dimmed text-xs">Host</dt>
         <dd>
           <ULink
-            v-if="disk.hostName"
-            to="/settings/hosts"
+            v-if="disk.hostName && disk.lastSeenHostId !== null"
+            :to="`/hosts/${disk.lastSeenHostId}`"
             class="text-default hover:text-primary"
           >
             {{ disk.hostName }}

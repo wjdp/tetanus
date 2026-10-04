@@ -42,7 +42,7 @@ describe("faultSubjectPath", () => {
   it.each([
     ["disk", "/disks/12"],
     ["pool", "/zfs/12"],
-    ["host", "/settings/hosts"],
+    ["host", "/hosts/12"],
     ["replication", "/replications/12"],
   ] as const)("links a %s to %s", (type, path) => {
     expect(faultSubjectPath(subject({ type }))).toBe(path);

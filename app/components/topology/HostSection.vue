@@ -2,7 +2,6 @@
 import type { RunLike } from "~/utils/hostFreshness";
 import { activeScan } from "./activeScan";
 import {
-  hostDiskGroups,
   hostDiskSummary,
   type TopologyDisk,
   type TopologyPool,
@@ -43,16 +42,15 @@ const summary = computed(() => {
     .join(" · ");
 });
 
-const otherDisks = computed(() =>
-  hostDiskGroups(props.disks, props.host.id, props.inPool),
-);
 </script>
 
 <template>
   <section class="flex flex-col gap-4" data-testid="host-section">
     <header class="flex flex-col gap-1">
       <h2 class="text-highlighted text-lg font-semibold">
-        {{ host.displayName || host.name }}
+        <NuxtLink :to="`/hosts/${host.id}`" class="hover:text-primary">
+          {{ host.displayName || host.name }}
+        </NuxtLink>
         <span
           v-if="host.displayName"
           class="text-dimmed ml-1 font-mono text-sm font-normal"
@@ -84,41 +82,12 @@ const otherDisks = computed(() =>
       </div>
     </header>
 
-    <p
-      v-if="pools.length === 0 && otherDisks.length === 0"
-      class="text-muted text-sm"
-    >
-      No pools reported yet.
-    </p>
-
-    <TopologyPoolCard
-      v-for="pool in pools"
-      :key="pool.id"
-      :pool="pool"
+    <TopologyHostTopology
+      :host-id="host.id"
+      :pools="pools"
+      :disks="disks"
+      :in-pool="inPool"
       :now="now"
     />
-
-    <article
-      v-if="otherDisks.length > 0"
-      class="border-default flex flex-col gap-4 rounded-lg border p-4"
-      data-testid="other-disks-card"
-    >
-      <h3 class="text-highlighted text-lg font-semibold">Other disks</h3>
-      <div class="flex flex-col gap-3">
-        <TopologyVdevRow
-          v-for="group in otherDisks"
-          :key="group.key"
-          :icon="group.icon"
-          :label="group.label"
-          data-testid="host-disk-group"
-        >
-          <TopologyDiskTile
-            v-for="disk in group.disks"
-            :key="disk.id"
-            :disk="disk"
-          />
-        </TopologyVdevRow>
-      </div>
-    </article>
   </section>
 </template>

@@ -95,7 +95,7 @@ const subjectLink = (entry: TimelineEntry) => {
     case "replication":
       return `/replications/${entry.subjectId}`;
     case "host":
-      return "/settings/hosts";
+      return `/hosts/${entry.subjectId}`;
     default:
       return null;
   }

@@ -363,7 +363,7 @@ describe("faults page", () => {
         .attributes("href");
     expect(href("Reallocated")).toBe("/disks/12");
     expect(href("vault")).toBe("/zfs/3");
-    expect(href("Collector")).toBe("/settings/hosts");
+    expect(href("Collector")).toBe("/hosts/4");
   });
 
   it("says nothing needs attention when the live view is empty", async () => {

@@ -111,7 +111,12 @@ const onUpdated = (updated: DiskDetail) => {
 
         <DiskZfsMembership :membership="disk.membership" />
 
-        <DiskDiary :disk-id="disk.id" :entries="disk.diary" @changed="refresh" />
+        <DiaryPanel
+          subject-type="disk"
+          :subject-id="disk.id"
+          :entries="disk.diary"
+          @changed="refresh"
+        />
       </template>
     </div>
   </AppPanel>

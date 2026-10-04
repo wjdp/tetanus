@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import type { DiaryEntry } from "./types";
+import type { DiarySubjectType } from "#shared/diary";
+import type { DiaryEntry } from "~/components/disk/types";
 
-const props = defineProps<{ diskId: number; entries: DiaryEntry[] }>();
+const props = withDefaults(
+  defineProps<{
+    subjectType: DiarySubjectType;
+    subjectId: number;
+    entries: DiaryEntry[];
+    showHeading?: boolean;
+  }>(),
+  { showHeading: true },
+);
 const emit = defineEmits<{ changed: [] }>();
 
 const toast = useToast();
@@ -15,8 +24,8 @@ const addEntry = async () => {
     await $fetch("/api/diary", {
       method: "POST",
       body: {
-        subjectType: "disk",
-        subjectId: props.diskId,
+        subjectType: props.subjectType,
+        subjectId: props.subjectId,
         title: title.value,
         body: body.value,
       },
@@ -34,7 +43,9 @@ const addEntry = async () => {
 
 <template>
   <section class="flex flex-col gap-4">
-    <h2 class="text-highlighted text-lg font-semibold">Diary</h2>
+    <h2 v-if="showHeading" class="text-highlighted text-lg font-semibold">
+      Diary
+    </h2>
 
     <form class="flex flex-col gap-2" @submit.prevent="addEntry">
       <UInput
