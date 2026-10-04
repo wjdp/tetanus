@@ -17,6 +17,9 @@ Phase 4 inventory fields ([004](004-Project-plan.md)).
   serial, firmware, purchase date/price/supplier, warranty expiry, current failed
   attributes with values, self-test log, relevant diary and ZFS events. Print from
   the disk page.
+- RMA case number: `rmaCase` on the disposal record (`kind === "rma"` only, like
+  `salePrice` for `sold`), shown in the disposal banner and on the sheet. Deferred here
+  from [076](076-More-inventory-fields.md).
 - Inventory table: warranty countdown already planned in Phase 6; this adds the
   nudge and the sheet.
 

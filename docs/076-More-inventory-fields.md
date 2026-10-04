@@ -59,8 +59,8 @@ tech, plus the alias and notes. Things people keep track of that have no home ye
 |---|---|---|---|---|
 | `storageLocation` | Stored at | text | placement | disk not present |
 | `orderRef` | Order ref | text | ownership | always |
-| `sellerWarrantyExpiry` | Seller warranty | date | ownership | condition is used or refurbished |
-| `shuckedFrom` | Shucked from | text | identity | condition is shucked |
+| `sellerWarrantyExpiry` | Seller warranty | date | ownership | always |
+| `shuckedFrom` | Shucked from | text | identity | condition is shucked, or once set |
 | `tags` | Tags | tags (new type) | ownership | always |
 
 - **Stored at** is free text that autocompletes from values already used across the
@@ -74,7 +74,9 @@ tech, plus the alias and notes. Things people keep track of that have no home ye
   The disk PATCH service already writes auto events for disposal and replacement;
   inventory fields write none yet, so this is the first, written there, not by the
   client.
-- **Seller warranty**: the warranty countdown and the 020 nudge use the later of the
+- **Shucked from** autocompletes from values already used, like Stored at.
+- **Seller warranty** is always shown, not only for used or refurbished: retailers add
+  their own cover to new disks too, and the field shouldn't prescribe usage. The warranty countdown and the 020 nudge use the later of the
   two expiry dates and say which one it is.
 - **Order ref** is printed on the 020 RMA sheet.
 - **Tags**: a new `tags` field type, a string array that's trimmed, lowercased, with
@@ -90,12 +92,6 @@ the demo fleet, the inventory filter (`useInventoryQuery`, `filterDisks`),
 `displayName` and the Purpose description. Purpose stays an enum with one value, so it
 still reads as "set by hand" against the inferred `system`.
 
-### RMA case number
-
-This goes on the disposal record, not in the inventory: add `rmaCase` (text, `kind ===
-"rma"` only), just as `salePrice` applies to `sold` only. It's shown in the disposal banner
-and on the RMA sheet.
-
 ### Visibility gates
 
 `when?: (context) => boolean` landed with BPID (031, 2026-10-04); `FieldVisibilityContext`
@@ -110,6 +106,8 @@ already carries both. A hidden field keeps its value and still exports.
 - Bay labels and enclosure discovery (061).
 - BPID (031) and vendor override (080), device type override and exclusion (073).
 - Tag management (rename or merge across disks).
+- RMA case number on the disposal record: deferred to [020](020-Warranty-nudge.md),
+  whose RMA sheet is its main use.
 
 ## Decisions
 
