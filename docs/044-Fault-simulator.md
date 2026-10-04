@@ -166,6 +166,9 @@ Events
   back (captured, so restore moves it forward)
 - ✱ Collector outdated: version [previous minor]; replays `versions` with that producer
 - ✱ Collector incompatible: version [below minimum]
+- ✱ Tools unsupported: tool [OpenZFS 2.2.2 | smartmontools 6.6]; replays `versions`
+  with the old version and a `?failed=` run for each of the tool's sources
+  ([079](079-Unsupported-OpenZFS-fails-silently.md))
 
 ### Replication (replication page, group Replication)
 
