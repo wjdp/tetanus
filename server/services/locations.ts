@@ -27,7 +27,7 @@ import { extractKeys } from "~~/server/services/identity";
 import { notFound } from "~~/server/utils/serviceError";
 
 /** How long before an `enclosure` post a `udev` post counts as the same collector run. */
-const RUN_WINDOW_MS = 15 * 60 * 1000;
+export const RUN_WINDOW_MS = 15 * 60 * 1000;
 
 export function idPathOf(udev: UdevResult): string | null {
   const { properties } = udev;

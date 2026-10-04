@@ -39,6 +39,7 @@ UINT64_MAX = 2**64 - 1
 MIN_SAFE_SERIAL_LENGTH = 4
 
 HEX16 = re.compile(r"[0-9a-fA-F]{16}")
+PLACEHOLDER_WWN = re.compile(r"5000000[0-9a-f]{9}")
 BARE_WWN = re.compile(r"3?(5[0-9a-f]{15})")
 WWN_TOKEN_PREFIXES = ("exp0x", "0x", "3", "")
 PREFIXED_WWN = re.compile(
@@ -48,7 +49,12 @@ PREFIXED_EUI = re.compile(r"eui\.([0-9a-fA-F]{32}|[0-9a-fA-F]{16})(?![0-9A-Za-z]
 EVENT_GUID = re.compile(r"^\s*\w*guid = 0x([0-9a-fA-F]+)\s*$", re.MULTILINE)
 ENCLOSURE_ID = re.compile(r"^[^\t/]+/id\t(.*)$", re.MULTILINE)
 UDEV_PROPERTY = re.compile(r"^E:([A-Z_]+)=(.*)$", re.MULTILINE)
-UDEV_SERIAL_KEYS = ("ID_SERIAL_SHORT", "ID_SCSI_SERIAL", "SCSI_IDENT_SERIAL")
+UDEV_SERIAL_KEYS = (
+    "ID_SERIAL_SHORT",
+    "ID_SCSI_SERIAL",
+    "SCSI_IDENT_SERIAL",
+    "ID_USB_SERIAL_SHORT",
+)
 UDEV_WWN_KEYS = (
     "ID_WWN",
     "ID_WWN_WITH_EXTENSION",
@@ -171,7 +177,12 @@ class Identifiers:
             return
         value = value.removeprefix("0x").removeprefix("naa.")
         if value.startswith("5") and HEX16.match(value):
-            self.wwns.add(value[:16])
+            self.add_wwn(value[:16])
+
+    def add_wwn(self, wwn):
+        """Bridges report a zero-OUI placeholder WWN; it identifies nothing, so it is kept."""
+        if not PLACEHOLDER_WWN.fullmatch(wwn):
+            self.wwns.add(wwn)
 
     def add_eui_string(self, value):
         if not isinstance(value, str):
@@ -186,7 +197,7 @@ class Identifiers:
             lower = serial.lower()
             wwn = BARE_WWN.fullmatch(lower)
             if wwn:
-                self.wwns.add(wwn.group(1))
+                self.add_wwn(wwn.group(1))
             if wwn or lower in self.wwns or lower in self.euis:
                 self.serials.discard(serial)
 
@@ -841,7 +852,7 @@ def unfaked_prefixed_wwns(root, fake_wwns):
     problems = []
     for path in sorted(p for p in root.rglob("*") if p.is_file()):
         for match in sorted(set(PREFIXED_WWN.findall(read_text(path)))):
-            if match.lower() not in fake_wwns:
+            if match.lower() not in fake_wwns and not PLACEHOLDER_WWN.fullmatch(match.lower()):
                 problems.append(f"{path.relative_to(root)}: unfaked prefixed WWN {match}")
     return problems
 

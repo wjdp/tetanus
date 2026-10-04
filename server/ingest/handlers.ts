@@ -1,4 +1,5 @@
 import type { IngestMeta, IngestSource } from "#shared/ingest";
+import { absorbBridgedTwins } from "~~/server/services/bridge";
 import {
   applyVdevIdConf,
   observeDiskFromSmartctl,
@@ -64,8 +65,9 @@ const smartctlXall: IngestHandler<SmartctlXallResult> = ({
 }) => {
   const observed = observeDiskFromSmartctl(hostId, meta, data, receivedAt);
   if (!observed) return;
+  const devicePath = data.device.name || meta.device || null;
   recordSmartReading({
-    disk: observed,
+    disk: absorbBridgedTwins(observed, hostId, devicePath, receivedAt),
     hostId,
     meta,
     parsed: data,

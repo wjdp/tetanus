@@ -18,6 +18,9 @@ export type DiskMatch = { diskId: number } | { conflict: number[] } | null;
 const SCRUTINY_NAMESPACE = "3ea22b35-682b-49fb-a655-abffed108e48";
 const INQUIRY_MODEL_LENGTH = 16;
 const PARTITION_SUFFIX = /-part\d+$/;
+// USB and SATA bridges report an all-zero or zero-OUI NAA WWN that identifies
+// nothing and would merge every disk behind the same kind of bridge.
+const PLACEHOLDER_WWN = /^(?:0+|5000000[0-9a-f]{9})$/;
 
 export function normaliseWwn(wwn: string): string {
   return wwn.trim().replace(/^0x/i, "").toLowerCase();
@@ -53,6 +56,10 @@ export function normaliseKey(kind: DiskKeyKind, value: string): string {
   }
 }
 
+export function isPlaceholderWwn(wwn: string): boolean {
+  return PLACEHOLDER_WWN.test(normaliseWwn(wwn));
+}
+
 export function isPartitionName(name: string): boolean {
   return PARTITION_SUFFIX.test(name);
 }
@@ -77,18 +84,40 @@ function modelSerialKey(
 }
 
 function wwnKey(wwn: string | null | undefined): DiskKey[] {
-  return present(wwn) ? [{ kind: "wwn", value: normaliseWwn(wwn) }] : [];
+  return present(wwn) && !isPlaceholderWwn(wwn)
+    ? [{ kind: "wwn", value: normaliseWwn(wwn) }]
+    : [];
+}
+
+function placeholderWwnOf(udev: UdevResult): string | null {
+  const wwn = udev.properties.ID_WWN;
+  return present(wwn) && isPlaceholderWwn(wwn) ? normaliseWwn(wwn) : null;
+}
+
+// Behind a placeholder WWN, the bridge's SCSI model and serial are what udev
+// shares with lsblk; ID_SERIAL and the scsi-3… and wwn-0x… names are built
+// from the placeholder itself.
+function bridgeKeys(udev: UdevResult, placeholder: string | null) {
+  if (placeholder === null) return [];
+  return modelSerialKey(
+    udev.properties.ID_MODEL,
+    udev.properties.ID_SCSI_SERIAL,
+  );
 }
 
 function udevKeys(udev: UdevResult): DiskKey[] {
   if (isUdevPartition(udev)) return [];
+  const placeholder = placeholderWwnOf(udev);
+  const isDerived = (value: string) =>
+    placeholder !== null && value.toLowerCase().includes(placeholder);
   const byId = udev.byId
-    .filter((name) => !isPartitionName(name))
+    .filter((name) => !isPartitionName(name) && !isDerived(name))
     .map((value): DiskKey => ({ kind: "by-id", value }));
   const serial = udev.properties.ID_SERIAL;
   return [
     ...wwnKey(udev.properties.ID_WWN),
-    ...(present(serial)
+    ...bridgeKeys(udev, placeholder),
+    ...(present(serial) && !isDerived(serial)
       ? [{ kind: "udev-serial" as const, value: serial.trim() }]
       : []),
     ...byId,
@@ -141,7 +170,7 @@ export function keysFromVdevTarget(target: string): DiskKey[] {
   const name = target.slice(target.lastIndexOf("/") + 1);
   const keys: DiskKey[] = [{ kind: "by-id", value: name }];
   const wwn = WWN_TARGET.exec(name);
-  if (wwn) keys.push({ kind: "wwn", value: normaliseWwn(wwn[1]) });
+  if (wwn) keys.push(...wwnKey(wwn[1]));
   const scsiSata = SCSI_SATA_TARGET.exec(name);
   if (scsiSata) keys.push(...modelSerialKey(scsiSata[1], scsiSata[2]));
   return keys;

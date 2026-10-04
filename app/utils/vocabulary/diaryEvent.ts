@@ -109,6 +109,7 @@ const DIARY_EVENT_ICON: Record<
   "alias-set": () => "i-lucide-tag",
   "alias-drift": () => "i-lucide-tag",
   "identity-conflict": () => "i-lucide-octagon-alert",
+  "bridge-linked": () => "i-lucide-link",
   "usage-changed": () => ENTITY_ICON.disk,
   "dataset-created": () => ENTITY_ICON.dataset,
   "dataset-destroyed": () => ENTITY_ICON.dataset,

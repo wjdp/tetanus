@@ -1,0 +1,151 @@
+{
+   "blockdevices": [
+      {
+         "name": "sda",
+         "type": "disk",
+         "size": 4000787030016,
+         "model": "EFRX-68N32N0",
+         "serial": "WH5552TQ8A19",
+         "wwn": "0x5000000000000001",
+         "tran": "usb",
+         "rota": true,
+         "maj:min": "8:0",
+         "path": "/dev/sda",
+         "pttype": "gpt",
+         "partuuid": null,
+         "fstype": null,
+         "zoned": "none",
+         "log-sec": 512,
+         "phy-sec": 4096,
+         "mountpoints": [
+             null
+         ],
+         "children": [
+            {
+               "name": "sda1",
+               "type": "part",
+               "size": 4000785104896,
+               "model": null,
+               "serial": null,
+               "wwn": "0x5000000000000001",
+               "tran": null,
+               "rota": true,
+               "maj:min": "8:1",
+               "path": "/dev/sda1",
+               "pttype": "gpt",
+               "partuuid": "b208a017-8377-4760-ae68-a964abc43765",
+               "fstype": "ext4",
+               "zoned": "none",
+               "log-sec": 512,
+               "phy-sec": 4096,
+               "mountpoints": [
+                   "/srv/backup"
+               ]
+            }
+         ]
+      },{
+         "name": "nvme0n1",
+         "type": "disk",
+         "size": 512110190592,
+         "model": "PCIe SSD",
+         "serial": "506891674I7979495221",
+         "wwn": "eui.6479a7d2fb90942d",
+         "tran": "nvme",
+         "rota": false,
+         "maj:min": "259:0",
+         "path": "/dev/nvme0n1",
+         "pttype": "gpt",
+         "partuuid": null,
+         "fstype": null,
+         "zoned": "none",
+         "log-sec": 4096,
+         "phy-sec": 4096,
+         "mountpoints": [
+             null
+         ],
+         "children": [
+            {
+               "name": "nvme0n1p1",
+               "type": "part",
+               "size": 1127219200,
+               "model": null,
+               "serial": null,
+               "wwn": "eui.6479a7d2fb90942d",
+               "tran": "nvme",
+               "rota": false,
+               "maj:min": "259:1",
+               "path": "/dev/nvme0n1p1",
+               "pttype": "gpt",
+               "partuuid": "85d2c4ab-b382-4751-97ae-613e475eccaa",
+               "fstype": "vfat",
+               "zoned": "none",
+               "log-sec": 4096,
+               "phy-sec": 4096,
+               "mountpoints": [
+                   "/boot/efi"
+               ]
+            },{
+               "name": "nvme0n1p2",
+               "type": "part",
+               "size": 2147483648,
+               "model": null,
+               "serial": null,
+               "wwn": "eui.6479a7d2fb90942d",
+               "tran": "nvme",
+               "rota": false,
+               "maj:min": "259:2",
+               "path": "/dev/nvme0n1p2",
+               "pttype": "gpt",
+               "partuuid": "f08013a3-88f0-4c96-8997-806a47e7eb6b",
+               "fstype": "ext4",
+               "zoned": "none",
+               "log-sec": 4096,
+               "phy-sec": 4096,
+               "mountpoints": [
+                   "/boot"
+               ]
+            },{
+               "name": "nvme0n1p3",
+               "type": "part",
+               "size": 85899345920,
+               "model": null,
+               "serial": null,
+               "wwn": "eui.6479a7d2fb90942d",
+               "tran": "nvme",
+               "rota": false,
+               "maj:min": "259:3",
+               "path": "/dev/nvme0n1p3",
+               "pttype": "gpt",
+               "partuuid": "3678b002-5281-4c00-9c7c-661eb1d13533",
+               "fstype": "ext4",
+               "zoned": "none",
+               "log-sec": 4096,
+               "phy-sec": 4096,
+               "mountpoints": [
+                   "/var/tmp", "/tmp", "/"
+               ]
+            },{
+               "name": "nvme0n1p4",
+               "type": "part",
+               "size": 236223201280,
+               "model": null,
+               "serial": null,
+               "wwn": "eui.6479a7d2fb90942d",
+               "tran": "nvme",
+               "rota": false,
+               "maj:min": "259:4",
+               "path": "/dev/nvme0n1p4",
+               "pttype": "gpt",
+               "partuuid": "f0287166-6e68-4e81-90d0-8668b1f70eab",
+               "fstype": "zfs_member",
+               "zoned": "none",
+               "log-sec": 4096,
+               "phy-sec": 4096,
+               "mountpoints": [
+                   null
+               ]
+            }
+         ]
+      }
+   ]
+}

@@ -1,0 +1,150 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      4
+    ],
+    "pre_release": false,
+    "svn_revision": "5530",
+    "platform_info": "x86_64-linux-6.8.0-139-generic",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--xall",
+      "--json",
+      "-n",
+      "standby",
+      "-d",
+      "nvme",
+      "/dev/nvme0"
+    ],
+    "exit_status": 0
+  },
+  "local_time": {
+    "time_t": 1791136848,
+    "asctime": "Sun Oct  4 19:00:48 2026 BST"
+  },
+  "device": {
+    "name": "/dev/nvme0",
+    "info_name": "/dev/nvme0",
+    "type": "nvme",
+    "protocol": "NVMe"
+  },
+  "model_name": "PCIe SSD",
+  "serial_number": "506891674I7979495221",
+  "firmware_version": "EHFM90.1",
+  "nvme_pci_vendor": {
+    "id": 6535,
+    "subsystem_id": 6535
+  },
+  "nvme_ieee_oui_identifier": 6584743,
+  "nvme_total_capacity": 512110190592,
+  "nvme_unallocated_capacity": 0,
+  "nvme_controller_id": 0,
+  "nvme_version": {
+    "string": "1.4",
+    "value": 66560
+  },
+  "nvme_number_of_namespaces": 1,
+  "nvme_namespaces": [
+    {
+      "id": 1,
+      "size": {
+        "blocks": 125026902,
+        "bytes": 512110190592
+      },
+      "capacity": {
+        "blocks": 125026902,
+        "bytes": 512110190592
+      },
+      "utilization": {
+        "blocks": 125026902,
+        "bytes": 512110190592
+      },
+      "formatted_lba_size": 4096,
+      "eui64": {
+        "oui": 6584743,
+        "ext_id": 906163688493
+      }
+    }
+  ],
+  "user_capacity": {
+    "blocks": 125026902,
+    "bytes": 512110190592
+  },
+  "logical_block_size": 4096,
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "smart_status": {
+    "passed": true,
+    "nvme": {
+      "value": 0
+    }
+  },
+  "nvme_smart_health_information_log": {
+    "critical_warning": 0,
+    "temperature": 57,
+    "available_spare": 100,
+    "available_spare_threshold": 50,
+    "percentage_used": 6,
+    "data_units_read": 17849589,
+    "data_units_written": 50678527,
+    "host_reads": 183124553,
+    "host_writes": 1572774348,
+    "controller_busy_time": 8313,
+    "power_cycles": 46,
+    "power_on_hours": 23203,
+    "unsafe_shutdowns": 22,
+    "media_errors": 0,
+    "num_err_log_entries": 569,
+    "warning_temp_time": 0,
+    "critical_comp_time": 0,
+    "temperature_sensors": [
+      80
+    ]
+  },
+  "temperature": {
+    "current": 57
+  },
+  "power_cycle_count": 46,
+  "power_on_time": {
+    "hours": 23203
+  },
+  "nvme_error_information_log": {
+    "size": 63,
+    "read": 16,
+    "unread": 0,
+    "table": [
+      {
+        "error_count": 569,
+        "submission_queue_id": 0,
+        "command_id": 16,
+        "status_field": {
+          "value": 8194,
+          "do_not_retry": false,
+          "status_code_type": 0,
+          "status_code": 2,
+          "string": "Invalid Field in Command"
+        },
+        "phase_tag": true,
+        "parm_error_location": 40,
+        "lba": {
+          "value": 0
+        },
+        "nsid": 0
+      }
+    ]
+  },
+  "nvme_self_test_log": {
+    "current_self_test_operation": {
+      "value": 0,
+      "string": "No self-test in progress"
+    }
+  }
+}

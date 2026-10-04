@@ -4,6 +4,7 @@ import { parse as parseSmartctl } from "~~/server/ingest/smartctl-xall";
 import { parse as parseUdev } from "~~/server/ingest/udev";
 import {
   extractKeys,
+  isPlaceholderWwn,
   keysFromVdevTarget,
   matchDisks,
   normaliseModelSerial,
@@ -107,6 +108,25 @@ describe("extractKeys", () => {
     expect(extractKeys({ source: "udev", udev: udev("b8-17") })).toEqual([]);
   });
 
+  it("drops a USB bridge's placeholder wwn and the names udev builds from it", () => {
+    const bridged = parseUdev(
+      readFixture("bugs/usb-bridge/raw/usbhost/udev/b8-0.txt"),
+      { device: "8:0" },
+    ).data;
+    expect(extractKeys({ source: "udev", udev: bridged })).toEqual([
+      { kind: "model-serial", value: "EFRX-68N32N0|WH5552TQ8A19" },
+      { kind: "by-id", value: "scsi-SWDC_WD40_EFRX-68N32N0_WH5552TQ8A19" },
+      { kind: "by-id", value: "usb-WDC_WD40_EFRX-68N32N0_93N6QK5700FQ-0:0" },
+    ]);
+    const [sda] = parseLsblk(
+      readFixture("bugs/usb-bridge/raw/usbhost/lsblk.json"),
+      {},
+    ).data.disks;
+    expect(extractKeys({ source: "lsblk", disk: sda })).toEqual([
+      { kind: "model-serial", value: "EFRX-68N32N0|WH5552TQ8A19" },
+    ]);
+  });
+
   it("agrees across sources for the same disk", () => {
     const fromSmartctl = extractKeys({
       source: "smartctl-xall",
@@ -120,6 +140,18 @@ describe("extractKeys", () => {
     expect(fromLsblk).toEqual(fromSmartctl);
     expect(fromUdev).toContainEqual(fromSmartctl[0]);
   });
+});
+
+describe("isPlaceholderWwn", () => {
+  it.each(["0x5000000000000001", "5000000d238fe6ca", "0000000000000000"])(
+    "treats %s as a placeholder",
+    (wwn) => expect(isPlaceholderWwn(wwn)).toBe(true),
+  );
+
+  it.each(["5000cca5f853b4e6", "50014eef5e68017f", "eui.6479a7d2fb90942d"])(
+    "keeps %s",
+    (wwn) => expect(isPlaceholderWwn(wwn)).toBe(false),
+  );
 });
 
 describe("keysFromVdevTarget", () => {

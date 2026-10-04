@@ -1,0 +1,5 @@
+zfs=zfs-2.2.2-0ubuntu9.5
+zpool=zfs-2.2.2-0ubuntu9.5
+kernel=6.8.0-139-generic
+smartctl=smartctl 7.4 2023-08-01 r5530 [x86_64-linux-6.8.0-139-generic] (local build)
+os=Ubuntu 24.04.3 LTS

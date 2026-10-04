@@ -1,0 +1,61 @@
+{
+  "host": "usbhost",
+  "manifest": [
+    {
+      "file": "versions.txt",
+      "source": "versions",
+      "device": null,
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-10-04T18:40:10.522Z"
+    },
+    {
+      "file": "lsblk.json",
+      "source": "lsblk",
+      "device": null,
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-10-04T18:00:47.753Z"
+    },
+    {
+      "file": "udev/b259-0.txt",
+      "source": "udev",
+      "device": "b259:0",
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-10-04T18:00:48.065Z"
+    },
+    {
+      "file": "udev/b8-0.txt",
+      "source": "udev",
+      "device": "b8:0",
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-10-04T18:00:47.900Z"
+    },
+    {
+      "file": "smartctl-scan.json",
+      "source": "smartctl-scan",
+      "device": null,
+      "type": null,
+      "exitStatus": null,
+      "receivedAt": "2026-10-04T18:00:48.384Z"
+    },
+    {
+      "file": "smartctl/xall-nvme0-nvme.json",
+      "source": "smartctl-xall",
+      "device": "/dev/nvme0",
+      "type": "nvme",
+      "exitStatus": 0,
+      "receivedAt": "2026-10-04T18:00:49.047Z"
+    },
+    {
+      "file": "smartctl/xall-sda.json",
+      "source": "smartctl-xall",
+      "device": "/dev/sda",
+      "type": null,
+      "exitStatus": 0,
+      "receivedAt": "2026-10-04T18:00:48.854Z"
+    }
+  ]
+}

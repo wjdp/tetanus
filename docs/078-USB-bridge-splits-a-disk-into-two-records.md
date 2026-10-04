@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # USB bridge splits a disk into two records
@@ -39,22 +39,25 @@ row. That's the wrong-merge case [069](069-Merge-and-split-disk-records.md) desc
 
 ## Fix
 
-- Reject placeholder WWNs as keys: a NAA-5 value with a zero OUI and a tiny serial,
-  e.g. `5000000000000001`. Optionally, also reject any WWN that is already held by a
-  disk with a different model-serial.
-- Link sightings by device path: when a smartctl sighting and an lsblk/udev sighting on
-  the same host share a device path within one collector run, they're the same disk.
-  smartctl's identity wins, and the lsblk/udev keys are attached to that disk. This has
-  to work in either payload order. Today lsblk arrives first and creates the phantom.
-- Clean up existing phantoms: migrate their keys and usage onto the smartctl disk, then
-  delete the phantom row. Either do this as a one-off repair, or depend on
-  [069](069-Merge-and-split-disk-records.md).
-- Fixture: capture lsblk, udev and `smartctl -x -d sat` output from a USB-bridged disk.
-  Use placeholder serials and WWNs.
+Done:
 
-## Open questions
-
-- Is device-path linking safe across a hot-swap mid-run? Should it require that both
-  sightings come from the same `CollectorRun`?
-- Should the bridge's `usb-…` by-id names stay as keys once they're linked? They're
-  stable for that bridge, so they're useful when smartctl can't see through it.
+- `isPlaceholderWwn` (`server/services/identity.ts`): an all-zero WWN, or NAA 5 with a
+  zero OUI, isn't a key. Neither are the udev names built from it (`ID_SERIAL`
+  `3<wwn>`, `scsi-3<wwn>`, `wwn-0x<wwn>`). Behind a placeholder, udev keys on SCSI
+  `ID_MODEL` + `ID_SCSI_SERIAL` instead. That matches lsblk's model-serial, because the
+  udev payload has no `DEVNAME` and would otherwise create a third, pathless row.
+- `absorbBridgedTwins` (`server/services/bridge.ts`) runs after each smartctl sighting.
+  A disk on the same host and device path, last seen within `RUN_WINDOW_MS` (15 min),
+  with `link = usb`, never seen by smartctl, the same capacity or none, and nothing
+  from the user (notes, inventory, override, disposal, replacement, faults) is that
+  disk's bridge twin. Its keys, vdevs and diary move across, its `disk-appeared` entry
+  is dropped, its usage, link, alias and location fill the gaps, and a `bridge-linked`
+  entry records the link. After that, lsblk and udev match the drive directly.
+- Linking only on smartctl means a hot-swap can't attach a new disk's bridge keys to
+  the old drive: the twin is absorbed by whichever drive smartctl sees at that path in
+  the same run. If smartctl arrives before lsblk on the first run, the link happens on
+  the next run.
+- Migration `0028_placeholder_wwn_keys` deletes stored placeholder keys. Existing
+  twins are absorbed on the host's next collector run.
+- Fixture `test/fixtures/bugs/usb-bridge` (scrubbed). `bin/scrub-fixtures.py` keeps
+  placeholder WWNs and fakes `ID_USB_SERIAL_SHORT`.

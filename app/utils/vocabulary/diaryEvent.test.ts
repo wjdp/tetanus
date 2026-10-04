@@ -28,6 +28,7 @@ const FIXED_ICONS: Partial<Record<DiaryEventType, string>> = {
   "alias-set": "i-lucide-tag",
   "alias-drift": "i-lucide-tag",
   "identity-conflict": "i-lucide-octagon-alert",
+  "bridge-linked": "i-lucide-link",
   "usage-changed": "i-lucide-hard-drive",
   "dataset-created": "i-lucide-folder-tree",
   "dataset-destroyed": "i-lucide-folder-tree",
