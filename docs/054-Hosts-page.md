@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Hosts page
@@ -78,8 +78,13 @@ Matching tests: `fault.test.ts`, `navigation.test.ts`, `faults.test.ts`,
 
 ## Code
 
-- `app/components/host/`: `HostTable`, `HostSettingsForm`, `HostCollectorPanel`,
-  `HostFaultSummary`; tool-version and collector-badge helpers move to a tested `.ts`.
-- Pages: `app/pages/hosts/index.vue`, `[id].vue`, `add.vue`, each with a test; carry
-  over the cases from `settings/hosts.test.ts`.
-- `host/README.md`: point "settings page" references at the hosts pages.
+- `app/pages/hosts/`: `index.vue` (table kept inline), `[id].vue`, `add.vue`, each
+  with a test; the old `settings/hosts.test.ts` cases moved to `index.test.ts`.
+- `app/components/host/`: `Faults`, `SettingsForm`, `CollectorPanel`; collector badge
+  and tool-version helpers in `collector.ts`, per-subject fault counts in
+  `faultSummary.ts`.
+- `TopologyHostTopology` split out of `TopologyHostSection` so the detail page shows
+  the same pool cards and other-disk groups as Topology.
+- `DiskDiary` became `DiaryPanel` (any subject type), used by disk and host pages.
+- Command palette: Hosts group and an Add host action (hidden in the demo).
+- `host/README.md` and `README.md` point at Hosts → Add host.
