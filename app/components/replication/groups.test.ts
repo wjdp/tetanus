@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { groupReplications, parentPattern } from "./groups";
+import { groupReplications, statusSummary, targetParts } from "./groups";
 import { endpoint, replicationRow } from "./testFixtures";
-
-describe("parentPattern", () => {
-  it("replaces the last segment with a wildcard", () => {
-    expect(parentPattern("tank/media/photos")).toBe("tank/media/*");
-    expect(parentPattern("tank")).toBe("tank");
-  });
-});
 
 describe("groupReplications", () => {
   const rows = [
@@ -28,23 +21,60 @@ describe("groupReplications", () => {
     }),
   ];
 
-  it("groups by source and target host and parent, worst status first", () => {
+  it("groups by source host and target host, worst status first", () => {
     const groups = groupReplications(rows);
 
     expect(groups.map((group) => group.rows.map((row) => row.id))).toEqual([
-      [1, 2],
+      [2, 1, 4],
       [3],
-      [4],
     ]);
     expect(groups[0]).toMatchObject({
-      source: { host: "atlas", parent: "tank/*" },
-      target: { host: "styx", parent: "vault/replica/tank/*" },
+      sourceHost: "atlas",
+      targetHost: "styx",
       status: "late",
     });
-    expect(groups[1]).toMatchObject({ source: null, status: "learning" });
+    expect(groups[1]).toMatchObject({ sourceHost: null, status: "learning" });
   });
 
   it("is empty without rows", () => {
     expect(groupReplications([])).toEqual([]);
+  });
+});
+
+describe("targetParts", () => {
+  it("dims the prefix a target adds in front of the source path", () => {
+    expect(
+      targetParts({
+        source: endpoint("atlas", "tank/a"),
+        target: endpoint("styx", "vault/replica/tank/a"),
+      }),
+    ).toEqual({ prefix: "vault/replica/", mirrored: "tank/a" });
+  });
+
+  it("leaves a target that does not mirror its source whole", () => {
+    expect(
+      targetParts({
+        source: endpoint("atlas", "tank/a"),
+        target: endpoint("styx", "vault/b"),
+      }),
+    ).toEqual({ prefix: "", mirrored: "vault/b" });
+    expect(
+      targetParts({ source: null, target: endpoint("styx", "vault/b") }),
+    ).toEqual({ prefix: "", mirrored: "vault/b" });
+  });
+});
+
+describe("statusSummary", () => {
+  it("counts the statuses worth a look, worst first", () => {
+    expect(
+      statusSummary([
+        replicationRow(1, { status: "late" }),
+        replicationRow(2, { status: "ok" }),
+        replicationRow(3, { status: "stalled" }),
+        replicationRow(4, { status: "late" }),
+        replicationRow(5, { status: "archived" }),
+      ]),
+    ).toBe("1 stalled · 2 late");
+    expect(statusSummary([replicationRow(1)])).toBe("");
   });
 });

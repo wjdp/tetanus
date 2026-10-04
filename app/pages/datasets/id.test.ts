@@ -102,9 +102,7 @@ describe("dataset page", () => {
     expect(page.text()).toContain("Moved photos off the old array");
 
     const replications = page.get('[data-testid="dataset-replications"]');
-    expect(replications.get("h3").text()).toMatch(
-      /atlas\s*tank\/media\/\*\s*styx\s*vault\/replica\/tank\/media\/\*/,
-    );
+    expect(replications.get("tbody th").text()).toMatch(/atlas\s*styx\s*1/);
     expect(replications.get('a[href="/replications/8"]').text()).toBe(
       "vault/replica/tank/media/photos",
     );

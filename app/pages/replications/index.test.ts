@@ -47,34 +47,59 @@ beforeEach(() => {
 });
 
 describe("replications page", () => {
-  it("groups rows by source and target parent with the worst status", async () => {
+  it("lists every group in one table, worst first, with a summary", async () => {
     const page = await mountSuspended(ReplicationsPage);
-    const groups = page.findAll('[data-testid="replication-group"]');
 
+    expect(page.findAll("table")).toHaveLength(1);
+    expect(page.get('[data-testid="replications-summary"]').text()).toBe(
+      "3 replications · 1 stalled · 1 late",
+    );
+    const groups = page.findAll('[data-testid="replication-group"]');
     expect(groups.map((group) => group.attributes("data-status"))).toEqual([
-      "late",
       "stalled",
     ]);
-    expect(groups[0].get("h3").text()).toMatch(
-      /atlas\s*tank\/\*\s*styx\s*vault\/replica\/tank\/\*\s*2/,
+    expect(groups[0].get("th").text()).toMatch(
+      /atlas\s*styx\s*3\s*1 stalled · 1 late/,
     );
-    const firstRows = groups[0].findAll("tbody tr");
-    expect(firstRows.map((row) => row.text())).toEqual([
-      expect.stringContaining("tank/media"),
-      expect.stringContaining("tank/music"),
-    ]);
-    expect(firstRows[0].text()).toContain("hourly");
-    expect(firstRows[0].text()).toContain("30 min ago");
-    expect(firstRows[0].text()).toContain("in 30 min");
-    expect(firstRows[1].text()).toContain("~daily");
-    expect(firstRows[1].text()).toContain("overdue 14 h");
-    expect(firstRows[1].find(".text-warning").exists()).toBe(true);
 
-    const stalled = groups[1].get("tbody tr");
+    const rowsShown = groups[0].findAll('[data-testid="replication-row"]');
+    expect(rowsShown.map((row) => row.text())).toEqual([
+      expect.stringContaining("tank/backups/laptops"),
+      expect.stringContaining("tank/music"),
+      expect.stringContaining("tank/media"),
+    ]);
+    const [stalled, late, ok] = rowsShown;
     expect(stalled.text()).toContain("Stalled");
     expect(stalled.find('[data-testid="cadence-manual"]').exists()).toBe(true);
     expect(stalled.get('a[href="/replications/2"]').text()).toBe(
       "vault/replica/tank/backups/laptops",
+    );
+    expect(late.text()).toContain("~daily");
+    expect(late.text()).toContain("overdue 14 h");
+    expect(late.find(".text-warning").exists()).toBe(true);
+    expect(ok.text()).toContain("hourly");
+    expect(ok.text()).toContain("30 min ago");
+    expect(ok.text()).toContain("in 30 min");
+    expect(ok.text()).not.toContain("OK");
+  });
+
+  it("drops the status column while every replication is on schedule", async () => {
+    rows = [
+      replicationRow(1),
+      replicationRow(5, { lastSyncAt: hoursAgo(0.2) }),
+    ];
+    const page = await mountSuspended(ReplicationsPage);
+
+    expect(page.findAll("thead th").map((th) => th.text())).toEqual([
+      "Status",
+      "Source",
+      "Target",
+      "Cadence",
+      "Last sync",
+      "Next due",
+    ]);
+    expect(page.get('[data-testid="replications-summary"]').text()).toBe(
+      "2 replications · all on schedule",
     );
   });
 
@@ -86,7 +111,7 @@ describe("replications page", () => {
     expect(archived.find("table").exists()).toBe(false);
 
     await archived.get('[data-testid="archived-toggle"]').trigger("click");
-    expect(archived.get("h3").text()).toContain("source not monitored");
+    expect(archived.get("tbody th").text()).toContain("source not monitored");
     expect(archived.text()).toContain("vault/old/root");
   });
 

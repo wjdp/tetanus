@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
+import { statusSummary } from "~/components/replication/groups";
 
 useSeoMeta({ title: getPageTitle("Replications") });
 
@@ -28,13 +29,28 @@ const archived = computed(() =>
 );
 
 const archivedOpen = ref(false);
+
+const summary = computed(() => {
+  const count = active.value.length;
+  const problems = statusSummary(active.value);
+  return `${count} ${count === 1 ? "replication" : "replications"} · ${problems || "all on schedule"}`;
+});
 </script>
 
 <template>
   <AppPanel title="Replications" class="flex max-w-7xl flex-col gap-6">
-    <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
-      Replications
-    </h1>
+    <div class="flex flex-col gap-1">
+      <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
+        Replications
+      </h1>
+      <p
+        v-if="active.length"
+        class="text-muted text-sm"
+        data-testid="replications-summary"
+      >
+        {{ summary }}
+      </p>
+    </div>
 
     <div
       v-if="replications.length === 0 && status !== 'pending'"

@@ -16,7 +16,8 @@ export function dueText(
 ): string {
   if (!row.dueAt || row.status === "archived") return "—";
   const dueIn = Date.parse(row.dueAt) - now;
-  return dueIn >= 0
-    ? `in ${formatDuration(dueIn)}`
+  if (dueIn >= 0) return `in ${formatDuration(dueIn)}`;
+  return row.status === "ok"
+    ? `due ${formatDuration(-dueIn)} ago`
     : `overdue ${formatDuration(-dueIn)}`;
 }

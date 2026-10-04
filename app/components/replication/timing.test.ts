@@ -17,6 +17,12 @@ describe("dueText", () => {
     );
   });
 
+  it("says due rather than overdue while still within the late threshold", () => {
+    expect(dueText({ dueAt: hoursAgo(1), status: "ok" }, NOW)).toBe(
+      "due 1 h ago",
+    );
+  });
+
   it("has nothing to say while learning or archived", () => {
     expect(dueText({ dueAt: null, status: "learning" }, NOW)).toBe("—");
     expect(dueText({ dueAt: hoursAgo(5), status: "archived" }, NOW)).toBe("—");
