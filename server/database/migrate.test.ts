@@ -38,7 +38,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 26;
+const MIGRATION_COUNT = 27;
 
 const openConnections: Database.Database[] = [];
 
@@ -172,7 +172,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 9
+            ORDER BY created_at DESC LIMIT 10
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -196,6 +196,7 @@ describe("0009_host_collector_version", () => {
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
       "0025_bay_mapping",
+      "0026_diary_titles_without_ids",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -259,7 +260,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 17
+            ORDER BY created_at DESC LIMIT 18
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -289,6 +290,7 @@ describe("0009_host_collector_version", () => {
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
       "0025_bay_mapping",
+      "0026_diary_titles_without_ids",
     ]);
     expect(
       sqlite
@@ -326,7 +328,7 @@ describe("0018_vdev_role_backfill", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 8
+            ORDER BY created_at DESC LIMIT 9
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -351,6 +353,7 @@ describe("0018_vdev_role_backfill", () => {
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
       "0025_bay_mapping",
+      "0026_diary_titles_without_ids",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -385,7 +388,7 @@ describe("0022_disk_disposal", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 4
+            ORDER BY created_at DESC LIMIT 5
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -405,6 +408,7 @@ describe("0022_disk_disposal", () => {
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
       "0025_bay_mapping",
+      "0026_diary_titles_without_ids",
     ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
@@ -459,7 +463,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 3
+            ORDER BY created_at DESC LIMIT 4
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -479,6 +483,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       "0023_guid_saturation_and_unattributed_history",
       "0024_replication",
       "0025_bay_mapping",
+      "0026_diary_titles_without_ids",
     ]);
     expect(
       sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),
@@ -488,6 +493,36 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
     ]);
     expect(sqlite.prepare("SELECT text FROM PoolHistory").all()).toEqual([
       { text: "attributed" },
+    ]);
+  });
+});
+
+describe("0026_diary_titles_without_ids", () => {
+  it("names disks and hosts in titles that used their ids", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DELETE FROM __drizzle_migrations
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 1
+        );
+      INSERT INTO Disk (alias, model, serial, firstSeenAt)
+        VALUES ('K1', NULL, NULL, 0), (NULL, 'ST18000NM', 'ZR2', 0);
+      INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title, data)
+        VALUES
+          ('disk', 1, 0, 'auto', 'replaced-by', 'replaced by disk 2', '{"diskId":2}'),
+          ('disk', 2, 0, 'auto', 'disk-appeared', 'appeared on host 7', '{"hostId":7}');
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0026_diary_titles_without_ids",
+    ]);
+    expect(
+      sqlite.prepare("SELECT title FROM DiaryEntry ORDER BY id").all(),
+    ).toEqual([
+      { title: "replaced by ST18000NM ZR2" },
+      { title: "appeared on unknown host" },
     ]);
   });
 });
