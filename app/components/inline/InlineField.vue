@@ -16,6 +16,7 @@ const props = withDefaults(
     type: InventoryFieldType | "alias";
     value: InlineValue;
     label?: string;
+    ariaLabel?: string;
     items?: InlineItem[];
     placeholder?: string;
     format?: (value: InlineValue) => string;
@@ -26,6 +27,7 @@ const props = withDefaults(
   }>(),
   {
     label: undefined,
+    ariaLabel: undefined,
     items: undefined,
     placeholder: "—",
     format: undefined,
@@ -101,7 +103,9 @@ const inputType = computed(() => {
   return "text";
 });
 
-const ariaLabel = computed(() => props.label ?? props.type);
+const controlLabel = computed(
+  () => props.ariaLabel ?? props.label ?? props.type,
+);
 
 const input = useTemplateRef<{ inputRef?: HTMLInputElement | null }>("input");
 
@@ -228,7 +232,7 @@ const statusIcon = computed(() => {
         :items="selectItems"
         :open="selectOpen"
         :size="compact ? 'xs' : 'sm'"
-        :aria-label="ariaLabel"
+        :aria-label="controlLabel"
         class="w-full"
         @update:model-value="pick"
         @update:open="onSelectOpen"
@@ -241,7 +245,7 @@ const statusIcon = computed(() => {
         :min="type === 'money' ? 0 : undefined"
         :step="type === 'money' ? currencyStep(currency) : undefined"
         :size="compact ? 'xs' : 'sm'"
-        :aria-label="ariaLabel"
+        :aria-label="controlLabel"
         :ui="{ leading: 'pointer-events-none' }"
         :class="{ 'font-mono': type === 'alias' }"
         class="w-full"
@@ -272,7 +276,7 @@ const statusIcon = computed(() => {
       <button
         type="button"
         class="group focus-visible:outline-primary inline-flex min-w-0 items-center gap-1.5 rounded-sm text-start focus-visible:outline-2"
-        :aria-label="label ? `Edit ${label}` : undefined"
+        :aria-label="`Edit ${controlLabel}`"
         data-testid="inline-display"
         @click="startEdit"
       >

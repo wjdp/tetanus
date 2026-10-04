@@ -1,21 +1,16 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from "@nuxt/ui";
 import { STATE_OVERRIDES, type StateOverride } from "#shared/disk";
 import { usageDetail } from "#shared/usage";
-import { diskLabel } from "./displayName";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{ disk: DiskDetail }>();
 const emit = defineEmits<{ updated: [disk: DiskDetail] }>();
 
-const AUTOMATIC = "automatic";
-type Choice = StateOverride | typeof AUTOMATIC;
-
 const toast = useToast();
 const saving = ref(false);
-const disposeOpen = ref(false);
 
 const isDisposed = computed(() => !!props.disk.disposal);
-const label = computed(() => diskLabel(props.disk));
 
 const SYSTEM_MOUNT_PATHS = ["/", "/boot"];
 
@@ -28,23 +23,13 @@ const inferredFromPath = computed(() => {
   return SYSTEM_MOUNT_PATHS.find((path) => paths.includes(path)) ?? "/";
 });
 
-const items = computed(() => [
-  { label: `Automatic (${props.disk.inferredState})`, value: AUTOMATIC },
-  ...STATE_OVERRIDES.map((state) => ({ label: state, value: state })),
-]);
-
-const choice = computed<Choice>(() => props.disk.stateOverride ?? AUTOMATIC);
-
-const isStateOverride = (value: string): value is StateOverride =>
-  (STATE_OVERRIDES as readonly string[]).includes(value);
-
-const setOverride = async (value: string) => {
-  if (value === choice.value) return;
+const setOverride = async (stateOverride: StateOverride | null) => {
+  if (stateOverride === props.disk.stateOverride) return;
   saving.value = true;
   try {
     const updated = await $fetch<DiskDetail>(`/api/disks/${props.disk.id}`, {
       method: "PATCH",
-      body: { stateOverride: isStateOverride(value) ? value : null },
+      body: { stateOverride },
     });
     emit("updated", updated);
   } catch {
@@ -53,15 +38,46 @@ const setOverride = async (value: string) => {
     saving.value = false;
   }
 };
+
+const items = computed<DropdownMenuItem[]>(() => [
+  {
+    label: `Automatic (${props.disk.inferredState})`,
+    type: "checkbox",
+    checked: props.disk.stateOverride === null,
+    onSelect: () => setOverride(null),
+  },
+  ...STATE_OVERRIDES.map((state) => ({
+    label: state,
+    type: "checkbox" as const,
+    checked: props.disk.stateOverride === state,
+    onSelect: () => setOverride(state),
+  })),
+]);
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2">
-    <LifecycleBadge
-      :state="disk.state"
-      :overridden="!!disk.stateOverride"
-      :as-of="disk.stateAsOf"
-    />
+  <span class="inline-flex flex-wrap items-center gap-2">
+    <UDropdownMenu :items="items" :disabled="isDisposed">
+        <button
+          type="button"
+          class="inline-flex items-center gap-0.5 rounded-md disabled:cursor-not-allowed"
+          :disabled="isDisposed"
+          :title="isDisposed ? 'Undo the disposal to change the state' : undefined"
+          aria-label="State override"
+          data-testid="lifecycle-menu"
+        >
+          <LifecycleBadge
+            :state="disk.state"
+            :overridden="!!disk.stateOverride"
+            :as-of="disk.stateAsOf"
+          />
+          <UIcon
+            :name="saving ? 'i-lucide-loader-circle' : 'i-lucide-chevron-down'"
+            class="text-dimmed size-4"
+            :class="{ 'animate-spin': saving }"
+          />
+        </button>
+    </UDropdownMenu>
     <span v-if="disk.stateOverride" class="text-dimmed text-xs">
       inferred {{ disk.inferredState }}
     </span>
@@ -84,35 +100,5 @@ const setOverride = async (value: string) => {
       variant="subtle"
       :label="disk.purpose"
     />
-    <USelect
-      :model-value="choice"
-      :items="items"
-      :loading="saving"
-      :disabled="isDisposed"
-      :title="isDisposed ? 'Undo the disposal to change the state' : undefined"
-      size="xs"
-      color="neutral"
-      variant="ghost"
-      aria-label="State override"
-      class="w-40"
-      @update:model-value="setOverride"
-    />
-    <template v-if="!isDisposed">
-      <UButton
-        size="xs"
-        color="neutral"
-        variant="outline"
-        icon="i-lucide-package-x"
-        label="Dispose…"
-        data-testid="dispose-disk"
-        @click="disposeOpen = true"
-      />
-      <DiskDisposeModal
-        v-model:open="disposeOpen"
-        :disk="disk"
-        :label="label"
-        @updated="emit('updated', $event)"
-      />
-    </template>
-  </div>
+  </span>
 </template>

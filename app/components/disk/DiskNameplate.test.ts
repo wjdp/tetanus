@@ -38,6 +38,7 @@ const disk = (overrides: Partial<DiskDetail> = {}) =>
     purpose: null,
     purposeInferred: false,
     membership: null,
+    faultCounts: { error: 0, warning: 0, acknowledged: 0 },
     ...overrides,
   }) as unknown as DiskDetail;
 
@@ -45,7 +46,6 @@ const mountNameplate = (overrides: Partial<DiskDetail> = {}) =>
   mountSuspended(DiskNameplate, { props: { disk: disk(overrides) } });
 
 const smartStatus = '[data-testid="nameplate-smart-status"]';
-const temperature = '[data-testid="nameplate-temperature"]';
 
 describe("DiskNameplate", () => {
   it("links the disk it replaces", async () => {
@@ -91,33 +91,50 @@ describe("DiskNameplate", () => {
     expect(glyph.classes()).toContain("text-muted");
   });
 
-  it("leaves a cool temperature in the default colour", async () => {
-    const reading = (await mountNameplate()).get(temperature);
+  it("shows usage, the pool breadcrumb with its state, and links the faults", async () => {
+    const nameplate = await mountNameplate({
+      membership: {
+        poolId: 3,
+        poolName: "tank",
+        poolArchived: false,
+        vdevName: "/dev/disk/by-vdev/K2-part1",
+        groupName: "raidz2-0",
+        groupType: "raidz2",
+        vdevState: "ONLINE",
+      },
+      faultCounts: { error: 1, warning: 0, acknowledged: 2 },
+    });
 
-    expect(reading.text()).toBe("34 °C");
-    expect(reading.classes()).not.toContain("text-warning");
-    expect(reading.classes()).not.toContain("text-error");
-  });
-
-  it.each([
-    [48, "text-warning"],
-    [57, "text-error"],
-  ])("colours %i °C with %s", async (celsius, textClass) => {
-    const reading = (await mountNameplate({ latestTemp: celsius })).get(
-      temperature,
+    const strip = nameplate.get('[data-testid="status-strip"]');
+    expect(strip.get('[data-testid="disk-usage"]').text()).toBe("tank");
+    expect(strip.get('[data-testid="pool-breadcrumb"]').text()).toMatch(
+      /tank\s*raidz2-0\s*K2-part1\s*ONLINE/,
     );
-
-    expect(reading.classes()).toContain(textClass);
+    const faults = strip.get('[data-testid="disk-fault-badges"]');
+    expect(faults.attributes("href")).toBe("/faults?subject=disk:7");
+    expect(
+      faults.findAll("[data-bucket]").map((badge) => badge.text()),
+    ).toEqual(["1", "2"]);
   });
 
-  it("uses the disk's own thresholds", async () => {
-    const reading = (
-      await mountNameplate({
-        latestTemp: 50,
-        tempThresholds: { warning: 60, error: 70 },
-      })
-    ).get(temperature);
+  it("hides the breadcrumb and fault badges when there are none", async () => {
+    const strip = (await mountNameplate()).get('[data-testid="status-strip"]');
+    expect(strip.find('[data-testid="pool-breadcrumb"]').exists()).toBe(false);
+    expect(strip.find('[data-testid="disk-fault-badges"]').exists()).toBe(
+      false,
+    );
+  });
 
-    expect(reading.classes()).not.toContain("text-warning");
+  it("links the SMART status to the SMART tab", async () => {
+    const link = (await mountNameplate()).get(smartStatus);
+    expect(link.attributes("href")).toContain("tab=smart");
+  });
+
+  it("edits the alias in place, dimmed unnamed when blank", async () => {
+    const blank = await mountNameplate({ alias: null, purpose: null });
+    const alias = blank.get('[data-testid="nameplate-alias"] button');
+    expect(alias.text()).toBe("unnamed");
+    expect(alias.get("span").classes()).toContain("italic");
+    expect(alias.attributes("aria-label")).toBe("Edit Alias");
   });
 });
