@@ -10,12 +10,16 @@ export const INVENTORY_FIELDS = [
     type: "enum",
     values: PURPOSES,
     group: "placement",
+    description:
+      "Only needed when detection gets it wrong. System marks a boot or OS disk that was not spotted from its / or /boot mount; other labels a disk used outside ZFS for something else, such as scratch or backups, and overrides a wrong system guess.",
   },
   {
     key: "modelShort",
     label: "Display model",
     type: "text",
     group: "identity",
+    description:
+      "The short name topology tiles print. Usually left blank: it defaults to the product line from the spec dataset, or the model number. Set it only to override that.",
   },
   { key: "purchaseDate", label: "Purchased", type: "date" },
   { key: "purchasePrice", label: "Price", type: "money" },
@@ -27,7 +31,13 @@ export const INVENTORY_FIELDS = [
     values: ["new", "used", "refurbished", "shucked"],
   },
   { key: "warrantyExpiry", label: "Warranty", type: "date" },
-  { key: "pin33Taped", label: "3.3 V pin", type: "boolean" },
+  {
+    key: "pin33Taped",
+    label: "3.3 V pin",
+    type: "boolean",
+    description:
+      "Shucked drives only: some external-enclosure drives will not power up in a standard bay until the 3.3 V power-disable pin is masked, usually with Kapton tape. Record whether this drive needed it.",
+  },
   {
     key: "recordingTech",
     label: "Recording",
@@ -45,6 +55,10 @@ export type InventoryFieldGroup =
   | "hardware"
   | "placement"
   | "ownership";
+
+export function fieldDescription(field: InventoryField): string | null {
+  return "description" in field ? field.description : null;
+}
 
 export function fieldGroup(field: InventoryField): InventoryFieldGroup {
   return "group" in field ? field.group : "ownership";

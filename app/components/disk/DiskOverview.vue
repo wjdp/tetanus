@@ -2,6 +2,7 @@
 import { interfaceLabel } from "#shared/hardware";
 import { formatDuration } from "#shared/hostFreshness";
 import {
+  fieldDescription,
   INVENTORY_FIELDS,
   type InventoryKey,
   isFieldVisible,
@@ -322,6 +323,7 @@ const optionalDate = (value: string | null) =>
       <InlineField
         type="enum"
         :label="purposeField.label"
+        :description="fieldDescription(purposeField)"
         :value="inventoryValue('purpose')"
         :items="purposeItems"
         :saving="saving.purpose"
@@ -365,6 +367,7 @@ const optionalDate = (value: string | null) =>
       <InlineField
         type="text"
         :label="modelShortField.label"
+        :description="fieldDescription(modelShortField)"
         :value="inventoryValue('modelShort')"
         :saving="saving.modelShort"
         :error="errors.modelShort"

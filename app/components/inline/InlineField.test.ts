@@ -140,4 +140,17 @@ describe("InlineField", () => {
     expect(field.find('[data-testid="inline-hint"]').exists()).toBe(false);
     expect(field.get(display).text()).toBe("eBay");
   });
+
+  it("offers an info button beside the label when the field has a description", async () => {
+    const described = await mountField({ description: "Where it came from." });
+    expect(
+      described
+        .get('[data-testid="inline-description"]')
+        .attributes("aria-label"),
+    ).toBe("About Supplier");
+    const plain = await mountField();
+    expect(plain.find('[data-testid="inline-description"]').exists()).toBe(
+      false,
+    );
+  });
 });

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  fieldDescription,
   fieldGroup,
   INVENTORY_FIELDS,
   type InventoryKey,
@@ -136,6 +137,7 @@ const showsWarrantyHint = (key: InventoryKey) =>
       :key="field.key"
       :type="field.key === 'pin33Taped' ? 'enum' : field.type"
       :label="field.label"
+      :description="fieldDescription(field)"
       :value="inventoryValue(field.key)"
       :items="itemsFor(field)"
       :placeholder="field.key === 'pin33Taped' ? 'not recorded' : undefined"

@@ -16,6 +16,7 @@ const props = withDefaults(
     type: InventoryFieldType | "alias";
     value: InlineValue;
     label?: string;
+    description?: string | null;
     ariaLabel?: string;
     items?: InlineItem[];
     placeholder?: string;
@@ -27,6 +28,7 @@ const props = withDefaults(
   }>(),
   {
     label: undefined,
+    description: null,
     ariaLabel: undefined,
     items: undefined,
     placeholder: "—",
@@ -213,7 +215,22 @@ const statusIcon = computed(() => {
 </script>
 
 <template>
-  <dt v-if="showLabel" class="text-dimmed">{{ label }}</dt>
+  <dt v-if="showLabel" class="text-dimmed inline-flex items-center gap-1">
+    {{ label }}
+    <UPopover v-if="description" :content="{ side: 'top', align: 'start' }">
+      <button
+        type="button"
+        class="hover:text-default focus-visible:outline-primary inline-flex rounded-sm focus-visible:outline-2"
+        :aria-label="`About ${label}`"
+        data-testid="inline-description"
+      >
+        <UIcon name="i-lucide-info" class="size-3.5" />
+      </button>
+      <template #content>
+        <p class="text-default max-w-xs p-3 text-sm">{{ description }}</p>
+      </template>
+    </UPopover>
+  </dt>
   <component
     :is="showLabel ? 'dd' : 'div'"
     v-bind="$attrs"
