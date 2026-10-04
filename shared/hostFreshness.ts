@@ -27,7 +27,7 @@ export const SOURCE_GROUPS: readonly SourceGroup[] = [
   },
   {
     name: "smart",
-    sources: ["lsblk", "udev", "smartctl-scan", "smartctl-xall"],
+    sources: ["lsblk", "udev", "enclosure", "smartctl-scan", "smartctl-xall"],
     cadenceMs: 60 * 60 * 1000,
   },
   {
