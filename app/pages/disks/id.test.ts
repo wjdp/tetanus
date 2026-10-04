@@ -1,12 +1,13 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
-import { describe, expect, it } from "vitest";
+import { flushPromises } from "@vue/test-utils";
+import { describe, expect, it, vi } from "vitest";
 import { defineComponent } from "vue";
 import DiskPage from "./[id].vue";
 
 const at = "2026-09-01T12:00:00.000Z";
 
-registerEndpoint("/api/disks/7", () => ({
+const detail = {
   id: 7,
   alias: "K2",
   model: "WDC WD80EFAX",
@@ -22,6 +23,7 @@ registerEndpoint("/api/disks/7", () => ({
   rotationRate: 5400,
   logicalBlockSize: 512,
   physicalBlockSize: 4096,
+  sectorFormat: "512e",
   trimSupported: false,
   hardware: {
     sataVersion: "SATA 3.1",
@@ -74,7 +76,25 @@ registerEndpoint("/api/disks/7", () => ({
   inventory: { purchaseDate: "2020-01-01" },
   ageDays: 2100,
   warrantyDaysLeft: null,
-  keys: [],
+  keys: [{ kind: "wwn", value: "0x50014ee2b5c1d2e3" }],
+  latestReadingAt: at,
+  formFactor: "3.5 inches",
+  counters: {
+    reallocated: { value: 8, status: "accepted" },
+    pending: { value: 16, status: "warning" },
+    uncorrectable: { value: 18, status: "acknowledged" },
+    wearPercent: null,
+    bytesWritten: null,
+    bytesWrittenInferred: false,
+  },
+  faultCounts: { error: 0, warning: 1, acknowledged: 1 },
+  disposal: null,
+  replacesDiskId: null,
+  replacedByDiskId: null,
+  present: true,
+  modelShort: "Red",
+  diaryCount: 1,
+  seenSinceDisposal: null,
   usage: { kind: "zfs", fsTypes: ["zfs_member"], mounts: [], system: false },
   purpose: null,
   purposeInferred: false,
@@ -85,8 +105,25 @@ registerEndpoint("/api/disks/7", () => ({
     groupName: "raidz2-0",
     groupType: "raidz2",
     vdevState: "ONLINE",
+    poolArchived: false,
   },
-  diary: [
+};
+
+registerEndpoint("/api/disks/7", () => detail);
+registerEndpoint("/api/disks/8", () => ({
+  ...detail,
+  id: 8,
+  alias: "K1",
+  disposal: { kind: "rma", on: "2026-09-02" },
+}));
+registerEndpoint("/api/disks", () => []);
+
+const diaryQueries: Record<string, string>[] = [];
+registerEndpoint("/api/diary", (event) => {
+  diaryQueries.push(
+    Object.fromEntries(new URL(event.path, "http://x").searchParams),
+  );
+  return [
     {
       id: 1,
       subjectType: "disk",
@@ -98,8 +135,10 @@ registerEndpoint("/api/disks/7", () => ({
       body: "",
       data: {},
     },
-  ],
-}));
+  ];
+});
+
+const smartQueries: string[] = [];
 
 function passedAttribute(
   attrId: string,
@@ -128,7 +167,12 @@ function passedAttribute(
   };
 }
 
-registerEndpoint("/api/disks/7/smart", () => ({
+registerEndpoint("/api/disks/7/smart", (event) => {
+  smartQueries.push(event.path);
+  return smartOverview;
+});
+
+const smartOverview = {
   reading: {
     id: 1,
     takenAt: at,
@@ -262,7 +306,7 @@ registerEndpoint("/api/disks/7/smart", () => ({
       clearedAt: null,
     },
   ],
-}));
+};
 
 // UTooltip needs the provider UApp installs in app.vue; the page is mounted alone.
 const TooltipPassthrough = defineComponent({
@@ -272,31 +316,96 @@ const TooltipPassthrough = defineComponent({
       slots.default?.(),
 });
 
+const mountPage = async (route: string) => {
+  const page = await mountSuspended(DiskPage, {
+    route,
+    global: { stubs: { UTooltip: TooltipPassthrough } },
+  });
+  await flushPromises();
+  return page;
+};
+
 describe("disk page", () => {
-  it("shows the nameplate, attributes with failing first, membership and diary", async () => {
-    const page = await mountSuspended(DiskPage, {
-      route: "/disks/7",
-      global: { stubs: { UTooltip: TooltipPassthrough } },
-    });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+  it("shows the header strip and Overview without loading SMART or the diary", async () => {
+    smartQueries.length = 0;
+    diaryQueries.length = 0;
+    const page = await mountPage("/disks/7");
     const text = page.text();
 
     expect(text).toContain("K2");
-    const diagnostics = page.get('a[href="/api/disks/7/diagnostics"]');
-    expect(diagnostics.text()).toBe("Download diagnostics");
-    expect(diagnostics.attributes()).toHaveProperty("download");
     expect(text).toMatch(/WD80EFAX\s+· VK0ABC/);
     expect(text).not.toContain("WDC WD80EFAX");
+
+    const strip = page.get('[data-testid="status-strip"]');
+    expect(strip.text()).toContain("SMART warning");
+    expect(strip.get("span[data-state]").attributes("data-state")).toBe(
+      "in-use",
+    );
+    expect(strip.get('[data-testid="disk-usage"]').text()).toBe("tank");
+    expect(strip.get('[data-testid="pool-breadcrumb"]').text()).toContain(
+      "raidz2-0",
+    );
+    const vdevTypeIcon = strip.get("[data-vdev-type]");
+    expect(vdevTypeIcon.attributes("data-vdev-type")).toBe("raidz2");
+    expect(vdevTypeIcon.html()).toContain("i-lucide:layers");
+    const membershipState = strip.get('[data-testid="membership-state"]');
+    expect(membershipState.text()).toBe("ONLINE");
+    expect(membershipState.classes()).toContain("text-success");
+    expect(strip.text()).toContain("K2-part1");
+    expect(strip.get('a[href="/zfs/3"]').text()).toBe("tank");
+    expect(
+      strip.get('[data-testid="disk-fault-badges"]').attributes("href"),
+    ).toBe("/faults?subject=disk:7");
+
+    expect(page.find('[data-testid="smart-tab-status"]').exists()).toBe(true);
+    expect(page.get('[data-testid="diary-tab-count"]').text()).toBe("1");
+
     expect(text).toMatch(/SATA 3\.1 via SAS\s+· 6\.0 Gb\/s/);
-    expect(text).toContain("HDD · 5400 rpm · CMR");
     expect(text).toContain("512e");
-    expect(text).not.toContain("Protocol");
     expect(text).toContain("WD Red");
     expect(text).toContain("0.9 % · 4,321 drives · Backblaze thru Q2 2026");
     expect(text).toContain("Specs: nasdisks.com (CC BY 4.0)");
-    expect(text).toContain("VK0ABC");
     expect(text).toContain("8.00 TB");
     expect(text).toContain("5.7 y old");
+    expect(text).toContain("0x50014ee2b5c1d2e3");
+
+    expect(page.find('[data-testid="attribute-table"]').exists()).toBe(false);
+    expect(smartQueries).toEqual([]);
+    expect(diaryQueries).toEqual([]);
+  });
+
+  it("opens the Diary tab from the query string and loads it then", async () => {
+    diaryQueries.length = 0;
+    const page = await mountPage("/disks/7?tab=diary");
+
+    await vi.waitFor(() =>
+      expect(page.text()).toContain("warning (was passed)"),
+    );
+    expect(diaryQueries.at(-1)).toMatchObject({
+      subjectType: "disk",
+      subjectId: "7",
+      limit: "20",
+    });
+  });
+
+  it("disables the lifecycle menu while disposed", async () => {
+    const page = await mountPage("/disks/8");
+
+    expect(page.find('[data-testid="disk-disposal-banner"]').exists()).toBe(
+      true,
+    );
+    expect(
+      page.get('[aria-label="State override"]').attributes("disabled"),
+    ).toBeDefined();
+  });
+
+  it("opens the SMART tab with attributes failing first", async () => {
+    const page = await mountPage("/disks/7?tab=smart");
+    await vi.waitFor(() =>
+      expect(page.find('[data-testid="attribute-table"]').exists()).toBe(true),
+    );
+    const text = page.text();
+
     expect(text).toContain("1 warning, 1 acknowledged attributes");
     expect(text).toContain("· 1 accepted");
 
@@ -375,17 +484,6 @@ describe("disk page", () => {
     expect(selfTests.text()).toContain("Extended offline");
     expect(selfTests.text()).toContain("39,990 h");
     expect(selfTests.text()).toContain("123456");
-
-    expect(text).toContain("raidz2-0");
-    const vdevTypeIcon = page.get("[data-vdev-type]");
-    expect(vdevTypeIcon.attributes("data-vdev-type")).toBe("raidz2");
-    expect(vdevTypeIcon.html()).toContain("i-lucide:layers");
-    const membershipState = page.get('[data-testid="membership-state"]');
-    expect(membershipState.text()).toBe("ONLINE");
-    expect(membershipState.classes()).toContain("text-success");
-    expect(text).toContain("K2-part1");
-    expect(page.find('a[href="/zfs/3"]').text()).toBe("tank");
-    expect(text).toContain("warning (was passed)");
 
     const toggle = page.get('[data-testid="attribute-visibility-toggle"]');
     expect(toggle.text()).toBe("Show 2 less useful attributes");

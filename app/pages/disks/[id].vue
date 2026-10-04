@@ -1,9 +1,16 @@
 <script setup lang="ts">
+import type { TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
 import { diskLabel, displayName } from "~/components/disk/displayName";
 import type { DiskDetail } from "~/components/disk/types";
+import { DEVICE_STATUS_VOCABULARY } from "~/utils/vocabulary";
+
+const TABS = ["overview", "smart", "diary"] as const;
+type Tab = (typeof TABS)[number];
+const DEFAULT_TAB: Tab = "overview";
 
 const route = useRoute();
+const router = useRouter();
 const diskId = computed(() => Number(route.params.id));
 
 const {
@@ -11,11 +18,6 @@ const {
   error,
   refresh,
 } = await useFetch<DiskDetail>(() => `/api/disks/${diskId.value}`);
-
-const { data: diary, refresh: refreshDiary } = await useFetch("/api/diary", {
-  query: { subjectType: "disk", subjectId: diskId },
-  default: () => [],
-});
 
 const heading = computed(
   () =>
@@ -46,11 +48,40 @@ const onUpdated = (updated: DiskDetail) => {
   disk.value = updated;
   refreshDiskList();
 };
+
+const isTab = (value: unknown): value is Tab =>
+  TABS.includes(value as Tab);
+
+const activeTab = computed<Tab>({
+  get: () => (isTab(route.query.tab) ? route.query.tab : DEFAULT_TAB),
+  set: (tab) => {
+    router.replace({
+      query: { ...route.query, tab: tab === DEFAULT_TAB ? undefined : tab },
+    });
+  },
+});
+
+const smartStatus = computed(() =>
+  disk.value && disk.value.latestStatus !== "passed"
+    ? DEVICE_STATUS_VOCABULARY[disk.value.latestStatus]
+    : null,
+);
+
+const tabs = computed<TabsItem[]>(() => [
+  { label: "Overview", slot: "overview", value: "overview" },
+  { label: "SMART", slot: "smart", value: "smart" },
+  {
+    label: "Diary",
+    slot: "diary",
+    value: "diary",
+    badge: disk.value?.diaryCount || undefined,
+  },
+]);
 </script>
 
 <template>
   <AppPanel :title="heading" class="max-w-7xl">
-    <div class="flex flex-col gap-10">
+    <div class="flex flex-col gap-6">
       <div class="flex items-center justify-between gap-4">
         <UButton
           to="/disks"
@@ -62,19 +93,7 @@ const onUpdated = (updated: DiskDetail) => {
         />
         <div v-if="disk" class="flex items-center gap-2">
           <SimulateFaultMenu subject-type="disk" :subject-id="disk.id" />
-          <UTooltip
-            text="Includes serials, hostnames and mount paths. Check before posting publicly."
-          >
-            <UButton
-              :to="`/api/disks/${disk.id}/diagnostics`"
-              external
-              download
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-file-archive"
-              label="Download diagnostics"
-            />
-          </UTooltip>
+          <DiskActionsMenu :disk="disk" :label="label" @updated="onUpdated" />
         </div>
       </div>
 
@@ -83,6 +102,12 @@ const onUpdated = (updated: DiskDetail) => {
       </p>
 
       <template v-else>
+        <DiskNameplate
+          :disk="disk"
+          :replaces-label="labelOf(disk.replacesDiskId)"
+          @updated="onUpdated"
+        />
+
         <DiskDisposalBanner
           v-if="disposedDisk"
           :disk="disposedDisk"
@@ -91,37 +116,57 @@ const onUpdated = (updated: DiskDetail) => {
           @updated="onUpdated"
         />
 
-        <DiskNameplate
-          :disk="disk"
-          :replaces-label="labelOf(disk.replacesDiskId)"
-          @updated="onUpdated"
-        />
+        <UTabs
+          v-model="activeTab"
+          :items="tabs"
+          variant="link"
+          class="w-full"
+          :ui="{ list: 'overflow-x-auto' }"
+        >
+          <template #trailing="{ item }">
+            <TopologyStatusDot
+              v-if="item.value === 'smart' && smartStatus"
+              :colour="smartStatus.colour"
+              :shape="smartStatus.shape"
+              :title="smartStatus.label"
+              data-testid="smart-tab-status"
+            />
+            <UBadge
+              v-else-if="item.badge"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :label="String(item.badge)"
+              data-testid="diary-tab-count"
+            />
+          </template>
 
-        <section class="flex flex-col gap-4">
-          <h2 class="text-highlighted text-lg font-semibold">Inventory</h2>
-          <DiskInventoryForm
-            :disk="disk"
-            :disks="allDisks"
-            @updated="onUpdated"
-          />
-        </section>
+          <template #overview>
+            <div class="py-4">
+              <DiskOverview
+                :disk="disk"
+                :disks="allDisks"
+                @updated="onUpdated"
+              />
+            </div>
+          </template>
 
-        <DiskSpecs :disk="disk" />
+          <template #smart>
+            <div class="py-4">
+              <DiskSmart
+                :disk-id="disk.id"
+                :protocol="disk.protocol"
+                @changed="refresh"
+              />
+            </div>
+          </template>
 
-        <DiskSmart
-          :disk-id="disk.id"
-          :protocol="disk.protocol"
-          @changed="refresh"
-        />
-
-        <DiskZfsMembership :membership="disk.membership" />
-
-        <DiaryPanel
-          subject-type="disk"
-          :subject-id="disk.id"
-          :entries="diary"
-          @changed="refreshDiary"
-        />
+          <template #diary>
+            <div class="py-4">
+              <DiskDiary :disk-id="disk.id" @changed="refresh" />
+            </div>
+          </template>
+        </UTabs>
       </template>
     </div>
   </AppPanel>

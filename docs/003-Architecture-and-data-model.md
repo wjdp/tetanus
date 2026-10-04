@@ -298,7 +298,8 @@ export const INVENTORY_FIELDS = [
 ] as const;
 ```
 
-The registry generates the zod schema for `PATCH /api/disks/:id`, the edit form, the
+The registry generates the zod schema for `PATCH /api/disks/:id`, the inline fields
+on the disk page (each field's `group` places it there), the
 inventory table columns and the importer's column mapping. Values live in
 `Disk.inventory` JSON; sort and filter via `json_extract`. Computed columns (age,
 warranty remaining) are derived in the service from registry keys. `alias` and `notes`
@@ -344,10 +345,13 @@ and cached, or bundled.
 - **Home: topology.** Grouped by host, then pools → vdevs → disks as a grid of tiles by
   alias, coloured by effective status. Side rail for spares, missing, removed. Header
   bar: collector health and last collection time per host, active scan/resilver.
-- **Disk page.** Nameplate + inventory (editable), status with accept controls,
-  attribute table (scrutiny's layout: status, id, name, value, thresh, ideal, failure
-  rate, sparkline, expandable explanation), trend chips, temperature and selected
-  attribute charts, self-tests, diary for this disk, ZFS membership.
+- **Disk page.** Header: inline-edited alias, model and serial, then a status strip
+  (SMART status, lifecycle menu, usage and purpose, pool breadcrumb, fault counts) and
+  one actions menu (diagnostics, dispose). Tabs in `?tab=`: Overview (Identity,
+  Hardware with dataset specs, Placement, Health, Ownership, Notes; inventory edited
+  inline per field, saving on commit), SMART (status with accept controls, attribute
+  table in scrutiny's layout, temperature chart, self-tests) and Diary (loaded on
+  first open, paged). See [066](066-Disk-page-redesign.md).
 - **Inventory.** The Obsidian table, live. Sortable, filter by host/state/pool/cohort;
   host column (last seen).
   Age (calendar + power-on), warranty remaining, 3.3 V pin.
