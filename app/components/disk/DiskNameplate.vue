@@ -27,9 +27,9 @@ const saveAlias = (alias: unknown) =>
 </script>
 
 <template>
-  <header class="flex flex-col gap-3">
+  <header class="flex flex-col gap-4">
     <div class="flex min-w-0 flex-col gap-1">
-      <h1 class="text-2xl font-semibold tracking-tight">
+      <h1 class="text-3xl font-semibold tracking-tight">
         <InlineField
           type="alias"
           :value="disk.alias"
@@ -48,10 +48,10 @@ const saveAlias = (alias: unknown) =>
           </template>
         </InlineField>
       </h1>
-      <p class="text-muted flex flex-wrap items-center gap-1.5 text-sm">
+      <p class="text-muted flex flex-wrap items-center gap-1.5">
         <MediaGlyph :media="disk.media" :size="20" class="text-muted" />
         {{ displayModel(disk.model, disk.vendor) ?? "Unknown model" }}
-        <span v-if="disk.serial" class="text-default font-mono">
+        <span v-if="disk.serial" class="text-default font-mono text-sm">
           · {{ disk.serial }}
         </span>
       </p>

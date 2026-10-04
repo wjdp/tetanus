@@ -116,6 +116,14 @@ registerEndpoint("/api/disks/8", () => ({
   alias: "K1",
   disposal: { kind: "rma", on: "2026-09-02" },
 }));
+registerEndpoint("/api/disks/9", () => ({
+  ...detail,
+  id: 9,
+  alias: "H1",
+  present: false,
+  state: "removed",
+  membership: null,
+}));
 registerEndpoint("/api/disks", () => []);
 
 const diaryQueries: Record<string, string>[] = [];
@@ -397,6 +405,49 @@ describe("disk page", () => {
     expect(
       page.get('[aria-label="State override"]').attributes("disabled"),
     ).toBeDefined();
+  });
+
+  it("offers Dispose in the toolbar only for a disk that is not present", async () => {
+    const present = await mountPage("/disks/7");
+    expect(present.find('[data-testid="dispose-prominent"]').exists()).toBe(
+      false,
+    );
+
+    const absent = await mountPage("/disks/9");
+    expect(absent.find('[data-testid="dispose-prominent"]').exists()).toBe(
+      true,
+    );
+
+    const disposed = await mountPage("/disks/8");
+    expect(disposed.find('[data-testid="dispose-prominent"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it("shows headline figures above the tabs and groups as panels, Health first", async () => {
+    const page = await mountPage("/disks/7");
+    const figures = page.get('[data-testid="headline-figures"]');
+    expect(
+      figures
+        .findAll("[data-figure]")
+        .map((figure) => figure.attributes("data-figure")),
+    ).toEqual(["capacity", "temperature", "power-on", "age"]);
+    expect(figures.get('[data-figure="temperature"]').text()).toContain(
+      "34 °C",
+    );
+
+    const groups = page
+      .get('[data-testid="disk-overview"]')
+      .findAll("section h2")
+      .map((heading) => heading.text());
+    expect(groups).toEqual([
+      "Health",
+      "Placement",
+      "Identity",
+      "Hardware",
+      "Ownership",
+      "Notes",
+    ]);
   });
 
   it("opens the SMART tab with attributes failing first", async () => {

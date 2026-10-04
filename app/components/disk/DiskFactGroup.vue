@@ -9,9 +9,11 @@ defineSlots<{
 </script>
 
 <template>
-  <section class="flex min-w-0 flex-col gap-3">
+  <section
+    class="border-default flex min-w-0 break-inside-avoid flex-col gap-3 rounded-lg border p-4"
+  >
     <div class="flex min-h-7 items-center justify-between gap-2">
-      <h3 class="text-muted text-sm font-medium">{{ title }}</h3>
+      <h2 class="text-highlighted font-semibold">{{ title }}</h2>
       <slot name="actions" />
     </div>
     <dl

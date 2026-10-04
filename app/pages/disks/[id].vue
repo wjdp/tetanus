@@ -13,6 +13,8 @@ const route = useRoute();
 const router = useRouter();
 const diskId = computed(() => Number(route.params.id));
 
+const TABS_UI = { list: "px-0 py-1 gap-6 overflow-x-auto", trigger: "px-0" };
+
 const {
   data: disk,
   error,
@@ -82,7 +84,7 @@ const tabs = computed<TabsItem[]>(() => [
 <template>
   <AppPanel :title="heading" class="max-w-7xl">
     <div class="flex flex-col gap-6">
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
         <UButton
           to="/disks"
           color="neutral"
@@ -91,7 +93,7 @@ const tabs = computed<TabsItem[]>(() => [
           label="Disks"
           class="-ml-2.5"
         />
-        <div v-if="disk" class="flex items-center gap-2">
+        <div v-if="disk" class="ms-auto flex items-center gap-2">
           <SimulateFaultMenu subject-type="disk" :subject-id="disk.id" />
           <DiskActionsMenu :disk="disk" :label="label" @updated="onUpdated" />
         </div>
@@ -108,6 +110,11 @@ const tabs = computed<TabsItem[]>(() => [
           @updated="onUpdated"
         />
 
+        <DiskHeadlineFigures
+          :disk="disk"
+          class="border-default border-y py-4"
+        />
+
         <DiskDisposalBanner
           v-if="disposedDisk"
           :disk="disposedDisk"
@@ -120,8 +127,8 @@ const tabs = computed<TabsItem[]>(() => [
           v-model="activeTab"
           :items="tabs"
           variant="link"
-          class="w-full"
-          :ui="{ list: 'overflow-x-auto' }"
+          class="w-full min-w-0"
+          :ui="TABS_UI"
         >
           <template #trailing="{ item }">
             <TopologyStatusDot
@@ -146,7 +153,7 @@ const tabs = computed<TabsItem[]>(() => [
               <DiskOverview
                 :disk="disk"
                 :disks="allDisks"
-                @updated="onUpdated"
+                      @updated="onUpdated"
               />
             </div>
           </template>

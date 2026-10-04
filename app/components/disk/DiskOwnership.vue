@@ -15,7 +15,10 @@ import type { DiskDetail, ReplacementCandidate } from "./types";
 import { useDiskFieldSave } from "./useDiskFieldSave";
 
 const props = withDefaults(
-  defineProps<{ disk: DiskDetail; disks?: ReplacementCandidate[] }>(),
+  defineProps<{
+    disk: DiskDetail;
+    disks?: ReplacementCandidate[];
+  }>(),
   { disks: () => [] },
 );
 const emit = defineEmits<{ updated: [disk: DiskDetail] }>();

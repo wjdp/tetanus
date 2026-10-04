@@ -26,9 +26,12 @@ const submit = async () => {
 </script>
 
 <template>
-  <section class="flex min-w-0 flex-col gap-3" data-testid="disk-notes">
+  <section
+    class="border-default flex min-w-0 break-inside-avoid flex-col gap-3 rounded-lg border p-4"
+    data-testid="disk-notes"
+  >
     <div class="flex min-h-7 items-center justify-between gap-2">
-      <h3 class="text-muted text-sm font-medium">Notes</h3>
+      <h2 class="text-highlighted font-semibold">Notes</h2>
       <UButton
         v-if="!editing"
         size="xs"

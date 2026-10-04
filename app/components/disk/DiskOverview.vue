@@ -18,9 +18,13 @@ import type { DiskDetail, ReplacementCandidate } from "./types";
 import { useDiskFieldSave } from "./useDiskFieldSave";
 
 const props = withDefaults(
-  defineProps<{ disk: DiskDetail; disks?: ReplacementCandidate[] }>(),
+  defineProps<{
+    disk: DiskDetail;
+    disks?: ReplacementCandidate[];
+  }>(),
   { disks: () => [] },
 );
+
 const emit = defineEmits<{ updated: [disk: DiskDetail] }>();
 
 const SMART_TAB = { query: { tab: "smart" } };
@@ -215,10 +219,144 @@ const optionalDate = (value: string | null) =>
 </script>
 
 <template>
-  <div
-    class="grid gap-x-10 gap-y-8 lg:grid-cols-2"
-    data-testid="disk-overview"
-  >
+  <div class="lg:columns-2 lg:gap-x-4 [&>*]:mb-4" data-testid="disk-overview">
+    <DiskFactGroup
+      title="Health"
+      data-testid="group-health"
+    >
+      <DiskFact label="SMART">
+        <span class="inline-flex flex-wrap items-center gap-2">
+          <UBadge
+            color="neutral"
+            variant="outline"
+            :label="smartStatus.label"
+            data-testid="overview-smart-status"
+          >
+            <template #leading>
+              <TopologyStatusDot
+                :colour="smartStatus.colour"
+                :shape="smartStatus.shape"
+              />
+            </template>
+          </UBadge>
+          <span v-if="disk.latestReadingAt" class="text-dimmed text-xs">
+            read {{ formatDate(disk.latestReadingAt) }}
+          </span>
+        </span>
+      </DiskFact>
+      <DiskFact
+        label="Temperature"
+        :value="formatCelsius(disk.latestTemp)"
+        :class="temperatureClass"
+        data-testid="overview-temperature"
+      />
+      <DiskFact
+        v-if="disk.latestPowerOnHours !== null"
+        label="Power-on"
+        :value="formatHours(disk.latestPowerOnHours)"
+      />
+      <DiskFact
+        v-if="disk.latestPowerCycles !== null"
+        label="Power cycles"
+        :value="formatCount(disk.latestPowerCycles)"
+      />
+      <DiskFact
+        v-for="row in counterRows"
+        :key="row.id"
+        :label="row.label"
+        :data-counter="row.id"
+      >
+        <NuxtLink :to="SMART_TAB" class="inline-flex hover:underline">
+          <InventoryStatusCounter :counter="row.counter" :suffix="row.suffix" />
+        </NuxtLink>
+      </DiskFact>
+      <DiskFact
+        v-if="disk.counters.bytesWritten !== null"
+        label="Written"
+        data-counter="written"
+      >
+        <NuxtLink
+          :to="SMART_TAB"
+          class="hover:underline"
+          :title="
+            disk.counters.bytesWrittenInferred ? INFERRED_WRITTEN_TITLE : undefined
+          "
+          >{{ disk.counters.bytesWrittenInferred ? "~" : ""
+          }}{{ formatBytes(disk.counters.bytesWritten) }}</NuxtLink
+        >
+      </DiskFact>
+      <DiskFact v-if="hasFaults" label="Faults" data-testid="fact-faults">
+        <DiskFaultBadges :disk-id="disk.id" :counts="disk.faultCounts" />
+      </DiskFact>
+    </DiskFactGroup>
+
+    <DiskFactGroup
+      title="Placement"
+      data-testid="group-placement"
+    >
+      <DiskFact label="Host">
+        <ULink
+          v-if="hostLink"
+          :to="hostLink"
+          class="text-default hover:text-primary"
+          >{{ disk.hostName }}</ULink
+        >
+        <span v-else class="text-dimmed">—</span>
+      </DiskFact>
+      <DiskFact v-if="disk.lastDevicePath" label="Device" mono>
+        <span
+          :class="{ 'text-dimmed': !disk.present }"
+          :title="disk.present ? undefined : 'last known'"
+          data-testid="fact-device"
+          >{{ disk.lastDevicePath }}</span
+        >
+      </DiskFact>
+      <DiskFact v-if="disk.membership" label="Pool">
+        <DiskPoolBreadcrumb :membership="disk.membership" />
+      </DiskFact>
+      <DiskFact
+        label="Usage"
+        :value="usage"
+        :class="{ 'text-dimmed': disk.usage.kind === 'empty' }"
+      />
+      <InlineField
+        type="enum"
+        :label="purposeField.label"
+        :value="inventoryValue('purpose')"
+        :items="purposeItems"
+        :saving="saving.purpose"
+        :error="errors.purpose"
+        data-field="purpose"
+        @commit="saveInventory('purpose', $event)"
+      >
+        <template #display>
+          <UBadge
+            v-if="disk.purpose"
+            color="neutral"
+            :variant="disk.purposeInferred ? 'outline' : 'subtle'"
+            :label="disk.purpose"
+          />
+          <span v-else class="text-dimmed">—</span>
+        </template>
+        <template v-if="disk.purpose && disk.purposeInferred" #hint>
+          inferred from mount at {{ inferredFromPath }}
+        </template>
+      </InlineField>
+      <DiskFact
+        v-if="disk.firstSeenAt"
+        label="First seen"
+        :value="optionalDate(disk.firstSeenAt)"
+      />
+      <DiskFact
+        v-if="disk.lastSeenAt"
+        label="Last seen"
+        :value="optionalDate(disk.lastSeenAt)"
+      />
+      <DiskFact v-if="lastReading" label="Last reading">
+        <span :title="lastReading.title">{{ lastReading.text }}</span>
+      </DiskFact>
+    </DiskFactGroup>
+
     <DiskFactGroup title="Identity" data-testid="group-identity">
       <DiskFact label="Model" :value="model" data-testid="fact-model" />
       <DiskFact label="Serial" :value="disk.serial" mono />
@@ -317,147 +455,14 @@ const optionalDate = (value: string | null) =>
       </template>
     </DiskFactGroup>
 
-    <DiskFactGroup title="Placement" data-testid="group-placement">
-      <DiskFact label="Host">
-        <ULink
-          v-if="hostLink"
-          :to="hostLink"
-          class="text-default hover:text-primary"
-          >{{ disk.hostName }}</ULink
-        >
-        <span v-else class="text-dimmed">—</span>
-      </DiskFact>
-      <DiskFact v-if="disk.lastDevicePath" label="Device" mono>
-        <span
-          :class="{ 'text-dimmed': !disk.present }"
-          :title="disk.present ? undefined : 'last known'"
-          data-testid="fact-device"
-          >{{ disk.lastDevicePath }}</span
-        >
-      </DiskFact>
-      <DiskFact v-if="disk.membership" label="Pool">
-        <DiskPoolBreadcrumb :membership="disk.membership" />
-      </DiskFact>
-      <DiskFact
-        label="Usage"
-        :value="usage"
-        :class="{ 'text-dimmed': disk.usage.kind === 'empty' }"
-      />
-      <InlineField
-        type="enum"
-        :label="purposeField.label"
-        :value="inventoryValue('purpose')"
-        :items="purposeItems"
-        :saving="saving.purpose"
-        :error="errors.purpose"
-        data-field="purpose"
-        @commit="saveInventory('purpose', $event)"
-      >
-        <template #display>
-          <UBadge
-            v-if="disk.purpose"
-            color="neutral"
-            :variant="disk.purposeInferred ? 'outline' : 'subtle'"
-            :label="disk.purpose"
-          />
-          <span v-else class="text-dimmed">—</span>
-        </template>
-        <template v-if="disk.purpose && disk.purposeInferred" #hint>
-          inferred from mount at {{ inferredFromPath }}
-        </template>
-      </InlineField>
-      <DiskFact
-        v-if="disk.firstSeenAt"
-        label="First seen"
-        :value="optionalDate(disk.firstSeenAt)"
-      />
-      <DiskFact
-        v-if="disk.lastSeenAt"
-        label="Last seen"
-        :value="optionalDate(disk.lastSeenAt)"
-      />
-      <DiskFact v-if="lastReading" label="Last reading">
-        <span :title="lastReading.title">{{ lastReading.text }}</span>
-      </DiskFact>
-    </DiskFactGroup>
-
-    <DiskFactGroup title="Health" data-testid="group-health">
-      <DiskFact label="SMART">
-        <span class="inline-flex flex-wrap items-center gap-2">
-          <UBadge
-            color="neutral"
-            variant="outline"
-            :label="smartStatus.label"
-            data-testid="overview-smart-status"
-          >
-            <template #leading>
-              <TopologyStatusDot
-                :colour="smartStatus.colour"
-                :shape="smartStatus.shape"
-              />
-            </template>
-          </UBadge>
-          <span v-if="disk.latestReadingAt" class="text-dimmed text-xs">
-            read {{ formatDate(disk.latestReadingAt) }}
-          </span>
-        </span>
-      </DiskFact>
-      <DiskFact
-        label="Temperature"
-        :value="formatCelsius(disk.latestTemp)"
-        :class="temperatureClass"
-        data-testid="overview-temperature"
-      />
-      <DiskFact
-        v-if="disk.latestPowerOnHours !== null"
-        label="Power-on"
-        :value="formatHours(disk.latestPowerOnHours)"
-      />
-      <DiskFact
-        v-if="disk.latestPowerCycles !== null"
-        label="Power cycles"
-        :value="formatCount(disk.latestPowerCycles)"
-      />
-      <DiskFact
-        v-for="row in counterRows"
-        :key="row.id"
-        :label="row.label"
-        :data-counter="row.id"
-      >
-        <NuxtLink :to="SMART_TAB" class="inline-flex hover:underline">
-          <InventoryStatusCounter :counter="row.counter" :suffix="row.suffix" />
-        </NuxtLink>
-      </DiskFact>
-      <DiskFact
-        v-if="disk.counters.bytesWritten !== null"
-        label="Written"
-        data-counter="written"
-      >
-        <NuxtLink
-          :to="SMART_TAB"
-          class="hover:underline"
-          :title="
-            disk.counters.bytesWrittenInferred ? INFERRED_WRITTEN_TITLE : undefined
-          "
-          >{{ disk.counters.bytesWrittenInferred ? "~" : ""
-          }}{{ formatBytes(disk.counters.bytesWritten) }}</NuxtLink
-        >
-      </DiskFact>
-      <DiskFact v-if="hasFaults" label="Faults" data-testid="fact-faults">
-        <DiskFaultBadges :disk-id="disk.id" :counts="disk.faultCounts" />
-      </DiskFact>
-    </DiskFactGroup>
-
     <DiskOwnership
       :disk="disk"
       :disks="disks"
-      class="lg:col-span-2"
       @updated="emit('updated', $event)"
     />
 
     <DiskNotes
       :disk="disk"
-      class="lg:col-span-2"
       @updated="emit('updated', $event)"
     />
   </div>

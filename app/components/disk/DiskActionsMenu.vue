@@ -3,6 +3,10 @@ import type { DropdownMenuItem } from "@nuxt/ui";
 import type { DiskDetail } from "./types";
 
 const props = defineProps<{ disk: DiskDetail; label: string }>();
+
+const disposeProminent = computed(
+  () => !props.disk.present && !props.disk.disposal,
+);
 const emit = defineEmits<{ updated: [disk: DiskDetail] }>();
 
 const toast = useToast();
@@ -71,6 +75,15 @@ const items = computed<DropdownMenuItem[][]>(() => [
 </script>
 
 <template>
+  <UButton
+    v-if="disposeProminent"
+    color="neutral"
+    variant="subtle"
+    icon="i-lucide-package-x"
+    label="Dispose…"
+    data-testid="dispose-prominent"
+    @click="disposeOpen = true"
+  />
   <UDropdownMenu
     :items="items"
     :content="{ align: 'end' }"
