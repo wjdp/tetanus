@@ -90,6 +90,15 @@ export default defineNuxtConfig({
           sizes: "180x180",
           href: "/apple-touch-icon.png",
         },
+        {
+          rel: "manifest",
+          href: "/manifest.webmanifest",
+          crossorigin: "use-credentials",
+        },
+      ],
+      meta: [
+        { name: "apple-mobile-web-app-title", content: APP_NAME },
+        { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       ],
     },
   },
