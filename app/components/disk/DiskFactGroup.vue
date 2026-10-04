@@ -17,7 +17,7 @@ defineSlots<{
       <slot name="actions" />
     </div>
     <dl
-      class="grid grid-cols-[6rem_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2 text-sm sm:grid-cols-[8rem_minmax(0,1fr)]"
+      class="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-x-4 gap-y-1 text-sm sm:grid-cols-[8rem_minmax(0,1fr)]"
     >
       <slot />
     </dl>

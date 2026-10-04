@@ -207,6 +207,21 @@ watch(
 
 onBeforeUnmount(() => clearTimeout(successTimer));
 
+const ROW_FITTED_BASE = "h-6 py-0.5 text-sm/5 md:text-sm/5";
+
+const box = computed(() => {
+  if (props.type === "alias") return "-mx-2 px-2 py-0.5";
+  return "-mx-2 h-6 px-2";
+});
+
+const inputUi = computed(() => ({
+  leading: "pointer-events-none",
+  base:
+    props.type === "alias"
+      ? "px-2 py-0.5 [font:inherit] md:[font:inherit]"
+      : ROW_FITTED_BASE,
+}));
+
 const statusIcon = computed(() => {
   if (props.saving) return "i-lucide-loader-circle";
   if (succeeded.value) return "i-lucide-check";
@@ -215,7 +230,7 @@ const statusIcon = computed(() => {
 </script>
 
 <template>
-  <dt v-if="showLabel" class="text-dimmed inline-flex items-center gap-1">
+  <dt v-if="showLabel" class="text-dimmed inline-flex items-center gap-1 py-0.5">
     {{ label }}
     <UPopover v-if="description" :content="{ side: 'top', align: 'start' }">
       <button
@@ -241,14 +256,18 @@ const statusIcon = computed(() => {
     <div
       v-if="editing"
       class="flex min-w-0 flex-col gap-1"
-      :class="compact ? 'w-full' : 'max-w-xs'"
+      :class="[
+        compact ? 'w-full' : 'max-w-xs',
+        '-mx-2',
+      ]"
     >
       <USelect
         v-if="choices"
         :model-value="choiceKey(value)"
         :items="selectItems"
         :open="selectOpen"
-        :size="compact ? 'xs' : 'sm'"
+        size="xs"
+        :ui="{ base: ROW_FITTED_BASE }"
         :aria-label="controlLabel"
         class="w-full"
         @update:model-value="pick"
@@ -261,10 +280,9 @@ const statusIcon = computed(() => {
         :type="inputType"
         :min="type === 'money' ? 0 : undefined"
         :step="type === 'money' ? currencyStep(currency) : undefined"
-        :size="compact ? 'xs' : 'sm'"
+        size="xs"
         :aria-label="controlLabel"
-        :ui="{ leading: 'pointer-events-none' }"
-        :class="{ 'font-mono': type === 'alias' }"
+        :ui="inputUi"
         class="w-full"
         @update:model-value="(typed) => (draft = String(typed ?? ''))"
         @keydown="onKeydown"
@@ -292,7 +310,8 @@ const statusIcon = computed(() => {
     <div v-else class="flex min-w-0 flex-wrap items-baseline gap-x-2">
       <button
         type="button"
-        class="group focus-visible:outline-primary inline-flex min-w-0 items-center gap-1.5 rounded-sm text-start focus-visible:outline-2"
+        class="group hover:bg-elevated hover:ring-accented focus-visible:outline-primary inline-flex min-w-0 items-center gap-1.5 rounded-md text-start transition-colors hover:ring hover:ring-inset focus-visible:outline-2"
+        :class="box"
         :aria-label="`Edit ${controlLabel}`"
         data-testid="inline-display"
         @click="startEdit"
@@ -310,7 +329,7 @@ const statusIcon = computed(() => {
           :class="
             saving || succeeded
               ? ['text-dimmed', { 'animate-spin': saving }]
-              : 'text-dimmed md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100'
+              : 'text-dimmed opacity-60 group-hover:opacity-100 group-focus-visible:opacity-100'
           "
           :data-status="saving ? 'saving' : succeeded ? 'saved' : 'idle'"
         />

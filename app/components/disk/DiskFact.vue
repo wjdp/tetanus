@@ -10,10 +10,10 @@ const slots = defineSlots<{ default?(): unknown }>();
 </script>
 
 <template>
-  <dt class="text-dimmed">{{ label }}</dt>
+  <dt class="text-dimmed py-0.5">{{ label }}</dt>
   <dd
     v-bind="$attrs"
-    class="tabular min-w-0 break-words"
+    class="tabular min-w-0 py-0.5 break-words"
     :class="{ 'font-mono text-xs leading-5': mono }"
   >
     <slot v-if="slots.default" />
