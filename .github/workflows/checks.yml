@@ -70,6 +70,6 @@ jobs:
       - name: Install shellcheck and bats
         run: sudo apt-get update && sudo apt-get install -y shellcheck bats
       - name: Shellcheck
-        run: shellcheck -x host/tetanus-collect host/install.sh host/zed/all-tetanus.sh host/test/*.sh
+        run: shellcheck -x host/tetanus-collect host/install.sh host/zed/all-tetanus.sh host/test/*.sh host/test/matrix/*.sh
       - name: Test
         run: bash host/test/run.sh

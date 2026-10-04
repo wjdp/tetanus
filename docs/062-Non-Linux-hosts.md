@@ -45,4 +45,6 @@ experience, not necessarily supporting more.
 
 1. Which of these does anyone actually ask for? Wait for issues, or pre-empt in the README?
 2. Is "fail clearly with a named reason" on an unsupported host enough for now?
-3. Would a Proxmox or TrueNAS SCALE test VM be cheap enough to keep in CI?
+3. Would a Proxmox or TrueNAS SCALE test VM be cheap enough to keep in CI? Proxmox VE 9,
+   Debian, Ubuntu and AlmaLinux now run weekly and before release; results in
+   [082](082-Collector-OS-support.md). TrueNAS has no bootable cloud image.
