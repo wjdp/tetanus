@@ -79,7 +79,9 @@ qemu-system-x86_64 \
   -device virtio-net-pci,netdev=net0
 
 stop_vm() {
-  [[ -s $work/qemu.pid ]] && kill "$(<"$work/qemu.pid")" 2>/dev/null || true
+  if [[ -s $work/qemu.pid ]]; then
+    kill "$(<"$work/qemu.pid")" 2>/dev/null || true
+  fi
 }
 trap stop_vm EXIT
 
