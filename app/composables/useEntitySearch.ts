@@ -23,6 +23,12 @@ interface SearchableDisk {
   replacedByDiskId?: number | null;
 }
 
+interface SearchableHost {
+  id: number;
+  name: string;
+  displayName: string | null;
+}
+
 interface SearchablePool {
   id: number;
   name: string;
@@ -69,6 +75,15 @@ export function diskSearchEntry(
   };
 }
 
+export function hostSearchEntry(host: SearchableHost): EntitySearchEntry {
+  return {
+    id: `host-${host.id}`,
+    label: joinLabel([host.displayName, host.name]),
+    icon: ENTITY_ICON.host,
+    to: `/hosts/${host.id}`,
+  };
+}
+
 export function poolSearchEntry(pool: SearchablePool): EntitySearchEntry {
   return {
     id: `pool-${pool.id}`,
@@ -79,6 +94,10 @@ export function poolSearchEntry(pool: SearchablePool): EntitySearchEntry {
 }
 
 export const useEntitySearch = () => {
+  const hosts = useState<EntitySearchEntry[] | null>(
+    "entitySearchHosts",
+    () => null,
+  );
   const disks = useState<EntitySearchEntry[] | null>(
     "entitySearchDisks",
     () => null,
@@ -90,24 +109,26 @@ export const useEntitySearch = () => {
   const loading = useState("entitySearchLoading", () => false);
 
   const load = async () => {
-    if (loading.value || (disks.value && pools.value)) return;
+    if (loading.value || (hosts.value && disks.value && pools.value)) return;
     loading.value = true;
     try {
-      const [diskRows, poolRows] = await Promise.all([
+      const [hostRows, diskRows, poolRows] = await Promise.all([
+        $fetch("/api/hosts"),
         $fetch("/api/disks"),
         $fetch("/api/pools"),
       ]);
+      hosts.value = hostRows.map(hostSearchEntry);
       const aliases = new Map(diskRows.map((row) => [row.id, row.alias]));
       disks.value = diskRows.map((row) =>
         diskSearchEntry(row, (id) => aliases.get(id)),
       );
       pools.value = poolRows.map(poolSearchEntry);
     } catch (error) {
-      console.error("Could not load disks and pools for search", error);
+      console.error("Could not load hosts, disks and pools for search", error);
     } finally {
       loading.value = false;
     }
   };
 
-  return { disks, pools, loading, load };
+  return { hosts, disks, pools, loading, load };
 };

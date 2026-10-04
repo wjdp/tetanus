@@ -3,10 +3,14 @@ import { registerEndpoint } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
 import {
   diskSearchEntry,
+  hostSearchEntry,
   poolSearchEntry,
   useEntitySearch,
 } from "./useEntitySearch";
 
+registerEndpoint("/api/hosts", () => [
+  { id: 1, name: "mars", displayName: "Mars NAS" },
+]);
 registerEndpoint("/api/disks", () => [
   { id: 3, alias: "K2", model: "WDC WD80EFAX", serial: "VK0ABC" },
 ]);
@@ -56,6 +60,16 @@ describe("diskSearchEntry", () => {
   });
 });
 
+describe("hostSearchEntry", () => {
+  it("labels by display name and name, linking to the host", () => {
+    const entry = hostSearchEntry({ id: 2, name: "pip", displayName: null });
+
+    expect(entry.label).toBe("pip");
+    expect(entry.to).toBe("/hosts/2");
+    expect(entry.icon).toBe("i-lucide-server");
+  });
+});
+
 describe("poolSearchEntry", () => {
   it("labels by name and host display name, linking to the pool", () => {
     const entry = poolSearchEntry({
@@ -71,8 +85,8 @@ describe("poolSearchEntry", () => {
 });
 
 describe("useEntitySearch", () => {
-  it("loads disks and pools on demand", async () => {
-    const { disks, pools, load } = useEntitySearch();
+  it("loads hosts, disks and pools on demand", async () => {
+    const { hosts, disks, pools, load } = useEntitySearch();
     expect(disks.value).toBeNull();
 
     await load();
@@ -81,5 +95,8 @@ describe("useEntitySearch", () => {
       "K2 · WDC WD80EFAX · VK0ABC",
     ]);
     expect(pools.value?.map((entry) => entry.label)).toEqual(["tank · mars"]);
+    expect(hosts.value?.map((entry) => entry.label)).toEqual([
+      "Mars NAS · mars",
+    ]);
   });
 });
