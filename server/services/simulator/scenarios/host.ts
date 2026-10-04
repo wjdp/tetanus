@@ -6,13 +6,19 @@ import {
   MIN_COLLECTOR_VERSION,
 } from "#shared/collector";
 import { SOURCE_GROUPS } from "#shared/hostFreshness";
+import { HOST_TOOL_REQUIREMENTS, type HostTool } from "#shared/hostTools";
 import type { ScenarioParamOption } from "#shared/simulator";
 import { db } from "~~/server/database/client";
 import { collectorRun, disk, host, pool } from "~~/server/database/schema";
 import { getHost } from "~~/server/services/hosts";
 import { collectorCadences } from "~~/server/utils/demo";
-import { storedPayload } from "../payloads";
-import { defineScenario, type Scenario, type SubjectOf } from "../types";
+import { type StoredPayload, storedPayload, storedPayloads } from "../payloads";
+import {
+  defineScenario,
+  type PlannedReplay,
+  type Scenario,
+  type SubjectOf,
+} from "../types";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -173,8 +179,90 @@ export const collectorIncompatible = versionScenario({
   description: "The collector reports a version older than the server accepts.",
 });
 
+interface OldTool {
+  label: string;
+  versionLines: Record<string, string>;
+  exitStatus: number;
+  stderr: string;
+}
+
+const OLD_TOOLS: Record<HostTool, OldTool> = {
+  openzfs: {
+    label: "OpenZFS 2.2.2",
+    versionLines: {
+      zfs: "zfs-2.2.2-0ubuntu9.1",
+      zpool: "zfs-2.2.2-0ubuntu9.1",
+    },
+    exitStatus: 2,
+    stderr: "invalid option 'j'\nusage:\n",
+  },
+  smartmontools: {
+    label: "smartmontools 6.6",
+    versionLines: { smartctl: "smartctl 6.6 2017-11-05 r4594 [x86_64-linux]" },
+    exitStatus: 1,
+    stderr: "smartctl: unrecognized option '--json'\n",
+  },
+};
+
+function withVersionLines(body: string, lines: Record<string, string>) {
+  const replaced = body
+    .split("\n")
+    .filter((line) => !(line.split("=")[0] in lines));
+  const added = Object.entries(lines).map(([key, value]) => `${key}=${value}`);
+  return [...added, ...replaced.filter(Boolean), ""].join("\n");
+}
+
+function failedRun(stored: StoredPayload, old: OldTool): PlannedReplay {
+  const { exitStatus: _exitStatus, ...meta } = stored.meta;
+  return {
+    ...stored,
+    meta: { ...meta, failed: old.exitStatus },
+    body: old.stderr,
+  };
+}
+
+export const toolsUnsupported = defineScenario({
+  id: "tools-unsupported",
+  label: "Tools unsupported",
+  group: "Collector",
+  subjectType: "host",
+  description:
+    "The host reports an OpenZFS or smartmontools too old for JSON output; their sources fail and the host is degraded.",
+  applies: (subject) =>
+    storedPayload(subject.host.id, "versions") !== undefined,
+  params: () => [
+    {
+      key: "tool",
+      label: "Tool",
+      kind: "select",
+      default: "openzfs",
+      options: Object.entries(OLD_TOOLS).map(([value, old]) => ({
+        value,
+        label: old.label,
+      })),
+    },
+  ],
+  plan: (subject, params) => {
+    const hostId = subject.host.id;
+    const stored = storedPayload(hostId, "versions");
+    if (!stored) throw new Error("No versions output stored for this host");
+    const tool = String(params.tool) as HostTool;
+    const old = OLD_TOOLS[tool];
+    const failures = HOST_TOOL_REQUIREMENTS[tool].sources.flatMap((source) =>
+      storedPayloads(hostId, source).map((each) => failedRun(each, old)),
+    );
+    return {
+      replays: [
+        { ...stored, body: withVersionLines(stored.body, old.versionLines) },
+        ...failures,
+      ],
+    };
+  },
+});
+
 export const HOST_SCENARIOS: Scenario<"host">[] = [
   collectorSilent,
   collectorOutdated,
   collectorIncompatible,
+  toolsUnsupported,
 ];

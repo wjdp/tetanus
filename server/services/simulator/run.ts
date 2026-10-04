@@ -132,7 +132,7 @@ export async function simulate(
       producer: replay.producer,
       receivedAt: now,
     });
-    if (!outcome.ok) {
+    if (!outcome.ok && !outcome.reported) {
       throw new Error(`Simulated ${replay.source} failed: ${outcome.error}`);
     }
   }

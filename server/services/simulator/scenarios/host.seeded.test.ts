@@ -91,6 +91,30 @@ describe("host scenarios", () => {
     60_000,
   );
 
+  it.each([
+    ["openzfs", "OpenZFS 2.2.2 is older than 2.3", "zpool-status"],
+    ["smartmontools", "smartmontools 6.6 is older than 7.0", "smartctl-xall"],
+  ] as const)(
+    "degrades the host for old %s, failing its sources",
+    async (tool, title, failedSource) => {
+      const before = dumpDatabase();
+      const styx = hostNamed("styx");
+      await simulate("host", styx.id, "tools-unsupported", { tool }, LATER);
+
+      const [opened] = faultsOf("host-degraded", styx.id);
+      expect(opened).toMatchObject({ severity: "warning", data: { tool } });
+      expect(opened && faultTitle(opened)).toContain(title);
+      expect(hostNamed("styx").lastRuns[failedSource]).toMatchObject({
+        ok: false,
+        error: expect.stringContaining("Command exited"),
+      });
+
+      restore();
+      expect(dumpDatabase()).toEqual(before);
+    },
+    60_000,
+  );
+
   it("offers only versions below the minimum as incompatible", () => {
     const param = subjectScenarios("host", hostNamed("styx").id).scenarios.find(
       (scenario) => scenario.id === "collector-incompatible",
