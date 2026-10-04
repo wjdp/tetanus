@@ -1,7 +1,9 @@
 // Runs every payload of a `tetanus-collect --dry-run` capture through its server parser
-// and prints a Markdown report. Exits 1 if any payload fails to parse.
+// and prints a Markdown report. Exits 1 if any payload fails to parse, or if the sources
+// whose command failed differ from --expect-failed.
 //
-// Usage: tsx --tsconfig .nuxt/tsconfig.server.json bin/parse-capture.ts [--label <name>] <collect.txt>
+// Usage: tsx --tsconfig .nuxt/tsconfig.server.json bin/parse-capture.ts
+//          [--label <name>] [--expect-failed <source,...>] <collect.txt>
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { ingestMetaSchema, isIngestSource } from "#shared/ingest";
@@ -56,12 +58,17 @@ function check(url: URL, body: string): Row {
 }
 
 const { values, positionals } = parseArgs({
-  options: { label: { type: "string" } },
+  options: {
+    label: { type: "string" },
+    "expect-failed": { type: "string", default: "" },
+  },
   allowPositionals: true,
 });
 const [file] = positionals;
 if (!file) {
-  console.error("usage: parse-capture.ts [--label <name>] <collect.txt>");
+  console.error(
+    "usage: parse-capture.ts [--label <name>] [--expect-failed <source,...>] <collect.txt>",
+  );
   process.exit(2);
 }
 
@@ -89,4 +96,13 @@ for (const r of rows) {
 }
 console.log();
 
-process.exit(count("parse error") > 0 || rows.length === 0 ? 1 : 0);
+const sorted = (sources: Iterable<string>) => [...new Set(sources)].sort().join(",");
+const failed = sorted(rows.filter((r) => r.outcome === "command failed").map((r) => r.source));
+const expectedFailed = sorted(values["expect-failed"].split(",").filter(Boolean));
+if (failed !== expectedFailed) {
+  console.log(
+    `**Failed commands changed.** Expected: \`${expectedFailed || "none"}\`, got: \`${failed || "none"}\`\n`,
+  );
+}
+
+process.exit(count("parse error") > 0 || rows.length === 0 || failed !== expectedFailed ? 1 : 0);

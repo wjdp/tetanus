@@ -1,23 +1,18 @@
 name: collector matrix
 
+# Weekly, on demand, and before each release (release.yml). Results: docs/082-Collector-OS-support.md
+
 on:
-  pull_request:
-    paths:
-      - host/**
-      - server/ingest/**
-      - bin/parse-capture.ts
-      - .github/workflows/collector-matrix.yml
+  schedule:
+    - cron: "0 5 * * 1"
   workflow_dispatch:
+  workflow_call:
 
 env:
   NODE_VERSION: 24
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   script:
@@ -63,16 +58,26 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
+      # expect-failed: sources whose command fails there. OpenZFS < 2.3 has no -j, and the
+      # VMs have no vdev_id.conf. A change either way fails the job; update docs/082.
       matrix:
-        distro:
-          - debian-12
-          - debian-13
-          - proxmox-9
-          - ubuntu-22.04
-          - ubuntu-24.04
-          - ubuntu-26.04
-          - almalinux-9
-          - almalinux-10
+        include:
+          - distro: debian-12
+            expect-failed: vdev-id-conf
+          - distro: debian-13
+            expect-failed: vdev-id-conf
+          - distro: proxmox-9
+            expect-failed: vdev-id-conf
+          - distro: ubuntu-22.04
+            expect-failed: zpool-status,zpool-list,zfs-list,zfs-snapshots,vdev-id-conf
+          - distro: ubuntu-24.04
+            expect-failed: zpool-status,zpool-list,zfs-list,zfs-snapshots,vdev-id-conf
+          - distro: ubuntu-26.04
+            expect-failed: vdev-id-conf
+          - distro: almalinux-9
+            expect-failed: zpool-status,zpool-list,zfs-list,zfs-snapshots,vdev-id-conf
+          - distro: almalinux-10
+            expect-failed: zpool-status,zpool-list,zfs-list,zfs-snapshots,vdev-id-conf
     steps:
       - uses: actions/checkout@v7
       - name: Enable KVM
@@ -100,7 +105,8 @@ jobs:
       - name: Parse capture
         run: |
           pnpm exec tsx --tsconfig .nuxt/tsconfig.server.json bin/parse-capture.ts \
-            --label ${{ matrix.distro }} out/${{ matrix.distro }}/collect.txt \
+            --label ${{ matrix.distro }} --expect-failed ${{ matrix.expect-failed }} \
+            out/${{ matrix.distro }}/collect.txt \
             | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Upload capture
         if: always()
