@@ -31,6 +31,7 @@ const SINGLE_PARAMS = {
   interface: "interface",
   recording: "recording",
   vendor: "vendor",
+  tag: "tag",
 } as const satisfies Record<SingleFacet, string>;
 
 const INVENTORY_PARAMS = [
@@ -87,6 +88,7 @@ const inventoryQuerySchema = z.object({
   interface: oneOfOrNone(INTERFACE_OPTIONS),
   recording: oneOfOrNone(RECORDING_OPTIONS),
   vendor: oneOfOrNone(VENDORS),
+  tag: anyName,
   state: listOf(LIFECYCLE_STATES),
   status: listOf(DEVICE_STATUSES),
   disposed: z

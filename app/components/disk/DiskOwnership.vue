@@ -5,13 +5,15 @@ import {
   INVENTORY_FIELDS,
   type InventoryKey,
   isFieldVisible,
+  suggestsFleetValues,
 } from "#shared/inventory-fields";
 import { formatMoneyPerTb } from "#shared/money";
 import type { DiskPatch } from "#shared/schemas/disks";
-import { warrantySuggestion } from "#shared/warranty";
+import { effectiveWarranty, warrantySuggestion } from "#shared/warranty";
 import type { InlineItem, InlineValue } from "~/components/inline/InlineField.vue";
 import { warrantyClass } from "~/components/inventory/types";
 import { diskLabel } from "./displayName";
+import { fleetSuggestions } from "./fleetSuggestions";
 import type { DiskDetail, ReplacementCandidate } from "./types";
 import { useDiskFieldSave } from "./useDiskFieldSave";
 
@@ -53,6 +55,11 @@ const itemsFor = (field: OwnershipField): InlineItem[] | undefined => {
     ...field.values.map((value) => ({ label: value, value })),
   ];
 };
+
+const suggestionsFor = (field: OwnershipField) =>
+  field.type === "tags" || suggestsFleetValues(field)
+    ? fleetSuggestions(props.disks, field.key)
+    : undefined;
 
 const inventoryValue = (key: InventoryKey): InlineValue =>
   props.disk.inventory[key] ?? null;
@@ -115,6 +122,12 @@ const replaced = computed(() =>
 
 const blankWarranty = computed(() => !props.disk.inventory.warrantyExpiry);
 
+const countdownKey = computed<InventoryKey | null>(() => {
+  const warranty = effectiveWarranty(props.disk.inventory);
+  if (!warranty) return null;
+  return warranty.source === "seller" ? "sellerWarrantyExpiry" : "warrantyExpiry";
+});
+
 const suggestedWarranty = computed(() =>
   warrantySuggestion(props.disk.inventory, props.disk.specs?.line),
 );
@@ -123,11 +136,13 @@ const copyableWarranty = computed(() =>
   blankWarranty.value ? (replaced.value?.inventory.warrantyExpiry ?? null) : null,
 );
 
+const showsCountdown = (key: InventoryKey) =>
+  warrantyLeft.value !== null && key === countdownKey.value;
+
 const showsWarrantyHint = (key: InventoryKey) =>
-  key === "warrantyExpiry" &&
-  (warrantyLeft.value !== null ||
-    suggestedWarranty.value !== null ||
-    copyableWarranty.value !== null);
+  showsCountdown(key) ||
+  (key === "warrantyExpiry" &&
+    (suggestedWarranty.value !== null || copyableWarranty.value !== null));
 </script>
 
 <template>
@@ -140,6 +155,7 @@ const showsWarrantyHint = (key: InventoryKey) =>
       :description="fieldDescription(field)"
       :value="inventoryValue(field.key)"
       :items="itemsFor(field)"
+      :suggestions="suggestionsFor(field)"
       :placeholder="field.key === 'pin33Taped' ? 'not recorded' : undefined"
       :hint="hintFor(field.key)"
       :saving="saving[field.key]"
@@ -149,13 +165,13 @@ const showsWarrantyHint = (key: InventoryKey) =>
     >
       <template v-if="showsWarrantyHint(field.key)" #hint>
         <span
-          v-if="warrantyLeft && !blankWarranty"
+          v-if="warrantyLeft && showsCountdown(field.key)"
           :class="warrantyLeft.class"
           data-testid="warranty-left"
           >{{ warrantyLeft.text }}</span
         >
         <span
-          v-else-if="suggestedWarranty"
+          v-else-if="suggestedWarranty && field.key === 'warrantyExpiry'"
           data-testid="warranty-suggestion"
         >
           {{ suggestedWarranty.text }}
@@ -169,7 +185,7 @@ const showsWarrantyHint = (key: InventoryKey) =>
           />
         </span>
         <UButton
-          v-if="copyableWarranty && replaced"
+          v-if="copyableWarranty && replaced && field.key === 'warrantyExpiry'"
           size="xs"
           color="neutral"
           variant="link"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { temperatureColour } from "#shared/temperature";
+import { type EffectiveWarranty, effectiveWarranty } from "#shared/warranty";
 import { warrantyClass } from "~/components/inventory/types";
 import { STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 import { ATTRIBUTE_STATUS_DOT } from "./attributeRows";
@@ -51,7 +52,7 @@ const figures = computed<Figure[]>(() => {
             ? `bought ${disk.inventory.purchaseDate}`
             : undefined,
         },
-    warrantyFigure(disk.warrantyDaysLeft, disk.inventory.warrantyExpiry ?? null),
+    warrantyFigure(disk.warrantyDaysLeft, effectiveWarranty(disk.inventory)),
     wearFigure(disk),
   ];
   return list.filter((figure): figure is Figure => figure !== null);
@@ -63,14 +64,19 @@ function temperatureClass(disk: DiskDetail): string | undefined {
   return colour === "neutral" ? undefined : STATUS_TEXT_CLASS[colour];
 }
 
-function warrantyFigure(days: number | null, until: string | null): Figure | null {
+function warrantyFigure(
+  days: number | null,
+  warranty: EffectiveWarranty | null,
+): Figure | null {
   if (days === null) return null;
   const expired = days < 0;
+  const seller = warranty?.source === "seller" ? "seller, " : "";
+  const until = warranty ? `${seller}until ${warranty.expiry}` : undefined;
   return {
     id: "warranty",
     label: "Warranty",
     value: expired ? "Expired" : `${formatDays(days)} left`,
-    note: expired ? `${formatDays(-days)} ago` : until ? `until ${until}` : undefined,
+    note: expired ? `${seller}${formatDays(-days)} ago` : until,
     class: warrantyClass(days) || undefined,
   };
 }

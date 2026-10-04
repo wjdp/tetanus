@@ -26,6 +26,7 @@ export const DIARY_EVENT_TYPES = [
   "disk-appeared",
   "moved-host",
   "moved-bay",
+  "moved-storage",
   "pool-moved",
   "pool-archived",
   "pool-unarchived",

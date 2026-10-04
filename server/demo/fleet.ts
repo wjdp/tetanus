@@ -418,6 +418,7 @@ function atlasDisks(timeline: Timeline): DiskSpec[] {
       installedAt: TANK_VDEV1_ADDED,
       inventory: inventory("2021-03-24", 429.0, "Scan", "new", "2026-03-24", {
         seagateBpid: "1004526218",
+        orderRef: "SCN-48211907",
       }),
       powerOnHoursAtInstall: 1,
       bytesWrittenPerDay: 60 * GB,
@@ -563,6 +564,7 @@ function formerAtlasDisks(): DiskSpec[] {
       inventoryOnly: true,
       inventory: inventory("2019-10-26", 179.99, "Amazon", "shucked", null, {
         pin33Taped: true,
+        shuckedFrom: "WD Elements 12 TB",
       }),
       powerOnHoursAtInstall: 1,
       bytesWrittenPerDay: 45 * GB,
@@ -633,7 +635,11 @@ function styxDisks(timeline: Timeline): DiskSpec[] {
       memberUntil: null,
       installedAt: VAULT_SPARE_ADDED,
       removedAt: timeline.v5PulledAt,
-      inventory: inventory("2021-01-10", 119.0, "eBay", "used", null),
+      inventory: inventory("2021-01-10", 119.0, "eBay", "used", null, {
+        sellerWarrantyExpiry: "2022-01-10",
+        storageLocation: "drawer",
+        tags: ["spare"],
+      }),
       powerOnHoursAtInstall: 3_117,
       powerCyclesAtInstall: 19,
       bytesWrittenPerDay: 0.2 * GB,
@@ -716,7 +722,7 @@ function pipDisks(timeline: Timeline): DiskSpec[] {
       membership: null,
       installedAt: PIP_MEDIA_DISK_ADDED,
       inventory: inventory("2023-01-14", 239.0, "Amazon", "new", "2028-01-14", {
-        purpose: "other",
+        tags: ["media"],
       }),
       bytesWrittenPerDay: 12 * GB,
     },

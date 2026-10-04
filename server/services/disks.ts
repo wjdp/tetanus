@@ -54,6 +54,7 @@ import {
   UNKNOWN_USAGE,
 } from "#shared/usage";
 import { detectVendor } from "#shared/vendor";
+import { effectiveWarranty } from "#shared/warranty";
 import { db } from "~~/server/database/client";
 import {
   disk,
@@ -938,13 +939,12 @@ function daysBetween(fromIsoDay: string, toIsoDay: string) {
 
 function inventoryDays(inventory: Partial<Inventory>, now: Date) {
   const today = isoDay(now);
+  const warranty = effectiveWarranty(inventory);
   return {
     ageDays: inventory.purchaseDate
       ? daysBetween(inventory.purchaseDate, today)
       : null,
-    warrantyDaysLeft: inventory.warrantyExpiry
-      ? daysBetween(today, inventory.warrantyExpiry)
-      : null,
+    warrantyDaysLeft: warranty ? daysBetween(today, warranty.expiry) : null,
   };
 }
 
@@ -1039,6 +1039,29 @@ export async function getDisk(
     diaryCount: countDiary("disk", id),
     seenSinceDisposal: seenSinceDisposal(row),
   };
+}
+
+function storageMoveTitle(from: string | null, to: string | null) {
+  if (to === null) return `no longer stored at ${from}`;
+  return from === null ? `stored at ${to}` : `moved from ${from} to ${to}`;
+}
+
+function recordStorageMove(
+  row: DiskRow,
+  inventory: Partial<Inventory>,
+  now: Date,
+) {
+  const from = row.inventory.storageLocation ?? null;
+  const to = inventory.storageLocation ?? null;
+  if (from === to) return;
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: row.id,
+    eventType: "moved-storage",
+    title: storageMoveTitle(from, to),
+    data: { from, to },
+    at: now,
+  });
 }
 
 function mergeInventory(
@@ -1259,6 +1282,7 @@ export async function updateDisk(
         at: now,
       });
     }
+    if (changes.inventory) recordStorageMove(row, changes.inventory, now);
     if (disposalChanged) recordDisposal(row, disposal, config.currency, now);
     if (replacementChanged) relinkReplacement(row, replaced, now);
     if (Object.keys(changes).length === 0) return;

@@ -9,5 +9,4 @@ export interface PurposeBadgeProps {
 
 export const PURPOSE_BADGE: Record<Purpose, PurposeBadgeProps> = {
   system: { label: "sys", color: "neutral", variant: "outline", size: "xs" },
-  other: { label: "other", color: "neutral", variant: "outline", size: "xs" },
 };

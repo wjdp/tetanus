@@ -21,7 +21,7 @@ export const UNKNOWN_USAGE: DiskUsage = {
   system: false,
 };
 
-export const PURPOSES = ["system", "other"] as const;
+export const PURPOSES = ["system"] as const;
 export type Purpose = (typeof PURPOSES)[number];
 
 export function isMounted(usage: DiskUsage): boolean {

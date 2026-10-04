@@ -3,6 +3,7 @@ import { interfaceLabel, sectorFormat } from "#shared/hardware";
 import { formatDuration } from "#shared/hostFreshness";
 import { displayModel } from "#shared/model";
 import { DEFAULT_CURRENCY, formatMoney, formatMoneyPerTb } from "#shared/money";
+import { effectiveWarranty } from "#shared/warranty";
 import { markdownToPlainText } from "~/utils/markdown";
 import {
   DEVICE_STATUS_VOCABULARY,
@@ -58,6 +59,10 @@ const replacedByLabel = computed(() =>
 );
 
 const notesText = computed(() => markdownToPlainText(props.disk.notes));
+
+const sellerWarranty = computed(
+  () => effectiveWarranty(props.disk.inventory)?.source === "seller",
+);
 
 const timeAgo = (value: string) =>
   `${formatDuration(Date.now() - Date.parse(value))} ago`;
@@ -303,8 +308,9 @@ const INFERRED_WRITTEN_TITLE =
     class="tabular-nums"
     :class="warrantyClass(disk.warrantyDaysLeft)"
     :data-warranty-days="disk.warrantyDaysLeft"
+    :title="sellerWarranty ? 'Seller warranty: ends after the manufacturer warranty' : undefined"
   >
-    {{ warrantyLabel(disk.warrantyDaysLeft) }}
+    {{ warrantyLabel(disk.warrantyDaysLeft) }}{{ sellerWarranty ? " (seller)" : "" }}
   </span>
 
   <span v-else-if="column.id === 'purchased'" class="tabular-nums">
@@ -329,6 +335,17 @@ const INFERRED_WRITTEN_TITLE =
   </span>
 
   <span v-else-if="column.id === 'supplier'">{{ disk.inventory.supplier }}</span>
+
+  <span v-else-if="column.id === 'tags'" class="flex flex-wrap gap-1">
+    <UBadge
+      v-for="tag in disk.inventory.tags"
+      :key="tag"
+      :label="tag"
+      color="neutral"
+      variant="subtle"
+      size="sm"
+    />
+  </span>
 
   <span v-else-if="column.id === 'bpid'" class="font-mono text-xs">
     {{ disk.inventory.seagateBpid }}

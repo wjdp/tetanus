@@ -66,6 +66,17 @@ const poolOptions = computed<FilterOption[]>(() => [
   { label: "No pool", value: NONE },
 ]);
 
+const tagOptions = computed<FilterOption[]>(() => [
+  { label: "All tags", value: ALL },
+  ...nameOptions(
+    namesWithSelected(
+      props.disks.flatMap(({ inventory }) => inventory.tags ?? []),
+      filters.value.tag,
+    ),
+  ),
+  { label: "No tags", value: NONE },
+]);
+
 const stateOptions: FilterOption[] = LIFECYCLE_STATES.map((state) => ({
   value: state,
   label: LIFECYCLE_VOCABULARY[state].label,
@@ -160,7 +171,9 @@ const disposed = computed(() => disposedCount(props.disks, filters.value));
 const popoverActiveCount = computed(
   () =>
     POPOVER_FILTERS.filter(({ facet }) => isFacetActive(filters.value, facet))
-      .length + (filters.value.includeDisposed ? 1 : 0),
+      .length +
+    (isFacetActive(filters.value, "tag") ? 1 : 0) +
+    (filters.value.includeDisposed ? 1 : 0),
 );
 </script>
 
@@ -243,6 +256,16 @@ const popoverActiveCount = computed(
             class="w-full"
             :aria-label="`Filter by ${filter.facet}`"
             @update:model-value="update({ [filter.facet]: String($event) })"
+          />
+          <InventoryFilterSelect
+            v-if="tagOptions.length > 2"
+            :model-value="filters.tag"
+            :options="tagOptions"
+            icon="i-lucide-tag"
+            :counts="counts.tag"
+            class="w-full"
+            aria-label="Filter by tag"
+            @update:model-value="update({ tag: String($event) })"
           />
           <div class="px-1 py-1.5" data-testid="include-disposed">
             <USwitch

@@ -26,6 +26,7 @@ const EVERY_FILTER: InventoryFilterState = {
   interface: "sata",
   recording: "smr",
   vendor: "western-digital",
+  tag: "spare",
   states: ["spare", "in-use"],
   statuses: ["failed", "warning"],
   includeDisposed: true,
@@ -40,6 +41,7 @@ const EVERY_NONE: InventoryFilterState = {
   interface: NONE,
   recording: NONE,
   vendor: NONE,
+  tag: NONE,
 };
 
 describe("inventory query string", () => {
@@ -76,6 +78,7 @@ describe("inventory query string", () => {
       interface: "sata",
       recording: "smr",
       vendor: "western-digital",
+      tag: "spare",
       state: "spare,in-use",
       status: "failed,warning",
       disposed: "1",
@@ -91,6 +94,7 @@ describe("inventory query string", () => {
       interface: "none",
       recording: "none",
       vendor: "none",
+      tag: "none",
     });
   });
 

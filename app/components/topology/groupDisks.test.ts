@@ -172,7 +172,7 @@ describe("hostDiskGroups", () => {
       disk(1, { ...live, state: "retired" }),
       disk(2, { ...live, state: "dead" }),
       disk(3, { ...live, state: "in-use" }),
-      disk(4, { ...live, state: "spare", purpose: "other" }),
+      disk(4, { ...live, state: "spare" }),
       disk(5, { ...live, state: "in-use", purpose: "system" }),
       disk(6, { ...live, state: "spare", lastSeenHostId: 2 }),
       disk(7, { state: "spare", lastSeenHostId: 1 }),

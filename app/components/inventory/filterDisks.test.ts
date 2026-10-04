@@ -131,6 +131,35 @@ describe("filterDisks", () => {
   });
 });
 
+describe("tag facet", () => {
+  const tagged = [
+    disk({ id: 1, alias: "T1", inventory: { tags: ["spare", "offsite"] } }),
+    disk({ id: 2, alias: "T2", inventory: { tags: ["spare"] } }),
+    disk({ id: 3, alias: "T3" }),
+  ];
+
+  it("matches a disk carrying the tag among others", () => {
+    const aliasesTagged = (tag: string) =>
+      filterDisks(tagged, { ...CLEARED_FILTERS, tag }).map(
+        ({ alias }) => alias,
+      );
+    expect(aliasesTagged("spare")).toEqual(["T1", "T2"]);
+    expect(aliasesTagged("offsite")).toEqual(["T1"]);
+    expect(aliasesTagged(NONE)).toEqual(["T3"]);
+  });
+
+  it("counts each tag once per disk", () => {
+    expect(
+      Object.fromEntries(facetCounts(tagged, CLEARED_FILTERS).tag),
+    ).toEqual({
+      [ALL]: 3,
+      spare: 2,
+      offsite: 1,
+      [NONE]: 1,
+    });
+  });
+});
+
 describe("facetCounts", () => {
   it("counts each option across all disks when cleared", () => {
     const counts = facetCounts(DISKS, CLEARED_FILTERS);

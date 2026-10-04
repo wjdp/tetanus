@@ -510,6 +510,48 @@ describe("DiskOverview", () => {
     });
   });
 
+  it("asks where an absent disk is stored, suggesting places in use", async () => {
+    const storage = '[data-field="storageLocation"]';
+    expect((await mountOverview()).find(storage).exists()).toBe(false);
+
+    const shelved: ReplacementCandidate = {
+      id: 5,
+      alias: "K1",
+      serial: "OLD",
+      hostName: null,
+      purpose: null,
+      disposal: null,
+      replacedByDiskId: null,
+      inventory: { storageLocation: "drawer" },
+    };
+    const wrapper = await mountOverview(
+      { present: false, inventory: { storageLocation: "offsite" } },
+      [shelved],
+    );
+    expect(row(wrapper, "Stored at")).toContain("offsite");
+
+    await wrapper
+      .get(`${storage} [data-testid="inline-display"]`)
+      .trigger("click");
+    expect(
+      wrapper
+        .findAll(`${storage} datalist option`)
+        .map((option) => option.attributes("value")),
+    ).toEqual(["drawer"]);
+  });
+
+  it("shows tags as chips", async () => {
+    const wrapper = await mountOverview({
+      inventory: { tags: ["spare", "offsite"] },
+    });
+    expect(
+      wrapper.findAll('[data-field="tags"] [data-testid="inline-tags"] span')
+        .length,
+    ).toBeGreaterThan(0);
+    expect(wrapper.get('[data-field="tags"]').text()).toContain("spare");
+    expect(wrapper.get('[data-field="tags"]').text()).toContain("offsite");
+  });
+
   it("copies the warranty from the replaced disk", async () => {
     const replaced: ReplacementCandidate = {
       id: 5,

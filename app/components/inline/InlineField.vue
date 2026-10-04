@@ -2,7 +2,7 @@
 import type { InventoryFieldType } from "#shared/inventory-fields";
 import { currencyStep, currencySymbol, formatMoney } from "#shared/money";
 
-export type InlineValue = string | number | boolean | null;
+export type InlineValue = string | number | boolean | string[] | null;
 
 export interface InlineItem {
   label: string;
@@ -19,6 +19,7 @@ const props = withDefaults(
     description?: string | null;
     ariaLabel?: string;
     items?: InlineItem[];
+    suggestions?: string[];
     placeholder?: string;
     format?: (value: InlineValue) => string;
     hint?: string;
@@ -31,6 +32,7 @@ const props = withDefaults(
     description: null,
     ariaLabel: undefined,
     items: undefined,
+    suggestions: undefined,
     placeholder: "—",
     format: undefined,
     hint: undefined,
@@ -61,6 +63,8 @@ const currency = useCurrency();
 const editing = ref(false);
 const selectOpen = ref(false);
 const draft = ref("");
+const draftTags = ref<string[]>([]);
+const suggestionListId = useId();
 const awaiting = ref(false);
 const pending = ref<InlineValue>(null);
 const succeeded = ref(false);
@@ -88,9 +92,18 @@ const shownValue = computed(() =>
   awaiting.value ? pending.value : props.value,
 );
 
+const shownTags = computed(() =>
+  Array.isArray(shownValue.value) ? shownValue.value : [],
+);
+
+const tagItems = computed(() => [
+  ...new Set([...(props.suggestions ?? []), ...draftTags.value]),
+]);
+
 const text = computed<string | null>(() => {
   const value = shownValue.value;
   if (value === null || value === "") return null;
+  if (Array.isArray(value)) return value.length ? value.join(", ") : null;
   if (props.format) return props.format(value);
   if (choices.value)
     return choices.value.find((item) => item.value === value)?.label ?? null;
@@ -109,17 +122,22 @@ const controlLabel = computed(
   () => props.ariaLabel ?? props.label ?? props.type,
 );
 
-const input = useTemplateRef<{ inputRef?: HTMLInputElement | null }>("input");
+type Focusable = { inputRef?: HTMLInputElement | null };
+const input = useTemplateRef<Focusable>("input");
+const tagsInput = useTemplateRef<Focusable>("tagsInput");
 
 watch(editing, async (isEditing) => {
   if (!isEditing) return;
   await nextTick();
-  input.value?.inputRef?.focus();
+  (input.value ?? tagsInput.value)?.inputRef?.focus();
 });
 
 const startEdit = () => {
+  draftTags.value = Array.isArray(props.value) ? [...props.value] : [];
   draft.value =
-    props.value === null || typeof props.value === "boolean"
+    props.value === null ||
+    typeof props.value === "boolean" ||
+    Array.isArray(props.value)
       ? ""
       : String(props.value);
   typedSinceChange.value = false;
@@ -137,9 +155,14 @@ const parse = (raw: string): InlineValue => {
   return trimmed;
 };
 
+const sameValue = (left: InlineValue, right: InlineValue) =>
+  Array.isArray(left) || Array.isArray(right)
+    ? JSON.stringify(left ?? []) === JSON.stringify(right ?? [])
+    : left === right;
+
 const submit = (value: InlineValue) => {
   editing.value = false;
-  if (value === props.value) return;
+  if (sameValue(value, props.value)) return;
   pending.value = value;
   awaiting.value = true;
   emit("commit", value);
@@ -152,6 +175,16 @@ const commit = () => {
 
 const cancel = () => {
   editing.value = false;
+};
+
+const addTag = (raw: string) => {
+  const tag = raw.trim().toLowerCase();
+  if (tag && !draftTags.value.includes(tag)) draftTags.value.push(tag);
+};
+
+const commitTags = () => {
+  if (!editing.value) return;
+  submit(draftTags.value.length ? draftTags.value : null);
 };
 
 const onKeydown = (event: KeyboardEvent) => {
@@ -273,6 +306,21 @@ const statusIcon = computed(() => {
         @update:model-value="pick"
         @update:open="onSelectOpen"
       />
+      <UInputMenu
+        v-else-if="type === 'tags'"
+        ref="tagsInput"
+        v-model="draftTags"
+        :items="tagItems"
+        multiple
+        create-item
+        :default-open="true"
+        size="xs"
+        :aria-label="controlLabel"
+        class="w-full"
+        @create="addTag"
+        @blur="commitTags"
+        @keydown.esc.prevent="cancel"
+      />
       <UInput
         v-else
         ref="input"
@@ -282,6 +330,8 @@ const statusIcon = computed(() => {
         :step="type === 'money' ? currencyStep(currency) : undefined"
         size="xs"
         :aria-label="controlLabel"
+        :list="suggestions?.length ? suggestionListId : undefined"
+        autocomplete="off"
         :ui="inputUi"
         class="w-full"
         @update:model-value="(typed) => (draft = String(typed ?? ''))"
@@ -297,6 +347,9 @@ const statusIcon = computed(() => {
           }}</span>
         </template>
       </UInput>
+      <datalist v-if="suggestions?.length" :id="suggestionListId">
+        <option v-for="suggestion in suggestions" :key="suggestion" :value="suggestion" />
+      </datalist>
       <p
         v-if="error"
         class="text-error text-xs"
@@ -318,6 +371,21 @@ const statusIcon = computed(() => {
       >
         <slot name="display" :value="shownValue" :text="text">
           <span
+            v-if="shownTags.length"
+            class="flex min-w-0 flex-wrap gap-1"
+            data-testid="inline-tags"
+          >
+            <UBadge
+              v-for="tag in shownTags"
+              :key="tag"
+              :label="tag"
+              color="neutral"
+              variant="subtle"
+              size="sm"
+            />
+          </span>
+          <span
+            v-else
             class="tabular truncate"
             :class="{ 'text-dimmed': text === null }"
             >{{ text ?? placeholder }}</span

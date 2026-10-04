@@ -572,6 +572,39 @@ describe("disk state, overrides and inventory", () => {
     expect(updated.inventory).not.toHaveProperty("supplier");
   });
 
+  it("counts the warranty down to whichever expiry ends later", async () => {
+    const now = new Date("2026-09-01T00:00:00Z");
+    const updated = await updateDisk(
+      sdaId,
+      {
+        inventory: {
+          warrantyExpiry: "2026-09-11",
+          sellerWarrantyExpiry: "2026-10-01",
+        },
+      },
+      now,
+    );
+    expect(updated.warrantyDaysLeft).toBe(30);
+  });
+
+  it("writes a moved-storage entry when the storage location changes", async () => {
+    const at = new Date("2026-09-01T00:00:00Z");
+    const store = (storageLocation: string | null) =>
+      updateDisk(sdaId, { inventory: { storageLocation } }, at);
+    await store("drawer");
+    await store("drawer");
+    await store("offsite");
+    await store(null);
+    await updateDisk(sdaId, { inventory: { supplier: "Scan" } }, at);
+    expect(
+      eventsOf(sdaId, "moved-storage").map((entry) => entry.title),
+    ).toEqual([
+      "no longer stored at offsite",
+      "moved from drawer to offsite",
+      "stored at drawer",
+    ]);
+  });
+
   it("sets, clears and refuses clashing aliases", async () => {
     await expect(updateDisk(sdaId, { alias: "K2" })).rejects.toMatchObject({
       statusCode: 409,
@@ -954,11 +987,11 @@ describe("disk usage", () => {
     const nvmeId = diskBySerial("S4EVNX0R123456A").id;
     const updated = await updateDisk(
       nvmeId,
-      { inventory: { purpose: "other" } },
+      { inventory: { purpose: "system" } },
       later,
     );
     expect(updated).toMatchObject({
-      purpose: "other",
+      purpose: "system",
       purposeInferred: false,
     });
   });

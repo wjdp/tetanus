@@ -14,6 +14,7 @@ import { temperatureColour } from "#shared/temperature";
 import { usageDetail } from "#shared/usage";
 import type { InlineItem, InlineValue } from "~/components/inline/InlineField.vue";
 import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
+import { fleetSuggestions } from "./fleetSuggestions";
 import { specFooter, specRows } from "./specRows";
 import type { DiskDetail, ReplacementCandidate } from "./types";
 import { useDiskFieldSave } from "./useDiskFieldSave";
@@ -53,6 +54,8 @@ const modelShortField = fieldNamed("modelShort");
 const recordingField = fieldNamed("recordingTech");
 const purposeField = fieldNamed("purpose");
 const bpidField = fieldNamed("seagateBpid");
+const storageField = fieldNamed("storageLocation");
+const shuckedFromField = fieldNamed("shuckedFrom");
 
 const recordingItems: InlineItem[] =
   "values" in recordingField
@@ -117,6 +120,16 @@ const media = computed(() => {
 
 const showsRecording = computed(() => isFieldVisible(recordingField, props.disk));
 const showsBpid = computed(() => isFieldVisible(bpidField, props.disk));
+const showsStorage = computed(() => isFieldVisible(storageField, props.disk));
+const showsShuckedFrom = computed(() =>
+  isFieldVisible(shuckedFromField, props.disk),
+);
+const storageSuggestions = computed(() =>
+  fleetSuggestions(props.disks, "storageLocation"),
+);
+const shuckedFromSuggestions = computed(() =>
+  fleetSuggestions(props.disks, "shuckedFrom"),
+);
 
 const resolvedRecording = computed(() =>
   knownRecordingTech(props.disk.recordingTech)?.toUpperCase() ?? null,
@@ -330,6 +343,18 @@ const optionalDate = (value: string | null) =>
         >
       </DiskFact>
       <InlineField
+        v-if="showsStorage"
+        type="text"
+        :label="storageField.label"
+        :description="fieldDescription(storageField)"
+        :value="inventoryValue('storageLocation')"
+        :suggestions="storageSuggestions"
+        :saving="saving.storageLocation"
+        :error="errors.storageLocation"
+        data-field="storageLocation"
+        @commit="saveInventory('storageLocation', $event)"
+      />
+      <InlineField
         v-if="disk.bay"
         type="text"
         label="Bay"
@@ -419,6 +444,18 @@ const optionalDate = (value: string | null) =>
         @commit="saveInventory('seagateBpid', $event)"
       />
       <DiskFact v-if="wwn" label="WWN" :value="wwn" mono />
+      <InlineField
+        v-if="showsShuckedFrom"
+        type="text"
+        :label="shuckedFromField.label"
+        :description="fieldDescription(shuckedFromField)"
+        :value="inventoryValue('shuckedFrom')"
+        :suggestions="shuckedFromSuggestions"
+        :saving="saving.shuckedFrom"
+        :error="errors.shuckedFrom"
+        data-field="shuckedFrom"
+        @commit="saveInventory('shuckedFrom', $event)"
+      />
       <DiskFact v-if="disk.firmware" label="Firmware" :value="disk.firmware" mono />
       <InlineField
         type="text"

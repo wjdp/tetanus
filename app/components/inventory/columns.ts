@@ -178,6 +178,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: false,
   },
   {
+    id: "storedAt",
+    label: "Stored at",
+    group: "Placement",
+    value: (disk) => blankToNull(disk.inventory.storageLocation),
+    defaultVisible: false,
+  },
+  {
     id: "pool",
     label: "Pool",
     group: "Placement",
@@ -346,6 +353,27 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     group: "Inventory",
     value: (disk) => disk.warrantyDaysLeft,
     defaultVisible: true,
+  },
+  {
+    id: "orderRef",
+    label: "Order ref",
+    group: "Inventory",
+    value: (disk) => blankToNull(disk.inventory.orderRef),
+    defaultVisible: false,
+  },
+  {
+    id: "shuckedFrom",
+    label: "Shucked from",
+    group: "Inventory",
+    value: (disk) => blankToNull(disk.inventory.shuckedFrom),
+    defaultVisible: false,
+  },
+  {
+    id: "tags",
+    label: "Tags",
+    group: "Inventory",
+    value: (disk) => disk.inventory.tags?.join(", ") || null,
+    defaultVisible: false,
   },
   {
     id: "bpid",

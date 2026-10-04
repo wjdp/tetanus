@@ -70,7 +70,7 @@ describe("pool and usage fields", () => {
   const member = disk(1, {
     membership: mirrorMembership(),
     usage: { kind: "zfs", fsTypes: ["zfs_member"], mounts: [], system: false },
-    purpose: "other",
+    purpose: "system",
   });
   const boot = disk(2, {
     usage: {

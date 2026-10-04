@@ -77,8 +77,8 @@ describe("inferUsage on mars", () => {
 
 describe("resolvePurpose", () => {
   it("prefers the inventory purpose", () => {
-    expect(resolvePurpose({ purpose: "other" }, { system: true })).toEqual({
-      purpose: "other",
+    expect(resolvePurpose({ purpose: "system" }, { system: false })).toEqual({
+      purpose: "system",
       purposeInferred: false,
     });
   });

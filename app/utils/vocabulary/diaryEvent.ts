@@ -93,6 +93,7 @@ const DIARY_EVENT_ICON: Record<
   "disk-appeared": () => "i-lucide-plug-zap",
   "moved-host": () => "i-lucide-move-right",
   "moved-bay": () => "i-lucide-arrow-left-right",
+  "moved-storage": () => "i-lucide-archive",
   "pool-moved": () => "i-lucide-move-right",
   "pool-archived": () => "i-lucide-archive",
   "pool-unarchived": () => "i-lucide-archive-restore",

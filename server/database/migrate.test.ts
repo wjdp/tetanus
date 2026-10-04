@@ -38,7 +38,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 29;
+const MIGRATION_COUNT = 30;
 
 const openConnections: Database.Database[] = [];
 
@@ -172,7 +172,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 12
+            ORDER BY created_at DESC LIMIT 13
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -199,6 +199,7 @@ describe("0009_host_collector_version", () => {
       "0026_diary_titles_without_ids",
       "0027_zfs_event_repair",
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -262,7 +263,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 20
+            ORDER BY created_at DESC LIMIT 21
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -295,6 +296,7 @@ describe("0009_host_collector_version", () => {
       "0026_diary_titles_without_ids",
       "0027_zfs_event_repair",
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     expect(
       sqlite
@@ -332,7 +334,7 @@ describe("0018_vdev_role_backfill", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 11
+            ORDER BY created_at DESC LIMIT 12
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -360,6 +362,7 @@ describe("0018_vdev_role_backfill", () => {
       "0026_diary_titles_without_ids",
       "0027_zfs_event_repair",
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -394,7 +397,7 @@ describe("0022_disk_disposal", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 7
+            ORDER BY created_at DESC LIMIT 8
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -417,6 +420,7 @@ describe("0022_disk_disposal", () => {
       "0026_diary_titles_without_ids",
       "0027_zfs_event_repair",
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
@@ -471,7 +475,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 6
+            ORDER BY created_at DESC LIMIT 7
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -494,6 +498,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       "0026_diary_titles_without_ids",
       "0027_zfs_event_repair",
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     expect(
       sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),
@@ -515,7 +520,7 @@ describe("0026_diary_titles_without_ids", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 3
+            ORDER BY created_at DESC LIMIT 4
         );
       INSERT INTO Disk (alias, model, serial, firstSeenAt)
         VALUES ('K1', NULL, NULL, 0), (NULL, 'ST18000NM', 'ZR2', 0);
@@ -529,6 +534,7 @@ describe("0026_diary_titles_without_ids", () => {
       "0026_diary_titles_without_ids",
       "0027_zfs_event_repair",
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     expect(
       sqlite.prepare("SELECT title FROM DiaryEntry ORDER BY id").all(),
@@ -547,7 +553,7 @@ describe("0027_zfs_event_repair", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 2
+            ORDER BY created_at DESC LIMIT 3
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title)
@@ -570,6 +576,7 @@ describe("0027_zfs_event_repair", () => {
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0027_zfs_event_repair",
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     expect(sqlite.prepare("SELECT title FROM DiaryEntry").all()).toEqual([
       { title: "kept" },
@@ -593,7 +600,7 @@ describe("0028_placeholder_wwn_keys", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY created_at DESC LIMIT 2
         );
       INSERT INTO Disk (firstSeenAt) VALUES (0);
       INSERT INTO DiskKey (diskId, kind, value)
@@ -610,6 +617,7 @@ describe("0028_placeholder_wwn_keys", () => {
 
     expect(runMigrations(sqlite, db).applied).toEqual([
       "0028_placeholder_wwn_keys",
+      "0029_clear_purpose_other",
     ]);
     expect(
       sqlite.prepare("SELECT kind, value FROM DiskKey ORDER BY id").all(),
@@ -617,6 +625,36 @@ describe("0028_placeholder_wwn_keys", () => {
       { kind: "wwn", value: "50014eef5e68017f" },
       { kind: "by-id", value: "wwn-0x50014eef5e68017f" },
       { kind: "model-serial", value: "EFRX-68N32N0|WH5552TQ8A19" },
+    ]);
+  });
+});
+
+describe("0029_clear_purpose_other", () => {
+  it("clears purpose other and keeps system and the rest of the inventory", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DELETE FROM __drizzle_migrations
+        WHERE created_at IN (
+          SELECT created_at FROM __drizzle_migrations
+            ORDER BY created_at DESC LIMIT 1
+        );
+      INSERT INTO Disk (firstSeenAt, inventory)
+        VALUES
+          (0, '{"purpose":"other","supplier":"Scan"}'),
+          (0, '{"purpose":"system"}'),
+          (0, '{}');
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0029_clear_purpose_other",
+    ]);
+    expect(
+      sqlite.prepare("SELECT inventory FROM Disk ORDER BY id").all(),
+    ).toEqual([
+      { inventory: '{"supplier":"Scan"}' },
+      { inventory: '{"purpose":"system"}' },
+      { inventory: "{}" },
     ]);
   });
 });

@@ -1,6 +1,6 @@
 ---
 type: task
-status: planned
+status: in-progress
 ---
 
 # More inventory fields
@@ -113,3 +113,19 @@ already carries both. A hidden field keeps its value and still exports.
 
 - No "not system" override: system detection comes from `/` and `/boot` mounts and is
   trusted for now. Revisit if a wrong inference turns up.
+
+## Implementation
+
+Built 2026-10-04:
+
+- Registry: `storageLocation`, `shuckedFrom` (both `suggest: true`), `orderRef`,
+  `sellerWarrantyExpiry`, `tags`. `FieldVisibilityContext` gains `present` and `disposal`.
+- Text suggestions are a native `<datalist>` on the inline input, fed by
+  `fleetSuggestions` over the disk list; tags use `UInputMenu` (multiple, create-item).
+- `effectiveWarranty` in `shared/warranty.ts` picks the later expiry; the server's
+  `warrantyDaysLeft`, the headline figure, the Ownership countdown and the list column
+  follow it and say "seller" when it is the seller's.
+- `moved-storage` diary entries from `updateDisk`.
+- Migration `0029_clear_purpose_other`; the demo's P3 is tagged `media` instead.
+- List: Stored at, Order ref, Shucked from and Tags columns; a tag filter in the Filters
+  popover, shown once any disk has a tag. A disk matches a tag among several.

@@ -35,6 +35,13 @@ describe("inventorySchema", () => {
     });
   });
 
+  it("normalises tags and clears an empty list", () => {
+    expect(
+      inventorySchema.parse({ tags: [" Spare ", "spare", "cold-backup"] }),
+    ).toEqual({ tags: ["spare", "cold-backup"] });
+    expect(inventorySchema.parse({ tags: [] })).toEqual({ tags: null });
+  });
+
   it("trims text", () => {
     expect(inventorySchema.parse({ supplier: "  Scan " })).toEqual({
       supplier: "Scan",
@@ -49,6 +56,9 @@ describe("inventorySchema", () => {
     { purchasePrice: "189.99" },
     { purchaseCondition: "second-hand" },
     { pin33Taped: "yes" },
+    { tags: ["two words"] },
+    { tags: ["x".repeat(33)] },
+    { tags: "spare" },
     { recordingTech: "unknown" },
     { colour: "blue" },
   ])("rejects %o", (inventory) => {
@@ -66,7 +76,7 @@ describe("isFieldVisible", () => {
     media: FieldVisibilityContext["media"],
     vendor: FieldVisibilityContext["vendor"] = null,
     inventory: FieldVisibilityContext["inventory"] = {},
-  ) => ({ media, vendor, inventory });
+  ) => ({ media, vendor, inventory, present: true, disposal: null });
 
   it("shows recording tech only on hdds", () => {
     const recordingTech = field("recordingTech");
@@ -97,6 +107,33 @@ describe("isFieldVisible", () => {
     );
   });
 
+  it("shows where a disk is stored only while it is out of a host and kept", () => {
+    const storage = field("storageLocation");
+    const context = { ...on("hdd"), present: false };
+    expect(isFieldVisible(storage, context)).toBe(true);
+    expect(isFieldVisible(storage, { ...context, present: true })).toBe(false);
+    expect(
+      isFieldVisible(storage, { ...context, disposal: { kind: "sold" } }),
+    ).toBe(false);
+  });
+
+  it("shows shucked from on shucked disks, or once set", () => {
+    const shuckedFrom = field("shuckedFrom");
+    expect(
+      isFieldVisible(
+        shuckedFrom,
+        on("hdd", null, { purchaseCondition: "shucked" }),
+      ),
+    ).toBe(true);
+    expect(isFieldVisible(shuckedFrom, on("hdd"))).toBe(false);
+    expect(
+      isFieldVisible(
+        shuckedFrom,
+        on("hdd", null, { shuckedFrom: "WD Elements" }),
+      ),
+    ).toBe(true);
+  });
+
   it("shows the BPID on Seagate disks, or once recorded", () => {
     const bpid = field("seagateBpid");
     expect(isFieldVisible(bpid, on("hdd", "seagate"))).toBe(true);
@@ -122,8 +159,13 @@ describe("fieldGroup", () => {
       supplier: "ownership",
       purchaseCondition: "ownership",
       warrantyExpiry: "ownership",
+      sellerWarrantyExpiry: "ownership",
+      orderRef: "ownership",
+      tags: "ownership",
       pin33Taped: "ownership",
       recordingTech: "hardware",
+      storageLocation: "placement",
+      shuckedFrom: "identity",
       seagateBpid: "identity",
     });
   });

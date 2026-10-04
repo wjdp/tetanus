@@ -1,5 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { warrantySuggestion } from "./warranty";
+import { effectiveWarranty, warrantySuggestion } from "./warranty";
+
+describe("effectiveWarranty", () => {
+  it("takes whichever expiry ends later and says whose it is", () => {
+    expect(
+      effectiveWarranty({
+        warrantyExpiry: "2027-01-01",
+        sellerWarrantyExpiry: "2026-01-01",
+      }),
+    ).toEqual({ expiry: "2027-01-01", source: "manufacturer" });
+    expect(
+      effectiveWarranty({
+        warrantyExpiry: "2025-01-01",
+        sellerWarrantyExpiry: "2026-01-01",
+      }),
+    ).toEqual({ expiry: "2026-01-01", source: "seller" });
+    expect(effectiveWarranty({ sellerWarrantyExpiry: "2026-01-01" })).toEqual({
+      expiry: "2026-01-01",
+      source: "seller",
+    });
+  });
+
+  it("is null with neither", () => {
+    expect(effectiveWarranty({})).toBeNull();
+  });
+});
 
 describe("warranty suggestion", () => {
   const purchased = { purchaseDate: "2023-04-01" };

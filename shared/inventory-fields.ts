@@ -11,7 +11,7 @@ export const INVENTORY_FIELDS = [
     values: PURPOSES,
     group: "placement",
     description:
-      "Only needed when detection gets it wrong. System marks a boot or OS disk that was not spotted from its / or /boot mount; other labels a disk used outside ZFS for something else, such as scratch or backups, and overrides a wrong system guess.",
+      "Only needed when detection gets it wrong. System marks a boot or OS disk that was not spotted from its / or /boot mount. For anything else, such as scratch or backups, use tags.",
   },
   {
     key: "modelShort",
@@ -32,6 +32,21 @@ export const INVENTORY_FIELDS = [
   },
   { key: "warrantyExpiry", label: "Warranty", type: "date" },
   {
+    key: "sellerWarrantyExpiry",
+    label: "Seller warranty",
+    type: "date",
+    description:
+      "Cover from the seller, separate from the manufacturer's: common on used and refurbished disks, sometimes added to new ones. The warranty countdown uses whichever ends later.",
+  },
+  {
+    key: "orderRef",
+    label: "Order ref",
+    type: "text",
+    description:
+      "The order or invoice number, for proving the purchase in a warranty claim.",
+  },
+  { key: "tags", label: "Tags", type: "tags" },
+  {
     key: "pin33Taped",
     label: "3.3 V pin",
     type: "boolean",
@@ -47,6 +62,29 @@ export const INVENTORY_FIELDS = [
     values: RECORDING_TECH_OVERRIDES,
     media: ["hdd"],
     group: "hardware",
+  },
+  {
+    key: "storageLocation",
+    label: "Stored at",
+    type: "text",
+    group: "placement",
+    suggest: true,
+    when: ({ present, disposal }: FieldVisibilityContext) =>
+      !present && !disposal,
+    description:
+      "Where the disk is kept while it is not plugged in: a drawer, a shelf, offsite. Hidden, not cleared, while the disk is in a host.",
+  },
+  {
+    key: "shuckedFrom",
+    label: "Shucked from",
+    type: "text",
+    group: "identity",
+    suggest: true,
+    when: ({ inventory }: FieldVisibilityContext) =>
+      inventory.purchaseCondition === "shucked" ||
+      Boolean(inventory.shuckedFrom),
+    description:
+      "The external drive this disk came out of, such as WD Elements 14 TB. Matters for warranty claims and for spotting batches.",
   },
   {
     key: "seagateBpid",
@@ -72,6 +110,10 @@ export function fieldDescription(field: InventoryField): string | null {
   return "description" in field ? field.description : null;
 }
 
+export function suggestsFleetValues(field: InventoryField): boolean {
+  return "suggest" in field && field.suggest;
+}
+
 export function fieldGroup(field: InventoryField): InventoryFieldGroup {
   return "group" in field ? field.group : "ownership";
 }
@@ -88,6 +130,8 @@ export interface FieldVisibilityContext {
   media: Media | null;
   vendor: Vendor | null;
   inventory: Readonly<Record<string, unknown>>;
+  present: boolean;
+  disposal: unknown;
 }
 
 function passesGate(
@@ -116,6 +160,7 @@ interface ValueOfType {
   money: number;
   text: string;
   boolean: boolean;
+  tags: string[];
 }
 
 type FieldValue<F extends InventoryField> = F extends {
@@ -132,6 +177,17 @@ export type Inventory = {
 
 const isoDate = z.iso.date();
 
+export const TAG_PATTERN = /^[a-z0-9-]{1,32}$/;
+
+export function normaliseTag(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+const tagList = z
+  .array(z.string().transform(normaliseTag).pipe(z.string().regex(TAG_PATTERN)))
+  .max(50)
+  .transform((tags) => (tags.length ? [...new Set(tags)] : null));
+
 function schemaFor(field: InventoryField): z.ZodType {
   switch (field.type) {
     case "date":
@@ -144,6 +200,8 @@ function schemaFor(field: InventoryField): z.ZodType {
       return z.enum(field.values);
     case "boolean":
       return z.boolean();
+    case "tags":
+      return tagList;
   }
 }
 

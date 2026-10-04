@@ -17,6 +17,7 @@ export interface InventoryFilterState {
   interface: string;
   recording: string;
   vendor: string;
+  tag: string;
   states: EffectiveDiskState[];
   statuses: DeviceStatus[];
   includeDisposed: boolean;
@@ -32,6 +33,7 @@ export const CLEARED_FILTERS: InventoryFilterState = {
   interface: ALL,
   recording: ALL,
   vendor: ALL,
+  tag: ALL,
   states: [],
   statuses: [],
   includeDisposed: false,
@@ -61,6 +63,7 @@ export const SINGLE_FACETS = [
   "interface",
   "recording",
   "vendor",
+  "tag",
 ] as const;
 
 export const MULTI_FACETS = ["states", "statuses"] as const;
@@ -77,7 +80,9 @@ const isMultiFacet = (facet: Facet): facet is MultiFacet =>
 const knownOrNull = <Value extends string>(value: Value | null) =>
   value === "unknown" ? null : value;
 
-const FACET_VALUE: Record<Facet, (disk: InventoryDisk) => string | null> = {
+type FacetValue = string | readonly string[] | null | undefined;
+
+const FACET_VALUE: Record<Facet, (disk: InventoryDisk) => FacetValue> = {
   host: (disk) => disk.hostName,
   pool: (disk) => disk.membership?.poolName ?? null,
   usage: (disk) => disk.usage.kind,
@@ -86,12 +91,16 @@ const FACET_VALUE: Record<Facet, (disk: InventoryDisk) => string | null> = {
   interface: (disk) => knownOrNull(disk.interface),
   recording: (disk) => knownRecordingTech(disk.recordingTech),
   vendor: (disk) => disk.vendor,
+  tag: (disk) => disk.inventory.tags,
   states: (disk) => disk.state,
   statuses: (disk) => disk.latestStatus,
 };
 
-const facetKey = (facet: Facet, disk: InventoryDisk) =>
-  FACET_VALUE[facet](disk) ?? NONE;
+const facetKeys = (facet: Facet, disk: InventoryDisk): readonly string[] => {
+  const value = FACET_VALUE[facet](disk);
+  if (typeof value === "string") return [value];
+  return value?.length ? value : [NONE];
+};
 
 export const isFacetActive = (filters: InventoryFilterState, facet: Facet) =>
   isMultiFacet(facet) ? filters[facet].length > 0 : filters[facet] !== ALL;
@@ -106,10 +115,10 @@ const matchesFacet = (
   facet: Facet,
   disk: InventoryDisk,
 ) => {
-  const key = facetKey(facet, disk);
+  const keys = facetKeys(facet, disk);
   return isMultiFacet(facet)
-    ? (filters[facet] as string[]).includes(key)
-    : filters[facet] === key;
+    ? keys.some((key) => (filters[facet] as string[]).includes(key))
+    : keys.includes(filters[facet]);
 };
 
 const matchesSearch = (needle: string, disk: InventoryDisk) =>
@@ -166,8 +175,9 @@ export function facetCounts(
     const candidates = filterDisksExcept(disks, filters, facet);
     const counts = new Map<string, number>([[ALL, candidates.length]]);
     for (const disk of candidates) {
-      const key = facetKey(facet, disk);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      for (const key of facetKeys(facet, disk)) {
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
     }
     return counts;
   };
