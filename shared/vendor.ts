@@ -116,3 +116,15 @@ export function detectVendor({
     vendorFromBrand(brand)
   );
 }
+
+export interface VendorOverridable {
+  vendor: Vendor | null;
+  inventory: { vendorOverride?: Vendor | null };
+}
+
+export function effectiveVendor({
+  vendor,
+  inventory,
+}: VendorOverridable): Vendor | null {
+  return inventory.vendorOverride ?? vendor;
+}

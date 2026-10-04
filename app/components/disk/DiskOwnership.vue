@@ -10,6 +10,7 @@ import {
 import { formatMoneyPerTb } from "#shared/money";
 import type { DiskPatch } from "#shared/schemas/disks";
 import { effectiveWarranty, warrantySuggestion } from "#shared/warranty";
+import { warrantyCheckUrl } from "#shared/warranty-links";
 import type { InlineItem, InlineValue } from "~/components/inline/InlineField.vue";
 import { warrantyClass } from "~/components/inventory/types";
 import { diskLabel } from "./displayName";
@@ -120,6 +121,10 @@ const replaced = computed(() =>
   ),
 );
 
+const warrantyCheck = computed(() =>
+  props.disk.disposal ? null : warrantyCheckUrl(props.disk),
+);
+
 const blankWarranty = computed(() => !props.disk.inventory.warrantyExpiry);
 
 const countdownKey = computed<InventoryKey | null>(() => {
@@ -147,6 +152,12 @@ const showsWarrantyHint = (key: InventoryKey) =>
 
 <template>
   <DiskFactGroup title="Ownership" data-testid="group-ownership">
+    <template v-if="warrantyCheck" #actions>
+      <DiskWarrantyCheck
+        :check="warrantyCheck"
+        :vendor-name="vendorLabel(disk.vendor)"
+      />
+    </template>
     <InlineField
       v-for="field in fields"
       :key="field.key"

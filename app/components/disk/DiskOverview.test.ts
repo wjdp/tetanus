@@ -48,6 +48,7 @@ const baseDisk = {
   capacityBytes: 8_000_000_000_000,
   link: null,
   vendor: "western-digital",
+  detectedVendor: "western-digital",
   media: "hdd",
   interface: "sata",
   recordingTech: "cmr",
@@ -452,6 +453,45 @@ describe("DiskOverview", () => {
         .find(pin)
         .exists(),
     ).toBe(true);
+  });
+
+  it("shows the effective vendor, and what was detected once overridden", async () => {
+    const detected = await mountOverview();
+    expect(field(detected, "vendorOverride").text()).toContain("WD");
+    expect(field(detected, "vendorOverride").text()).not.toContain("detected");
+
+    const overridden = await mountOverview({
+      vendor: "seagate",
+      detectedVendor: "other",
+      inventory: { vendorOverride: "seagate" },
+    });
+    expect(field(overridden, "vendorOverride").text()).toContain("Seagate");
+    expect(field(overridden, "vendorOverride").text()).toContain(
+      "detected as Other",
+    );
+  });
+
+  it("offers a warranty check in the ownership pane for kept disks of a known vendor", async () => {
+    const check =
+      '[data-testid="group-ownership"] [data-testid="warranty-check"]';
+    expect((await mountOverview()).find(check).exists()).toBe(true);
+    expect(
+      (await mountOverview({ vendor: "kingston" })).find(check).exists(),
+    ).toBe(false);
+    expect(
+      (await mountOverview({ disposal: { kind: "sold", on: "2026-09-01" } }))
+        .find(check)
+        .exists(),
+    ).toBe(false);
+  });
+
+  it("sends the vendor override", async () => {
+    const wrapper = await mountOverview();
+    await pickChoice(wrapper, "vendorOverride", "Toshiba");
+
+    expect(patched).toHaveBeenCalledWith({
+      inventory: { vendorOverride: "toshiba" },
+    });
   });
 
   it("shows the BPID on Seagate disks or once recorded", async () => {

@@ -474,6 +474,27 @@ describe("disk state, overrides and inventory", () => {
     expect((await getDisk(sdaId)).modelShort).toBe("Shucked 12");
   });
 
+  it("serves the vendor override as the vendor and keeps what was detected", async () => {
+    const detected = (await getDisk(sdaId)).vendor;
+    expect((await getDisk(sdaId)).detectedVendor).toBe(detected);
+
+    const overridden = await updateDisk(sdaId, {
+      inventory: { vendorOverride: "toshiba" },
+    });
+    expect(overridden).toMatchObject({
+      vendor: "toshiba",
+      detectedVendor: detected,
+    });
+    expect(db.select().from(disk).where(eq(disk.id, sdaId)).get()?.vendor).toBe(
+      detected,
+    );
+
+    const cleared = await updateDisk(sdaId, {
+      inventory: { vendorOverride: null },
+    });
+    expect(cleared.vendor).toBe(detected);
+  });
+
   it("resolves temperature thresholds from the last host and media", async () => {
     db.update(disk).set({ media: "hdd" }).where(eq(disk.id, sdaId)).run();
     expect((await getDisk(sdaId)).tempThresholds).toEqual({

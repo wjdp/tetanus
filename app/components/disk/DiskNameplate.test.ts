@@ -96,6 +96,43 @@ describe("DiskNameplate", () => {
     );
   });
 
+  it("nudges for a BPID on Seagate disks without one", async () => {
+    const nudge = '[data-testid="nameplate-needs-bpid"]';
+    expect((await mountNameplate()).find(nudge).exists()).toBe(false);
+    expect(
+      (await mountNameplate({ vendor: "seagate" })).find(nudge).exists(),
+    ).toBe(true);
+    expect(
+      (
+        await mountNameplate({
+          vendor: "seagate",
+          inventory: { seagateBpid: "1004526218" },
+        })
+      )
+        .find(nudge)
+        .exists(),
+    ).toBe(false);
+  });
+
+  it("notes the 3.3 V pin on white-label drives until it is recorded", async () => {
+    const note = '[data-testid="nameplate-pin-note"]';
+    const whiteLabel = {
+      specs: { line: "White label (Ultrastar He12)" },
+    } as Partial<DiskDetail>;
+    expect((await mountNameplate()).find(note).exists()).toBe(false);
+    expect((await mountNameplate(whiteLabel)).find(note).exists()).toBe(true);
+    expect(
+      (
+        await mountNameplate({
+          ...whiteLabel,
+          inventory: { pin33Taped: true },
+        } as Partial<DiskDetail>)
+      )
+        .find(note)
+        .exists(),
+    ).toBe(false);
+  });
+
   it("shows the media glyph beside the model", async () => {
     const nameplate = await mountNameplate();
 

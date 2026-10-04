@@ -12,6 +12,7 @@ import type { DiskPatch } from "#shared/schemas/disks";
 import type { StatusCounter } from "#shared/smart/counters";
 import { temperatureColour } from "#shared/temperature";
 import { usageDetail } from "#shared/usage";
+import { VENDORS, type Vendor } from "#shared/vendor";
 import type { InlineItem, InlineValue } from "~/components/inline/InlineField.vue";
 import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 import { fleetSuggestions } from "./fleetSuggestions";
@@ -54,6 +55,7 @@ const modelShortField = fieldNamed("modelShort");
 const recordingField = fieldNamed("recordingTech");
 const purposeField = fieldNamed("purpose");
 const bpidField = fieldNamed("seagateBpid");
+const vendorField = fieldNamed("vendorOverride");
 const storageField = fieldNamed("storageLocation");
 const shuckedFromField = fieldNamed("shuckedFrom");
 
@@ -61,6 +63,10 @@ const recordingItems: InlineItem[] =
   "values" in recordingField
     ? choicesOf(recordingField.values, (value) => value.toUpperCase())
     : [];
+const vendorItems: InlineItem[] = choicesOf(
+  VENDORS,
+  (vendor) => vendorLabel(vendor as Vendor) ?? vendor,
+);
 const purposeItems: InlineItem[] =
   "values" in purposeField ? choicesOf(purposeField.values) : [];
 
@@ -93,6 +99,11 @@ const model = computed(() => {
       ? vendorLabel(props.disk.vendor)
       : null;
   return vendor ? `${vendor} ${name}` : name;
+});
+
+const vendorOverridden = computed(() => {
+  const override = props.disk.inventory.vendorOverride;
+  return Boolean(override) && override !== props.disk.detectedVendor;
 });
 
 const wwn = computed(
@@ -431,6 +442,25 @@ const optionalDate = (value: string | null) =>
 
     <DiskFactGroup title="Identity" data-testid="group-identity">
       <DiskFact label="Model" :value="model" data-testid="fact-model" />
+      <InlineField
+        type="enum"
+        :label="vendorField.label"
+        :description="fieldDescription(vendorField)"
+        :value="inventoryValue('vendorOverride')"
+        :items="vendorItems"
+        :saving="saving.vendorOverride"
+        :error="errors.vendorOverride"
+        data-field="vendorOverride"
+        @commit="saveInventory('vendorOverride', $event)"
+      >
+        <template #display>
+          <span v-if="disk.vendor">{{ vendorLabel(disk.vendor) }}</span>
+          <span v-else class="text-dimmed">—</span>
+        </template>
+        <template v-if="vendorOverridden" #hint>
+          detected as {{ vendorLabel(disk.detectedVendor) ?? "unknown" }}
+        </template>
+      </InlineField>
       <DiskFact label="Serial" :value="disk.serial" mono />
       <InlineField
         v-if="showsBpid"

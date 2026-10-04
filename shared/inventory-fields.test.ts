@@ -107,6 +107,15 @@ describe("isFieldVisible", () => {
     );
   });
 
+  it("shows the 3.3 V pin on white-label lines, which are shucked by nature", () => {
+    const pin = field("pin33Taped");
+    const whiteLabel = { line: "White label (Ultrastar He12)" };
+    expect(isFieldVisible(pin, { ...on("hdd"), specs: whiteLabel })).toBe(true);
+    expect(
+      isFieldVisible(pin, { ...on("hdd"), specs: { line: "Exos X18" } }),
+    ).toBe(false);
+  });
+
   it("shows where a disk is stored only while it is out of a host and kept", () => {
     const storage = field("storageLocation");
     const context = { ...on("hdd"), present: false };
@@ -166,6 +175,7 @@ describe("fieldGroup", () => {
       recordingTech: "hardware",
       storageLocation: "placement",
       shuckedFrom: "identity",
+      vendorOverride: "identity",
       seagateBpid: "identity",
     });
   });

@@ -53,7 +53,7 @@ import {
   type Purpose,
   UNKNOWN_USAGE,
 } from "#shared/usage";
-import { detectVendor } from "#shared/vendor";
+import { detectVendor, effectiveVendor, type Vendor } from "#shared/vendor";
 import { effectiveWarranty } from "#shared/warranty";
 import { db } from "~~/server/database/client";
 import {
@@ -168,6 +168,7 @@ export interface DiskSummary
   counters: DiskCounters;
   faultCounts: DiskFaultCounts;
   bay: Bay | null;
+  detectedVendor: Vendor | null;
 }
 
 export interface DisposedDiskSighting {
@@ -996,6 +997,8 @@ function summarise(
         : (hosts.get(row.lastSeenHostId) ?? null);
     return {
       ...columns,
+      vendor: effectiveVendor(row),
+      detectedVendor: row.vendor,
       lastState: snapshot.state,
       keys: keys.get(row.id) ?? [],
       membership,

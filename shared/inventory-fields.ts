@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { type Media, RECORDING_TECH_OVERRIDES } from "./hardware";
 import { PURPOSES } from "./usage";
-import type { Vendor } from "./vendor";
+import { VENDORS, type Vendor } from "./vendor";
 
 export const INVENTORY_FIELDS = [
   {
@@ -50,8 +50,10 @@ export const INVENTORY_FIELDS = [
     key: "pin33Taped",
     label: "3.3 V pin",
     type: "boolean",
-    when: ({ inventory }: FieldVisibilityContext) =>
-      inventory.purchaseCondition === "shucked" || inventory.pin33Taped != null,
+    when: ({ inventory, specs }: FieldVisibilityContext) =>
+      inventory.purchaseCondition === "shucked" ||
+      isWhiteLabel(specs) ||
+      inventory.pin33Taped != null,
     description:
       "Shucked drives only: some external-enclosure drives will not power up in a standard bay until the 3.3 V power-disable pin is masked, usually with Kapton tape. Record whether this drive needed it.",
   },
@@ -85,6 +87,15 @@ export const INVENTORY_FIELDS = [
       Boolean(inventory.shuckedFrom),
     description:
       "The external drive this disk came out of, such as WD Elements 14 TB. Matters for warranty claims and for spotting batches.",
+  },
+  {
+    key: "vendorOverride",
+    label: "Vendor",
+    type: "enum",
+    values: VENDORS,
+    group: "identity",
+    description:
+      "Only needed when detection gets it wrong or cannot tell, as with some USB bridges. Decides which vendor fields and warranty checker the disk gets.",
   },
   {
     key: "seagateBpid",
@@ -132,6 +143,13 @@ export interface FieldVisibilityContext {
   inventory: Readonly<Record<string, unknown>>;
   present: boolean;
   disposal: unknown;
+  specs?: { line: string | null } | null;
+}
+
+export function isWhiteLabel(
+  specs: { line: string | null } | null | undefined,
+): boolean {
+  return specs?.line?.startsWith("White label") ?? false;
 }
 
 function passesGate(

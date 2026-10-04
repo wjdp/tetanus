@@ -28,6 +28,7 @@ import type {
   SelfTestEntry,
   SmartctlXallResult,
 } from "#shared/smartctl";
+import { effectiveVendor } from "#shared/vendor";
 import { db } from "~~/server/database/client";
 import {
   diaryEntry,
@@ -587,7 +588,10 @@ export function recordSmartReading({
         latestPowerOnHours: reading.powerOnHours,
         latestPowerCycles: reading.powerCycles,
         latestReadingAt: receivedAt,
-        ataSsdAttributes: ataSsdAttributesFrom(parsed, row),
+        ataSsdAttributes: ataSsdAttributesFrom(parsed, {
+          ...row,
+          vendor: effectiveVendor(row),
+        }),
       })
       .where(eq(disk.id, row.id))
       .run();

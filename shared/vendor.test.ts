@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFixture } from "../test/fixtures";
-import { detectVendor, type Vendor } from "./vendor";
+import { detectVendor, effectiveVendor, type Vendor } from "./vendor";
 
 interface MarsDisk {
   model: string;
@@ -156,6 +156,23 @@ describe("detectVendor fallbacks", () => {
     expect(detectVendor({})).toBeNull();
     expect(
       detectVendor({ model: null, wwn: null, modelFamily: null, brand: null }),
+    ).toBeNull();
+  });
+});
+
+describe("effectiveVendor", () => {
+  it("prefers the override to the detected vendor", () => {
+    expect(
+      effectiveVendor({
+        vendor: "other",
+        inventory: { vendorOverride: "seagate" },
+      }),
+    ).toBe("seagate");
+    expect(effectiveVendor({ vendor: "toshiba", inventory: {} })).toBe(
+      "toshiba",
+    );
+    expect(
+      effectiveVendor({ vendor: null, inventory: { vendorOverride: null } }),
     ).toBeNull();
   });
 });
