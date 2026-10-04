@@ -33,8 +33,29 @@ registerEndpoint("/api/settings", {
   },
 });
 
+let databaseBytes = 3_000_000;
+registerEndpoint("/api/database", () => ({
+  bytes: databaseBytes,
+  reclaimableBytes: databaseBytes - 1_000_000,
+}));
+
+let optimised = 0;
+registerEndpoint("/api/database/optimise", {
+  method: "POST",
+  handler: () => {
+    optimised += 1;
+    databaseBytes = 1_000_000;
+    return {
+      before: { bytes: 3_000_000, reclaimableBytes: 2_000_000 },
+      after: { bytes: 1_000_000, reclaimableBytes: 0 },
+    };
+  },
+});
+
 beforeEach(() => {
   clearNuxtData();
+  databaseBytes = 3_000_000;
+  optimised = 0;
   patched.length = 0;
 });
 
@@ -91,6 +112,25 @@ describe("settings page replication thresholds", () => {
   });
 });
 
+describe("settings page database", () => {
+  it("shows the size and optimises on click", async () => {
+    const page = await mountSuspended(SettingsPage);
+    expect(page.get('[data-testid="database-size"]').text()).toBe(
+      "3.00 MB, 2.00 MB reclaimable",
+    );
+
+    await page.get('[data-testid="optimise-database"]').trigger("click");
+    await flushPromises();
+
+    expect(optimised).toBe(1);
+    await vi.waitFor(() =>
+      expect(page.get('[data-testid="database-size"]').text()).toBe(
+        "1.00 MB, 0 B reclaimable",
+      ),
+    );
+  });
+});
+
 describe("settings page in the demo", () => {
   beforeEach(() => {
     useRuntimeConfig().public.demo = true;
@@ -104,5 +144,10 @@ describe("settings page in the demo", () => {
     const page = await mountSuspended(SettingsPage);
     expect(page.find('input[data-testid="enrol-token"]').exists()).toBe(false);
     expect(page.text()).not.toContain(enrolToken);
+  });
+
+  it("hides database maintenance", async () => {
+    const page = await mountSuspended(SettingsPage);
+    expect(page.find('[data-testid="optimise-database"]').exists()).toBe(false);
   });
 });

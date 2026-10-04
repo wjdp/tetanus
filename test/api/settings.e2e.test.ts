@@ -28,6 +28,19 @@ describe("GET /health", () => {
   });
 });
 
+describe("/api/database", () => {
+  it("reports the size and optimises", async () => {
+    const size = await $fetch("/api/database");
+    expect(size.bytes).toBeGreaterThan(0);
+
+    const { before, after } = await $fetch("/api/database/optimise", {
+      method: "POST",
+    });
+    expect(before.bytes).toBeGreaterThan(0);
+    expect(after.reclaimableBytes).toBe(0);
+  });
+});
+
 describe("/api/settings", () => {
   it("returns a generated enrol token and default config", async () => {
     const settings = await $fetch("/api/settings");
