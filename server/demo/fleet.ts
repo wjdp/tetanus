@@ -779,6 +779,15 @@ function hosts(timeline: Timeline): HostModel[] {
       vdevIdConf: true,
       ambientC: 23,
       installedAt: ATLAS_BUILT,
+      enclosure: {
+        id: "5001e67a3c1f00ff",
+        vendor: "Intel",
+        model: "RES2SV240",
+        slots: 24,
+        labels: Object.fromEntries(
+          Array.from({ length: 12 }, (_, slot) => [slot, `Bay ${slot + 1}`]),
+        ),
+      },
     }),
     host({
       name: "styx",

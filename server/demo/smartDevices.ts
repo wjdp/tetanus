@@ -1,7 +1,7 @@
 import { byIdNames, vdevIdTarget } from "./fleet";
 import { forkRng } from "./prng";
 import { templateBlockSizes } from "./smartTemplates";
-import type { DiskModel, HostModel } from "./types";
+import type { DemoEnclosure, DiskModel, HostModel } from "./types";
 import type { DemoWorld } from "./world";
 
 const MiB = 1024 * 1024;
@@ -262,13 +262,18 @@ export function renderVdevIdConf(disks: DiskModel[]): string {
 const udevEncode = (value: string) => value.replace(/ /g, "\\x20");
 const udevSafe = (value: string) => value.trim().replace(/\s+/g, "_");
 
-function byPath(disk: DiskModel): string[] {
+function byPath(
+  disk: DiskModel,
+  enclosure: DemoEnclosure | undefined,
+): string[] {
   const index = kernelIndex(disk);
   switch (disk.transport) {
     case "nvme":
       return [`pci-0000:0${index + 2}:00.0-nvme-1`];
     case "sas":
-      return [`${HBA_PCI}-sas-phy${index}-lun-0`];
+      return enclosure
+        ? [`${HBA_PCI}-sas-exp0x${enclosure.id}-phy${index}-lun-0`]
+        : [`${HBA_PCI}-sas-phy${index}-lun-0`];
     case "sata":
       return [`${AHCI_PCI}-ata-${index + 1}.0`, `${AHCI_PCI}-ata-${index + 1}`];
   }
@@ -338,8 +343,9 @@ export function renderUdev(
   disk: DiskModel,
   diskseq: number,
   vdevAlias: string | null,
+  enclosure?: DemoEnclosure,
 ): string {
-  const paths = byPath(disk);
+  const paths = byPath(disk, enclosure);
   const [idPath = ""] = paths;
   const symlinks = [
     ...byIdNames(disk).map((name) => `S:disk/by-id/${name}`),
@@ -368,5 +374,38 @@ export function renderUdev(
     "Q:systemd",
     "V:1",
   ];
+  return `${lines.join("\n")}\n`;
+}
+
+const ENCLOSURE_NAME = "8:0:0:0";
+
+/** What `tetanus-collect` posts for `enclosure`: `<path>\t<value>` per SES file. */
+export function renderEnclosure(host: HostModel, present: DiskModel[]): string {
+  const { enclosure } = host;
+  if (!enclosure) return "";
+  const bySlot = new Map(
+    present
+      .filter((disk) => disk.transport === "sas")
+      .map((disk) => [kernelIndex(disk), disk]),
+  );
+  const lines = [
+    `${ENCLOSURE_NAME}/id\t0x${enclosure.id}`,
+    `${ENCLOSURE_NAME}/components\t${enclosure.slots}`,
+    `${ENCLOSURE_NAME}/device/vendor\t${enclosure.vendor}`,
+    `${ENCLOSURE_NAME}/device/model\t${enclosure.model}`,
+  ];
+  for (let slot = 0; slot < enclosure.slots; slot++) {
+    const element = `${ENCLOSURE_NAME}/ArrayDevice${slot.toString(16).toUpperCase().padStart(2, "0")}`;
+    const disk = bySlot.get(slot);
+    lines.push(
+      `${element}/slot\t${slot}`,
+      `${element}/status\t${disk ? "OK" : "not installed"}`,
+      `${element}/locate\t0`,
+      `${element}/fault\t0`,
+      ...(disk
+        ? [`${element}/device/block/${disk.kernelName}/dev\t${disk.majMin}`]
+        : []),
+    );
+  }
   return `${lines.join("\n")}\n`;
 }

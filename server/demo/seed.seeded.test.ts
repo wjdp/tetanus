@@ -9,6 +9,7 @@ import { listDiary } from "~~/server/services/diary";
 import { type DiskSummary, listDisks } from "~~/server/services/disks";
 import { listFaults } from "~~/server/services/faults";
 import { listHosts } from "~~/server/services/hosts";
+import { listHostBays } from "~~/server/services/locations";
 import { listReplications } from "~~/server/services/replications";
 import { latestAttributes } from "~~/server/services/smart";
 import { listPools } from "~~/server/services/zfs/queries";
@@ -110,6 +111,29 @@ describe("seed", () => {
     expect(
       disks.filter((row) => row.hostName === "pip").map((row) => row.alias),
     ).toEqual(["P1", "P2", "P3"]);
+  });
+
+  it("puts atlas's SAS disks in labelled expander slots, the rest on their ports", () => {
+    const atlasDisks = disks.filter(
+      (row) => row.hostName === "atlas" && row.present,
+    );
+    const inSlots = atlasDisks.filter((row) =>
+      row.bay?.locationKey.startsWith("enc:"),
+    );
+    expect(inSlots.length).toBeGreaterThan(8);
+    expect(inSlots.some((row) => row.bay?.label === "Bay 1")).toBe(true);
+    expect(
+      atlasDisks.find((row) => row.interfaceLabel?.startsWith("NVMe"))?.bay
+        ?.defaultLabel,
+    ).toMatch(/^NVMe /);
+    const atlas = listHosts().find((host) => host.name === "atlas");
+    const bays = listHostBays(atlas?.id as number, NOW);
+    expect(bays.enclosures[0]?.slots).toHaveLength(24);
+    expect(
+      listDiary({ limit: 10_000 }).filter(
+        (entry) => entry.eventType === "moved-bay",
+      ),
+    ).toEqual([]);
   });
 
   it("upserts datasets and snapshots once", () => {

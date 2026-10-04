@@ -34,7 +34,8 @@ export const SOURCE_META = {
   lsblk:
     "none; columns NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE,ZONED,LOG-SEC,PHY-SEC,MOUNTPOINTS",
   udev: "one post per whole disk: device=b<maj>:<min> (e.g. b8:0, b259:0)",
-  enclosure: "none; not produced by the demo yet",
+  enclosure:
+    "none; empty body on hosts without an enclosure, not posted by collectors before 0.5.0",
   "smartctl-scan": "none",
   "smartctl-xall":
     "one post per scanned device: device=<scan name> (/dev/sda, /dev/nvme0), type only when the scan type is not ata/scsi/sat (so type=nvme for NVMe), exitStatus=<smartctl exit bitmask>",
@@ -66,6 +67,18 @@ export interface HostModel {
   lastRunAt?: Date;
   /** `tetanus-collect` version in the producer header; the current one when unset. */
   collectorVersion?: string;
+  /** SES expander the SAS disks sit behind: slot N is phy N is the disk's `sdX` index. */
+  enclosure?: DemoEnclosure;
+}
+
+export interface DemoEnclosure {
+  /** Logical identifier, 16 hex digits, also the expander SAS address in `ID_PATH`. */
+  id: string;
+  vendor: string;
+  model: string;
+  slots: number;
+  /** User labels, set at seed: slot → label. */
+  labels: Record<number, string>;
 }
 
 export type Vendor = "seagate" | "wd" | "samsung" | "intel" | "crucial";

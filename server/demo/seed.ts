@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, isNull, max } from "drizzle-orm";
+import { enclosureKey } from "#shared/bays";
 import { COLLECTOR_VERSION } from "#shared/collector";
 import type { DiarySubjectType } from "#shared/diary";
 import type { IngestSource } from "#shared/ingest";
@@ -15,6 +16,7 @@ import {
 import { acceptFault } from "~~/server/services/acceptance";
 import { alertContext } from "~~/server/services/alerts/dispatch";
 import { type Alert, deriveAlert } from "~~/server/services/alerts/rules";
+import { patchBays } from "~~/server/services/bays";
 import { addManualEntry } from "~~/server/services/diary";
 import {
   findDiskByKey,
@@ -257,6 +259,7 @@ const IDEMPOTENT_SOURCES = new Set<IngestSource>([
   "vdev-id-conf",
   "lsblk",
   "udev",
+  "enclosure",
 ]);
 const HISTORY_SOURCES = new Set<IngestSource>([
   "zpool-history",
@@ -579,6 +582,19 @@ async function applyFinishingTouches(world: DemoWorld, now: Date) {
     });
   }
   reorderHosts(fleet.hosts.map((host) => hostIdOf(host.name)));
+  for (const host of fleet.hosts) {
+    const { enclosure } = host;
+    if (!enclosure) continue;
+    patchBays(
+      hostIdOf(host.name),
+      Object.fromEntries(
+        Object.entries(enclosure.labels).map(([slot, label]) => [
+          enclosureKey({ enclosureId: enclosure.id, slot: Number(slot) }),
+          label,
+        ]),
+      ),
+    );
+  }
   for (const disk of fleet.disks) {
     const aliasFromConf = stories.host(disk.host).vdevIdConf;
     await updateDisk(
