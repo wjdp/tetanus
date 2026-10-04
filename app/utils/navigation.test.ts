@@ -15,7 +15,7 @@ describe("NAVIGATION", () => {
     ]);
   });
 
-  it("badges Faults, Disks, ZFS and Replications with their status counts", () => {
+  it("badges Faults, Hosts, Disks, ZFS and Replications with their status counts", () => {
     expect(NAVIGATION.find(({ to }) => to === "/faults")).toMatchObject({
       icon: "i-lucide-siren",
       badge: "faults",
@@ -24,6 +24,7 @@ describe("NAVIGATION", () => {
       NAVIGATION.flatMap(({ to, badge }) => (badge ? [[to, badge]] : [])),
     ).toEqual([
       ["/faults", "faults"],
+      ["/hosts", "hosts"],
       ["/disks", "disks"],
       ["/zfs", "pools"],
       ["/replications", "replications"],
