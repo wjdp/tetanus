@@ -88,11 +88,11 @@ const rail = computed(() => railGroups(disks.value ?? [], inPool.value));
 
       <div>
         <UButton
-          to="/settings/hosts"
+          to="/hosts/add"
           color="neutral"
           variant="soft"
           icon="i-lucide-server"
-          label="Go to Hosts settings"
+          label="Install instructions"
         />
       </div>
     </div>

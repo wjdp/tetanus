@@ -1,9 +1,8 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
-import { nextTick } from "vue";
 import { COLLECTOR_VERSION } from "#shared/collector";
-import HostsPage from "./hosts.vue";
+import HostsPage from "./index.vue";
 
 const HOUR_MS = 60 * 60 * 1000;
 const hoursAgo = (hours: number) =>
@@ -52,7 +51,6 @@ registerEndpoint("/api/hosts", () => [
     true,
   ),
 ]);
-registerEndpoint("/api/settings", () => ({ enrolToken: "ab".repeat(32) }));
 
 const rowText = (
   page: { findAll(selector: string): { text(): string }[] },
@@ -124,19 +122,12 @@ describe("hosts page", () => {
     );
   });
 
-  it("shows the default temperature thresholds as placeholders", async () => {
-    const page = await mountSuspended(HostsPage, { attachTo: document.body });
+  it("links each host to its page and offers to add one", async () => {
+    const page = await mountSuspended(HostsPage);
 
-    await page.find("tbody tr").trigger("click");
-    await nextTick();
-    await nextTick();
-
-    const placeholders = [
-      ...document.body.querySelectorAll<HTMLInputElement>(
-        'input[type="number"]',
-      ),
-    ].map((input) => input.placeholder);
-    expect(placeholders).toEqual(["45", "55", "60", "70"]);
-    expect(document.body.textContent).toContain("Temperature thresholds (°C)");
+    expect(page.find('tbody a[href="/hosts/2"]').text()).toBe("pihost");
+    expect(page.find('[data-testid="add-host"]').attributes("href")).toBe(
+      "/hosts/add",
+    );
   });
 });

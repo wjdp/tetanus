@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { NAVIGATION, SETTINGS_NAVIGATION } from "./navigation";
 
 describe("NAVIGATION", () => {
-  it("lists the seven top-level pages in sidebar order", () => {
+  it("lists the eight top-level pages in sidebar order", () => {
     expect(NAVIGATION.map(({ label, to }) => [label, to])).toEqual([
       ["Topology", "/"],
       ["Faults", "/faults"],
+      ["Hosts", "/hosts"],
       ["Disks", "/disks"],
       ["ZFS", "/zfs"],
       ["Replications", "/replications"],
@@ -31,10 +32,9 @@ describe("NAVIGATION", () => {
 });
 
 describe("SETTINGS_NAVIGATION", () => {
-  it("lists General, Hosts, Alerts and Import", () => {
+  it("lists General, Alerts and Import", () => {
     expect(SETTINGS_NAVIGATION.map(({ label, to }) => [label, to])).toEqual([
       ["General", "/settings"],
-      ["Hosts", "/settings/hosts"],
       ["Alerts", "/settings/alerts"],
       ["Import", "/settings/import"],
     ]);

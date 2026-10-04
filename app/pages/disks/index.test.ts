@@ -71,11 +71,11 @@ const aliasColumn = (page: VueWrapper) =>
   page.findAll("tbody tr").map((row) => row.find("td").text());
 
 describe("disks inventory page", () => {
-  it("points at Settings › Hosts when there are no disks", async () => {
+  it("points at Add host when there are no disks", async () => {
     disks = [];
     const page = await mountPage();
     expect(page.text()).toContain("No disks yet.");
-    expect(page.find('a[href="/settings/hosts"]').exists()).toBe(true);
+    expect(page.find('a[href="/hosts/add"]').exists()).toBe(true);
   });
 
   it("sorts by alias naturally with unaliased disks last", async () => {

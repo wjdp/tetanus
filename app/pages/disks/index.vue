@@ -65,10 +65,10 @@ const diskLabels = computed(
       <p class="text-highlighted font-medium">No disks yet.</p>
       <p class="text-muted text-sm">
         Disks appear once a collector reports.
-        <NuxtLink to="/settings/hosts" class="text-highlighted hover:text-primary underline">
-          Settings › Hosts
+        <NuxtLink to="/hosts/add" class="text-highlighted hover:text-primary underline">
+          Add a host
         </NuxtLink>
-        has the install command.
+        to install one.
       </p>
     </div>
 

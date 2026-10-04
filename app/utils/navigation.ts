@@ -12,6 +12,7 @@ export interface NavigationEntry {
 export const NAVIGATION: NavigationEntry[] = [
   { label: "Topology", icon: "i-lucide-network", to: "/" },
   { label: "Faults", icon: "i-lucide-siren", to: "/faults", badge: "faults" },
+  { label: "Hosts", icon: "i-lucide-server", to: "/hosts" },
   {
     label: "Disks",
     icon: "i-lucide-hard-drive",
@@ -33,7 +34,6 @@ export const NAVIGATION: NavigationEntry[] = [
 // "Settings" group both read from this rather than duplicating the list.
 export const SETTINGS_NAVIGATION: NavigationEntry[] = [
   { label: "General", icon: "i-lucide-sliders-horizontal", to: "/settings" },
-  { label: "Hosts", icon: "i-lucide-server", to: "/settings/hosts" },
   { label: "Alerts", icon: "i-lucide-bell", to: "/settings/alerts" },
   { label: "Import", icon: "i-lucide-import", to: "/settings/import" },
 ];

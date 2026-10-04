@@ -39,7 +39,7 @@ Docker Compose is the only supported deployment method. Adapt the following for 
 ```yaml
 services:
   tetanus:
-    image: ghcr.io/wjdp/tetanus:edge
+    image: ghcr.io/wjdp/tetanus:latest
     container_name: tetanus
     restart: unless-stopped
     user: "1000:1000"
@@ -67,7 +67,7 @@ Adapt the above as needed for your setup. Search online for "docker compose reve
 
 ### Enrolling hosts
 
-The first-run page shows an enrol token and the install command. On each host you want to monitor, run it as root:
+The first-run page and Hosts → Add host show the install command with your enrol token. On each host you want to monitor, run it as root:
 
 ```sh
 curl -fsSL https://tetanus.example/host/install.sh \

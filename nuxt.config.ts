@@ -31,6 +31,9 @@ export default defineNuxtConfig({
   css: ["~/assets/css/main.css"],
   // Helper modules live beside their components; only .vue files are components.
   components: [{ path: "~/components", extensions: ["vue"] }],
+  routeRules: {
+    "/settings/hosts": { redirect: "/hosts" },
+  },
   runtimeConfig: {
     public: {
       version: version + (process.env.VERSION_SUFFIX ?? ""),
