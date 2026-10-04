@@ -1327,6 +1327,91 @@ describe("smart-attribute", () => {
   });
 });
 
+describe("temperature-high", () => {
+  function withTemperature(celsius: number) {
+    const json = JSON.parse(SDB);
+    json.temperature.current = celsius;
+    delete json.ata_sct_temperature_history;
+    return JSON.stringify(json);
+  }
+
+  async function readTemperature(celsius: number, offsetMs: number) {
+    ingestSmart(withTemperature(celsius), at(offsetMs));
+    await syncFaults(at(offsetMs));
+  }
+
+  function setSustainedMinutes(sustainedMinutes: number) {
+    db.update(host)
+      .set({ temperatureThresholds: { sustainedMinutes } })
+      .where(eq(host.name, "mars"))
+      .run();
+  }
+
+  const hot = () => liveFault("temperature-high", String(k2Id()));
+
+  it("opens once hot for the window, rises to error, and steps down past the margin", async () => {
+    await readTemperature(50, 0);
+    expect(hot()).toBeUndefined();
+
+    await readTemperature(50, HOUR_MS);
+    const opened = hot() as FaultRow;
+    expect(opened).toMatchObject({
+      severity: "warning",
+      state: "open",
+      data: { celsius: 50, threshold: 45, hotSince: t0.toISOString() },
+    });
+
+    await readTemperature(57, 2 * HOUR_MS);
+    expect(hot()).toMatchObject({
+      id: opened.id,
+      severity: "error",
+      data: { threshold: 55, hotSince: t0.toISOString() },
+    });
+
+    await readTemperature(52, 3 * HOUR_MS);
+    expect(hot()?.severity).toBe("error");
+    await readTemperature(51, 4 * HOUR_MS);
+    expect(hot()?.severity).toBe("warning");
+    await readTemperature(42, 5 * HOUR_MS);
+    expect(hot()?.id).toBe(opened.id);
+    await readTemperature(41, 6 * HOUR_MS);
+    expect(hot()).toBeUndefined();
+
+    expect(
+      faultEvents()
+        .filter((entry) => entry.data.kind === "temperature-high")
+        .map((entry) => entry.eventType),
+    ).toEqual(["fault-opened", "fault-severity-raised", "fault-resolved"]);
+  });
+
+  it("opens on the first hot reading when the host's window is 0", async () => {
+    await readTemperature(42, 0);
+    setSustainedMinutes(0);
+    await readTemperature(50, HOUR_MS);
+    expect(hot()?.severity).toBe("warning");
+  });
+
+  it("does not count a hot spell across a gap in readings", async () => {
+    await readTemperature(50, 0);
+    await readTemperature(50, 3 * HOUR_MS);
+    expect(hot()).toBeUndefined();
+    await readTemperature(50, 4 * HOUR_MS);
+    expect(hot()?.data.hotSince).toBe(at(3 * HOUR_MS).toISOString());
+  });
+
+  it("stays quiet once accepted until it rises to error", async () => {
+    await readTemperature(50, 0);
+    await readTemperature(50, HOUR_MS);
+    performFaultAction((hot() as FaultRow).id, "accept", {
+      now: at(HOUR_MS + MINUTE_MS),
+    });
+    await readTemperature(53, 2 * HOUR_MS);
+    expect(hot()?.state).toBe("accepted");
+    await readTemperature(56, 3 * HOUR_MS);
+    expect(hot()).toMatchObject({ state: "open", severity: "error" });
+  });
+});
+
 describe("performFaultAction", () => {
   it("refuses actions the kind or state does not allow", async () => {
     const mars = upsertHostByName("mars", t0);

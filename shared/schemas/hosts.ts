@@ -21,6 +21,7 @@ export const temperatureThresholdsSchema = z
   .strictObject({
     hdd: temperaturePairSchema.optional(),
     ssd: temperaturePairSchema.optional(),
+    sustainedMinutes: z.number().int().min(0).max(1440).optional(),
   })
   .nullable();
 

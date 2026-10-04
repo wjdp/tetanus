@@ -53,6 +53,7 @@ import {
   attributeTrend,
   latestReading,
 } from "~~/server/services/smart";
+import { detectTemperatureHigh } from "~~/server/services/temperatureFaults";
 import { useSseEvent } from "~~/server/sse";
 import { collectorCadences } from "~~/server/utils/demo";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
@@ -335,6 +336,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
     detections: [
       ...detectSmartAttributes(context),
       ...detectHealthFailed(context),
+      ...detectTemperatureHigh(context),
       ...detectMissing(context, suppressedDiskIds),
       ...detectIdentityConflicts(),
       ...pools.detections,
@@ -358,7 +360,11 @@ const DIARY_SILENT_KINDS = new Set<FaultKind>([
 
 function writeFaultEvent(
   row: FaultRow,
-  eventType: "fault-opened" | "fault-resolved" | "fault-state-changed",
+  eventType:
+    | "fault-opened"
+    | "fault-resolved"
+    | "fault-state-changed"
+    | "fault-severity-raised",
   from: FaultState | null,
   at: Date,
   extra: FaultData = {},
@@ -368,6 +374,7 @@ function writeFaultEvent(
     "fault-opened": "fault",
     "fault-resolved": "fault resolved",
     "fault-state-changed": `fault ${row.state}`,
+    "fault-severity-raised": `fault raised to ${row.severity}`,
   }[eventType];
   addAutoEvent({
     subjectType: row.subjectType,
@@ -489,8 +496,15 @@ function refreshFault(row: FaultRow, detection: Detection, now: Date) {
     .where(eq(fault.id, row.id))
     .returning()
     .get();
-  if (state !== row.state && !DIARY_SILENT_KINDS.has(row.kind)) {
+  if (DIARY_SILENT_KINDS.has(row.kind)) return changed;
+  if (state !== row.state) {
     writeFaultEvent(updated, "fault-state-changed", row.state, now);
+  }
+  if (isSeverityRise(row.severity, detection.severity)) {
+    writeFaultEvent(updated, "fault-severity-raised", row.state, now, {
+      severity: detection.severity,
+      fromSeverity: row.severity,
+    });
   }
   return changed;
 }

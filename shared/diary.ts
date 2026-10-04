@@ -53,6 +53,7 @@ export const DIARY_EVENT_TYPES = [
   "imported-from-scrutiny",
   "fault-opened",
   "fault-state-changed",
+  "fault-severity-raised",
   "fault-resolved",
   "disposed",
   "disposal-cleared",

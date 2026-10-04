@@ -26,7 +26,10 @@ const HOST = {
   intermittent: false,
   position: 1,
   notes: "Under the **stairs**",
-  temperatureThresholds: { hdd: { warning: 40, error: 50 } },
+  temperatureThresholds: {
+    hdd: { warning: 40, error: 50 },
+    sustainedMinutes: 120,
+  },
   firstSeenAt: now,
   lastSeenAt: now,
   lastRuns: {
@@ -218,7 +221,7 @@ describe("host page", () => {
     const placeholders = form
       .findAll('input[type="number"]')
       .map((input) => input.attributes("placeholder"));
-    expect(placeholders).toEqual(["45", "55", "60", "70"]);
+    expect(placeholders).toEqual(["45", "55", "60", "70", "60"]);
 
     await form.trigger("submit");
     await flushPromises();
@@ -228,7 +231,10 @@ describe("host page", () => {
         intermittent: false,
         healthchecksUrl: "",
         notes: "Under the **stairs**",
-        temperatureThresholds: { hdd: { warning: 40, error: 50 } },
+        temperatureThresholds: {
+          hdd: { warning: 40, error: 50 },
+          sustainedMinutes: 120,
+        },
       },
     ]);
   });

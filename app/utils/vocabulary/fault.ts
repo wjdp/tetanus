@@ -23,6 +23,7 @@ export function faultHostLabel(fault: Pick<FaultView, "subject">): string {
 const SMART_FAULT_KINDS: readonly FaultKind[] = [
   "smart-attribute",
   "smart-health-failed",
+  "temperature-high",
 ];
 
 export function faultSubjectPath(

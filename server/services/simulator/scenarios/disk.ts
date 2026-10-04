@@ -1,5 +1,12 @@
+import { and, eq, gte, lt } from "drizzle-orm";
 import { attributeClass } from "#shared/smart/classification";
-import { resolveTemperatureThresholds } from "#shared/temperature";
+import {
+  resolveSustainedMinutes,
+  resolveTemperatureThresholds,
+} from "#shared/temperature";
+import { db } from "~~/server/database/client";
+import { temperatureReading } from "~~/server/database/schema";
+import { insertTemperatures } from "~~/server/services/smart";
 import type { StoredPayload } from "../payloads";
 import {
   ataAttribute,
@@ -321,24 +328,72 @@ function temperatureScenario(options: {
         max: 255,
         unit: "°C",
       },
+      {
+        key: "minutes",
+        label: "Hot for",
+        kind: "number",
+        default: resolveSustainedMinutes(subject.host),
+        min: 0,
+        max: 7 * 24 * 60,
+        unit: "min",
+      },
     ],
-    plan: (subject, params) =>
-      editPlan(subject, (json) => setTemperature(json, Number(params.celsius))),
+    plan: (subject, params) => ({
+      ...editPlan(subject, (json) =>
+        setTemperature(json, Number(params.celsius)),
+      ),
+      afterReplay: (now) =>
+        replaceWithHotHistory(
+          subject.disk.id,
+          now,
+          Number(params.celsius),
+          Number(params.minutes),
+        ),
+    }),
   });
+}
+
+const HOT_HISTORY_STEP_MS = 30 * 60 * 1000;
+
+// Replayed SCT history can hold cooler points inside the window; they would
+// break the hot spell, so the window is rewritten.
+function replaceWithHotHistory(
+  diskId: number,
+  now: Date,
+  celsius: number,
+  minutes: number,
+) {
+  const start = now.getTime() - minutes * 60 * 1000;
+  db.delete(temperatureReading)
+    .where(
+      and(
+        eq(temperatureReading.diskId, diskId),
+        gte(temperatureReading.at, new Date(start)),
+        lt(temperatureReading.at, now),
+      ),
+    )
+    .run();
+  const points = [];
+  for (let at = start; at < now.getTime(); at += HOT_HISTORY_STEP_MS) {
+    points.push({ at: new Date(at), celsius });
+  }
+  insertTemperatures(diskId, points);
 }
 
 export const runningHot = temperatureScenario({
   id: "temperature-hot",
   label: "Running hot",
   threshold: "warning",
-  description: "Above the host's warning threshold for this kind of disk.",
+  description:
+    "Above the host's warning threshold for this kind of disk, for long enough to open a fault.",
 });
 
 export const temperatureCritical = temperatureScenario({
   id: "temperature-critical",
   label: "Critical",
   threshold: "error",
-  description: "Above the host's critical threshold for this kind of disk.",
+  description:
+    "Above the host's critical threshold for this kind of disk, for long enough to open a fault.",
 });
 
 export const DISK_SCENARIOS = [

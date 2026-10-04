@@ -141,6 +141,9 @@ describe("Temperature scenarios", () => {
     expect(temperatureColour(summary.latestTemp, summary.tempThresholds)).toBe(
       "warning",
     );
+    const hot = () =>
+      liveFaults(target.id).find((fault) => fault.kind === "temperature-high");
+    expect(hot()?.severity).toBe("warning");
 
     await simulate("disk", target.id, "temperature-critical", {}, LATER);
     summary = await summaryOf(target.id);
@@ -148,5 +151,6 @@ describe("Temperature scenarios", () => {
     expect(temperatureColour(summary.latestTemp, summary.tempThresholds)).toBe(
       "error",
     );
+    expect(hot()?.severity).toBe("error");
   }, 60_000);
 });

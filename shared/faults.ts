@@ -39,6 +39,7 @@ export const FAULT_KINDS = [
   "smart-health-failed",
   "disk-missing",
   "identity-conflict",
+  "temperature-high",
   "pool-degraded",
   "pool-missing",
   "leaf-errors",
@@ -58,6 +59,10 @@ export const FAULT_KINDS = [
   "host-degraded",
 ] as const;
 export type FaultKind = (typeof FAULT_KINDS)[number];
+
+export function isFaultKind(value: unknown): value is FaultKind {
+  return FAULT_KINDS.includes(value as FaultKind);
+}
 
 export type FaultLifetime =
   | "transient"
@@ -178,6 +183,13 @@ function scanStalledTitle(data: FaultData, now: number) {
   return age ? `${stalled} for ${age}` : stalled;
 }
 
+function temperatureHighTitle(data: FaultData, now: number) {
+  if (data.celsius === undefined) return "Running hot";
+  const reading = `${text(data.celsius)} °C (limit ${text(data.threshold)} °C)`;
+  const age = ageSince(data.hotSince, now);
+  return age ? `${reading}, hot for ${age}` : reading;
+}
+
 function replicationTitle(state: string) {
   return (data: FaultData, now: number) => {
     const age = ageSince(data.lastSyncAt, now);
@@ -220,6 +232,13 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
       const others = typeof data.others === "string" ? data.others : "";
       return `Identity conflict with ${others || "another disk"}`;
     },
+  },
+  "temperature-high": {
+    category: "disk",
+    subjectType: "disk",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: temperatureHighTitle,
   },
   "pool-degraded": {
     category: "zfs",
@@ -391,6 +410,25 @@ export const FAULT_SEVERITY_RANK: Record<FaultSeverity, number> = {
   warning: 1,
   error: 2,
 };
+
+export interface SeverityThresholds {
+  warning: number;
+  error: number;
+}
+
+/** Severity of a value against warning/error levels; a live fault steps down only once the value is `margin` below the level it crossed. */
+export function thresholdSeverity(
+  current: FaultSeverity | null,
+  value: number,
+  { warning, error }: SeverityThresholds,
+  margin: number,
+): FaultSeverity | null {
+  if (value >= error) return "error";
+  if (current === "error" && value >= error - margin) return "error";
+  if (value >= warning) return "warning";
+  if (current !== null && value >= warning - margin) return "warning";
+  return null;
+}
 
 export interface FaultSubject {
   type: FaultSubjectType;

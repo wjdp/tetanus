@@ -251,6 +251,23 @@ describe("deriveAlert", () => {
       "5:88",
     ],
     [
+      "a disk running hot",
+      entry("fault-opened", { faultId: 8, kind: "temperature-high", key: "3" }),
+      "temperature-high",
+      "3",
+    ],
+    [
+      "a hot disk raised to error",
+      entry("fault-severity-raised", {
+        faultId: 8,
+        kind: "temperature-high",
+        key: "3",
+        severity: "error",
+      }),
+      "temperature-high",
+      "3@error",
+    ],
+    [
       "identity conflict",
       entry("identity-conflict", { diskIds: [3, 9], keys: [] }),
       "identity-conflict",
@@ -315,6 +332,14 @@ describe("deriveAlert", () => {
         from: "passed",
         to: "failed",
         cause: "acceptance",
+      }),
+    ],
+    [
+      "a pool fault raised to error",
+      poolEntry("fault-severity-raised", {
+        kind: "pool-status",
+        key: "5:ZFS-8000-EY",
+        severity: "error",
       }),
     ],
     [

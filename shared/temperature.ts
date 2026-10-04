@@ -8,9 +8,15 @@ export interface TemperatureThresholds {
 export interface HostTemperatureThresholds {
   hdd?: TemperatureThresholds;
   ssd?: TemperatureThresholds;
+  sustainedMinutes?: number;
 }
 
-export type ThresholdMedia = keyof HostTemperatureThresholds;
+export type ThresholdMedia = "hdd" | "ssd";
+
+export const DEFAULT_SUSTAINED_MINUTES = 60;
+
+/** Degrees below a threshold a hot disk must cool to before its fault steps down. */
+export const TEMPERATURE_CLEAR_MARGIN = 3;
 
 export const TEMPERATURE_DEFAULTS: Record<
   ThresholdMedia,
@@ -32,6 +38,14 @@ export function resolveTemperatureThresholds(
 ): TemperatureThresholds {
   const key = thresholdMedia(media);
   return host?.temperatureThresholds?.[key] ?? TEMPERATURE_DEFAULTS[key];
+}
+
+export function resolveSustainedMinutes(
+  host: { temperatureThresholds: HostTemperatureThresholds | null } | null,
+): number {
+  return (
+    host?.temperatureThresholds?.sustainedMinutes ?? DEFAULT_SUSTAINED_MINUTES
+  );
 }
 
 export function temperatureColour(

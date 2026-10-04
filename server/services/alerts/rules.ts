@@ -5,6 +5,7 @@ import {
 } from "#shared/alerts";
 import type { DiarySubjectType } from "#shared/diary";
 import { type Disposal, describeDisk, isDisposed } from "#shared/disk";
+import { FAULT_KIND_DEFINITIONS, isFaultKind } from "#shared/faults";
 import type { DiaryEntryRow } from "~~/server/services/diary";
 
 export interface AlertDisk {
@@ -163,8 +164,9 @@ function matchDiskEntry(
 }
 
 // Kinds whose condition has no diary event of its own: they alert when the
-// fault opens.
+// fault opens, and again if it is raised to error.
 const FAULT_OPENED_RULES = new Set<AlertRule>([
+  "temperature-high",
   "pool-missing",
   "scrub-overdue",
   "leaf-slow",
@@ -176,6 +178,32 @@ const FAULT_OPENED_RULES = new Set<AlertRule>([
 
 function isFaultOpenedRule(kind: unknown): kind is AlertRule {
   return FAULT_OPENED_RULES.has(kind as AlertRule);
+}
+
+const RAISED_ALERT_RULES = new Set<AlertRule>(["temperature-high"]);
+
+function matchFaultEntry(entry: DiaryEntryRow, data: Data): Match | null {
+  if (!isFaultKind(data.kind)) return null;
+  if (FAULT_KIND_DEFINITIONS[data.kind].subjectType !== entry.subjectType) {
+    return null;
+  }
+  if (entry.eventType === "fault-opened") {
+    if (!isFaultOpenedRule(data.kind)) return null;
+    return {
+      rule: data.kind,
+      value: text(data.key),
+      detail: entry.title.replace(/^fault: /, ""),
+    };
+  }
+  if (entry.eventType === "fault-severity-raised") {
+    if (!RAISED_ALERT_RULES.has(data.kind as AlertRule)) return null;
+    return {
+      rule: data.kind as AlertRule,
+      value: `${text(data.key)}@${text(data.severity)}`,
+      detail: entry.title.replace(/^fault /, ""),
+    };
+  }
+  return null;
 }
 
 function counts(value: unknown) {
@@ -214,13 +242,6 @@ function matchPoolEntry(entry: DiaryEntryRow, data: Data): Match | null {
         rule: "leaf-errors",
         value: `${text(data.vdevGuid)}:${counts(to)}`,
         detail: entry.title,
-      };
-    case "fault-opened":
-      if (!isFaultOpenedRule(data.kind)) return null;
-      return {
-        rule: data.kind,
-        value: text(data.key),
-        detail: entry.title.replace(/^fault: /, ""),
       };
     default:
       return null;
@@ -328,6 +349,8 @@ function matchEntry(
   subjectId: number,
   context: AlertContext,
 ): Match | null {
+  const fault = matchFaultEntry(entry, entry.data);
+  if (fault) return fault;
   if (entry.subjectType === "disk") {
     return matchDiskEntry(entry, subjectId, entry.data, context);
   }

@@ -100,8 +100,8 @@ Health
 - Self-test failed: type [extended], first failing LBA [random within capacity]
 
 Temperature
-- Running hot: °C [host warning threshold + 2]
-- Critical: °C [host critical threshold + 2]
+- ✱ Running hot: °C [host warning threshold + 2], hot for minutes [host's window]; backdates readings across the window ([057](057-Temperature-fault.md))
+- ✱ Critical: °C [host critical threshold + 2], hot for minutes [host's window]
 
 Presence (`lsblk`, `udev`, `smartctl-scan`)
 - ✱ Missing: last seen [2 days ago]

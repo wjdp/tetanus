@@ -120,6 +120,7 @@ const DIARY_EVENT_ICON: Record<
   "imported-from-scrutiny": () => "i-lucide-import",
   "fault-opened": () => ENTITY_ICON.fault,
   "fault-state-changed": () => ENTITY_ICON.fault,
+  "fault-severity-raised": () => ENTITY_ICON.fault,
   "fault-resolved": () => ENTITY_ICON.fault,
   disposed: newDisposalIcon,
   "disposal-cleared": () => "i-lucide-undo-2",

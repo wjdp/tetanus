@@ -785,7 +785,7 @@ function hosts(timeline: Timeline): HostModel[] {
       smartctlVersion:
         "smartctl 7.5 2025-04-30 r5714 [x86_64-linux-7.0.0-34-generic] (local build)",
       vdevIdConf: true,
-      ambientC: 23,
+      ambientC: 21,
       installedAt: ATLAS_BUILT,
       enclosure: {
         id: "5001e67a3c1f00ff",

@@ -5,6 +5,7 @@ import {
   FAULT_KINDS,
   type FaultKind,
   faultTitle,
+  thresholdSeverity,
 } from "#shared/faults";
 
 type AlertingRule = {
@@ -40,6 +41,7 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "replication-target-gone": "replication-target-gone",
   "identity-conflict": "identity-conflict",
   "disposed-disk-seen": null,
+  "temperature-high": "temperature-high",
   "collector-incompatible": "collector-incompatible",
 };
 
@@ -254,8 +256,33 @@ describe("faultTitle", () => {
       { diskIds: [3, 7] },
       "Identity conflict with another disk",
     ],
+    [
+      "temperature-high",
+      { celsius: 58, threshold: 55, hotSince: "2026-09-10T08:00:00Z" },
+      "58 °C (limit 55 °C), hot for 2 h",
+    ],
+    ["temperature-high", {}, "Running hot"],
   ] as const)("renders %s", (kind, data, title) => {
     expect(faultTitle({ kind, data }, now)).toBe(title);
+  });
+});
+
+describe("thresholdSeverity", () => {
+  const levels = { warning: 45, error: 55 };
+
+  it.each([
+    [null, 44, null],
+    [null, 45, "warning"],
+    [null, 55, "error"],
+    ["warning", 43, "warning"],
+    ["warning", 42, "warning"],
+    ["warning", 41, null],
+    ["error", 53, "error"],
+    ["error", 52, "error"],
+    ["error", 51, "warning"],
+    ["error", 41, null],
+  ] as const)("from %s at %i is %s", (current, value, expected) => {
+    expect(thresholdSeverity(current, value, levels, 3)).toBe(expected);
   });
 });
 

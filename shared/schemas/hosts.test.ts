@@ -26,7 +26,10 @@ describe("hostPatchSchema", () => {
   });
 
   it("accepts temperature thresholds and null to clear them", () => {
-    const temperatureThresholds = { hdd: { warning: 50, error: 60 } };
+    const temperatureThresholds = {
+      hdd: { warning: 50, error: 60 },
+      sustainedMinutes: 90,
+    };
     expect(hostPatchSchema.parse({ temperatureThresholds })).toEqual({
       temperatureThresholds,
     });
@@ -43,6 +46,8 @@ describe("hostPatchSchema", () => {
     { temperatureThresholds: { hdd: { warning: -1, error: 55 } } },
     { temperatureThresholds: { hdd: { warning: 45, error: 121 } } },
     { temperatureThresholds: { unknown: { warning: 45, error: 55 } } },
+    { temperatureThresholds: { sustainedMinutes: -1 } },
+    { temperatureThresholds: { sustainedMinutes: 1441 } },
     { healthchecksUrl: "ftp://example.com" },
     { healthchecksUrl: "not a url" },
     { name: "renamed" },

@@ -3,7 +3,6 @@ import type { DiaryEventType } from "#shared/diary";
 import { isHistoryState } from "#shared/disk";
 import {
   FAULT_KIND_DEFINITIONS,
-  FAULT_KINDS,
   FAULT_SEVERITIES,
   FAULT_SEVERITY_RANK,
   type FaultData,
@@ -11,6 +10,7 @@ import {
   type FaultSeverity,
   type FaultState,
   type FaultSubjectType,
+  isFaultKind,
   type LeafCounts,
   type PoolDegradedLeaf,
 } from "#shared/faults";
@@ -76,6 +76,7 @@ const REPLAYED_EVENTS = [
   "collector-status-changed",
   "fault-opened",
   "fault-state-changed",
+  "fault-severity-raised",
   "fault-resolved",
 ] as const satisfies readonly DiaryEventType[];
 
@@ -112,10 +113,6 @@ const SETTABLE_STATES = new Set<FaultState>([
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 const identity = (kind: FaultKind, key: string) => `${kind}\u0000${key}`;
-
-function isFaultKind(value: unknown): value is FaultKind {
-  return FAULT_KINDS.includes(value as FaultKind);
-}
 
 function withoutAcknowledgedLevel({
   acknowledgedCounts: _counts,
@@ -698,6 +695,11 @@ function replayFaultEntry(context: ReplayContext, entry: DiaryEntryRow) {
       }
       return;
     }
+    case "fault-severity-raised":
+      if (row && FAULT_SEVERITIES.includes(data.severity as FaultSeverity)) {
+        row.severity = data.severity as FaultSeverity;
+      }
+      return;
     case "fault-resolved":
       replay.resolve(row, at, text(data.note));
       return;

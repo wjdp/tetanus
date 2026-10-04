@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  DEFAULT_SUSTAINED_MINUTES,
   type HostTemperatureThresholds,
   TEMPERATURE_DEFAULTS,
   type TemperatureThresholds,
@@ -42,6 +43,7 @@ const thresholds = reactive<ThresholdInputs>({
   hdd: { warning: "", error: "" },
   ssd: { warning: "", error: "" },
 });
+const sustainedMinutes = ref<ThresholdInput>("");
 
 const reset = () => {
   displayName.value = props.host.displayName ?? "";
@@ -53,21 +55,25 @@ const reset = () => {
     thresholds[media].warning = saved?.warning ?? "";
     thresholds[media].error = saved?.error ?? "";
   }
+  sustainedMinutes.value =
+    props.host.temperatureThresholds?.sustainedMinutes ?? "";
 };
 watch(() => props.host, reset, { immediate: true });
 
-const parseCelsius = (value: ThresholdInput) =>
+const parseNumber = (value: ThresholdInput) =>
   value === "" || value === undefined ? null : Number(value);
 
 const thresholdsPatch = (): HostTemperatureThresholds | null => {
   const patch: HostTemperatureThresholds = {};
   for (const media of ["hdd", "ssd"] as const) {
-    const warning = parseCelsius(thresholds[media].warning);
-    const error = parseCelsius(thresholds[media].error);
+    const warning = parseNumber(thresholds[media].warning);
+    const error = parseNumber(thresholds[media].error);
     if (warning !== null && error !== null) {
       patch[media] = { warning, error };
     }
   }
+  const minutes = parseNumber(sustainedMinutes.value);
+  if (minutes !== null) patch.sustainedMinutes = minutes;
   return Object.keys(patch).length > 0 ? patch : null;
 };
 
@@ -146,6 +152,21 @@ const save = async () => {
           />
         </UFormField>
       </div>
+    </UFormField>
+
+    <UFormField
+      label="Hot for (minutes)"
+      name="temperatureThresholds.sustainedMinutes"
+      description="How long a disk must stay above its warning threshold before it becomes a fault. 0 opens a fault on the first hot reading."
+    >
+      <UInput
+        v-model="sustainedMinutes"
+        type="number"
+        :min="0"
+        :max="1440"
+        :placeholder="String(DEFAULT_SUSTAINED_MINUTES)"
+        class="w-40"
+      />
     </UFormField>
 
     <UButton
