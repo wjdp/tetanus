@@ -19,7 +19,10 @@ required.
 ## Context
 
 - Depends on knowing the enclosure slot: [061 Physical bay
-  mapping](061-Physical-bay-mapping.md). A disk without an SES slot has no light to
+  mapping](061-Physical-bay-mapping.md), whose `Enclosure` rows carry the sysfs name and
+  element per slot. Verified on mars: writing `1` to
+  `/sys/class/enclosure/<enc>/ArrayDevice08/locate` lights bay 1 through passive
+  backplanes behind an Intel RES2SV240 expander. A disk without an SES slot has no light to
   blink (motherboard SATA, most USB enclosures, most consumer NAS cases).
 - Mechanisms: write `1` to `/sys/class/enclosure/<enc>/<slot>/locate`; `sg_ses
   --dev-slot-num=N --set=locate <sg device>`; `ledctl locate=/dev/sdX` (Intel

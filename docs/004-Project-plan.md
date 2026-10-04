@@ -233,7 +233,7 @@ Stubbed 2026-10-04 from a review of Starosdev's scrutiny fork, unordered:
 - vdev_id.conf proposal renderer.
 - Actions behind a flag: short/long self-test, scrub, `zpool clear`.
 - Retention/downsampling if the DB grows past comfort.
-- Physical bay mapping via `vdev_enc_sysfs_path` / `zpool status -c`.
+- Physical bay mapping ([061](061-Physical-bay-mapping.md)): SES slots from `/sys/class/enclosure`, `ID_PATH` otherwise, user-labelled bays.
 - Scrutiny-collector adapter routes, if detection on other people's hardware needs it.
   Needs the host header mapped.
 - Local producer: in-container `execFile` for SMART, udev and vdev_id.conf (static
