@@ -128,99 +128,162 @@ const requestUrl = useRequestURL();
       </p>
     </div>
 
-    <UTable
-      v-else
-      ref="table"
-      :data="hosts"
-      :columns="columns"
-      :on-select="onSelectRow"
-    >
-      <template #order-cell>
-        <span
-          data-drag-handle
-          title="Drag to reorder"
-          class="text-dimmed hover:text-default -m-2 inline-flex cursor-grab p-2 active:cursor-grabbing"
+    <template v-else>
+      <div class="flex flex-col md:hidden" data-testid="host-list">
+        <NuxtLink
+          v-for="host in hosts"
+          :key="host.id"
+          :to="`/hosts/${host.id}`"
+          class="border-default hover:bg-elevated/50 flex flex-col gap-1.5 border-t py-2.5 text-sm last:border-b"
+          data-testid="host-list-item"
         >
-          <UIcon name="i-lucide-grip-vertical" class="size-4" />
-        </span>
-      </template>
-
-      <template #name-cell="{ row }">
-        <div class="flex items-center gap-2">
-          <NuxtLink
-            :to="`/hosts/${row.original.id}`"
-            data-row-control
-            class="text-highlighted hover:text-primary"
+          <div class="flex items-baseline gap-2">
+            <span class="text-highlighted truncate font-medium">
+              {{ host.displayName || host.name }}
+            </span>
+            <span
+              v-if="host.displayName"
+              class="text-dimmed truncate font-mono text-xs"
+            >
+              {{ host.name }}
+            </span>
+            <UBadge
+              v-if="host.intermittent"
+              color="neutral"
+              variant="subtle"
+              size="sm"
+              class="self-center"
+            >
+              intermittent
+            </UBadge>
+            <span class="text-muted tabular ms-auto shrink-0">
+              {{ relativeTime(new Date(host.lastSeenAt)) }}
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <HostFreshnessChips :host="host" :now="now" />
+          </div>
+          <div
+            class="text-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+            data-testid="host-list-meta"
           >
-            {{ row.original.name }}
-          </NuxtLink>
-          <UBadge
-            v-if="row.original.intermittent"
-            color="neutral"
-            variant="subtle"
-            size="sm"
-          >
-            intermittent
-          </UBadge>
-        </div>
-      </template>
+            <span class="font-mono">
+              collector {{ host.collectorVersion ?? "—" }}
+            </span>
+            <UBadge
+              v-if="collectorBadge(host.collectorVersion)"
+              :color="collectorBadge(host.collectorVersion)?.color"
+              variant="subtle"
+              size="sm"
+            >
+              {{ collectorBadge(host.collectorVersion)?.label }}
+            </UBadge>
+            <span
+              v-for="line in toolVersionLines(host.toolVersions)"
+              :key="line"
+              class="text-dimmed font-mono"
+            >
+              {{ line }}
+            </span>
+          </div>
+        </NuxtLink>
+      </div>
 
-      <template #displayName-cell="{ row }">
-        {{ row.original.displayName ?? "—" }}
-      </template>
-
-      <template #collector-cell="{ row }">
-        <div class="flex flex-wrap items-center gap-1">
-          <span class="font-mono text-xs">
-            {{ row.original.collectorVersion ?? "—" }}
-          </span>
-          <UBadge
-            v-if="collectorBadge(row.original.collectorVersion)"
-            :color="collectorBadge(row.original.collectorVersion)?.color"
-            variant="subtle"
-            size="sm"
-          >
-            {{ collectorBadge(row.original.collectorVersion)?.label }}
-          </UBadge>
-        </div>
-      </template>
-
-      <template #versions-cell="{ row }">
-        <div
-          v-if="toolVersionLines(row.original.toolVersions).length"
-          class="text-dimmed flex flex-col font-mono text-xs"
+      <div class="hidden overflow-x-auto md:block">
+        <UTable
+          ref="table"
+          :data="hosts"
+          :columns="columns"
+          :on-select="onSelectRow"
         >
-          <span
-            v-for="line in toolVersionLines(row.original.toolVersions)"
-            :key="line"
-          >
-            {{ line }}
-          </span>
-        </div>
-        <span v-else class="text-dimmed">—</span>
-      </template>
+          <template #order-cell>
+            <span
+              data-drag-handle
+              title="Drag to reorder"
+              class="text-dimmed hover:text-default -m-2 inline-flex cursor-grab p-2 active:cursor-grabbing"
+            >
+              <UIcon name="i-lucide-grip-vertical" class="size-4" />
+            </span>
+          </template>
 
-      <template #freshness-cell="{ row }">
-        <div class="flex flex-wrap gap-1">
-          <HostFreshnessChips :host="row.original" :now="now" />
-        </div>
-      </template>
+          <template #name-cell="{ row }">
+            <div class="flex items-center gap-2">
+              <NuxtLink
+                :to="`/hosts/${row.original.id}`"
+                data-row-control
+                class="text-highlighted hover:text-primary"
+              >
+                {{ row.original.name }}
+              </NuxtLink>
+              <UBadge
+                v-if="row.original.intermittent"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+              >
+                intermittent
+              </UBadge>
+            </div>
+          </template>
 
-      <template #lastSeen-cell="{ row }">
-        {{ relativeTime(new Date(row.original.lastSeenAt)) }}
-      </template>
+          <template #displayName-cell="{ row }">
+            {{ row.original.displayName ?? "—" }}
+          </template>
 
-      <template #simulate-cell="{ row }">
-        <div class="flex justify-end" data-row-control>
-          <SimulateFaultMenu
-            subject-type="host"
-            :subject-id="row.original.id"
-            size="xs"
-            compact
-          />
-        </div>
-      </template>
-    </UTable>
+          <template #collector-cell="{ row }">
+            <div class="flex flex-wrap items-center gap-1">
+              <span class="font-mono text-xs">
+                {{ row.original.collectorVersion ?? "—" }}
+              </span>
+              <UBadge
+                v-if="collectorBadge(row.original.collectorVersion)"
+                :color="collectorBadge(row.original.collectorVersion)?.color"
+                variant="subtle"
+                size="sm"
+              >
+                {{ collectorBadge(row.original.collectorVersion)?.label }}
+              </UBadge>
+            </div>
+          </template>
+
+          <template #versions-cell="{ row }">
+            <div
+              v-if="toolVersionLines(row.original.toolVersions).length"
+              class="text-dimmed flex flex-col font-mono text-xs"
+            >
+              <span
+                v-for="line in toolVersionLines(row.original.toolVersions)"
+                :key="line"
+              >
+                {{ line }}
+              </span>
+            </div>
+            <span v-else class="text-dimmed">—</span>
+          </template>
+
+          <template #freshness-cell="{ row }">
+            <div class="flex flex-wrap gap-1">
+              <HostFreshnessChips :host="row.original" :now="now" />
+            </div>
+          </template>
+
+          <template #lastSeen-cell="{ row }">
+            {{ relativeTime(new Date(row.original.lastSeenAt)) }}
+          </template>
+
+          <template #simulate-cell="{ row }">
+            <div class="flex justify-end" data-row-control>
+              <SimulateFaultMenu
+                subject-type="host"
+                :subject-id="row.original.id"
+                size="xs"
+                compact
+              />
+            </div>
+          </template>
+        </UTable>
+      </div>
+    </template>
 
     <section v-if="!demo && hostsToUpgrade.length" class="flex flex-col gap-3">
       <h2 class="text-highlighted font-semibold">Upgrade the collector</h2>

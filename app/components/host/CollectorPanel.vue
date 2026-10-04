@@ -24,7 +24,7 @@ const tools = computed(() =>
     data-testid="collector-panel"
   >
     <h2 class="text-highlighted font-semibold">Collector</h2>
-    <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+    <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
       <dt class="text-muted">tetanus-collect</dt>
       <dd class="flex flex-wrap items-center gap-1">
         <span class="font-mono text-xs leading-5">

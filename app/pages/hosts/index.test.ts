@@ -130,4 +130,21 @@ describe("hosts page", () => {
       "/hosts/add",
     );
   });
+
+  it("lists each host as a stacked item for phones", async () => {
+    const page = await mountSuspended(HostsPage);
+    const list = page.get('[data-testid="host-list"]');
+    expect(list.classes()).toContain("md:hidden");
+
+    const items = list.findAll('[data-testid="host-list-item"]');
+    expect(items).toHaveLength(5);
+    expect(items[1].attributes("href")).toBe("/hosts/2");
+    expect(items[1].text()).toContain("pihost");
+    expect(items[1].get('[data-testid="host-list-meta"]').text()).toMatch(
+      new RegExp(
+        `collector 0\\.3\\.0\\s*${COLLECTOR_VERSION.replaceAll(".", "\\.")} available`,
+      ),
+    );
+    expect(items[4].text()).toContain("intermittent");
+  });
 });
