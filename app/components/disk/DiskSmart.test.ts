@@ -27,6 +27,10 @@ registerEndpoint("/api/disks/21/smart", () =>
 registerEndpoint("/api/disks/22/smart", () => smartOverview(null));
 registerEndpoint("/api/disks/23/smart", () => smartOverview(null, "unknown"));
 registerEndpoint("/api/disks/24/smart", () => smartOverview(null, "failed"));
+registerEndpoint("/api/disks/25/smart", () => ({
+  ...smartOverview(null),
+  reading: null,
+}));
 
 const note = '[data-testid="imported-note"]';
 
@@ -67,4 +71,16 @@ describe("DiskSmart", () => {
       expect(badge.classes()).not.toContain("text-success");
     },
   );
+
+  it("shows the range tabs without a heading, even with no readings", async () => {
+    const component = await mountSuspended(DiskSmart, {
+      props: { diskId: 25, protocol: "ata" },
+    });
+
+    expect(component.text()).toContain("No SMART readings yet.");
+    expect(component.find("h2").exists()).toBe(false);
+    expect(
+      component.findAll('[role="tab"]').map((tab) => tab.text()),
+    ).toContain("30d");
+  });
 });

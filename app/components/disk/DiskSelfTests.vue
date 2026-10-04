@@ -4,7 +4,13 @@ import type { SmartOverview } from "./types";
 
 type SelfTest = SmartOverview["selfTests"][number];
 
-defineProps<{ selfTests: SelfTest[] }>();
+const props = defineProps<{ selfTests: SelfTest[] }>();
+
+const LATEST_COUNT = 10;
+const showAll = ref(false);
+const visibleSelfTests = computed(() =>
+  showAll.value ? props.selfTests : props.selfTests.slice(0, LATEST_COUNT),
+);
 
 const columns: TableColumn<SelfTest>[] = [
   { accessorKey: "type", header: "Type" },
@@ -17,8 +23,19 @@ const columns: TableColumn<SelfTest>[] = [
 
 <template>
   <section v-if="selfTests.length" class="flex flex-col gap-2" data-testid="self-tests">
-    <h3 class="text-muted text-sm font-medium">Self-tests</h3>
-    <UTable :data="selfTests" :columns="columns" :ui="{ td: 'whitespace-nowrap' }">
+    <div class="flex items-center justify-between gap-3">
+      <h3 class="text-muted text-sm font-medium">Self-tests</h3>
+      <UButton
+        v-if="selfTests.length > LATEST_COUNT"
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        :label="showAll ? 'Show latest' : `Show all (${selfTests.length})`"
+        data-testid="self-tests-toggle"
+        @click="showAll = !showAll"
+      />
+    </div>
+    <UTable :data="visibleSelfTests" :columns="columns" :ui="{ td: 'whitespace-nowrap' }">
       <template #result-cell="{ row }">
         <UBadge
           :color="row.original.passed ? 'neutral' : 'error'"

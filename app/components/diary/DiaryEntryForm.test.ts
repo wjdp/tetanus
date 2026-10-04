@@ -15,10 +15,15 @@ registerEndpoint("/api/diary", {
   },
 });
 
-registerEndpoint("/api/disks", () => [
-  { id: 3, alias: "K1", model: "WDC WD80", serial: "AAA" },
-  { id: 4, alias: "K2", model: "WDC WD80", serial: "BBB" },
-]);
+let diskListFetches = 0;
+
+registerEndpoint("/api/disks", () => {
+  diskListFetches += 1;
+  return [
+    { id: 3, alias: "K1", model: "WDC WD80", serial: "AAA" },
+    { id: 4, alias: "K2", model: "WDC WD80", serial: "BBB" },
+  ];
+});
 
 registerEndpoint("/api/hosts", () => [
   { id: 7, name: "mars", displayName: null },
@@ -70,5 +75,26 @@ describe("DiaryEntryForm", () => {
       subjectType: "host",
       subjectId: null,
     });
+  });
+
+  it("hides the subject pickers and posts the fixed subject", async () => {
+    const fetchesBefore = diskListFetches;
+    const form = await mountSuspended(DiaryEntryForm, {
+      props: { subjectType: "disk", subjectId: 3, fixedSubject: true },
+    });
+    expect(form.find('[data-testid="subject-picker"]').exists()).toBe(false);
+    expect(form.text()).not.toContain("Subject type");
+
+    await form.get('input[name="title"]').setValue("Relabelled");
+    await form.get("form").trigger("submit");
+    await flushPromises();
+
+    expect(posted.at(-1)).toEqual({
+      subjectType: "disk",
+      subjectId: 3,
+      title: "Relabelled",
+      body: "",
+    });
+    expect(diskListFetches).toBe(fetchesBefore);
   });
 });

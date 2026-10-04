@@ -5,6 +5,7 @@ import { useDatasetSearch } from "~/components/dataset/useDatasetSearch";
 const props = defineProps<{
   subjectType?: DiarySubjectType;
   subjectId?: number | null;
+  fixedSubject?: boolean;
 }>();
 
 const emit = defineEmits<{ saved: [] }>();
@@ -27,7 +28,7 @@ const needsSubjectId = computed(() => subjectType.value !== "system");
 const { data: listedItems, status: listedItemsStatus } = useLazyAsyncData(
   () => `diary-subject-items:${subjectType.value}`,
   () => fetchSubjectItems(subjectType.value),
-  { server: false, default: () => [] },
+  { server: false, default: () => [], immediate: !props.fixedSubject },
 );
 
 const isSearched = computed(() => subjectType.value === "dataset");
@@ -38,7 +39,13 @@ const seenDatasets = reactive(new Map<number, SubjectItem>());
 
 const rememberPrefilledDataset = async () => {
   const id = subjectId.value;
-  if (!isSearched.value || id === undefined || seenDatasets.has(id)) return;
+  if (
+    props.fixedSubject ||
+    !isSearched.value ||
+    id === undefined ||
+    seenDatasets.has(id)
+  )
+    return;
   const { datasets } = await $fetch("/api/datasets", {
     query: { ids: String(id) },
   });
@@ -100,7 +107,7 @@ const save = async () => {
 
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="save">
-    <div class="flex gap-3">
+    <div v-if="!fixedSubject" class="flex gap-3">
       <UFormField label="Subject type" name="subjectType" class="flex-1">
         <USelect
           v-model="subjectType"

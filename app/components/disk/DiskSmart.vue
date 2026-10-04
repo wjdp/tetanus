@@ -119,23 +119,10 @@ const temperatureSeries = computed(() => [
 <template>
   <section class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2 class="text-highlighted text-lg font-semibold">SMART</h2>
-      <UTabs
-        v-model="range"
-        :items="rangeItems"
-        :content="false"
-        size="xs"
-        color="neutral"
-        variant="pill"
-      />
-    </div>
-
-    <p v-if="!smart?.reading" class="text-muted text-sm">
-      No SMART readings yet.
-    </p>
-
-    <template v-else>
-      <div class="flex flex-wrap items-center gap-2 text-sm">
+      <p v-if="!smart?.reading" class="text-muted text-sm">
+        No SMART readings yet.
+      </p>
+      <div v-else class="flex flex-wrap items-center gap-2 text-sm">
         <UBadge
           :color="statusBadgeColour"
           variant="subtle"
@@ -158,7 +145,19 @@ const temperatureSeries = computed(() => [
           class="text-dimmed animate-spin"
         />
       </div>
+      <UTabs
+        v-model="range"
+        :items="rangeItems"
+        :content="false"
+        size="xs"
+        color="neutral"
+        variant="pill"
+        class="ml-auto"
+        aria-label="History range"
+      />
+    </div>
 
+    <template v-if="smart?.reading">
       <p
         v-if="smart.history.importedUntil"
         class="text-dimmed text-sm"
