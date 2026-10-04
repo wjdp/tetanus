@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { zfsStateColour } from "~/utils/vocabulary";
+import { ENTITY_ICON, zfsStateColour } from "~/utils/vocabulary";
 import type { DiskDetail } from "./types";
 
 const props = withDefaults(
@@ -27,6 +27,11 @@ const groupName = computed(() =>
     data-testid="pool-breadcrumb"
   >
     <span class="inline-flex min-w-0 items-center gap-1">
+      <UIcon
+        :name="ENTITY_ICON.pool"
+        class="text-muted size-4 shrink-0"
+        data-testid="pool-icon"
+      />
       <ULink
         :to="`/zfs/${membership.poolId}`"
         class="text-highlighted hover:text-primary font-medium"

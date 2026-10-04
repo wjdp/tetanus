@@ -91,7 +91,7 @@ describe("DiskNameplate", () => {
     expect(glyph.classes()).toContain("text-muted");
   });
 
-  it("shows usage, the pool breadcrumb with its state, and links the faults", async () => {
+  it("shows the pool breadcrumb with its state in place of usage, and links the faults", async () => {
     const nameplate = await mountNameplate({
       membership: {
         poolId: 3,
@@ -106,7 +106,7 @@ describe("DiskNameplate", () => {
     });
 
     const strip = nameplate.get('[data-testid="status-strip"]');
-    expect(strip.get('[data-testid="disk-usage"]').text()).toBe("tank");
+    expect(strip.find('[data-testid="disk-usage"]').exists()).toBe(false);
     expect(strip.get('[data-testid="pool-breadcrumb"]').text()).toMatch(
       /tank\s*raidz2-0\s*K2-part1\s*ONLINE/,
     );

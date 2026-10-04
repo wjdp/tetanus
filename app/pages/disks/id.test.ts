@@ -349,7 +349,7 @@ describe("disk page", () => {
     expect(strip.get("span[data-state]").attributes("data-state")).toBe(
       "in-use",
     );
-    expect(strip.get('[data-testid="disk-usage"]').text()).toBe("tank");
+    expect(strip.find('[data-testid="disk-usage"]').exists()).toBe(false);
     expect(strip.get('[data-testid="pool-breadcrumb"]').text()).toContain(
       "raidz2-0",
     );

@@ -82,6 +82,7 @@ const items = computed<DropdownMenuItem[]>(() => [
       inferred {{ disk.inferredState }}
     </span>
     <span
+      v-if="!disk.membership"
       class="text-sm"
       :class="{ 'text-dimmed': disk.usage.kind === 'empty' }"
       data-testid="disk-usage"
