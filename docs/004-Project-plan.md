@@ -217,6 +217,15 @@ Stubbed 2026-10-04 from a gap review against the README pitch, unordered:
 [063 Retention and downsampling](063-Retention-and-downsampling.md),
 [064 Disk identify light](064-Disk-identify-light.md).
 
+Stubbed 2026-10-04 from a review of Starosdev's scrutiny fork, unordered:
+[069 Merge and split disk records](069-Merge-and-split-disk-records.md),
+[070 Self-test on demand](070-Self-test-on-demand.md),
+[071 Verdict reasons in lists and alerts](071-Verdict-reasons-in-lists-and-alerts.md),
+[072 Prometheus metrics endpoint](072-Prometheus-metrics-endpoint.md),
+[073 Collector device exclusion and type override](073-Collector-device-exclusion-and-type-override.md),
+[074 SMART error log](074-SMART-error-log.md),
+[075 Home Assistant integration](075-Home-Assistant-integration.md).
+
 ## Later
 
 - `zpool iostat` latency view; the only text parser, needed by no v1 screen.

@@ -25,6 +25,8 @@ planned.
 ## Unanswered questions
 
 1. Does the author run long self-tests at all on mars, or is this scrub-only for now?
+   Answered 2026-10-04: not today; relies on ZFS scrubs, unsure whether long tests are
+   worth running. See [070 Self-test on demand](070-Self-test-on-demand.md).
 
 ## Never run (added 2026-10-04)
 

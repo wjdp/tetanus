@@ -37,3 +37,19 @@ sidebar counts, alerts and acceptance all hang off `Fault` rows, so a disk at 60
 1. Instantaneous or sustained: does one hot sample open a fault, or N samples over M hours?
 2. Is a hot disk a disk fault or a host fault (one fan failing heats every disk)?
 3. Should the threshold "error" level map to `failed` severity, or is temperature only ever a warning?
+
+## Prior art (added 2026-10-04)
+
+From a review of Starosdev's scrutiny fork:
+
+- Its temperature alert is sustained by default: above 55 °C for 30 minutes. Its users
+  have accepted this shape and it isn't a source of complaints, which suggests answering
+  question 1 with "sustained".
+- Its threshold is one global value, not per media type or per host. tetanus's per-host
+  hdd/ssd thresholds are already finer.
+- Temperature quirks are a frequent scrutiny complaint (negative readings, wrong source
+  attribute, per-drive temperature source requests in Starosdev #917). tetanus reads
+  smartctl's `temperature.current` rather than an attribute, which avoids most of these.
+- A hot disk is often the first visible sign of a failed fan, so this may deserve to land
+  ahead of [016](016-Snapshot-staleness.md) and [018](018-Capacity-forecast.md).
+

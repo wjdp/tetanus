@@ -99,6 +99,11 @@ Mostly pointers into Phase 3 knowledge, gated on vendor so they stop being noise
 - WD: shucked white-label lines get the 3.3 V pin note on the nameplate automatically
   when `pin33Taped` is unset.
 - Toshiba/Samsung/Intel: nothing vendor-specific yet beyond warranty terms.
+- Power-on hours rollover (noted 2026-10-04): some drives report attribute 9 as a 16-bit
+  counter that wraps at 65,535 h (about 7.5 years), so a long-lived disk suddenly reads
+  young. Starosdev's scrutiny detects the wrap from history; tetanus doesn't. Not strictly
+  vendor-gated, but it belongs with the other raw-value quirks in
+  `shared/smart/transforms.ts`.
 
 ## Out of scope
 
