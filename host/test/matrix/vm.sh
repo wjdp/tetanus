@@ -88,7 +88,7 @@ trap stop_vm EXIT
 vm() {
   ssh -q -i "$work/id_ed25519" -p "$ssh_port" \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -o ConnectTimeout=5 -o ServerAliveInterval=15 -o LogLevel=ERROR \
+    -o IdentitiesOnly=yes -o ConnectTimeout=5 -o ServerAliveInterval=15 -o LogLevel=ERROR \
     tester@127.0.0.1 "$@"
 }
 
