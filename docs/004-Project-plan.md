@@ -205,6 +205,18 @@ author's day; none blocks another except where noted.
 9. [019 SSD endurance](019-SSD-endurance.md). Better with 023.
 10. [020 Warranty nudge](020-Warranty-nudge.md) and RMA sheet.
 
+Stubbed 2026-10-04 from a gap review against the README pitch, unordered:
+[055 Pool capacity fault](055-Pool-capacity-fault.md),
+[056 Manual disk creation](056-Manual-disk-creation.md),
+[057 Temperature fault](057-Temperature-fault.md),
+[058 More alert channels](058-More-alert-channels.md),
+[059 Dataset quota nearly full](059-Dataset-quota-nearly-full.md),
+[060 Inventory export](060-Inventory-export.md),
+[061 Physical bay mapping](061-Physical-bay-mapping.md),
+[062 Non-Linux hosts](062-Non-Linux-hosts.md),
+[063 Retention and downsampling](063-Retention-and-downsampling.md),
+[064 Disk identify light](064-Disk-identify-light.md).
+
 ## Later
 
 - `zpool iostat` latency view; the only text parser, needed by no v1 screen.

@@ -25,3 +25,12 @@ planned.
 ## Unanswered questions
 
 1. Does the author run long self-tests at all on mars, or is this scrub-only for now?
+
+## Never run (added 2026-10-04)
+
+The self-test half also covers disks with no long self-test at all. Many home users
+never schedule one; SMART attributes only reflect sectors that have been read, so an
+untested disk with years of power-on time can look clean. `SelfTest` rows come from
+`smartctl --xall` (log of past tests); a disk with none is a stronger signal than an
+old one. Not a disk fault in the sense of "failing", but an unanswered question about
+the disk.
