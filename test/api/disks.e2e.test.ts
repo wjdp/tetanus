@@ -319,3 +319,57 @@ describe("disk disposal", () => {
     expect((await cleared.json()).disposal).toBeNull();
   });
 });
+
+describe("bays", () => {
+  const slot8 = "enc:5001e677a1a113f0:8";
+
+  function marsId() {
+    return (
+      sqlite.prepare("SELECT id FROM Host WHERE name = 'mars'").get() as {
+        id: number;
+      }
+    ).id;
+  }
+
+  function patchBays(hostId: number, body: unknown) {
+    return fetch(`/api/hosts/${hostId}/bays`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("puts the disk on sda in its enclosure slot and labels it", async () => {
+    expect(
+      (await ingest("enclosure", readFixture("mars/enclosure.txt"))).status,
+    ).toBe(200);
+    const hostId = marsId();
+
+    const patched = await patchBays(hostId, { [slot8]: " Bay 1 " });
+    expect(patched.status).toBe(200);
+    const bays = await patched.json();
+    expect(bays.enclosures[0].slots[8]).toMatchObject({
+      locationKey: slot8,
+      label: "Bay 1",
+      disk: { id: diskIdBySerial("0UTY8HTE"), present: true },
+    });
+
+    const k1 = await (
+      await fetch(`/api/disks/${diskIdBySerial("0UTY8HTE")}`)
+    ).json();
+    expect(k1.bay).toEqual({
+      locationKey: slot8,
+      label: "Bay 1",
+      defaultLabel: "RES2SV240 slot 8",
+    });
+
+    const listed = await (await fetch(`/api/hosts/${hostId}/bays`)).json();
+    expect(listed.enclosures[0].slots).toHaveLength(24);
+  });
+
+  it("rejects a malformed patch and an unknown host", async () => {
+    expect((await patchBays(marsId(), { [slot8]: 3 })).status).toBe(400);
+    expect((await patchBays(9999, { [slot8]: "x" })).status).toBe(404);
+    expect((await fetch("/api/hosts/9999/bays")).status).toBe(404);
+  });
+});
