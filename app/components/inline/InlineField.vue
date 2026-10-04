@@ -56,7 +56,7 @@ const currency = useCurrency();
 
 const editing = ref(false);
 const selectOpen = ref(false);
-const draft = ref<string | number>("");
+const draft = ref("");
 const awaiting = ref(false);
 const pending = ref<InlineValue>(null);
 const succeeded = ref(false);
@@ -121,8 +121,8 @@ const startEdit = () => {
   selectOpen.value = true;
 };
 
-const parse = (raw: string | number): InlineValue => {
-  const trimmed = String(raw).trim();
+const parse = (raw: string): InlineValue => {
+  const trimmed = raw.trim();
   if (trimmed === "") return null;
   if (props.type === "money") {
     const amount = Number(trimmed);
@@ -236,7 +236,7 @@ const statusIcon = computed(() => {
       <UInput
         v-else
         ref="input"
-        v-model="draft"
+        :model-value="draft"
         :type="inputType"
         :min="type === 'money' ? 0 : undefined"
         :step="type === 'money' ? currencyStep(currency) : undefined"
@@ -245,6 +245,7 @@ const statusIcon = computed(() => {
         :ui="{ leading: 'pointer-events-none' }"
         :class="{ 'font-mono': type === 'alias' }"
         class="w-full"
+        @update:model-value="(typed) => (draft = String(typed ?? ''))"
         @keydown="onKeydown"
         @keydown.enter.prevent="commit"
         @keydown.esc.prevent="cancel"
