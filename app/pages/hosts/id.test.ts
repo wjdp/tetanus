@@ -17,7 +17,7 @@ const HOST = {
   name: "mars",
   displayName: "Mars NAS",
   toolVersions: {
-    zfs: "zfs-2.4.1-1ubuntu5.1",
+    zfs: "zfs-2.2.2-0ubuntu9.1",
     kernel: "7.0.0-34-generic",
   },
   collectorVersion: "0.3.0",
@@ -29,7 +29,15 @@ const HOST = {
   temperatureThresholds: { hdd: { warning: 40, error: 50 } },
   firstSeenAt: now,
   lastSeenAt: now,
-  lastRuns: {},
+  lastRuns: {
+    "zpool-status": {
+      receivedAt: now,
+      ok: false,
+      error: "Command exited 2: invalid option 'j'",
+      device: null,
+    },
+    "zpool-history": { receivedAt: now, ok: true, error: null, device: null },
+  },
 };
 
 const fault = (
@@ -173,7 +181,23 @@ describe("host page", () => {
     const collector = page.get('[data-testid="collector-panel"]').text();
     expect(collector).toContain("0.6.0 available");
     expect(collector).toContain("7.0.0-34-generic");
+    expect(collector).toContain("needs 2.3+");
     expect(collector).toContain("install.sh | sudo bash");
+  });
+
+  it("shows when each source last reported, with failures", async () => {
+    const page = await mountPage();
+
+    const sources = page.get('[data-testid="sources-panel"]');
+    expect(sources.get('[data-testid="source-zpool-status"]').text()).toContain(
+      "Command exited 2: invalid option 'j'",
+    );
+    expect(
+      sources.get('[data-testid="source-zpool-history"]').text(),
+    ).toContain("1 min ago");
+    expect(sources.get('[data-testid="source-zfs-list"]').text()).toContain(
+      "never",
+    );
   });
 
   it("renders the notes and the host diary", async () => {

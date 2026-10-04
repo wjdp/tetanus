@@ -170,6 +170,7 @@ const tabs = computed<TabsItem[]>(() => [
                   :collector-version="host.collectorVersion"
                   :tool-versions="host.toolVersions"
                 />
+                <HostSourcesPanel :last-runs="host.lastRuns" :now="now" />
                 <section
                   v-if="host.notes.trim()"
                   class="border-default flex flex-col gap-2 rounded-lg border p-4"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { upgradeCommand } from "#shared/collector";
+import { HOST_TOOL_REQUIREMENTS, unsupportedTools } from "#shared/hostTools";
 import { collectorBadge, needsUpgrade } from "./collector";
 
 const props = defineProps<{
@@ -11,10 +12,23 @@ const demo = useRuntimeConfig().public.demo;
 const requestUrl = useRequestURL();
 
 const badge = computed(() => collectorBadge(props.collectorVersion));
+const unsupportedKeys = computed(
+  () =>
+    new Map(
+      unsupportedTools(props.toolVersions).map((unsupported) => [
+        HOST_TOOL_REQUIREMENTS[unsupported.tool].versionKey,
+        `needs ${unsupported.minVersion}+`,
+      ]),
+    ),
+);
 const tools = computed(() =>
   Object.entries(props.toolVersions)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([tool, version]) => ({ tool, version })),
+    .map(([tool, version]) => ({
+      tool,
+      version,
+      unsupported: unsupportedKeys.value.get(tool),
+    })),
 );
 </script>
 
@@ -34,10 +48,21 @@ const tools = computed(() =>
           {{ badge.label }}
         </UBadge>
       </dd>
-      <template v-for="{ tool, version } in tools" :key="tool">
+      <template v-for="{ tool, version, unsupported } in tools" :key="tool">
         <dt class="text-muted">{{ tool }}</dt>
-        <dd class="truncate font-mono text-xs leading-5" :title="version">
-          {{ version }}
+        <dd class="flex min-w-0 items-center gap-1">
+          <span class="truncate font-mono text-xs leading-5" :title="version">
+            {{ version }}
+          </span>
+          <UBadge
+            v-if="unsupported"
+            color="warning"
+            variant="subtle"
+            size="sm"
+            class="shrink-0"
+          >
+            {{ unsupported }}
+          </UBadge>
         </dd>
       </template>
     </dl>
