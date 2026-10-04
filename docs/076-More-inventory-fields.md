@@ -42,8 +42,11 @@ tech, plus the alias and notes. Things people keep track of that have no home ye
   [060](060-Inventory-export.md).
 - Disposal is its own column (`disposalSchema` in `shared/schemas/disks.ts`:
   `kind`, `on`, `salePrice` for `sold` only), not inventory.
-- 061 adds `Disk.lastLocation` and a per-host `Bay` label, shown as an editable "Bay"
-  fact. It writes a diary entry when a disk moves.
+- 061 (done) gives each disk a location key (enclosure slot or `ID_PATH`) and a
+  per-host bay label, shown as an editable Bay fact in Placement. The fact stays after
+  the disk is unplugged, dimmed as "last known". Moving bays writes a `moved-bay`
+  diary entry. A USB disk's bay is its USB port path (`ID_PATH`), so the adaptor
+  question is answered there and in [078](078-USB-bridge-splits-a-disk-into-two-records.md).
 - BPID, vendor override (031) and the device type override / exclusion (073) are
   covered in their own docs.
 
@@ -53,17 +56,23 @@ tech, plus the alias and notes. Things people keep track of that have no home ye
 
 | Key | Label | Type | Group | Visible when |
 |---|---|---|---|---|
-| `storageLocation` | Stored at | text | placement | disk has no current location |
+| `storageLocation` | Stored at | text | placement | disk not present |
 | `orderRef` | Order ref | text | ownership | always |
 | `sellerWarrantyExpiry` | Seller warranty | date | ownership | condition is used or refurbished |
 | `shuckedFrom` | Shucked from | text | identity | condition is shucked |
 | `tags` | Tags | tags (new type) | ownership | always |
 
 - **Stored at** is free text that autocompletes from values already used across the
-  fleet, so "drawer" isn't spelt three ways. It sits where the Bay fact goes when 061 has no location for the disk
-  (unseen, missing or disposed). When the disk turns up in a host it is hidden, not
-  cleared, so it comes back if the disk is unplugged again. Changing it writes a diary
-  entry like 061's move entry, so the diary shows the shelf as well as the bays.
+  fleet, so "drawer" isn't spelt three ways. It shows in Placement while the disk is
+  not present (spare on a shelf, unseen, missing), above the dimmed last-known Bay, so
+  both "where it is" and "where it was" are visible. When the disk turns up in a host
+  it is hidden, not cleared, so it comes back if the disk is unplugged again. Hidden for
+  disposed disks: the disposal record says where it went.
+- Changing Stored at writes a `moved-storage` diary entry ("stored at drawer", or
+  "moved from drawer to offsite"), so the diary shows the shelf as well as 061's bays.
+  The disk PATCH service already writes auto events for disposal and replacement;
+  inventory fields write none yet, so this is the first, written there, not by the
+  client.
 - **Seller warranty**: the warranty countdown and the 020 nudge use the later of the
   two expiry dates and say which one it is.
 - **Order ref** is printed on the 020 RMA sheet.
@@ -88,7 +97,7 @@ and on the RMA sheet.
 
 ### Visibility gates
 
-The new gates depend on other values (condition, location), which
+The new gates depend on other values (condition, presence, disposal), which
 `isFieldVisible` can't express. Add `when?: (inventory, disk) => boolean` to the gate
 and pass the needed context in. A hidden field keeps its value and still exports.
 
