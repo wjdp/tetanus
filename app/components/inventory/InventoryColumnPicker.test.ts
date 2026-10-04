@@ -31,6 +31,7 @@ describe("InventoryColumnPicker", () => {
       "Serial",
       "Vendor",
       "Line",
+      "Display model",
       "Firmware",
       "First seen",
     ]);

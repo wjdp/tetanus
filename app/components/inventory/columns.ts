@@ -112,6 +112,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: false,
   },
   {
+    id: "modelShort",
+    label: "Display model",
+    group: "Identity",
+    value: (disk) => disk.modelShort,
+    defaultVisible: false,
+  },
+  {
     id: "firmware",
     label: "Firmware",
     group: "Identity",
@@ -203,6 +210,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     label: "Usage",
     group: "Placement",
     value: (disk) => usageShort(disk.usage),
+    defaultVisible: false,
+  },
+  {
+    id: "purpose",
+    label: "Purpose",
+    group: "Placement",
+    value: (disk) => disk.purpose,
     defaultVisible: false,
   },
   {

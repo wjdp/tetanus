@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { displayModel } from "#shared/model";
+import { diskLabel } from "~/components/disk/displayName";
 import { PURPOSE_BADGE } from "~/utils/vocabulary";
 import { findColumn, INVENTORY_COLUMNS, sortDisks } from "./columns";
 import { type DiskGroup, type GroupBy, groupDisks } from "./groupDisks";
@@ -17,6 +18,8 @@ const props = withDefaults(
   }>(),
   { diskLabels: () => new Map() },
 );
+
+const emit = defineEmits<{ edit: [diskId: number] }>();
 
 const sorting = defineModel<SortingState>("sorting", {
   default: () => [{ id: "alias", desc: false }],
@@ -133,18 +136,20 @@ const isEmpty = computed(() => props.disks.length === 0);
         class="grid gap-2 md:grid-cols-2 xl:grid-cols-3"
       >
         <li v-for="disk in section.disks" :key="disk.id">
-          <NuxtLink
-            :to="`/disks/${disk.id}`"
-            class="bg-elevated border-default hover:border-accented flex h-full flex-col gap-3 rounded-md border p-3 transition-colors"
+          <div
+            class="bg-elevated border-default hover:border-accented relative flex h-full flex-col gap-3 rounded-md border p-3 transition-colors"
             :class="{ 'opacity-60': disk.disposal }"
             :data-disposed="disk.disposal ? true : undefined"
             data-testid="inventory-card"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="flex min-w-0 flex-col">
-                <span class="text-highlighted font-semibold">
+                <NuxtLink
+                  :to="`/disks/${disk.id}`"
+                  class="text-highlighted font-semibold after:absolute after:inset-0"
+                >
                   {{ disk.alias ?? disk.serial ?? "—" }}
-                </span>
+                </NuxtLink>
                 <span class="text-muted truncate text-sm">{{ displayModel(disk.model, disk.vendor) ?? "—" }}</span>
                 <span
                   v-if="disk.alias"
@@ -153,14 +158,26 @@ const isEmpty = computed(() => props.disks.length === 0);
                   {{ disk.serial ?? "—" }}
                 </span>
               </div>
-              <div class="flex shrink-0 flex-col items-end gap-1 text-sm">
-                <InventoryCell
-                  v-for="column in headerColumns"
-                  :key="column.id"
-                  :column="column"
-                  :disk="disk"
-                  :linked="false"
-                  :disk-labels="diskLabels"
+              <div class="flex shrink-0 items-start gap-1">
+                <div class="flex flex-col items-end gap-1 text-sm">
+                  <InventoryCell
+                    v-for="column in headerColumns"
+                    :key="column.id"
+                    :column="column"
+                    :disk="disk"
+                    :linked="false"
+                    :disk-labels="diskLabels"
+                  />
+                </div>
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-pencil"
+                  :aria-label="`Edit ${diskLabels.get(disk.id) ?? diskLabel(disk)}`"
+                  class="relative -me-1 -mt-0.5"
+                  data-testid="inventory-edit"
+                  @click="emit('edit', disk.id)"
                 />
               </div>
             </div>
@@ -195,7 +212,7 @@ const isEmpty = computed(() => props.disks.length === 0);
             </dl>
 
             <InventoryCardAttention :disk="disk" />
-          </NuxtLink>
+          </div>
         </li>
       </ul>
     </section>

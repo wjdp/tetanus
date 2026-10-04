@@ -43,7 +43,20 @@ const mountTable = (
 ) => mountSuspended(InventoryTable, { props: { disks, visibleColumns } });
 
 const headers = (table: Awaited<ReturnType<typeof mountTable>>) =>
-  table.findAll("thead th").map((th) => th.text());
+  table
+    .findAll("thead th")
+    .map((th) => th.text())
+    .filter((text) => text !== "Edit");
+
+const cellText = (
+  table: Awaited<ReturnType<typeof mountTable>>,
+  header: string,
+  row = 0,
+) => {
+  const index = headers(table).indexOf(header);
+  expect(index).toBeGreaterThanOrEqual(0);
+  return table.findAll("tbody tr")[row].findAll("td")[index].text();
+};
 
 describe("InventoryTable", () => {
   describe("grouped", () => {
@@ -77,7 +90,7 @@ describe("InventoryTable", () => {
         "Toshiba1 disk · 8.00 TB",
       ]);
       const headerCell = headers[0]?.element.closest("td");
-      expect(headerCell?.getAttribute("colspan")).toBe("3");
+      expect(headerCell?.getAttribute("colspan")).toBe("4");
       expect(bodyText(table)[1]).toMatch(/^K2/);
       expect(bodyText(table)[2]).toMatch(/^K3/);
     });
@@ -167,7 +180,7 @@ describe("InventoryTable", () => {
       );
 
       expect(headers(table)).toEqual(["Alias", "Capacity", "Temp"]);
-      expect(table.findAll("tbody tr td")).toHaveLength(3);
+      expect(table.findAll("tbody tr td")).toHaveLength(4);
     });
 
     it("always shows the locked alias column", async () => {
@@ -215,6 +228,7 @@ describe("InventoryTable", () => {
         "K1",
         "€200.00",
         "€50.00",
+        "",
       ]);
     });
 
@@ -245,17 +259,63 @@ describe("InventoryTable", () => {
     });
   });
 
-  describe("empty cells", () => {
-    const cellText = (
-      table: Awaited<ReturnType<typeof mountTable>>,
-      header: string,
-      row = 0,
-    ) => {
-      const index = headers(table).indexOf(header);
-      expect(index).toBeGreaterThanOrEqual(0);
-      return table.findAll("tbody tr")[row].findAll("td")[index].text();
-    };
+  describe("editing", () => {
+    it("emits edit from a row's pencil", async () => {
+      const table = await mountTable([disk({ id: 4, alias: "K4" })]);
 
+      await table.get('[data-testid="inventory-edit"]').trigger("click");
+
+      expect(table.emitted("edit")).toEqual([[4]]);
+      expect(
+        table.get('[data-testid="inventory-edit"]').attributes("aria-label"),
+      ).toBe("Edit K4");
+    });
+  });
+
+  describe("purpose and display model", () => {
+    it("shows the purpose badge, italic when inferred", async () => {
+      const table = await mountTable(
+        [
+          disk({
+            id: 1,
+            alias: "K1",
+            purpose: "system",
+            purposeInferred: true,
+          }),
+          disk({ id: 2, alias: "K2" }),
+        ],
+        new Set(["purpose"]),
+      );
+
+      expect(cellText(table, "Purpose", 0)).toBe("sys");
+      expect(table.find("tbody tr td:nth-child(2) .italic").exists()).toBe(
+        true,
+      );
+      expect(cellText(table, "Purpose", 1)).toBe("—");
+    });
+
+    it("dims a display model that falls back rather than set by hand", async () => {
+      const table = await mountTable(
+        [
+          disk({ id: 1, alias: "K1", modelShort: "IronWolf" }),
+          disk({
+            id: 2,
+            alias: "K2",
+            modelShort: "Mine",
+            inventory: { modelShort: "Mine" },
+          }),
+        ],
+        new Set(["modelShort"]),
+      );
+
+      const cells = table.findAll("tbody tr td:nth-child(2) span");
+      expect(cells.map((cell) => cell.text())).toEqual(["IronWolf", "Mine"]);
+      expect(cells[0]?.classes()).toContain("text-dimmed");
+      expect(cells[1]?.classes()).not.toContain("text-dimmed");
+    });
+  });
+
+  describe("empty cells", () => {
     it("shows a dash, never 0, for a 3.3 V pin that is not taped", async () => {
       const table = await mountTable([
         disk({ id: 1, alias: "K1", inventory: { pin33Taped: false } }),

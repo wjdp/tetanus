@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { diskLabel } from "~/components/disk/displayName";
 import {
   columnLabel,
   DEFAULT_VISIBLE_COLUMNS,
@@ -33,6 +34,8 @@ interface GroupRow {
 type TableRow = InventoryDisk | GroupRow;
 
 const isGroupRow = (row: TableRow): row is GroupRow => "groupHeader" in row;
+
+const emit = defineEmits<{ edit: [diskId: number] }>();
 
 const sorting = defineModel<SortingState>("sorting", {
   default: () => [{ id: "alias", desc: false }],
@@ -88,7 +91,7 @@ const rows = computed<TableRow[]>(
 );
 
 const visibleColumnCount = computed(
-  () => Object.values(columnVisibility.value).filter(Boolean).length,
+  () => Object.values(columnVisibility.value).filter(Boolean).length + 1,
 );
 
 const [firstColumn] = INVENTORY_COLUMNS;
@@ -106,7 +109,34 @@ const groupCellMeta = (columnId: string) => ({
   },
 });
 
-const columns: TableColumn<TableRow>[] = INVENTORY_COLUMNS.map((column) => ({
+const groupMeta = groupCellMeta("edit");
+const editCellMeta = { ...groupMeta, class: { ...groupMeta.class, th: "w-0" } };
+
+const editColumn: TableColumn<TableRow> = {
+  id: "edit",
+  header: () => h("span", { class: "sr-only" }, "Edit"),
+  cell: ({ row }) => {
+    const { original } = row;
+    if (isGroupRow(original)) return null;
+    const label = props.diskLabels.get(original.id) ?? diskLabel(original);
+    return h(UButton, {
+      color: "neutral",
+      variant: "ghost",
+      size: "xs",
+      icon: "i-lucide-pencil",
+      "aria-label": `Edit ${label}`,
+      "data-testid": "inventory-edit",
+      onClick: (event: Event) => {
+        event.stopPropagation();
+        emit("edit", original.id);
+      },
+    });
+  },
+  meta: editCellMeta,
+  enableSorting: false,
+};
+
+const inventoryColumns: TableColumn<TableRow>[] = INVENTORY_COLUMNS.map((column) => ({
   id: column.id,
   accessorFn: (row) =>
     isGroupRow(row) ? undefined : (column.value(row) ?? undefined),
@@ -134,6 +164,8 @@ const columns: TableColumn<TableRow>[] = INVENTORY_COLUMNS.map((column) => ({
   sortingFn: column.id === "alias" ? "alphanumeric" : "auto",
   sortUndefined: "last",
 }));
+
+const columns = [...inventoryColumns, editColumn];
 
 const meta = {
   class: {

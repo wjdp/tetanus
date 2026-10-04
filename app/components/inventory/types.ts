@@ -32,6 +32,7 @@ export interface InventoryDisk {
   id: number;
   alias: string | null;
   model: string | null;
+  modelShort: string | null;
   serial: string | null;
   firmware: string | null;
   capacityBytes: number | null;

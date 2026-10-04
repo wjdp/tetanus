@@ -1,7 +1,8 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
-import type { VueWrapper } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DOMWrapper, flushPromises, type VueWrapper } from "@vue/test-utils";
+import { readBody } from "h3";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 import { clearNuxtData } from "#app";
 import { NO_DISK_FAULTS } from "#shared/faults";
@@ -51,14 +52,41 @@ const disk = (overrides: Record<string, unknown>) => ({
   ...overrides,
 });
 
-let disks: unknown[] = [];
+let disks: Record<string, unknown>[] = [];
 registerEndpoint("/api/disks", () => disks);
+
+const detailOf = (id: number): Record<string, unknown> => ({
+  notes: "",
+  present: true,
+  bay: null,
+  specs: null,
+  detectedVendor: null,
+  lastSeenHostId: null,
+  ...disks.find((candidate) => candidate.id === id),
+});
+
+const patches: { id: number; body: unknown }[] = [];
+for (const id of [1, 2, 3]) {
+  registerEndpoint(`/api/disks/${id}`, async (event) => {
+    const current = detailOf(id);
+    if (event.method !== "PATCH") return current;
+    const body = (await readBody(event)) as {
+      inventory?: Record<string, unknown>;
+    };
+    patches.push({ id, body });
+    return {
+      ...current,
+      inventory: { ...(current.inventory as object), ...body.inventory },
+    };
+  });
+}
 
 const storePreferences = (preferences: object) =>
   writeCookie(INVENTORY_PREFERENCES_COOKIE, JSON.stringify(preferences));
 
 beforeEach(() => {
   clearNuxtData();
+  patches.length = 0;
   clearCookie(INVENTORY_PREFERENCES_COOKIE);
 });
 
@@ -361,5 +389,135 @@ describe("disks inventory page", () => {
     const page = await mountPage();
 
     expect(page.find('[data-testid="inventory-table"]').exists()).toBe(false);
+  });
+
+  describe("edit drawer", { timeout: 15_000 }, () => {
+    const drawer = () =>
+      document.body.querySelector<HTMLElement>('[role="dialog"]');
+
+    const drawerField = (key: string) =>
+      drawer()?.querySelector<HTMLElement>(`[data-field="${key}"]`) ?? null;
+
+    const openDrawer = async (page: VueWrapper, row: number) => {
+      await page
+        .findAll('[data-testid="inventory-edit"]')
+        [row]?.trigger("click");
+      await vi.waitFor(() => expect(drawerField("supplier")).not.toBeNull(), {
+        timeout: 5000,
+      });
+    };
+
+    const drawerAlias = () =>
+      drawerField("alias")
+        ?.querySelector('[data-testid="inline-display"]')
+        ?.textContent?.trim();
+
+    const stepButton = (direction: "previous" | "next") =>
+      document.body.querySelector<HTMLButtonElement>(
+        `[data-testid="drawer-${direction}"]`,
+      );
+
+    const step = async (direction: "previous" | "next") => {
+      stepButton(direction)?.click();
+      await flushPromises();
+    };
+
+    const editSupplier = async (value: string) => {
+      drawerField("supplier")
+        ?.querySelector<HTMLButtonElement>('[data-testid="inline-display"]')
+        ?.click();
+      await flushPromises();
+      const input = drawerField("supplier")?.querySelector("input");
+      if (!input) throw new Error("supplier editor not open");
+      const field = new DOMWrapper(input);
+      await field.setValue(value);
+      await field.trigger("keydown", { key: "Enter" });
+    };
+
+    let mounted: VueWrapper | undefined;
+
+    const mountWithDrawer = async (route = "/disks") => {
+      mounted = await mountSuspended(DisksPage, {
+        route,
+        attachTo: document.body,
+      });
+      return mounted;
+    };
+
+    afterEach(() => {
+      mounted?.unmount();
+      mounted = undefined;
+    });
+
+    it("opens from a row's pencil without leaving the list", async () => {
+      disks = [disk({ id: 1, alias: "K1" }), disk({ id: 2, alias: "K2" })];
+      const page = await mountWithDrawer();
+
+      await openDrawer(page, 1);
+
+      expect(drawerAlias()).toContain("K2");
+      expect(useRouter().currentRoute.value.path).toBe("/disks");
+    });
+
+    it("saves a field and updates the row from the response", async () => {
+      storePreferences({ columns: { supplier: true } });
+      disks = [disk({ id: 1, alias: "K1" })];
+      const page = await mountWithDrawer();
+      await openDrawer(page, 0);
+
+      await editSupplier("Scan");
+
+      await vi.waitFor(() =>
+        expect(patches).toEqual([
+          { id: 1, body: { inventory: { supplier: "Scan" } } },
+        ]),
+      );
+      await vi.waitFor(() =>
+        expect(
+          drawerField("supplier")?.querySelector(
+            '[data-testid="inline-display"]',
+          )?.textContent,
+        ).toContain("Scan"),
+      );
+      await vi.waitFor(() =>
+        expect(page.get("tbody tr").text()).toContain("Scan"),
+      );
+    });
+
+    it("steps through the visible order and stops at the ends", async () => {
+      disks = [
+        disk({ id: 1, alias: "K3" }),
+        disk({ id: 2, alias: "K1" }),
+        disk({ id: 3, alias: "K2" }),
+      ];
+      const page = await mountWithDrawer();
+      await openDrawer(page, 0);
+
+      expect(drawerAlias()).toContain("K1");
+      expect(stepButton("previous")?.disabled).toBe(true);
+      await step("next");
+      await vi.waitFor(() => expect(drawerAlias()).toContain("K2"));
+      await step("next");
+      await vi.waitFor(() => expect(drawerAlias()).toContain("K3"));
+      expect(stepButton("next")?.disabled).toBe(true);
+      await step("previous");
+      await vi.waitFor(() => expect(drawerAlias()).toContain("K2"));
+    });
+
+    it("keeps the order it opened with when an edit re-sorts the list", async () => {
+      disks = [
+        disk({ id: 1, alias: "K1", inventory: { supplier: "Amazon" } }),
+        disk({ id: 2, alias: "K2", inventory: { supplier: "Box" } }),
+        disk({ id: 3, alias: "K3" }),
+      ];
+      const page = await mountWithDrawer("/disks?sort=supplier");
+      await openDrawer(page, 0);
+
+      await editSupplier("Zebra");
+      await vi.waitFor(() => expect(patches).toHaveLength(1));
+      await step("next");
+
+      await vi.waitFor(() => expect(drawerAlias()).toContain("K2"));
+    });
   });
 });

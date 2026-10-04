@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
 import { diskLabel } from "~/components/disk/displayName";
+import type { DiskDetail } from "~/components/disk/types";
+import { sortDisks } from "~/components/inventory/columns";
 import {
   disksInScope,
   filterDisks,
 } from "~/components/inventory/filterDisks";
+import { groupDisks } from "~/components/inventory/groupDisks";
 
 useSeoMeta({ title: getPageTitle("Disks") });
 
@@ -47,6 +50,30 @@ const diskLabels = computed(
       allDisks.value.map((disk) => [disk.id, diskLabel(disk)]),
     ),
 );
+
+const shownOrder = computed(() => {
+  const ordered = groupBy.value
+    ? groupDisks(visibleDisks.value, groupBy.value, sorting.value).flatMap(
+        (group) => group.disks,
+      )
+    : sortDisks(visibleDisks.value, sorting.value);
+  return ordered.map(({ id }) => id);
+});
+
+const editingId = ref<number | null>(null);
+const editOrder = ref<number[]>([]);
+
+const openEditor = (diskId: number) => {
+  editOrder.value = shownOrder.value;
+  editingId.value = diskId;
+};
+
+const replaceDisk = (updated: DiskDetail) => {
+  if (!disks.value) return;
+  disks.value = disks.value.map((candidate) =>
+    candidate.id === updated.id ? updated : candidate,
+  );
+};
 </script>
 
 <template>
@@ -118,6 +145,7 @@ const diskLabels = computed(
         :visible-columns="visibleColumns"
         :disk-labels="diskLabels"
         class="hidden md:block"
+        @edit="openEditor"
       />
       <InventoryCards
         v-model:sorting="sorting"
@@ -125,6 +153,13 @@ const diskLabels = computed(
         :disks="visibleDisks"
         :disk-labels="diskLabels"
         :class="{ 'md:hidden': view === 'table' }"
+        @edit="openEditor"
+      />
+      <DiskEditDrawer
+        v-model:disk-id="editingId"
+        :order="editOrder"
+        :disks="allDisks"
+        @updated="replaceDisk"
       />
     </template>
   </AppPanel>

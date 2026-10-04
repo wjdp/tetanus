@@ -1,24 +1,13 @@
 <script setup lang="ts">
 import { interfaceLabel } from "#shared/hardware";
 import { formatDuration } from "#shared/hostFreshness";
-import {
-  fieldDescription,
-  INVENTORY_FIELDS,
-  type InventoryKey,
-  isFieldVisible,
-} from "#shared/inventory-fields";
 import { bareModel, displayModel } from "#shared/model";
-import type { DiskPatch } from "#shared/schemas/disks";
 import type { StatusCounter } from "#shared/smart/counters";
 import { temperatureColour } from "#shared/temperature";
 import { usageDetail } from "#shared/usage";
-import { VENDORS, type Vendor } from "#shared/vendor";
-import type { InlineItem, InlineValue } from "~/components/inline/InlineField.vue";
 import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
-import { fleetSuggestions } from "./fleetSuggestions";
 import { specFooter, specRows } from "./specRows";
 import type { DiskDetail, ReplacementCandidate } from "./types";
-import { useDiskFieldSave } from "./useDiskFieldSave";
 
 const props = withDefaults(
   defineProps<{
@@ -31,65 +20,8 @@ const props = withDefaults(
 const emit = defineEmits<{ updated: [disk: DiskDetail] }>();
 
 const SMART_TAB = { query: { tab: "smart" } };
-const SYSTEM_MOUNT_PATHS = ["/", "/boot"];
 const INFERRED_WRITTEN_TITLE =
   "Estimated: LBAs written × logical block size, the drive does not say its unit";
-
-const { saving, errors, save, saveWith } = useDiskFieldSave(
-  () => props.disk.id,
-  (disk) => emit("updated", disk),
-);
-
-const fieldNamed = (key: InventoryKey) => {
-  const field = INVENTORY_FIELDS.find((candidate) => candidate.key === key);
-  if (!field) throw new Error(`No inventory field ${key}`);
-  return field;
-};
-
-const choicesOf = (values: readonly string[], label = (value: string) => value) => [
-  { label: "—", value: null },
-  ...values.map((value) => ({ label: label(value), value })),
-];
-
-const modelShortField = fieldNamed("modelShort");
-const recordingField = fieldNamed("recordingTech");
-const purposeField = fieldNamed("purpose");
-const bpidField = fieldNamed("seagateBpid");
-const vendorField = fieldNamed("vendorOverride");
-const storageField = fieldNamed("storageLocation");
-const shuckedFromField = fieldNamed("shuckedFrom");
-
-const recordingItems: InlineItem[] =
-  "values" in recordingField
-    ? choicesOf(recordingField.values, (value) => value.toUpperCase())
-    : [];
-const vendorItems: InlineItem[] = choicesOf(
-  VENDORS,
-  (vendor) => vendorLabel(vendor as Vendor) ?? vendor,
-);
-const purposeItems: InlineItem[] =
-  "values" in purposeField ? choicesOf(purposeField.values) : [];
-
-const inventoryValue = (key: InventoryKey): InlineValue =>
-  props.disk.inventory[key] ?? null;
-
-const BAY_DESCRIPTION =
-  "Where the disk sits, as you call it. The label belongs to the place, so a disk moved here takes it.";
-
-const saveBay = (value: InlineValue) => {
-  const { bay, id, lastSeenHostId } = props.disk;
-  if (!bay || lastSeenHostId === null) return;
-  return saveWith("bay", async () => {
-    await $fetch(`/api/hosts/${lastSeenHostId}/bays`, {
-      method: "PATCH",
-      body: { [bay.locationKey]: value === null ? null : String(value) },
-    });
-    return await $fetch<DiskDetail>(`/api/disks/${id}`);
-  });
-};
-
-const saveInventory = (key: InventoryKey, value: InlineValue) =>
-  save(key, { inventory: { [key]: value } } as DiskPatch);
 
 const model = computed(() => {
   const name = displayModel(props.disk.model, props.disk.vendor);
@@ -101,19 +33,8 @@ const model = computed(() => {
   return vendor ? `${vendor} ${name}` : name;
 });
 
-const vendorOverridden = computed(() => {
-  const override = props.disk.inventory.vendorOverride;
-  return Boolean(override) && override !== props.disk.detectedVendor;
-});
-
 const wwn = computed(
   () => props.disk.keys.find((key) => key.kind === "wwn")?.value ?? null,
-);
-
-const modelShortSource = computed(() =>
-  props.disk.specs?.line && props.disk.modelShort === props.disk.specs.line
-    ? "from spec line"
-    : "from model",
 );
 
 const media = computed(() => {
@@ -128,29 +49,6 @@ const media = computed(() => {
     .filter(Boolean)
     .join(" · ");
 });
-
-const showsRecording = computed(() => isFieldVisible(recordingField, props.disk));
-const showsBpid = computed(() => isFieldVisible(bpidField, props.disk));
-const showsStorage = computed(() => isFieldVisible(storageField, props.disk));
-const showsShuckedFrom = computed(() =>
-  isFieldVisible(shuckedFromField, props.disk),
-);
-const storageSuggestions = computed(() =>
-  fleetSuggestions(props.disks, "storageLocation"),
-);
-const shuckedFromSuggestions = computed(() =>
-  fleetSuggestions(props.disks, "shuckedFrom"),
-);
-
-const resolvedRecording = computed(() =>
-  knownRecordingTech(props.disk.recordingTech)?.toUpperCase() ?? null,
-);
-
-const recordingInferred = computed(
-  () =>
-    props.disk.hardware?.recordingTechInferred === true &&
-    !props.disk.inventory.recordingTech,
-);
 
 const interfaceText = computed(() =>
   interfaceDetail(
@@ -194,11 +92,6 @@ const usage = computed(() =>
     props.disk.poolsKnown,
   ),
 );
-
-const inferredFromPath = computed(() => {
-  const paths = props.disk.usage.mounts.map((mount) => mount.path);
-  return SYSTEM_MOUNT_PATHS.find((path) => paths.includes(path)) ?? "/";
-});
 
 const lastReading = computed(() => {
   const at = props.disk.latestReadingAt;
@@ -357,46 +250,18 @@ const optionalDate = (value: string | null) =>
           >{{ disk.lastDevicePath }}</span
         >
       </DiskFact>
-      <InlineField
-        v-if="showsStorage"
-        type="text"
-        :label="storageField.label"
-        :description="fieldDescription(storageField)"
-        :value="inventoryValue('storageLocation')"
-        :suggestions="storageSuggestions"
-        :saving="saving.storageLocation"
-        :error="errors.storageLocation"
-        data-field="storageLocation"
-        @commit="saveInventory('storageLocation', $event)"
+      <DiskEditableField
+        field-key="storageLocation"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
       />
-      <InlineField
-        v-if="disk.bay"
-        type="text"
-        label="Bay"
-        :description="BAY_DESCRIPTION"
-        :value="disk.bay.label"
-        :saving="saving.bay"
-        :error="errors.bay"
-        data-field="bay"
-        @commit="saveBay"
-      >
-        <template #display="{ text }">
-          <span
-            v-if="text"
-            class="truncate"
-            :class="{ 'text-dimmed': !disk.present }"
-            :title="disk.present ? undefined : 'last known'"
-            >{{ text }}</span
-          >
-          <span
-            v-else
-            class="text-dimmed truncate"
-            :title="disk.bay.locationKey"
-            data-testid="bay-default"
-            >{{ disk.bay.defaultLabel }}</span
-          >
-        </template>
-      </InlineField>
+      <DiskEditableField
+        field-key="bay"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
+      />
       <DiskFact v-if="disk.membership" label="Pool">
         <DiskPoolBreadcrumb :membership="disk.membership" />
       </DiskFact>
@@ -405,30 +270,12 @@ const optionalDate = (value: string | null) =>
         :value="usage"
         :class="{ 'text-dimmed': disk.usage.kind === 'empty' }"
       />
-      <InlineField
-        type="enum"
-        :label="purposeField.label"
-        :description="fieldDescription(purposeField)"
-        :value="inventoryValue('purpose')"
-        :items="purposeItems"
-        :saving="saving.purpose"
-        :error="errors.purpose"
-        data-field="purpose"
-        @commit="saveInventory('purpose', $event)"
-      >
-        <template #display>
-          <UBadge
-            v-if="disk.purpose"
-            color="neutral"
-            :variant="disk.purposeInferred ? 'outline' : 'subtle'"
-            :label="disk.purpose"
-          />
-          <span v-else class="text-dimmed">—</span>
-        </template>
-        <template v-if="disk.purpose && disk.purposeInferred" #hint>
-          inferred from mount at {{ inferredFromPath }}
-        </template>
-      </InlineField>
+      <DiskEditableField
+        field-key="purpose"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
+      />
       <DiskFact
         v-if="disk.firstSeenAt"
         label="First seen"
@@ -446,103 +293,44 @@ const optionalDate = (value: string | null) =>
 
     <DiskFactGroup title="Identity" data-testid="group-identity">
       <DiskFact label="Model" :value="model" data-testid="fact-model" />
-      <InlineField
-        type="enum"
-        :label="vendorField.label"
-        :description="fieldDescription(vendorField)"
-        :value="inventoryValue('vendorOverride')"
-        :items="vendorItems"
-        :saving="saving.vendorOverride"
-        :error="errors.vendorOverride"
-        data-field="vendorOverride"
-        @commit="saveInventory('vendorOverride', $event)"
-      >
-        <template #display>
-          <span v-if="disk.vendor">{{ vendorLabel(disk.vendor) }}</span>
-          <span v-else class="text-dimmed">—</span>
-        </template>
-        <template v-if="vendorOverridden" #hint>
-          detected as {{ vendorLabel(disk.detectedVendor) ?? "unknown" }}
-        </template>
-      </InlineField>
+      <DiskEditableField
+        field-key="vendorOverride"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
+      />
       <DiskFact label="Serial" :value="disk.serial" mono />
-      <InlineField
-        v-if="showsBpid"
-        type="text"
-        :label="bpidField.label"
-        :description="fieldDescription(bpidField)"
-        :value="inventoryValue('seagateBpid')"
-        :saving="saving.seagateBpid"
-        :error="errors.seagateBpid"
-        data-field="seagateBpid"
-        @commit="saveInventory('seagateBpid', $event)"
+      <DiskEditableField
+        field-key="seagateBpid"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
       />
       <DiskFact v-if="wwn" label="WWN" :value="wwn" mono />
-      <InlineField
-        v-if="showsShuckedFrom"
-        type="text"
-        :label="shuckedFromField.label"
-        :description="fieldDescription(shuckedFromField)"
-        :value="inventoryValue('shuckedFrom')"
-        :suggestions="shuckedFromSuggestions"
-        :saving="saving.shuckedFrom"
-        :error="errors.shuckedFrom"
-        data-field="shuckedFrom"
-        @commit="saveInventory('shuckedFrom', $event)"
+      <DiskEditableField
+        field-key="shuckedFrom"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
       />
       <DiskFact v-if="disk.firmware" label="Firmware" :value="disk.firmware" mono />
-      <InlineField
-        type="text"
-        :label="modelShortField.label"
-        :description="fieldDescription(modelShortField)"
-        :value="inventoryValue('modelShort')"
-        :saving="saving.modelShort"
-        :error="errors.modelShort"
-        data-field="modelShort"
-        @commit="saveInventory('modelShort', $event)"
-      >
-        <template #display="{ text }">
-          <span v-if="text" class="truncate">{{ text }}</span>
-          <span
-            v-else-if="disk.modelShort"
-            class="text-dimmed truncate"
-            :title="modelShortSource"
-            data-testid="model-short-fallback"
-            >{{ disk.modelShort }}</span
-          >
-          <span v-else class="text-dimmed">—</span>
-        </template>
-      </InlineField>
+      <DiskEditableField
+        field-key="modelShort"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
+      />
     </DiskFactGroup>
 
     <DiskFactGroup title="Hardware" data-testid="group-hardware">
       <DiskFact label="Capacity" :value="formatBytes(disk.capacityBytes)" />
       <DiskFact label="Media" :value="media" data-testid="fact-media" />
-      <InlineField
-        v-if="showsRecording"
-        type="enum"
-        :label="recordingField.label"
-        :value="inventoryValue('recordingTech')"
-        :items="recordingItems"
-        :saving="saving.recordingTech"
-        :error="errors.recordingTech"
-        data-field="recordingTech"
-        @commit="saveInventory('recordingTech', $event)"
-      >
-        <template #display="{ text }">
-          <span v-if="text">{{ text }}</span>
-          <span v-else-if="resolvedRecording">
-            {{ resolvedRecording }}
-            <span
-              v-if="recordingInferred"
-              class="text-dimmed"
-              title="Inferred from TRIM support"
-              >inferred</span
-            >
-          </span>
-          <span v-else class="text-dimmed">—</span>
-        </template>
-      </InlineField>
+      <DiskEditableField
+        field-key="recordingTech"
+        :disk="disk"
+        :disks="disks"
+        @updated="emit('updated', $event)"
+      />
       <DiskFact label="Interface" data-testid="fact-interface">
         <span v-if="interfaceText"
           >{{ interfaceText

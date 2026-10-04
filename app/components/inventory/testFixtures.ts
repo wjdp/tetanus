@@ -10,6 +10,7 @@ export const emptyInventoryDisk = (
   id: 1,
   alias: null,
   model: null,
+  modelShort: null,
   serial: null,
   firmware: null,
   capacityBytes: null,

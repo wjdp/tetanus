@@ -94,6 +94,14 @@ const INFERRED_WRITTEN_TITLE =
     </span>
   </div>
 
+  <span
+    v-else-if="column.id === 'modelShort'"
+    :class="{ 'text-dimmed': !disk.inventory.modelShort }"
+    :title="disk.inventory.modelShort ? undefined : 'Not set: from the spec line or model'"
+  >
+    {{ disk.modelShort }}
+  </span>
+
   <span v-else-if="column.id === 'serial'" class="font-mono text-xs">
     {{ disk.serial }}
   </span>
@@ -173,6 +181,13 @@ const INFERRED_WRITTEN_TITLE =
 
   <UBadge
     v-else-if="column.id === 'pool' && disk.purpose"
+    v-bind="PURPOSE_BADGE[disk.purpose]"
+    :class="{ italic: disk.purposeInferred }"
+    :title="disk.purposeInferred ? 'Purpose inferred from usage' : undefined"
+  />
+
+  <UBadge
+    v-else-if="column.id === 'purpose' && disk.purpose"
     v-bind="PURPOSE_BADGE[disk.purpose]"
     :class="{ italic: disk.purposeInferred }"
     :title="disk.purposeInferred ? 'Purpose inferred from usage' : undefined"
