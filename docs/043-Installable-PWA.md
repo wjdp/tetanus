@@ -63,9 +63,19 @@ Chrome has not required a service worker for installability since 2023; iOS neve
 - Installed on an Android phone and an iPhone: correct name, icon (incl. maskable crop),
   opens standalone, status bar colour matches mode.
 
-## Questions
+## Notes
 
-- Name on home screen: lowercase `tetanus` as in the brand, or capitalised?
-- Should `start_url` be `/` or a specific page (e.g. faults)?
-- Is HTTPS on the typical deployment assumed, or worth a docs pointer (Caddy/Tailscale
-  serve)?
+- **Theme colour is the page background, not stone 50/950:** Nuxt UI's `--ui-bg` is
+  white / stone 900 (`#1c1917`), so the status bar matches the page. Colours live in
+  `shared/themeColours.ts`.
+- **Follows forced colour mode:** the theme-color tags are set from `app/app.vue` via
+  `useHead` off `useColorMode().preference`, not `app.head`. Tags from `app.head` are not
+  adopted on hydration, so a client override duplicated them. Both tags always carry a
+  `media`; a forced mode gives both the same colour.
+- **Icons:** `any` icons are the apple-touch render (mark at ~83%); maskable uses
+  viewBox `-3 -3 30 30`, mark diameter 67% of the icon, inside the 80% safe zone.
+- **Verified headless:** CDP `Page.getInstallabilityErrors` and `getAppManifest` report
+  no errors against the dev server; route present in the Workers build.
+- **Questions answered by default:** lowercase name (`APP_NAME`), `start_url: "/"`;
+  README already points at a reverse proxy for HTTPS.
+- **Outstanding:** install on a real Android phone and iPhone.
