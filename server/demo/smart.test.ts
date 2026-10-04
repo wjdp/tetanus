@@ -264,7 +264,7 @@ describe.each(fleet.hosts.map((host) => [host.name, host] as const))(
     });
 
     it.each(present.map((target) => [target.alias, target] as const))(
-      "resolves %s (spare until the ZFS sources place it in a pool)",
+      "resolves %s (spare until the ZFS sources place it in a pool, unless mounted)",
       (_alias, target) => {
         const row = rowOf(target);
         expect(row).toMatchObject({
@@ -275,7 +275,10 @@ describe.each(fleet.hosts.map((host) => [host.name, host] as const))(
           interface: target.protocol === "nvme" ? "nvme" : "sata",
           link: target.transport,
           capacityBytes: target.capacityBytes,
-          state: target.membership ? "spare" : "in-use",
+          state:
+            target.membership && row.usage.mounts.length === 0
+              ? "spare"
+              : "in-use",
         });
         if (host.vdevIdConf) expect(row.alias).toBe(target.alias);
         if (target.protocol === "ata") {
