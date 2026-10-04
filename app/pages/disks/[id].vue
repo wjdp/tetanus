@@ -12,6 +12,11 @@ const {
   refresh,
 } = await useFetch<DiskDetail>(() => `/api/disks/${diskId.value}`);
 
+const { data: diary, refresh: refreshDiary } = await useFetch("/api/diary", {
+  query: { subjectType: "disk", subjectId: diskId },
+  default: () => [],
+});
+
 const heading = computed(
   () =>
     (disk.value && displayName(disk.value)) ??
@@ -114,8 +119,8 @@ const onUpdated = (updated: DiskDetail) => {
         <DiaryPanel
           subject-type="disk"
           :subject-id="disk.id"
-          :entries="disk.diary"
-          @changed="refresh"
+          :entries="diary"
+          @changed="refreshDiary"
         />
       </template>
     </div>

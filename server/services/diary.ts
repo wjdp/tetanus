@@ -1,4 +1,4 @@
-import { and, desc, eq, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, type SQL } from "drizzle-orm";
 import type { DiaryEventType, DiarySubjectType } from "#shared/diary";
 import type {
   DiaryEntryInput,
@@ -78,6 +78,24 @@ export function listDiary({
     .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
     .limit(limit)
     .all();
+}
+
+export function countDiary(
+  subjectType: DiarySubjectType,
+  subjectId: number,
+): number {
+  return (
+    db
+      .select({ total: count() })
+      .from(diaryEntry)
+      .where(
+        and(
+          eq(diaryEntry.subjectType, subjectType),
+          eq(diaryEntry.subjectId, subjectId),
+        ),
+      )
+      .get()?.total ?? 0
+  );
 }
 
 export function latestAutoEvent(

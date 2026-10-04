@@ -4,6 +4,7 @@ import {
   FAULT_CATEGORIES,
   FAULT_SEVERITIES,
   FAULT_STATES,
+  FAULT_SUBJECT_TYPES,
   type FaultState,
   LIVE_FAULT_STATES,
 } from "#shared/faults";
@@ -56,9 +57,13 @@ const view = queryFilter<StateView>("state", DEFAULT_VIEW, oneOf(STATE_VIEW_NAME
 const category = queryFilter("category", ALL, oneOf(FAULT_CATEGORIES));
 const severity = queryFilter("severity", ALL, oneOf(FAULT_SEVERITIES));
 const hostFilter = queryFilter("host", ALL, (value) => value.length > 0);
+const SUBJECT = new RegExp(`^(${FAULT_SUBJECT_TYPES.join("|")}):\\d+$`);
+const subjectFilter = queryFilter<string>("subject", ALL, (value) =>
+  SUBJECT.test(value),
+);
 
 const hasNarrowingFilter = computed(() =>
-  [category.value, severity.value, hostFilter.value].some(
+  [category.value, severity.value, hostFilter.value, subjectFilter.value].some(
     (value) => value !== ALL,
   ),
 );
@@ -68,6 +73,7 @@ const apiQuery = computed(() => ({
   ...(category.value === ALL ? {} : { category: category.value }),
   ...(severity.value === ALL ? {} : { severity: severity.value }),
   ...(hostFilter.value === ALL ? {} : { host: hostFilter.value }),
+  ...(subjectFilter.value === ALL ? {} : { subject: subjectFilter.value }),
 }));
 
 const { faults, counts, status, perform, refresh } = useFaults(apiQuery);
@@ -148,6 +154,16 @@ const lastIngest = computed(() =>
         aria-label="Fault state"
       />
       <div class="flex flex-wrap gap-2 sm:ms-auto">
+        <UButton
+          v-if="subjectFilter !== ALL"
+          color="neutral"
+          variant="subtle"
+          trailing-icon="i-lucide-x"
+          :label="subjectFilter.replace(':', ' ')"
+          aria-label="Clear subject filter"
+          data-testid="subject-filter"
+          @click="subjectFilter = ALL"
+        />
         <USelect
           v-model="category"
           :items="categoryItems"

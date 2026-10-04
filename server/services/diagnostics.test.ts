@@ -74,21 +74,13 @@ function writeBundle(bundle: DiagnosticsBundle) {
 }
 
 function comparable(summary: Awaited<ReturnType<typeof getDisk>>) {
-  const {
-    id: _id,
-    lastSeenHostId: _host,
-    diary,
-    keys,
-    membership,
-    ...rest
-  } = summary;
+  const { id: _id, lastSeenHostId: _host, keys, membership, ...rest } = summary;
   return {
     ...rest,
     keys: [...keys].sort((a, b) =>
       `${a.kind}:${a.value}`.localeCompare(`${b.kind}:${b.value}`),
     ),
     membership: membership && { ...membership, poolId: undefined },
-    diary: diary.map(({ title, eventType }) => ({ title, eventType })),
   };
 }
 

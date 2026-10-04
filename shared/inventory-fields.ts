@@ -4,8 +4,19 @@ import { PURPOSES } from "./usage";
 import type { Vendor } from "./vendor";
 
 export const INVENTORY_FIELDS = [
-  { key: "purpose", label: "Purpose", type: "enum", values: PURPOSES },
-  { key: "modelShort", label: "Short model", type: "text" },
+  {
+    key: "purpose",
+    label: "Purpose",
+    type: "enum",
+    values: PURPOSES,
+    group: "placement",
+  },
+  {
+    key: "modelShort",
+    label: "Display model",
+    type: "text",
+    group: "identity",
+  },
   { key: "purchaseDate", label: "Purchased", type: "date" },
   { key: "purchasePrice", label: "Price", type: "money" },
   { key: "supplier", label: "Supplier", type: "text" },
@@ -23,10 +34,21 @@ export const INVENTORY_FIELDS = [
     type: "enum",
     values: RECORDING_TECH_OVERRIDES,
     media: ["hdd"],
+    group: "hardware",
   },
 ] as const;
 
 type InventoryField = (typeof INVENTORY_FIELDS)[number];
+
+export type InventoryFieldGroup =
+  | "identity"
+  | "hardware"
+  | "placement"
+  | "ownership";
+
+export function fieldGroup(field: InventoryField): InventoryFieldGroup {
+  return "group" in field ? field.group : "ownership";
+}
 
 interface VisibilityGate {
   media?: readonly Media[];

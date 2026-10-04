@@ -580,9 +580,13 @@ describe("disk state, overrides and inventory", () => {
     expect((await updateDisk(sdaId, { alias: "X1" })).alias).toBe("X1");
   });
 
-  it("includes diary entries and keys on the detail", async () => {
-    const detail = await getDisk(findDiskByAlias("K2")!.id);
-    expect(detail.diary.map((entry) => entry.eventType)).toContain("alias-set");
+  it("counts diary entries and includes keys on the detail", async () => {
+    const id = findDiskByAlias("K2")!.id;
+    const detail = await getDisk(id);
+    expect(detail.diaryCount).toBe(
+      listDiary({ subjectType: "disk", subjectId: id }).length,
+    );
+    expect(detail.diaryCount).toBeGreaterThan(0);
     expect(detail.keys.length).toBeGreaterThan(2);
   });
 
@@ -800,13 +804,19 @@ describe("disk disposal", () => {
         data: { hostId: expect.any(Number), disposalOn: "2026-09-01" },
       }),
     ]);
-    expect((await getDisk(sdaId)).disposal).toEqual(rma);
+    const detail = await getDisk(sdaId);
+    expect(detail.disposal).toEqual(rma);
+    expect(detail.seenSinceDisposal).toEqual({
+      at: new Date("2026-09-02T10:00:00Z"),
+      title: "seen on mars while RMA'd on 2026-09-01",
+    });
 
     await updateDisk(
       sdaId,
       { disposal: rma },
       new Date("2026-09-02T12:00:00Z"),
     );
+    expect((await getDisk(sdaId)).seenSinceDisposal).toBeNull();
     ingestLsblk("mars", new Date("2026-09-02T13:00:00Z"));
     ingestLsblk("mars", new Date("2026-09-02T14:00:00Z"));
     expect(eventsOf(sdaId, "disposed-disk-seen")).toHaveLength(2);

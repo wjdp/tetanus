@@ -28,16 +28,6 @@ beforeEach(() => {
   patched.mockReset();
 });
 
-const entry = (eventType: string, at: string) => ({
-  id: at,
-  eventType,
-  at,
-  title:
-    eventType === "disposed"
-      ? "RMA'd on 2026-10-02"
-      : "seen on mars while RMA'd on 2026-10-02",
-});
-
 const mountBanner = (
   disposal: Disposal,
   overrides: Partial<DiskDetail> = {},
@@ -49,7 +39,7 @@ const mountBanner = (
         id: 7,
         disposal,
         replacedByDiskId: null,
-        diary: [],
+        seenSinceDisposal: null,
         ...overrides,
       } as unknown as DiskDetail & { disposal: Disposal },
       label: "K2",
@@ -94,10 +84,10 @@ describe("DiskDisposalBanner", () => {
 
   it("turns amber when seen since the latest disposal, and re-confirms it", async () => {
     const wrapper = await mountBanner({ kind: "rma", on: "2026-10-02" }, {
-      diary: [
-        entry("disposed-disk-seen", "2026-10-03T08:00:00.000Z"),
-        entry("disposed", "2026-10-02T09:00:00.000Z"),
-      ],
+      seenSinceDisposal: {
+        at: "2026-10-03T08:00:00.000Z",
+        title: "seen on mars while RMA'd on 2026-10-02",
+      },
     } as unknown as Partial<DiskDetail>);
 
     expect(wrapper.get(banner).attributes("data-colour")).toBe("warning");
@@ -112,17 +102,6 @@ describe("DiskDisposalBanner", () => {
       }),
     );
     await vi.waitFor(() => expect(wrapper.emitted("updated")).toHaveLength(1));
-  });
-
-  it("stays neutral once a newer disposal re-confirms it", async () => {
-    const wrapper = await mountBanner({ kind: "rma", on: "2026-10-02" }, {
-      diary: [
-        entry("disposed", "2026-10-04T09:00:00.000Z"),
-        entry("disposed-disk-seen", "2026-10-03T08:00:00.000Z"),
-      ],
-    } as unknown as Partial<DiskDetail>);
-
-    expect(wrapper.get(banner).attributes("data-colour")).toBe("neutral");
   });
 
   it("undoes the disposal", async () => {

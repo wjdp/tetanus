@@ -47,6 +47,18 @@ describe("faultSubjectPath", () => {
   ] as const)("links a %s to %s", (type, path) => {
     expect(faultSubjectPath(subject({ type }))).toBe(path);
   });
+
+  it("opens the SMART tab for a SMART fault on a disk", () => {
+    expect(faultSubjectPath(subject({ id: 3 }), "smart-attribute")).toBe(
+      "/disks/3?tab=smart",
+    );
+    expect(faultSubjectPath(subject({ id: 3 }), "smart-health-failed")).toBe(
+      "/disks/3?tab=smart",
+    );
+    expect(faultSubjectPath(subject({ id: 3 }), "disk-missing")).toBe(
+      "/disks/3",
+    );
+  });
 });
 
 describe("faultDiskPath", () => {

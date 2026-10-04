@@ -70,9 +70,8 @@ import type { UdevResult } from "~~/server/ingest/udev";
 import type { VdevIdConfResult } from "~~/server/ingest/vdev-id-conf";
 import {
   addAutoEvent,
-  type DiaryEntryRow,
+  countDiary,
   latestAutoEvent,
-  listDiary,
 } from "~~/server/services/diary";
 import {
   type DerivedHardware,
@@ -166,9 +165,15 @@ export interface DiskSummary
   faultCounts: DiskFaultCounts;
 }
 
+export interface DisposedDiskSighting {
+  at: Date;
+  title: string;
+}
+
 export interface DiskDetail extends DiskSummary {
   latestRaw: string | null;
-  diary: DiaryEntryRow[];
+  diaryCount: number;
+  seenSinceDisposal: DisposedDiskSighting | null;
 }
 
 export interface StateContext {
@@ -341,6 +346,15 @@ function recordMove(row: DiskRow, sighting: DiskSighting) {
     data: { fromHostId: row.lastSeenHostId, toHostId: sighting.hostId },
     at: sighting.receivedAt,
   });
+}
+
+function seenSinceDisposal(row: DiskRow): DisposedDiskSighting | null {
+  if (row.disposal === null) return null;
+  const seen = latestAutoEvent("disk", row.id, "disposed-disk-seen");
+  if (!seen) return null;
+  const disposed = latestAutoEvent("disk", row.id, "disposed");
+  if (disposed && disposed.at >= seen.at) return null;
+  return { at: seen.at, title: seen.title };
 }
 
 function recordDisposedDiskSeen(row: DiskRow, sighting: DiskSighting) {
@@ -1004,7 +1018,8 @@ export async function getDisk(
   return {
     ...summary,
     latestRaw: row.latestRaw,
-    diary: listDiary({ subjectType: "disk", subjectId: id }),
+    diaryCount: countDiary("disk", id),
+    seenSinceDisposal: seenSinceDisposal(row),
   };
 }
 

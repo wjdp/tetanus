@@ -2,7 +2,6 @@
 import type { Disposal } from "#shared/disk";
 import { formatMoney } from "#shared/money";
 import { DISPOSAL_VOCABULARY, disposalLabel } from "~/utils/vocabulary";
-import { seenSinceDisposal } from "./disposal";
 import type { DiskDetail } from "./types";
 
 const props = withDefaults(
@@ -36,7 +35,7 @@ const price = computed(() => {
   return salePrice === undefined ? null : formatMoney(salePrice, currency.value);
 });
 
-const seen = computed(() => seenSinceDisposal(props.disk.diary));
+const seen = computed(() => props.disk.seenSinceDisposal);
 
 const patch = async (
   action: "undo" | "confirm",

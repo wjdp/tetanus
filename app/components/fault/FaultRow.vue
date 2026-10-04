@@ -36,7 +36,7 @@ const hostLabel = computed(() => faultHostLabel(props.fault));
 const subjectLabel = computed(() =>
   props.fault.subject.type === "host" ? "" : props.fault.subject.label,
 );
-const subjectPath = computed(() => faultSubjectPath(props.fault.subject));
+const subjectPath = computed(() => faultSubjectPath(props.fault.subject, props.fault.kind));
 const diskPath = computed(() => faultDiskPath(props.fault));
 const title = computed(() => faultTitle(props.fault, props.now));
 const showsUpgradeCommand = computed(

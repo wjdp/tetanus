@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type FieldVisibilityContext,
+  fieldGroup,
   INVENTORY_FIELDS,
   inventorySchema,
   isFieldVisible,
@@ -78,5 +79,25 @@ describe("isFieldVisible", () => {
     const supplier = field("supplier");
     expect(isFieldVisible(supplier, on("ssd"))).toBe(true);
     expect(isFieldVisible(supplier, on(null))).toBe(true);
+  });
+});
+
+describe("fieldGroup", () => {
+  it("places purpose, display model and recording outside ownership", () => {
+    expect(
+      Object.fromEntries(
+        INVENTORY_FIELDS.map((field) => [field.key, fieldGroup(field)]),
+      ),
+    ).toEqual({
+      purpose: "placement",
+      modelShort: "identity",
+      purchaseDate: "ownership",
+      purchasePrice: "ownership",
+      supplier: "ownership",
+      purchaseCondition: "ownership",
+      warrantyExpiry: "ownership",
+      pin33Taped: "ownership",
+      recordingTech: "hardware",
+    });
   });
 });

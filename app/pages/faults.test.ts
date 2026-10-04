@@ -231,7 +231,7 @@ describe("faults page", () => {
 
   it("reads every filter from the query string", async () => {
     await mountPage(
-      "/faults?state=resolved&category=zfs&severity=warning&host=styx",
+      "/faults?state=resolved&category=zfs&severity=warning&host=styx&subject=disk:12",
     );
 
     expect(listQueries.at(-1)).toEqual({
@@ -239,11 +239,12 @@ describe("faults page", () => {
       category: "zfs",
       severity: "warning",
       host: "styx",
+      subject: "disk:12",
     });
   });
 
   it("ignores unknown filter values", async () => {
-    await mountPage("/faults?state=bogus&category=nope");
+    await mountPage("/faults?state=bogus&category=nope&subject=disk:x");
 
     expect(listQueries.at(-1)).toEqual({ state: "open,acknowledged" });
   });
@@ -361,7 +362,7 @@ describe("faults page", () => {
       row(page, text)
         .get('[data-testid="fault-subject-link"]')
         .attributes("href");
-    expect(href("Reallocated")).toBe("/disks/12");
+    expect(href("Reallocated")).toBe("/disks/12?tab=smart");
     expect(href("vault")).toBe("/zfs/3");
     expect(href("Collector")).toBe("/hosts/4");
   });

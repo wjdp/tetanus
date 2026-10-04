@@ -95,14 +95,18 @@ describe("/api/disks", () => {
     });
   });
 
-  it("gets one disk with keys and diary", async () => {
+  it("gets one disk with keys and a diary count, the diary on its own", async () => {
     const id = diskIdBySerial("1AQLP5ME");
     const detail = await (await fetch(`/api/disks/${id}`)).json();
-    expect(detail).toMatchObject({ id, alias: "K2" });
+    expect(detail).toMatchObject({ id, alias: "K2", diaryCount: 2 });
+    expect(detail).not.toHaveProperty("diary");
     expect(detail.keys.length).toBeGreaterThan(2);
+    const diary = await (
+      await fetch(`/api/diary?subjectType=disk&subjectId=${id}&limit=1`)
+    ).json();
     expect(
-      detail.diary.map((entry: { eventType: string }) => entry.eventType),
-    ).toEqual(["alias-set", "disk-appeared"]);
+      diary.map((entry: { eventType: string }) => entry.eventType),
+    ).toEqual(["alias-set"]);
     expect(detail.membership).toBeNull();
   });
 
@@ -303,8 +307,11 @@ describe("disk disposal", () => {
       on: "2024-04-02",
       salePrice: 120,
     });
+    const diary = await (
+      await fetch(`/api/diary?subjectType=disk&subjectId=${id}`)
+    ).json();
     expect(
-      detail.diary.map((entry: { eventType: string }) => entry.eventType),
+      diary.map((entry: { eventType: string }) => entry.eventType),
     ).toContain("disposed");
 
     const cleared = await patchDisk(id, { disposal: null });
