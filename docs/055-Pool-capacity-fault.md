@@ -1,11 +1,11 @@
 ---
 type: task
-status: planned
+status: todo
 ---
 
 # Pool capacity fault
 
-Stub. A pool filling up is the most common way ZFS goes wrong at home, and tetanus says
+A pool filling up is the most common way ZFS goes wrong at home, and tetanus says
 nothing about it.
 
 ## Problem
@@ -35,8 +35,36 @@ the pool page's capacity figure, or from a failed write.
 - [018 Capacity forecast](018-Capacity-forecast.md) is the "when will it be full"
   question; this is the "it is nearly full now" one.
 
-## Questions
+## Design
 
-1. Thresholds: fixed (80/90), global setting, per pool, or per pool with a global default like scrub interval?
-2. Does a nearly full special vdev count as the pool's fault or its own?
-3. Fragmentation: worth a fault at all, or display only?
+Designed alongside [057 Temperature fault](057-Temperature-fault.md) and reuses its
+threshold helper, live-row context and alerting change; build after 057.
+
+- **Kind** `pool-capacity`: category `zfs`, subject `pool`, lifetime `transient`,
+  actions acknowledge / accept / clear. Not in `DIARY_SILENT_KINDS`. Title like
+  `Pool tank 91 % full · frag 34 %`, falling back to `Pool nearly full` when `data` is
+  empty.
+- **Thresholds**: warning 80 %, error 90 %, per pool in `poolConfigSchema`
+  (`capacityWarningPct`, `capacityErrorPct`), defaults in `POOL_CONFIG_DEFAULTS`, editable
+  in `ConfigPopover`, as `scrubIntervalDays`. 0 for warning disables, matching the other
+  pool settings. The patch schema is per field, so the service checks warning < error
+  against the resolved config and throws `ServiceError` 400.
+- **Value**: `Pool.cap` (integer percent) from the latest `zpool-list`. Opens on a single
+  reading; fill changes slowly.
+- **Hysteresis, both edges**: margin 2 percentage points, via `thresholdSeverity`.
+- **Special/dedup vdevs**: same kind, one fault per top-level vdev (parent is the root
+  vdev, as `detectVdevUnredundant`) with role `special` or `dedup`. Percent is
+  `Math.floor(100 × allocBytes / sizeBytes)`; skip when `sizeBytes` is null. Key
+  `String(poolId)` for the pool, `leafKey(poolId, guid)` for a vdev, so `dataFromKey`
+  recovers the GUID. A replaced special gets a new GUID and its old fault resolves. The
+  title names the vdev and role.
+- **Fragmentation**: display only, in the fault data and title.
+- **Host silence**: add `pool-capacity` to `POOL_FAULT_KINDS` so `collector-silent`
+  supersedes it. Archived and missing pools are skipped, as for other pool faults.
+- **Severity, accept, alerts**: as 057. Severity moves up within the same fault; generic
+  `accepted` state; `ALERT_RULES` plus the fault-kind/alert-rule test map; alert on
+  open and on `fault-severity-raised`.
+- **Simulator**: mark `nearly-full` ✱ → `pool-capacity` in
+  [044](044-Fault-simulator.md) (rename if useful). Add a `special-nearly-full` scenario
+  that applies when the pool has a special or dedup top-level vdev and sets its
+  `alloc_space` in the `zpool-status` payload; there isn't one today.
