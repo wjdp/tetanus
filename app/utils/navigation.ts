@@ -12,7 +12,7 @@ export interface NavigationEntry {
 export const NAVIGATION: NavigationEntry[] = [
   { label: "Topology", icon: "i-lucide-network", to: "/" },
   { label: "Faults", icon: "i-lucide-siren", to: "/faults", badge: "faults" },
-  { label: "Hosts", icon: "i-lucide-server", to: "/hosts" },
+  { label: "Hosts", icon: "i-lucide-server", to: "/hosts", badge: "hosts" },
   {
     label: "Disks",
     icon: "i-lucide-hard-drive",

@@ -13,6 +13,7 @@ registerEndpoint(
   "/api/navigation",
   (): NavigationCounts => ({
     faults: { error: openErrors, warning: 2, neutral: 0 },
+    hosts: { error: 0, warning: 0, neutral: 2 },
     disks: { error: 0, warning: 1, neutral: 9 },
     pools: { error: 0, warning: 0, neutral: 3 },
     replications: { error: 0, warning: 0, neutral: 2 },

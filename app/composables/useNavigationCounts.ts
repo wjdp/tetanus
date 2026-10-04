@@ -6,6 +6,7 @@ const emptyCounts = (): StatusCounts => ({ error: 0, warning: 0, neutral: 0 });
 
 const emptyResponse = (): NavigationCounts => ({
   faults: emptyCounts(),
+  hosts: emptyCounts(),
   disks: emptyCounts(),
   pools: emptyCounts(),
   replications: emptyCounts(),

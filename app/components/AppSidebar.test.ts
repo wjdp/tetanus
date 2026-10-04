@@ -17,6 +17,7 @@ registerEndpoint("/api/tasks", () => []);
 const zero = () => ({ error: 0, warning: 0, neutral: 0 });
 const counts = ref<NavigationCounts>({
   faults: zero(),
+  hosts: zero(),
   disks: zero(),
   pools: zero(),
   replications: zero(),
@@ -57,6 +58,7 @@ beforeEach(() => {
   FakeEventSource.install();
   counts.value = {
     faults: zero(),
+    hosts: zero(),
     disks: zero(),
     pools: zero(),
     replications: zero(),
@@ -84,6 +86,7 @@ describe("AppSidebar", () => {
   it("shows non-zero counts red, amber, then neutral", async () => {
     counts.value = {
       faults: { error: 2, warning: 5, neutral: 0 },
+      hosts: { error: 1, warning: 0, neutral: 2 },
       disks: { error: 0, warning: 1, neutral: 9 },
       pools: { error: 0, warning: 0, neutral: 3 },
       replications: { error: 1, warning: 0, neutral: 4 },
@@ -98,6 +101,10 @@ describe("AppSidebar", () => {
       ["warning", "1"],
       ["neutral", "9"],
     ]);
+    expect(badgesOf(component, "/hosts")).toEqual([
+      ["error", "1"],
+      ["neutral", "2"],
+    ]);
     expect(badgesOf(component, "/zfs")).toEqual([["neutral", "3"]]);
     expect(badgesOf(component, "/replications")).toEqual([
       ["error", "1"],
@@ -109,6 +116,7 @@ describe("AppSidebar", () => {
   it("puts a chip of the worst colour on the icon only when collapsed", async () => {
     counts.value = {
       faults: { error: 2, warning: 5, neutral: 0 },
+      hosts: { error: 1, warning: 0, neutral: 2 },
       disks: { error: 0, warning: 1, neutral: 9 },
       pools: { error: 0, warning: 0, neutral: 3 },
       replications: { error: 1, warning: 0, neutral: 4 },

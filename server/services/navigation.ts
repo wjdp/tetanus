@@ -1,16 +1,20 @@
 import { and, count, eq, isNull, notInArray, or } from "drizzle-orm";
+import type { CollectorStatus } from "#shared/collector";
 import { HISTORY_STATES } from "#shared/disk";
+import { isHostSilent } from "#shared/hostFreshness";
 import type { NavigationCounts, StatusCounts } from "#shared/navigation";
 import type { ReplicationStatus } from "#shared/replications";
 import type { DeviceStatus } from "#shared/smart/status";
 import { zfsStateColour } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import { disk, fault, pool } from "~~/server/database/schema";
+import { listHosts } from "~~/server/services/hosts";
 import {
   poolDisplayState,
   poolPresenceContext,
 } from "~~/server/services/poolPresence";
 import { listReplications } from "~~/server/services/replications";
+import { collectorCadences } from "~~/server/utils/demo";
 
 const emptyCounts = (): StatusCounts => ({ error: 0, warning: 0, neutral: 0 });
 
@@ -36,6 +40,25 @@ function faultCounts(): StatusCounts {
     .groupBy(fault.severity)
     .all()) {
     counts[row.severity] += row.total;
+  }
+  return counts;
+}
+
+const COLLECTOR_STATUS_BUCKET: Record<CollectorStatus, keyof StatusCounts> = {
+  incompatible: "error",
+  outdated: "warning",
+  current: "neutral",
+  unknown: "neutral",
+};
+
+function hostCounts(now: Date): StatusCounts {
+  const counts = emptyCounts();
+  const cadences = collectorCadences();
+  for (const row of listHosts()) {
+    const bucket = isHostSilent(row, now.getTime(), cadences)
+      ? "error"
+      : COLLECTOR_STATUS_BUCKET[row.collectorStatus];
+    counts[bucket] += 1;
   }
   return counts;
 }
@@ -103,6 +126,7 @@ function replicationCounts(now: Date): StatusCounts {
 export function navigationCounts(now = new Date()): NavigationCounts {
   return {
     faults: faultCounts(),
+    hosts: hostCounts(now),
     disks: diskCounts(),
     pools: poolCounts(now),
     replications: replicationCounts(now),

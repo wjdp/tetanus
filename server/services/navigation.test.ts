@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Disposal, StateOverride } from "#shared/disk";
 import type { FaultSeverity, FaultState } from "#shared/faults";
@@ -8,6 +9,7 @@ import {
   dataset,
   disk,
   fault,
+  host,
   pool,
   replication,
   replicationSync,
@@ -18,6 +20,7 @@ import { flushDb } from "~~/test/db";
 
 const t0 = new Date("2026-09-01T10:00:00Z");
 const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
 const at = (offsetMs: number) => new Date(t0.getTime() + offsetMs);
 
 let nextId = 1;
@@ -84,6 +87,41 @@ describe("navigationCounts", () => {
       error: 1,
       warning: 2,
       neutral: 0,
+    });
+  });
+
+  it("buckets hosts silent and incompatible red, outdated amber, offline intermittent neutral", () => {
+    const hostWith = (
+      name: string,
+      extra: Partial<typeof host.$inferInsert>,
+      lastRunAt: Date | null,
+    ) => {
+      const { id } = upsertHostByName(name, t0);
+      db.update(host).set(extra).where(eq(host.id, id)).run();
+      if (lastRunAt) {
+        db.insert(collectorRun)
+          .values({
+            hostId: id,
+            source: "zpool-status",
+            receivedAt: lastRunAt,
+            ok: true,
+            bytes: 0,
+          })
+          .run();
+      }
+    };
+    const recent = at(DAY_MS - MINUTE_MS);
+    hostWith("current", { collectorStatus: "current" }, recent);
+    hostWith("unknown", { collectorStatus: "unknown" }, recent);
+    hostWith("outdated", { collectorStatus: "outdated" }, recent);
+    hostWith("incompatible", { collectorStatus: "incompatible" }, recent);
+    hostWith("silent", { collectorStatus: "current" }, t0);
+    hostWith("asleep", { collectorStatus: "current", intermittent: true }, t0);
+
+    expect(navigationCounts(at(DAY_MS)).hosts).toEqual({
+      error: 2,
+      warning: 1,
+      neutral: 3,
     });
   });
 

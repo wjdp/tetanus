@@ -6,6 +6,7 @@ export interface StatusCounts {
 
 export interface NavigationCounts {
   faults: StatusCounts;
+  hosts: StatusCounts;
   disks: StatusCounts;
   pools: StatusCounts;
   replications: StatusCounts;
