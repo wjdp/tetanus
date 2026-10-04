@@ -20,7 +20,7 @@ onUnmounted(() => {
   if (pollHandle) clearInterval(pollHandle);
 });
 
-const { filters, sorting } = useInventoryQuery();
+const { filters, sorting, groupBy } = useInventoryQuery();
 
 const { visibleColumns, setColumnVisible, resetColumns, isCustomised, view } =
   useInventoryPreferences();
@@ -80,6 +80,7 @@ const diskLabels = computed(
           class="min-w-0 flex-1"
         />
         <div class="hidden shrink-0 items-center gap-2 md:flex">
+          <InventoryGroupBySelect v-if="view === 'table'" v-model="groupBy" />
           <InventoryColumnPicker
             v-if="view === 'table'"
             :visible-columns="visibleColumns"
@@ -113,12 +114,14 @@ const diskLabels = computed(
         v-if="view === 'table'"
         v-model:sorting="sorting"
         :disks="visibleDisks"
+        :group-by="groupBy"
         :visible-columns="visibleColumns"
         :disk-labels="diskLabels"
         class="hidden md:block"
       />
       <InventoryCards
         v-model:sorting="sorting"
+        v-model:group-by="groupBy"
         :disks="visibleDisks"
         :disk-labels="diskLabels"
         :class="{ 'md:hidden': view === 'table' }"

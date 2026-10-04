@@ -65,6 +65,7 @@ export interface InventoryDisk {
   interface: Interface | null;
   link: string | null;
   recordingTech: RecordingTech | null;
+  specs: { line: string | null } | null;
   logicalBlockSize: number | null;
   physicalBlockSize: number | null;
   hardware: HardwareJson | null;

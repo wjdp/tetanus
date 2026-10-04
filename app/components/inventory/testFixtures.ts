@@ -43,6 +43,7 @@ export const emptyInventoryDisk = (
   interface: null,
   link: null,
   recordingTech: null,
+  specs: null,
   logicalBlockSize: null,
   physicalBlockSize: null,
   hardware: null,

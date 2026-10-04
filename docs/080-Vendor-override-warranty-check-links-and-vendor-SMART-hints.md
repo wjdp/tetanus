@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Vendor override, warranty check links and vendor SMART hints
@@ -72,8 +72,15 @@ values are only meaningful once the vendor is known.
 
 ### Inventory table
 
-- Done in 033: vendor column and filter; model column shows `displayModel`. Grouping and a
-  line column (`specs.line`) still open.
+- Done in 033: vendor column and filter; model column shows `displayModel`.
+- Landed 2026-10-04: a Line column (`specs.line`), and grouping. `group=<facet>` in the
+  query string groups by host, pool, vendor, line, media, interface, purpose or state
+  (tags excluded: multi-valued). `groupDisks` (`app/components/inventory/groupDisks.ts`)
+  orders groups by label, blank last, and sorts disks within each by the current sort;
+  each header shows count, total capacity and total spend. Headers collapse on click,
+  open by default, not remembered. Table and cards both group; the table inserts header
+  rows into its data and sorts manually while grouped, rather than TanStack's grouped
+  row model, which Nuxt UI renders with an empty expanded row after each row.
 
 ### Vendor-specific SMART and log hints
 
@@ -99,8 +106,6 @@ Mostly pointers into Phase 3 knowledge, gated on vendor so they stop being noise
 - Live warranty status lookup. Vendors have no public API and scraping is brittle.
 - Collector changes (FARM log), a separate task.
 
-## Questions
+## Decisions
 
-1. Is the "needs BPID" nudge only a hint on the disk page, or worth a new
-   `inventory-incomplete` fault ([036](036-Faults-page.md) lists it as planned; it does
-   not exist yet)?
+- "Needs BPID" stays a nameplate hint, not a fault (2026-10-04).

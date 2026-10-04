@@ -30,6 +30,7 @@ describe("InventoryColumnPicker", () => {
       "Model",
       "Serial",
       "Vendor",
+      "Line",
       "Firmware",
       "First seen",
     ]);

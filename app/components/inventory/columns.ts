@@ -105,6 +105,13 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
     defaultVisible: false,
   },
   {
+    id: "line",
+    label: "Line",
+    group: "Identity",
+    value: (disk) => disk.specs?.line ?? null,
+    defaultVisible: false,
+  },
+  {
     id: "firmware",
     label: "Firmware",
     group: "Identity",

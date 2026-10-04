@@ -50,16 +50,19 @@ describe("inventory query string", () => {
       "every filter, sorted descending",
       EVERY_FILTER,
       [{ id: "temp", desc: true }],
+      "vendor",
     ],
     [
       "every none sentinel, sorted ascending",
       EVERY_NONE,
       [{ id: "vendor", desc: false }],
+      null,
     ],
-  ])("round trips %s", (_name, filters, sorting) => {
-    const query = inventoryQuery({ filters, sorting });
+  ] as const)("round trips %s", (_name, filters, sorting, groupBy) => {
+    const state = { filters, sorting: [...sorting], groupBy };
+    const query = inventoryQuery(state);
 
-    expect(parseInventoryQuery(query)).toEqual({ filters, sorting });
+    expect(parseInventoryQuery(query)).toEqual(state);
   });
 
   it("writes the documented keys", () => {
@@ -67,6 +70,7 @@ describe("inventory query string", () => {
       inventoryQuery({
         filters: EVERY_FILTER,
         sorting: [{ id: "temp", desc: true }],
+        groupBy: "host",
       }),
     ).toEqual({
       q: "wd red ",
@@ -83,9 +87,14 @@ describe("inventory query string", () => {
       status: "failed,warning",
       disposed: "1",
       sort: "-temp",
+      group: "host",
     });
     expect(
-      inventoryQuery({ filters: EVERY_NONE, sorting: DEFAULT_SORTING }),
+      inventoryQuery({
+        filters: EVERY_NONE,
+        sorting: DEFAULT_SORTING,
+        groupBy: null,
+      }),
     ).toEqual({
       host: "none",
       pool: "none",
@@ -100,11 +109,16 @@ describe("inventory query string", () => {
 
   it("omits defaults, so the bare page is the cleared state", () => {
     expect(
-      inventoryQuery({ filters: CLEARED_FILTERS, sorting: DEFAULT_SORTING }),
+      inventoryQuery({
+        filters: CLEARED_FILTERS,
+        sorting: DEFAULT_SORTING,
+        groupBy: null,
+      }),
     ).toEqual({});
     expect(parseInventoryQuery({})).toEqual({
       filters: CLEARED_FILTERS,
       sorting: DEFAULT_SORTING,
+      groupBy: null,
     });
   });
 
@@ -122,10 +136,12 @@ describe("inventory query string", () => {
         status: "great",
         disposed: "yes",
         sort: "-nope",
+        group: "colour",
       }),
     ).toEqual({
       filters: { ...CLEARED_FILTERS, states: ["spare"] },
       sorting: DEFAULT_SORTING,
+      groupBy: null,
     });
   });
 

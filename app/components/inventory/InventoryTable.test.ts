@@ -46,6 +46,57 @@ const headers = (table: Awaited<ReturnType<typeof mountTable>>) =>
   table.findAll("thead th").map((th) => th.text());
 
 describe("InventoryTable", () => {
+  describe("grouped", () => {
+    const fleet = [
+      disk({ id: 1, alias: "K2", vendor: "seagate", capacityBytes: 4e12 }),
+      disk({ id: 2, alias: "K1", vendor: "toshiba", capacityBytes: 8e12 }),
+      disk({ id: 3, alias: "K3", vendor: "seagate", capacityBytes: 4e12 }),
+    ];
+
+    const mountGrouped = () =>
+      mountSuspended(InventoryTable, {
+        props: {
+          disks: fleet,
+          visibleColumns: new Set(["model", "capacity"]),
+          groupBy: "vendor",
+        },
+      });
+
+    const bodyText = (table: Awaited<ReturnType<typeof mountGrouped>>) =>
+      table
+        .findAll("tbody tr")
+        .filter((row) => row.isVisible())
+        .map((row) => row.text().replace(/\s+/g, " ").trim());
+
+    it("puts a full-width header with count and capacity above each group", async () => {
+      const table = await mountGrouped();
+      const headers = table.findAll('[data-testid="inventory-group-header"]');
+
+      expect(headers.map((header) => header.text())).toEqual([
+        "Seagate2 disks · 8.00 TB",
+        "Toshiba1 disk · 8.00 TB",
+      ]);
+      const headerCell = headers[0]?.element.closest("td");
+      expect(headerCell?.getAttribute("colspan")).toBe("3");
+      expect(bodyText(table)[1]).toMatch(/^K2/);
+      expect(bodyText(table)[2]).toMatch(/^K3/);
+    });
+
+    it("collapses a group when its header is clicked", async () => {
+      const table = await mountGrouped();
+      await table
+        .get('[data-testid="inventory-group-header"]')
+        .trigger("click");
+      await flushPromises();
+
+      const aliases = table
+        .findAll("tbody tr")
+        .map((row) => row.text())
+        .filter((text) => /^K\d/.test(text));
+      expect(aliases).toEqual([expect.stringMatching(/^K1/)]);
+    });
+  });
+
   it("draws the media glyph for hdd and ssd, nothing for unknown", async () => {
     const table = await mountTable([
       disk({ id: 1, alias: "K1", media: "hdd", rotationRate: 7200 }),

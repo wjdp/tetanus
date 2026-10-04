@@ -33,6 +33,26 @@ const mountCard = (overrides: Partial<InventoryDisk>) =>
   });
 
 describe("InventoryCards", () => {
+  it("sections the cards by group, each header collapsing its cards", async () => {
+    const cards = await mountSuspended(InventoryCards, {
+      props: {
+        disks: [
+          { ...disk, id: 1, alias: "K1", hostName: "mars" },
+          { ...disk, id: 2, alias: "K2", hostName: null },
+        ],
+        groupBy: "host",
+      },
+    });
+    const sections = cards.findAll('[data-testid="inventory-card-section"]');
+    expect(sections.map((section) => section.get("button").text())).toEqual([
+      "mars1 disk · 4.00 TB",
+      "No host1 disk · 4.00 TB",
+    ]);
+
+    await sections[0]?.get("button").trigger("click");
+    expect(cards.findAll('[data-testid="inventory-card"]')).toHaveLength(1);
+  });
+
   it("dims a disposed disk and shows its disposal in place of the state", async () => {
     const cards = await mountCard({
       disposal: { kind: "recycled", on: "2026-09-20" },

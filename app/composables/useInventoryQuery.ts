@@ -14,6 +14,10 @@ import {
   RECORDING_OPTIONS,
   type SingleFacet,
 } from "~/components/inventory/filterDisks";
+import {
+  GROUP_BY_OPTIONS,
+  type GroupBy,
+} from "~/components/inventory/groupDisks";
 import type { SortingState } from "~/components/inventory/types";
 
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -41,6 +45,7 @@ const INVENTORY_PARAMS = [
   "status",
   "disposed",
   "sort",
+  "group",
 ];
 
 const fromNoneParam = (value: string) => (value === NONE_PARAM ? NONE : value);
@@ -96,6 +101,7 @@ const inventoryQuerySchema = z.object({
     .transform((value) => value === "1")
     .catch(false),
   sort: sortParam,
+  group: z.enum(GROUP_BY_OPTIONS).nullable().catch(null),
 });
 
 const firstValues = (query: LocationQuery) =>
@@ -109,10 +115,11 @@ const firstValues = (query: LocationQuery) =>
 export interface InventoryQueryState {
   filters: InventoryFilterState;
   sorting: SortingState;
+  groupBy: GroupBy | null;
 }
 
 export function parseInventoryQuery(query: LocationQuery): InventoryQueryState {
-  const { q, state, status, disposed, sort, ...singles } =
+  const { q, state, status, disposed, sort, group, ...singles } =
     inventoryQuerySchema.parse(firstValues(query));
   return {
     filters: {
@@ -123,6 +130,7 @@ export function parseInventoryQuery(query: LocationQuery): InventoryQueryState {
       includeDisposed: disposed,
     },
     sorting: sort,
+    groupBy: group,
   };
 }
 
@@ -143,6 +151,7 @@ const toSortParam = ([primary]: SortingState) => {
 export function inventoryQuery({
   filters,
   sorting,
+  groupBy,
 }: InventoryQueryState): Record<string, string> {
   const params: Record<string, string | undefined> = {
     q: filters.search || undefined,
@@ -156,6 +165,7 @@ export function inventoryQuery({
     status: filters.statuses.join(",") || undefined,
     disposed: filters.includeDisposed ? "1" : undefined,
     sort: toSortParam(sorting),
+    group: groupBy ?? undefined,
   };
   return Object.fromEntries(
     Object.entries(params).filter(
@@ -166,10 +176,18 @@ export function inventoryQuery({
 
 const sameSelects = (left: InventoryFilterState, right: InventoryFilterState) =>
   JSON.stringify(
-    inventoryQuery({ filters: { ...left, search: "" }, sorting: [] }),
+    inventoryQuery({
+      filters: { ...left, search: "" },
+      sorting: [],
+      groupBy: null,
+    }),
   ) ===
   JSON.stringify(
-    inventoryQuery({ filters: { ...right, search: "" }, sorting: [] }),
+    inventoryQuery({
+      filters: { ...right, search: "" },
+      sorting: [],
+      groupBy: null,
+    }),
   );
 
 export function useInventoryQuery() {
@@ -213,8 +231,8 @@ export function useInventoryQuery() {
       pendingSearch = undefined;
       router.replace({
         query: queryFor({
+          ...fromRoute.value,
           filters: { ...fromRoute.value.filters, search: search.value },
-          sorting: fromRoute.value.sorting,
         }),
       });
     }, SEARCH_DEBOUNCE_MS);
@@ -228,7 +246,7 @@ export function useInventoryQuery() {
       const searchChanged = next.search !== search.value;
       search.value = next.search;
       if (!sameSelects(next, fromRoute.value.filters)) {
-        navigate({ filters: next, sorting: fromRoute.value.sorting });
+        navigate({ ...fromRoute.value, filters: next });
       } else if (searchChanged) {
         scheduleSearch();
       }
@@ -237,8 +255,15 @@ export function useInventoryQuery() {
 
   const sorting = computed<SortingState>({
     get: () => fromRoute.value.sorting,
-    set: (next) => navigate({ filters: filters.value, sorting: next }),
+    set: (next) =>
+      navigate({ ...fromRoute.value, filters: filters.value, sorting: next }),
   });
 
-  return { filters, sorting };
+  const groupBy = computed<GroupBy | null>({
+    get: () => fromRoute.value.groupBy,
+    set: (next) =>
+      navigate({ ...fromRoute.value, filters: filters.value, groupBy: next }),
+  });
+
+  return { filters, sorting, groupBy };
 }
