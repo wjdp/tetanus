@@ -14,7 +14,7 @@ describe("recordIngest", () => {
   });
 
   it.each([
-    ["tetanus-collect/0.5.1", "0.5.1", "current"],
+    ["tetanus-collect/0.6.0", "0.6.0", "current"],
     ["tetanus-zed/0.3.1", null, "unknown"],
     [null, null, "unknown"],
   ])("takes the collector version from %s", (producer, version, status) => {
@@ -142,6 +142,29 @@ describe("recordIngest", () => {
     expect(db.select().from(collectorRun).get()).toMatchObject({
       ok: false,
       error: expect.stringContaining("not KEY=value"),
+    });
+    expect(db.select().from(payload).all()).toEqual([]);
+  });
+
+  it("records a reported command failure with its stderr, without parsing", () => {
+    const outcome = recordIngest({
+      hostName: "mars",
+      source: "zpool-status",
+      meta: { failed: 2 },
+      body: "invalid option 'j'\nusage:\n\tstatus [-c script] [pool]\n\tthird\n",
+    });
+
+    expect(outcome).toEqual({
+      ok: false,
+      reported: true,
+      error:
+        "Command exited 2: invalid option 'j' / usage: / status [-c script] [pool]",
+    });
+    expect(db.select().from(collectorRun).get()).toMatchObject({
+      source: "zpool-status",
+      ok: false,
+      exitStatus: 2,
+      error: outcome.ok ? null : outcome.error,
     });
     expect(db.select().from(payload).all()).toEqual([]);
   });

@@ -27,7 +27,19 @@ export interface IngestRequest {
 
 export type IngestOutcome =
   | { ok: true; source: string; host: string; summary: IngestSummary }
-  | { ok: false; error: string };
+  | { ok: false; error: string; reported?: true };
+
+const STDERR_LINES = 3;
+
+function commandFailure(status: number, stderr: string) {
+  const lines = stderr
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, STDERR_LINES);
+  const exited = `Command exited ${status}`;
+  return lines.length > 0 ? `${exited}: ${lines.join(" / ")}` : exited;
+}
 
 function describeError(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -78,6 +90,14 @@ export function recordIngest({
     bytes: Buffer.byteLength(body, "utf8"),
     producer,
   };
+
+  if (meta.failed !== undefined) {
+    const error = commandFailure(meta.failed, body);
+    db.insert(collectorRun)
+      .values({ ...run, exitStatus: meta.failed, ok: false, error })
+      .run();
+    return { ok: false, error, reported: true };
+  }
 
   let parsed: ReturnType<(typeof PARSERS)[typeof source]>;
   try {

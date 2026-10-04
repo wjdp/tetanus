@@ -205,4 +205,23 @@ describe("/api/hosts", () => {
     });
     expect(response.status).toBe(400);
   });
+
+  it("200s and records a failed run for a reported command failure", async () => {
+    const response = await ingest(
+      "/api/ingest/zfs-list?failed=2",
+      "invalid option 'j'\n",
+      { [HOST_HEADER]: "pluto" },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: false,
+      reported: true,
+      error: "Command exited 2: invalid option 'j'",
+    });
+    expect(runsOf(hostNamed("pluto").id).at(-1)).toMatchObject({
+      source: "zfs-list",
+      ok: 0,
+      exitStatus: 2,
+    });
+  });
 });

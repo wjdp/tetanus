@@ -82,6 +82,12 @@ tested against fixtures. The server never cares who ran the command. Minimum hos
 OpenZFS 2.3+ so ZFS parsers consume `-j` JSON wherever it exists; the ZFS text parsers
 are `zpool-history`, `zpool-events` and `zed-event`. Check `output_version.vers_major` on every ZFS payload.
 
+A command that exits non-zero with no stdout is reported, not dropped: the collector
+POSTs the tail of its stderr to the same source with `?failed=<exit status>`, and the
+server records a failed `CollectorRun` (`ok` false, `exitStatus`, `error` "Command
+exited N: <stderr>") without parsing, answering 200. Older tool versions show as a
+`host-degraded` fault ([079](079-Unsupported-OpenZFS-fails-silently.md)).
+
 Producers:
 
 - **Host script** (default). One bash script, curl only, no jq, no node: runs every

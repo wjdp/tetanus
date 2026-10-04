@@ -79,6 +79,6 @@ export default defineEventHandler(async (event) => {
       producer: getRequestHeader(event, "user-agent") ?? null,
     }),
   );
-  if (!outcome.ok) setResponseStatus(event, 422);
+  if (!outcome.ok && !outcome.reported) setResponseStatus(event, 422);
   return outcome;
 });

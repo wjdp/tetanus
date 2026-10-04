@@ -256,14 +256,16 @@ test_http_errors_are_logged_not_fatal() {
   assert_contains "$errors" "0 sent, 1 failed"
 }
 
-test_failed_command_with_no_output_is_skipped() {
+test_failed_command_with_no_output_is_reported() {
   rm "$test_dir/bin/zfs"
-  printf '#!/usr/bin/env bash\nexit 1\n' >"$test_dir/bin/zfs"
+  printf '#!/usr/bin/env bash\necho "invalid option '"'"'j'"'"'" >&2\nexit 2\n' >"$test_dir/bin/zfs"
   chmod +x "$test_dir/bin/zfs"
   run_collect --only zfs-list
   assert_eq "$status" 0
-  assert_contains "$errors" "zfs-list: skipped, command exited 1 with no output"
-  [[ ! -e $STUB_REQUESTS/0000.url ]] || fail "empty failed output must not be posted"
+  assert_contains "$errors" "zfs-list: command exited 2 with no output; reported (HTTP 200)"
+  assert_contains "$errors" "0 sent, 1 failed"
+  assert_eq "$(<"$STUB_REQUESTS/0000.url")" "$test_url/api/ingest/zfs-list?failed=2"
+  assert_contains "$(<"$STUB_REQUESTS/0000.body")" "invalid option 'j'"
 }
 
 test_zedlet_posts_zevent_variables() {

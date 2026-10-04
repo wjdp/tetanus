@@ -40,16 +40,17 @@ export const hostNameSchema = z
 
 const queryText = z.string().trim().min(1).max(256);
 
-const smartctlExitStatus = z
+const exitStatus = z
   .string()
-  .regex(/^\d{1,3}$/, "exitStatus must be an integer")
+  .regex(/^\d{1,3}$/, "exit status must be an integer")
   .transform(Number)
   .pipe(z.number().int().min(0).max(255));
 
 export const ingestMetaSchema = z.object({
   device: queryText.optional(),
   type: queryText.optional(),
-  exitStatus: smartctlExitStatus.optional(),
+  exitStatus: exitStatus.optional(),
+  failed: exitStatus.optional(),
 });
 
 export type IngestMeta = z.infer<typeof ingestMetaSchema>;

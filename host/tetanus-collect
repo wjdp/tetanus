@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-readonly version=0.5.1
+readonly version=0.6.0
 readonly default_config=/etc/tetanus/collect.env
 readonly enclosure_root=${TETANUS_ENCLOSURE_ROOT:-/sys/class/enclosure}
 readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
@@ -42,6 +42,7 @@ lsblk_status=0
 smartctl_scan_status=0
 posted=0
 failed=0
+sent=
 
 log() {
   printf 'tetanus-collect: %s\n' "$*" >&2
@@ -154,18 +155,17 @@ urlencode() {
   printf '%s' "$encoded"
 }
 
-# post <source> [query] <body: POSTs stdin as text/plain; logs the HTTP status, never fails.
-post() {
+# send <source> [query] <body: POSTs stdin as text/plain; sets sent to the HTTP status
+# and curl exit, returns 0 on 2xx.
+send() {
   local source=$1 query=${2:-}
   local url=$ingest_url/$source${query:+?$query}
-  local label=$source${query:+?$query}
 
   if ((dry_run)); then
     printf '### POST %s\n' "$url"
     cat
     printf '\n'
-    posted=$((posted + 1))
-    log "$label: dry run"
+    sent="dry run"
     return 0
   fi
 
@@ -181,20 +181,39 @@ post() {
   curl_exit=$?
 
   if [[ $status == 2?? ]]; then
-    posted=$((posted + 1))
-    log "$label: HTTP $status"
-  else
-    failed=$((failed + 1))
-    log "$label: HTTP ${status:-000} (curl exit $curl_exit)"
+    sent="HTTP $status"
+    return 0
   fi
+  sent="HTTP ${status:-000} (curl exit $curl_exit)"
+  return 1
 }
 
-# submit <source> <query> <command exit status> <body file>
-submit() {
-  local source=$1 query=$2 status=$3 body=$4
-  if [[ ! -s $body && $status -ne 0 ]]; then
+# post <source> [query] <body: sends stdin; logs the outcome, never fails.
+post() {
+  local label=$1${2:+?$2}
+  if send "$@"; then
+    posted=$((posted + 1))
+  else
     failed=$((failed + 1))
-    log "$source${query:+?$query}: skipped, command exited $status with no output"
+  fi
+  log "$label: $sent"
+}
+
+# report_failure <source> <query> <exit status> <stderr file>: tells the server the
+# command failed, sending the tail of its stderr, so the source isn't just silent.
+report_failure() {
+  local source=$1 query=$2 status=$3 stderr=$4
+  local label=$source${query:+?$query}
+  failed=$((failed + 1))
+  send "$source" "${query:+$query&}failed=$status" < <(tail -c 4096 "$stderr")
+  log "$label: command exited $status with no output; reported ($sent)"
+}
+
+# submit <source> <query> <command exit status> <body file> [stderr file]
+submit() {
+  local source=$1 query=$2 status=$3 body=$4 stderr=${5:-/dev/null}
+  if [[ ! -s $body && $status -ne 0 ]]; then
+    report_failure "$source" "$query" "$status" "$stderr"
     return 0
   fi
   post "$source" "$query" <"$body"
@@ -202,11 +221,13 @@ submit() {
 
 # collect <source> <query> <command...>
 collect() {
-  local source=$1 query=$2
+  local source=$1 query=$2 status
   shift 2
-  local body=$workdir/$source.out
-  "$@" >"$body" </dev/null
-  submit "$source" "$query" "$?" "$body"
+  local body=$workdir/$source.out stderr=$workdir/$source.err
+  "$@" >"$body" 2>"$stderr" </dev/null
+  status=$?
+  cat "$stderr" >&2
+  submit "$source" "$query" "$status" "$body" "$stderr"
 }
 
 first_line() {
@@ -394,7 +415,7 @@ needs_device_type() {
 }
 
 collect_smartctl_xall() {
-  local device type args query status body=$workdir/smartctl-xall.out
+  local device type args query status body=$workdir/smartctl-xall.out stderr=$workdir/smartctl-xall.err
   ensure_smartctl_scan
   while IFS=$'\t' read -r device type <&3; do
     args=(--xall --json -n standby)
@@ -403,14 +424,13 @@ collect_smartctl_xall() {
       args+=(-d "$type")
       query+="&type=$(urlencode "$type")"
     fi
-    smartctl "${args[@]}" "$device" >"$body" </dev/null
+    smartctl "${args[@]}" "$device" >"$body" 2>"$stderr" </dev/null
     status=$?
-    query+="&exitStatus=$status"
+    cat "$stderr" >&2
     if [[ -s $body ]]; then
-      post smartctl-xall "$query" <"$body"
+      post smartctl-xall "$query&exitStatus=$status" <"$body"
     else
-      failed=$((failed + 1))
-      log "smartctl-xall?$query: skipped, no output"
+      report_failure smartctl-xall "$query" "$status" "$stderr"
     fi
   done 3< <(scanned_devices "$workdir/smartctl-scan.out")
 }
