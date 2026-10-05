@@ -595,6 +595,9 @@ export function recordSmartReading({
           vendor: effectiveVendor(row),
         }),
         ...(parsed.farm ? { latestFarm: parsed.farm } : {}),
+        ...(parsed.deviceStatistics
+          ? { latestDeviceStatistics: parsed.deviceStatistics }
+          : {}),
       })
       .where(eq(disk.id, row.id))
       .run();

@@ -44,6 +44,7 @@ import type {
   SimulationSubjectType,
 } from "../../shared/simulator";
 import type { AtaSsdAttributes } from "../../shared/smart/ataSsdAttributes";
+import type { DeviceStatistics } from "../../shared/smart/deviceStatistics";
 import type {
   AcceptanceKind,
   AttributeStatus,
@@ -183,6 +184,7 @@ export const disk = sqliteTable(
     latestReadingAt: datetime(),
     ataSsdAttributes: json().$type<AtaSsdAttributes>(),
     latestFarm: json().$type<SeagateFarm>(),
+    latestDeviceStatistics: json().$type<DeviceStatistics>(),
     disposal: json().$type<Disposal>(),
     replacesDiskId: integer().references((): AnySQLiteColumn => disk.id, {
       onDelete: "set null",

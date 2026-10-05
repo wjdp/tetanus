@@ -147,7 +147,10 @@ export interface DiskMembership {
 }
 
 export interface DiskSummary
-  extends Omit<DiskRow, "latestRaw" | "latestUsage"> {
+  extends Omit<
+    DiskRow,
+    "latestRaw" | "latestUsage" | "latestDeviceStatistics"
+  > {
   keys: DiskKey[];
   membership: DiskMembership | null;
   state: EffectiveDiskState;
@@ -1003,6 +1006,7 @@ function summarise(
     const {
       latestRaw: _latestRaw,
       latestUsage: _latestUsage,
+      latestDeviceStatistics: _latestDeviceStatistics,
       ...columns
     } = row;
     const membership = memberships.get(row.id) ?? null;
