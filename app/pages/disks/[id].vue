@@ -5,7 +5,14 @@ import { diskLabel, displayName } from "~/components/disk/displayName";
 import type { DiskDetail } from "~/components/disk/types";
 import { DEVICE_STATUS_VOCABULARY } from "~/utils/vocabulary";
 
-const TABS = ["overview", "smart", "statistics", "farm", "diary"] as const;
+const TABS = [
+  "overview",
+  "faults",
+  "smart",
+  "statistics",
+  "farm",
+  "diary",
+] as const;
 type Tab = (typeof TABS)[number];
 const DEFAULT_TAB: Tab = "overview";
 
@@ -63,6 +70,13 @@ const activeTab = computed<Tab>({
   },
 });
 
+const faultCounts = computed(() => {
+  const counts = disk.value?.faultCounts;
+  return counts
+    ? { error: counts.error, warning: counts.warning, neutral: counts.acknowledged }
+    : null;
+});
+
 const smartStatus = computed(() =>
   disk.value && disk.value.latestStatus !== "passed"
     ? DEVICE_STATUS_VOCABULARY[disk.value.latestStatus]
@@ -71,6 +85,7 @@ const smartStatus = computed(() =>
 
 const tabs = computed<TabsItem[]>(() => [
   { label: "Overview", slot: "overview", value: "overview" },
+  { label: "Faults", slot: "faults", value: "faults" },
   { label: "SMART", slot: "smart", value: "smart" },
   { label: "Statistics", slot: "statistics", value: "statistics" },
   ...(disk.value?.latestFarm
@@ -135,8 +150,13 @@ const tabs = computed<TabsItem[]>(() => [
           :ui="TABS_UI"
         >
           <template #trailing="{ item }">
+            <AppNavCounts
+              v-if="item.value === 'faults' && faultCounts"
+              :counts="faultCounts"
+              data-testid="faults-tab-counts"
+            />
             <TopologyStatusDot
-              v-if="item.value === 'smart' && smartStatus"
+              v-else-if="item.value === 'smart' && smartStatus"
               :colour="smartStatus.colour"
               :shape="smartStatus.shape"
               :title="smartStatus.label"
@@ -159,6 +179,12 @@ const tabs = computed<TabsItem[]>(() => [
                 :disks="allDisks"
                       @updated="onUpdated"
               />
+            </div>
+          </template>
+
+          <template #faults>
+            <div class="py-4">
+              <DiskFaults :disk-id="disk.id" @changed="refresh" />
             </div>
           </template>
 

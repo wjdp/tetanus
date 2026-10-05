@@ -376,7 +376,7 @@ describe("disk page", () => {
     expect(strip.get('a[href="/zfs/3"]').text()).toBe("tank");
     expect(
       strip.get('[data-testid="disk-fault-badges"]').attributes("href"),
-    ).toBe("/faults?subject=disk:7");
+    ).toBe("/disks/7?tab=faults");
 
     expect(page.find('[data-testid="smart-tab-status"]').exists()).toBe(true);
     expect(page.get('[data-testid="diary-tab-count"]').text()).toBe("1");
@@ -444,6 +444,7 @@ describe("disk page", () => {
         .map((tab) => tab.text().trim());
     expect(await tabLabels("/disks/7")).toEqual([
       "Overview",
+      expect.stringMatching(/^Faults/),
       "SMART",
       "Statistics",
       expect.stringMatching(/^Diary/),

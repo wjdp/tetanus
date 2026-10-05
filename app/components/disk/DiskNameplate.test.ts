@@ -161,7 +161,7 @@ describe("DiskNameplate", () => {
       /tank\s*raidz2-0\s*K2-part1\s*ONLINE/,
     );
     const faults = strip.get('[data-testid="disk-fault-badges"]');
-    expect(faults.attributes("href")).toBe("/faults?subject=disk:7");
+    expect(faults.attributes("href")).toBe("/disks/7?tab=faults");
     expect(
       faults.findAll("[data-bucket]").map((badge) => badge.text()),
     ).toEqual(["1", "2"]);

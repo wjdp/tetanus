@@ -17,7 +17,7 @@ const total = computed(
 <template>
   <NuxtLink
     v-if="total > 0"
-    :to="{ path: '/faults', query: { subject: `disk:${diskId}` } }"
+    :to="{ path: `/disks/${diskId}`, query: { tab: 'faults' } }"
     class="inline-flex items-center gap-1.5 text-sm hover:underline"
     :title="`${total} live ${total === 1 ? 'fault' : 'faults'}`"
     data-testid="disk-fault-badges"
