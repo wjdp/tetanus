@@ -152,9 +152,9 @@ for device in devices:
 while IFS=$'\t' read -r device type; do
   base=${device##*/}
   [[ $type == *,* ]] && base+="-${type//,/-}"
-  capture "smartctl/xall-$base" json smartctl --xall --json -n standby -d "$type" "$device"
+  capture "smartctl/xall-$base" json smartctl --xall --json -n standby -l farm -d "$type" "$device"
   if [[ $type == scsi ]]; then
-    capture "smartctl/xall-$base-auto" json smartctl --xall --json -n standby "$device"
+    capture "smartctl/xall-$base-auto" json smartctl --xall --json -n standby -l farm "$device"
   fi
 done < <(list_scanned_devices)
 

@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-readonly version=0.6.0
+readonly version=0.7.0
 readonly default_config=/etc/tetanus/collect.env
 readonly enclosure_root=${TETANUS_ENCLOSURE_ROOT:-/sys/class/enclosure}
 readonly zfs_list_columns=name,type,used,referenced,available,logicalused,logicalreferenced,compressratio,refcompressratio,written,usedbysnapshots,usedbydataset,usedbychildren,quota,refquota,reservation,mountpoint,creation,recordsize,compression,encryption
@@ -414,11 +414,21 @@ needs_device_type() {
   esac
 }
 
+# Seagate FARM log (docs/083-Seagate-FARM-log.md); older smartctl rejects `-l farm`
+# and would lose the whole reading.
+smartctl_reads_farm() {
+  [[ $(first_line smartctl --version) =~ ^smartctl\ ([0-9]+)\.([0-9]+) ]] || return 1
+  local major=${BASH_REMATCH[1]} minor=${BASH_REMATCH[2]}
+  ((major > 7 || (major == 7 && minor >= 4)))
+}
+
 collect_smartctl_xall() {
   local device type args query status body=$workdir/smartctl-xall.out stderr=$workdir/smartctl-xall.err
+  local base_args=(--xall --json -n standby)
+  smartctl_reads_farm && base_args+=(-l farm)
   ensure_smartctl_scan
   while IFS=$'\t' read -r device type <&3; do
-    args=(--xall --json -n standby)
+    args=("${base_args[@]}")
     query=device=$(urlencode "$device")
     if needs_device_type "$type"; then
       args+=(-d "$type")

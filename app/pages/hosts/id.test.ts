@@ -66,7 +66,7 @@ const FAULTS: FaultView[] = [
     kind: "collector-outdated",
     category: "host",
     severity: "warning",
-    data: { version: "0.3.0", currentVersion: "0.6.0" },
+    data: { version: "0.3.0", currentVersion: "0.7.0" },
     subject: { type: "host", id: 2, label: "mars", hostName: "mars" },
   }),
   fault(2, {
@@ -182,7 +182,7 @@ describe("host page", () => {
     const page = await mountPage();
 
     const collector = page.get('[data-testid="collector-panel"]').text();
-    expect(collector).toContain("0.6.0 available");
+    expect(collector).toContain("0.7.0 available");
     expect(collector).toContain("7.0.0-34-generic");
     expect(collector).toContain("needs 2.3+");
     expect(collector).toContain("install.sh | sudo bash");

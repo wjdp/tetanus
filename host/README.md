@@ -63,9 +63,10 @@ Each source is one command whose stdout is POSTed to `/api/ingest/<source>`:
 - `cat /etc/zfs/vdev_id.conf`, `lsblk -J -b -o …`, `cat /run/udev/data/b<maj>:<min>`
 - SES enclosure slots read from `/sys/class/enclosure` (`slot`, `status`, `locate`,
   `fault` and the attached block device), one `<path>\t<value>` line per file
-- `smartctl --scan --json`, then `smartctl --xall --json -n standby [-d <type>] <device>`
+- `smartctl --scan --json`, then `smartctl --xall --json -n standby [-l farm] [-d <type>] <device>`
   per device; `-n standby` leaves sleeping disks asleep, and the exit status (a
-  bitmask) is sent with the output
+  bitmask) is sent with the output. `-l farm` (Seagate FARM log) is added on
+  smartctl 7.4+; other drives ignore it
 - version strings from `zfs version`, `zpool version`, `uname -r`, `smartctl --version`
   and `lsb_release -ds`
 

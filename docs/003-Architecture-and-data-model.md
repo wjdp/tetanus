@@ -58,7 +58,7 @@ Sources (v1):
 | --- | --- |
 | `versions` | `KEY=value` lines: `zfs`, `zpool`, `kernel`, `smartctl`, `os` |
 | `smartctl-scan` | `smartctl --scan --json` |
-| `smartctl-xall` | `smartctl --xall --json -n standby [-d type] <dev>` |
+| `smartctl-xall` | `smartctl --xall --json -n standby [-l farm] [-d type] <dev>` (`-l farm` on smartctl 7.4+) |
 | `lsblk` | `lsblk -J -b -o NAME,TYPE,SIZE,MODEL,SERIAL,WWN,TRAN,ROTA,MAJ:MIN,PATH,PTTYPE,PARTUUID,FSTYPE` |
 | `udev` | `cat /run/udev/data/b<maj>:<min>` per disk |
 | `enclosure` | `<path>\t<value>` per SES file under `/sys/class/enclosure`: enclosure `id`, `components`, `device/{vendor,model}`; per slot `slot`, `status`, `locate`, `fault`, `device/block/*/dev` ([061](061-Physical-bay-mapping.md)) |

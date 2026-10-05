@@ -223,12 +223,12 @@ describe("recordCollectorVersion", () => {
   it("records each status change once", () => {
     record("0.2.0");
     record("0.2.0");
-    record("0.6.0");
-    record("0.6.0");
+    record("0.7.0");
+    record("0.7.0");
     record("0.3.0");
     expect(events().map(({ title }) => title)).toEqual([
       "Collector 0.3.0 outdated",
-      "Collector 0.6.0 current",
+      "Collector 0.7.0 current",
       "Collector 0.2.0 incompatible (needs 0.3.0)",
     ]);
   });

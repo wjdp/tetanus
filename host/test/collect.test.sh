@@ -217,9 +217,9 @@ test_smartctl_d_only_for_types_that_need_it() {
   run_collect --dry-run --only smartctl-xall
   local log
   log=$(<"$STUB_LOG")
-  assert_contains "$log" "smartctl --xall --json -n standby /dev/sda"$'\n'
+  assert_contains "$log" "smartctl --xall --json -n standby -l farm /dev/sda"$'\n'
   assert_not_contains "$log" "-d scsi"
-  assert_contains "$log" "smartctl --xall --json -n standby -d nvme /dev/nvme0"
+  assert_contains "$log" "smartctl --xall --json -n standby -l farm -d nvme /dev/nvme0"
   # shellcheck source=host/tetanus-collect
   source "$collector"
   local type
@@ -229,6 +229,36 @@ test_smartctl_d_only_for_types_that_need_it() {
   for type in nvme sat,12 megaraid,0 usbjmicron; do
     needs_device_type "$type" || fail "-d omitted for '$type'"
   done
+}
+
+test_smartctl_farm_only_from_7_4() {
+  # shellcheck source=host/tetanus-collect
+  source "$collector"
+  local smartctl_version
+  for smartctl_version in "7.4 2023-08-01" "7.5 2025-04-30" "8.0 2030-01-01"; do
+    smartctl() { printf 'smartctl %s r1 [x86_64-linux] (local build)\n' "$smartctl_version"; }
+    smartctl_reads_farm || fail "no FARM on smartctl $smartctl_version"
+  done
+  for smartctl_version in "7.0 2018-12-30" "7.3 2022-02-28" "6.6 2017-11-05" ""; do
+    smartctl() { printf 'smartctl %s r1 [x86_64-linux] (local build)\n' "$smartctl_version"; }
+    ! smartctl_reads_farm || fail "FARM on smartctl '$smartctl_version'"
+  done
+  unset -f smartctl
+}
+
+test_smartctl_xall_without_farm_on_old_smartctl() {
+  mkdir "$test_dir/stub"
+  mv "$test_dir/bin/smartctl" "$test_dir/stub/smartctl"
+  cat >"$test_dir/bin/smartctl" <<STUB
+#!/usr/bin/env bash
+[[ \$1 == --version ]] && { echo "smartctl 7.3 2022-02-28 r5338"; exit 0; }
+exec "$test_dir/stub/smartctl" "\$@"
+STUB
+  chmod +x "$test_dir/bin/smartctl"
+  run_collect --dry-run --only smartctl-xall
+  assert_eq "$status" 0
+  assert_contains "$(<"$STUB_LOG")" "smartctl --xall --json -n standby /dev/sda"$'\n'
+  assert_not_contains "$(<"$STUB_LOG")" "-l farm"
 }
 
 test_scan_parsing_matches_fixture() {
