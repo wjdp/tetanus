@@ -32,11 +32,49 @@ export function latestAppliedMigration(_sqlite?: unknown): string | null {
   );
 }
 
-function pendingMigrations(storage: DurableObjectStorage) {
+function pendingEntries(storage: DurableObjectStorage) {
   const last = lastAppliedMillis(storage);
-  return bundle.journal.entries
-    .filter((entry) => last === undefined || entry.when > last)
-    .map((entry) => entry.tag);
+  return bundle.journal.entries.filter(
+    (entry) => last === undefined || entry.when > last,
+  );
+}
+
+function migrationStatements(entry: { idx: number }) {
+  const key = `m${entry.idx.toString().padStart(4, "0")}`;
+  const sql = bundle.migrations[key as keyof typeof bundle.migrations];
+  return sql.split("--> statement-breakpoint");
+}
+
+class Replayed extends Error {}
+
+// Drizzle's migrator swallows the failing statement's error and throws a bare
+// "Rollback", so replay the pending statements in a transaction that is always
+// rolled back to find which one fails and why.
+function describeMigrationFailure(
+  storage: DurableObjectStorage,
+  pending: ReturnType<typeof pendingEntries>,
+) {
+  let failure = "no statement failed on replay";
+  try {
+    storage.transactionSync(() => {
+      for (const entry of pending) {
+        for (const statement of migrationStatements(entry)) {
+          try {
+            storage.sql.exec(statement);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            failure = `${entry.tag}: ${message}`;
+            throw new Replayed();
+          }
+        }
+      }
+      throw new Replayed();
+    });
+  } catch (error) {
+    if (!(error instanceof Replayed)) throw error;
+  }
+  return failure;
 }
 
 function assertNoForeignKeyViolations(storage: DurableObjectStorage) {
@@ -56,19 +94,26 @@ function assertNoForeignKeyViolations(storage: DurableObjectStorage) {
 export async function migrateStorage(
   storage: DurableObjectStorage,
 ): Promise<MigrationReport> {
-  const pending = pendingMigrations(storage);
+  const pending = pendingEntries(storage);
   const startedAt = performance.now();
   if (pending.length > 0) {
     storage.sql.exec("PRAGMA defer_foreign_keys = ON");
     try {
-      await migrate(drizzle(storage), bundle);
+      try {
+        await migrate(drizzle(storage), bundle);
+      } catch (error) {
+        throw new Error(
+          `Migration failed: ${describeMigrationFailure(storage, pending)}`,
+          { cause: error },
+        );
+      }
       assertNoForeignKeyViolations(storage);
     } finally {
       storage.sql.exec("PRAGMA defer_foreign_keys = OFF");
     }
   }
   return {
-    applied: pending,
+    applied: pending.map((entry) => entry.tag),
     total: bundle.journal.entries.length,
     durationMs: Math.round(performance.now() - startedAt),
   };
