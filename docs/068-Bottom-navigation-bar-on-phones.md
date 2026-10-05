@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: in-progress
 ---
 
 # Bottom navigation bar on phones

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { APP_NAME } from "#shared/app";
-import type { StatusCounts } from "#shared/navigation";
 import type { NavigationBadge } from "~/utils/navigation";
 
 const { version } = useRuntimeConfig().public;
@@ -17,25 +16,24 @@ const searchLinks: NavigationMenuItem[] = [
   },
 ];
 
+const route = useRoute();
+
 const navigationCounts = useNavigationCounts();
 
 const countsFor = (item: NavigationMenuItem) =>
   navigationCounts.value[item.countsKey as NavigationBadge];
 
-const worstColour = ({ error, warning }: StatusCounts) => {
-  if (error > 0) return "error";
-  if (warning > 0) return "warning";
-  return undefined;
-};
-
 const mainLinks = (collapsed: boolean): NavigationMenuItem[] =>
-  NAVIGATION.map(({ badge, ...entry }) => {
-    const colour = badge && worstColour(navigationCounts.value[badge]);
+  NAVIGATION.map((entry) => {
+    const { label, icon, to, badge } = entry;
+    const colour = badge && navigationChipColour(navigationCounts.value[badge]);
     return {
-      ...entry,
+      label,
+      icon,
+      to,
       countsKey: collapsed ? undefined : badge,
       chip: collapsed && colour ? { color: colour } : undefined,
-      exact: entry.to === "/",
+      active: isNavigationActive(entry, route.path),
     };
   });
 

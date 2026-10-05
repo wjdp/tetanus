@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { NAVIGATION, SETTINGS_NAVIGATION } from "./navigation";
+import {
+  isNavigationActive,
+  NAVIGATION,
+  SETTINGS_NAVIGATION,
+} from "./navigation";
 
 describe("NAVIGATION", () => {
   it("lists the eight top-level pages in sidebar order", () => {
@@ -29,6 +33,30 @@ describe("NAVIGATION", () => {
       ["/zfs", "pools"],
       ["/replications", "replications"],
     ]);
+  });
+});
+
+describe("isNavigationActive", () => {
+  const activeLabels = (path: string) =>
+    NAVIGATION.filter((entry) => isNavigationActive(entry, path)).map(
+      ({ label }) => label,
+    );
+
+  it.each([
+    ["/", "Topology"],
+    ["/faults", "Faults"],
+    ["/hosts/add", "Hosts"],
+    ["/disks/12", "Disks"],
+    ["/zfs/3", "ZFS"],
+    ["/datasets/7", "ZFS"],
+    ["/replications/2", "Replications"],
+    ["/settings/alerts", "Settings"],
+  ])("marks only the section owning %s", (path, label) => {
+    expect(activeLabels(path)).toEqual([label]);
+  });
+
+  it("does not match a section by bare prefix", () => {
+    expect(activeLabels("/disksomething")).toEqual([]);
   });
 });
 

@@ -24,12 +24,13 @@ const counts = ref<NavigationCounts>({
 });
 mockNuxtImport("useNavigationCounts", () => () => counts);
 
-const mountSidebar = async (collapsed = false) => {
+const mountSidebar = async (collapsed = false, route = "/") => {
   const component = await mountSuspended(
     defineComponent({
       setup: () => () =>
         h(UApp, null, () => h(UDashboardGroup, null, () => h(AppSidebar))),
     }),
+    { route },
   );
   if (collapsed) {
     await component
@@ -73,6 +74,15 @@ describe("AppSidebar", () => {
       .findAll("nav a")
       .map((anchor) => anchor.attributes("href"));
     expect(hrefs.indexOf("/faults")).toBe(hrefs.indexOf("/") + 1);
+  });
+
+  it("marks the owning section active on a detail page", async () => {
+    const component = await mountSidebar(false, "/disks/12");
+
+    const active = component
+      .findAll("nav a[data-active]")
+      .map((anchor) => anchor.attributes("href"));
+    expect(active).toEqual(["/disks"]);
   });
 
   it("hides every count at zero", async () => {

@@ -17,18 +17,10 @@ const { open: openCommandPalette } = useCommandPalette();
         :title="title"
         class="bg-elevated border-default border-b lg:hidden"
       >
-        <template #toggle="{ toggleSidebar }">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-menu"
-            aria-label="Open navigation"
-            @click="toggleSidebar"
-          >
-            <span class="text-highlighted truncate text-lg font-semibold">
-              {{ APP_NAME }}
-            </span>
-          </UButton>
+        <template #toggle>
+          <span class="text-highlighted truncate text-lg font-semibold">
+            {{ APP_NAME }}
+          </span>
         </template>
 
         <template #right>

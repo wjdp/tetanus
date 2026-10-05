@@ -20,6 +20,7 @@ const demo = useRuntimeConfig().public.demo;
       <AppSimulationBanner />
       <AppFaultBanners />
       <slot />
+      <AppBottomNav />
     </div>
     <AppCommandPalette />
   </UDashboardGroup>
