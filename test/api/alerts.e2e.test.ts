@@ -174,7 +174,7 @@ describe("alerts:tick", () => {
         expect(latest).toMatchObject({
           channel: "webhook",
           rule: "disk-failed",
-          message: "mars · K2: SMART failed (was passed)",
+          message: "mars · K2: Failing (was healthy)",
           ok: true,
         });
       },

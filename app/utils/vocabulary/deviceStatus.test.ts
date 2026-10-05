@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEVICE_STATUSES } from "#shared/smart/status";
+import { DEVICE_STATUS_LABELS, DEVICE_STATUSES } from "#shared/smart/status";
 import { DEVICE_STATUS_VOCABULARY } from "./deviceStatus";
 
 describe("DEVICE_STATUS_VOCABULARY", () => {
   it.each(DEVICE_STATUSES)("has an entry for %s", (status) => {
-    expect(DEVICE_STATUS_VOCABULARY[status].label).toBe(`SMART ${status}`);
+    expect(DEVICE_STATUS_VOCABULARY[status].label).toBe(
+      DEVICE_STATUS_LABELS[status],
+    );
   });
 
   it("gives passed the one green dot", () => {

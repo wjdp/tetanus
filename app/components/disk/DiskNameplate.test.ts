@@ -65,10 +65,10 @@ describe("DiskNameplate", () => {
   });
 
   it.each([
-    ["passed", "success", "filled", "SMART passed"],
-    ["warning", "warning", "filled", "SMART warning"],
-    ["failed", "error", "filled", "SMART failed"],
-    ["unknown", "neutral", "hollow", "SMART unknown"],
+    ["passed", "success", "filled", "Healthy"],
+    ["warning", "warning", "filled", "Warning"],
+    ["failed", "error", "filled", "Failing"],
+    ["unknown", "neutral", "hollow", "Unknown"],
   ] as const)(
     "shows SMART %s as a %s %s dot with its label",
     async (status, colour, shape, label) => {

@@ -9,6 +9,18 @@ export const DEVICE_STATUSES = [
 ] as const;
 export type DeviceStatus = (typeof DEVICE_STATUSES)[number];
 
+export function isDeviceStatus(value: unknown): value is DeviceStatus {
+  return DEVICE_STATUSES.includes(value as DeviceStatus);
+}
+
+/** Labels for tetanus's overall verdict, which goes beyond the drive's own SMART check. */
+export const DEVICE_STATUS_LABELS: Record<DeviceStatus, string> = {
+  passed: "Healthy",
+  warning: "Warning",
+  failed: "Failing",
+  unknown: "Unknown",
+};
+
 const SEVERITY: Record<DeviceStatus, number> = {
   unknown: 0,
   passed: 1,

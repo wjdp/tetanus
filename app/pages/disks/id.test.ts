@@ -358,7 +358,7 @@ describe("disk page", () => {
     expect(text).not.toContain("WDC WD80EFAX");
 
     const strip = page.get('[data-testid="status-strip"]');
-    expect(strip.text()).toContain("SMART warning");
+    expect(strip.text()).toContain("Warning");
     expect(strip.get("span[data-state]").attributes("data-state")).toBe(
       "in-use",
     );
