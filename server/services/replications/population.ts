@@ -7,7 +7,6 @@ import {
   isNotNull,
   isNull,
   like,
-  lt,
   or,
   sql,
 } from "drizzle-orm";
@@ -36,7 +35,6 @@ export type ReplicationRow = typeof replication.$inferSelect;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 export const RECEIVE_WINDOW_MS = 48 * HOUR_MS;
-export const SYNC_RETENTION_DAYS = 400;
 const GUID_FILL_WINDOW_MS = 7 * DAY_MS;
 
 export function receiveLines(hostId: number, since?: Date): ReceiveLine[] {
@@ -218,17 +216,6 @@ export function recordSyncs(
   return touched.size;
 }
 
-export function pruneSyncs(now: Date) {
-  db.delete(replicationSync)
-    .where(
-      lt(
-        replicationSync.at,
-        new Date(now.getTime() - SYNC_RETENTION_DAYS * DAY_MS),
-      ),
-    )
-    .run();
-}
-
 /** Syncs logged before their snapshot was listed take its guid once it is. */
 export function fillSyncGuids(now: Date) {
   db.update(replicationSync)
@@ -274,7 +261,6 @@ export function observeReceives(
     deriveSyncs(receiveLines(hostId, since), receivedAt),
     receivedAt,
   );
-  pruneSyncs(receivedAt);
   resolveReplicationSources();
 }
 

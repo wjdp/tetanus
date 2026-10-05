@@ -8,7 +8,6 @@ import {
   gte,
   inArray,
   isNull,
-  lt,
   lte,
   type SQL,
   sql,
@@ -52,7 +51,6 @@ export interface DatasetIngestSummary {
 
 // Durable Object SQLite allows only 100 bound parameters per statement.
 const MAX_BOUND_PARAMETERS = 100;
-const READING_RETENTION_MS = 400 * 24 * 60 * 60 * 1000;
 const READING_CHANGE_THRESHOLD = 0.01;
 
 function chunked<T>(items: T[], size = MAX_BOUND_PARAMETERS): T[][] {
@@ -264,17 +262,6 @@ function recordReadings(poolRow: PoolRow, receivedAt: Date) {
   for (const chunk of rowChunks(datasetReading, due)) {
     db.insert(datasetReading).values(chunk).run();
   }
-  db.delete(datasetReading)
-    .where(
-      and(
-        inArray(datasetReading.datasetId, datasetIds),
-        lt(
-          datasetReading.at,
-          new Date(receivedAt.getTime() - READING_RETENTION_MS),
-        ),
-      ),
-    )
-    .run();
 }
 
 function observePoolDatasets(

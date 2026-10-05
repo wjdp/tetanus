@@ -20,7 +20,6 @@ export {
   hasReplicationsInto,
   observeReceives,
   observeSnapshotsForReplications,
-  pruneSyncs,
   receiveLines,
   recordSyncs,
 } from "./replications/population";

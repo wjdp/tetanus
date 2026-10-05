@@ -63,7 +63,10 @@ export default defineNuxtConfig({
         dir: fileURLToPath(new URL("host", import.meta.url)),
       },
     ],
-    scheduledTasks: { "*/5 * * * *": ["alerts:tick", "healthchecks:ping"] },
+    scheduledTasks: {
+      "*/5 * * * *": ["alerts:tick", "healthchecks:ping"],
+      "0 3 * * *": ["retention:prune"],
+    },
     ignore: ["**/*.test.ts"],
   },
   vite: {

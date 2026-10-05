@@ -276,14 +276,14 @@ describe("observeZfsList", () => {
     expect(reading?.usedByChildren).toBeGreaterThan(0);
   });
 
-  it("prunes readings older than 400 days", () => {
+  it("keeps readings of any age; retention collapses them", () => {
     const { hostId } = seedTank();
     observeZfsList(hostId, marsList(), T0);
     const later = new Date(T0.getTime() + 401 * 24 * 3_600_000);
     observeZfsList(hostId, marsList(), later);
 
     const readings = readingsOf("tank");
-    expect(readings.map((reading) => reading.at)).toEqual([later]);
+    expect(readings.map((reading) => reading.at)).toEqual([T0, later]);
   });
 });
 
