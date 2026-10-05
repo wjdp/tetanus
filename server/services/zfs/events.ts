@@ -1,6 +1,6 @@
 import { and, eq, gte, isNotNull, lt, max } from "drizzle-orm";
 import { db } from "~~/server/database/client";
-import { zfsEvent } from "~~/server/database/schema";
+import { host, zfsEvent } from "~~/server/database/schema";
 import type { ZfsEvent } from "~~/server/ingest/zfsEvent";
 import { addAutoEvent } from "~~/server/services/diary";
 
@@ -217,8 +217,18 @@ export function observeZpoolEvents(
   events: ZfsEvent[],
   receivedAt: Date,
 ) {
-  checkContinuity(hostId, events.filter(isNumbered), receivedAt);
+  const numbered = events.filter(isNumbered);
+  checkContinuity(hostId, numbered, receivedAt);
   for (const event of events) storeEvent(hostId, event);
+  if (numbered.length > 0) recordOldestDumpedEid(hostId, numbered);
+}
+
+/** Events at or above this eid are still in the kernel buffer and would be re-sent. */
+function recordOldestDumpedEid(hostId: number, dump: NumberedEvent[]) {
+  db.update(host)
+    .set({ zpoolEventsOldestEid: Math.min(...dump.map((event) => event.eid)) })
+    .where(eq(host.id, hostId))
+    .run();
 }
 
 export function observeZedEvent(hostId: number, event: ZfsEvent) {

@@ -84,6 +84,7 @@ export const host = sqliteTable("Host", {
   position: integer().notNull().default(0),
   notes: text().notNull().default(""),
   temperatureThresholds: json().$type<HostTemperatureThresholds>(),
+  zpoolEventsOldestEid: integer(),
   firstSeenAt: datetime().notNull(),
   lastSeenAt: datetime().notNull(),
 });

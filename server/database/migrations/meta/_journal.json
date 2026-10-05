@@ -239,6 +239,13 @@
       "when": 1791229358798,
       "tag": "0033_pool_reading_usable",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1791231283153,
+      "tag": "0034_host_zpool_events_oldest_eid",
+      "breakpoints": true
     }
   ]
 }

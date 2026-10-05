@@ -7,6 +7,7 @@ import { db } from "~~/server/database/client";
 import {
   collectorRun,
   diaryEntry,
+  host,
   pool,
   poolHistory,
   poolReading,
@@ -865,6 +866,34 @@ describe("zfs events", () => {
     expect(diary("events-gap")).toMatchObject([
       { subjectType: "host", subjectId: hostId, data: { from: 101, to: 105 } },
     ]);
+  });
+
+  it("records the oldest eid of the latest dump", () => {
+    const hostId = run("zpool-events", {
+      events: [
+        event(105, "2026-09-28T10:05:00Z"),
+        event(106, "2026-09-28T10:06:00Z"),
+      ],
+    });
+    run("zed-event", { event: event(107, "2026-09-28T10:07:00Z") });
+    const oldestEid = () =>
+      db
+        .select({ eid: host.zpoolEventsOldestEid })
+        .from(host)
+        .where(eq(host.id, hostId))
+        .get()?.eid;
+    expect(oldestEid()).toBe(105);
+    run(
+      "zpool-events",
+      {
+        events: [
+          event(106, "2026-09-28T10:06:00Z"),
+          event(107, "2026-09-28T10:07:00Z"),
+        ],
+      },
+      minutesAfter(10),
+    );
+    expect(oldestEid()).toBe(106);
   });
 
   it("records an event id reset once and keeps the new events", () => {
