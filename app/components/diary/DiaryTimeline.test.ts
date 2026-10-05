@@ -127,7 +127,7 @@ describe("DiaryTimeline", () => {
     expect(smart.find("[data-colour]").attributes()).toMatchObject({
       "data-colour": "error",
       "data-shape": "filled",
-      "aria-label": "SMART failed",
+      "aria-label": "Failing",
     });
     expect(manual.find("[data-icon]").attributes("data-icon")).toBe(
       "i-lucide-pencil",

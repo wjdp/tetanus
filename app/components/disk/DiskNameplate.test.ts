@@ -65,10 +65,10 @@ describe("DiskNameplate", () => {
   });
 
   it.each([
-    ["passed", "success", "filled", "SMART passed"],
-    ["warning", "warning", "filled", "SMART warning"],
-    ["failed", "error", "filled", "SMART failed"],
-    ["unknown", "neutral", "hollow", "SMART unknown"],
+    ["passed", "success", "filled", "Healthy"],
+    ["warning", "warning", "filled", "Warning"],
+    ["failed", "error", "filled", "Failing"],
+    ["unknown", "neutral", "hollow", "Unknown"],
   ] as const)(
     "shows SMART %s as a %s %s dot with its label",
     async (status, colour, shape, label) => {
@@ -161,7 +161,7 @@ describe("DiskNameplate", () => {
       /tank\s*raidz2-0\s*K2-part1\s*ONLINE/,
     );
     const faults = strip.get('[data-testid="disk-fault-badges"]');
-    expect(faults.attributes("href")).toBe("/faults?subject=disk:7");
+    expect(faults.attributes("href")).toBe("/disks/7?tab=faults");
     expect(
       faults.findAll("[data-bucket]").map((badge) => badge.text()),
     ).toEqual(["1", "2"]);

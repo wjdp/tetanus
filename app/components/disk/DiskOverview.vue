@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { APP_NAME } from "#shared/app";
 import { interfaceLabel } from "#shared/hardware";
 import { formatDuration } from "#shared/hostFreshness";
 import { bareModel, displayModel } from "#shared/model";
@@ -7,6 +8,7 @@ import { temperatureColour } from "#shared/temperature";
 import { usageDetail } from "#shared/usage";
 import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 import { ATTRIBUTE_STATUS_DOT } from "./attributeRows";
+import { farmHoursCheck } from "./farmRows";
 import { specFooter, specRows } from "./specRows";
 import type { DiskDetail, ReplacementCandidate } from "./types";
 
@@ -156,6 +158,41 @@ const formatCount = (value: number | null) =>
 
 const optionalDate = (value: string | null) =>
   value === null ? null : formatDate(value);
+
+const FARM_TAB = { query: { tab: "farm" } };
+const FARM_CHECK_CLASS = {
+  agrees: "text-default",
+  reset: "text-warning",
+  "not-comparable": "text-dimmed",
+} as const;
+
+const farmCheck = computed(() =>
+  props.disk.latestFarm
+    ? farmHoursCheck(props.disk.latestFarm, props.disk.latestPowerOnHours)
+    : null,
+);
+
+const DRIVE_VERDICT = {
+  passed: { text: "Passed", class: undefined },
+  warning: { text: "Warning", class: "text-warning" },
+  failed: { text: "Failed", class: "text-error" },
+  unknown: { text: "Not reported", class: "text-dimmed" },
+} as const;
+
+const attributeSummary = computed(() => {
+  const counts = props.disk.smartVerdict?.attributes;
+  if (!counts || counts.failed + counts.warning === 0) {
+    return { text: "All within limits", class: "text-default" };
+  }
+  const parts = [
+    counts.failed && `${counts.failed} failed`,
+    counts.warning && `${counts.warning} warning`,
+  ].filter(Boolean);
+  return {
+    text: parts.join(", "),
+    class: counts.failed ? "text-error" : "text-warning",
+  };
+});
 </script>
 
 <template>
@@ -164,7 +201,7 @@ const optionalDate = (value: string | null) =>
       title="Health"
       data-testid="group-health"
     >
-      <DiskFact label="SMART">
+      <DiskFact label="Overall">
         <span class="inline-flex flex-wrap items-center gap-2">
           <UBadge
             color="neutral"
@@ -184,6 +221,25 @@ const optionalDate = (value: string | null) =>
           </span>
         </span>
       </DiskFact>
+      <template v-if="disk.smartVerdict">
+        <DiskFact
+          label="Drive verdict"
+          :class="DRIVE_VERDICT[disk.smartVerdict.drive].class"
+          data-testid="overview-drive-verdict"
+        >
+          {{ DRIVE_VERDICT[disk.smartVerdict.drive].text }}
+          <span class="text-dimmed text-xs">· the drive's own SMART check</span>
+        </DiskFact>
+        <DiskFact label="Attributes" data-testid="overview-attributes">
+          <NuxtLink
+            :to="SMART_TAB"
+            class="hover:underline"
+            :class="attributeSummary.class"
+            >{{ attributeSummary.text }}</NuxtLink
+          >
+          <span class="text-dimmed text-xs"> · checked by {{ APP_NAME }}</span>
+        </DiskFact>
+      </template>
       <DiskFact
         label="Temperature"
         :value="formatCelsius(disk.latestTemp)"
@@ -195,6 +251,19 @@ const optionalDate = (value: string | null) =>
         label="Power-on"
         :value="formatHours(disk.latestPowerOnHours)"
       />
+      <DiskFact
+        v-if="farmCheck"
+        label="FARM"
+        :data-verdict="farmCheck.verdict"
+        data-testid="overview-farm"
+      >
+        <NuxtLink
+          :to="FARM_TAB"
+          class="hover:underline"
+          :class="FARM_CHECK_CLASS[farmCheck.verdict]"
+          >{{ farmCheck.text }}</NuxtLink
+        >
+      </DiskFact>
       <DiskFact
         v-if="disk.latestPowerCycles !== null"
         label="Power cycles"

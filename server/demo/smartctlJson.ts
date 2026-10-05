@@ -584,6 +584,12 @@ function rewriteDeviceStatistics(json: SmartctlJson, context: RenderContext) {
     "Highest Temperature": temperature.lifetimeMax,
     "Lowest Temperature": temperature.lifetimeMin,
     "Percentage Used Endurance Indicator": counters.percentageUsed ?? 0,
+    "Head Flying Hours": counters.powerOnHours,
+    "Number of Interface CRC Errors": 0,
+    "Overlimit Shock Events": 0,
+    "Time in Over-Temperature": 0,
+    "Time in Under-Temperature": 0,
+    "Number of Mechanical Start Failures": 0,
   };
   for (const page of json.ata_device_statistics?.pages ?? []) {
     for (const row of page.table ?? []) setStatistic(row, byName);

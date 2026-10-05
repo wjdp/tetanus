@@ -4,7 +4,7 @@ import type {
   SeagateFarmHead,
   VoltageRange,
 } from "#shared/smartctl";
-import { formatBytes } from "~/utils/format";
+import { formatBytes, formatHours } from "~/utils/format";
 
 export const HEAD_RESISTANCE_TOLERANCE = 0.2;
 
@@ -57,6 +57,25 @@ export function farmHoursVerdict(
   if (farm.powerOnHours === undefined || smartHours === null) return "unknown";
   if (!farmHoursComparable(farm)) return "not-comparable";
   return smartResetHours(farm, smartHours) === null ? "agrees" : "reset";
+}
+
+export interface FarmHoursCheck {
+  verdict: Exclude<FarmHoursVerdict, "unknown">;
+  text: string;
+}
+
+export function farmHoursCheck(
+  farm: SeagateFarm,
+  smartHours: number | null,
+): FarmHoursCheck | null {
+  const verdict = farmHoursVerdict(farm, smartHours);
+  if (verdict === "unknown") return null;
+  const text = {
+    agrees: "Power-on hours match against FARM",
+    reset: `FARM ${formatHours(farm.powerOnHours)}, SMART reset`,
+    "not-comparable": "FARM can't confirm hours",
+  }[verdict];
+  return { verdict, text };
 }
 
 const VERDICT_NOTES: Record<FarmHoursVerdict, (smart: string) => string> = {

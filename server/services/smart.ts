@@ -25,7 +25,6 @@ import type {
   AtaAttribute,
   ScsiInfo,
   SctTemperatureHistory,
-  SeagateFarm,
   SelfTestEntry,
   SmartctlXallResult,
 } from "#shared/smartctl";
@@ -121,7 +120,6 @@ export interface SmartOverview {
   history: SmartHistory;
   selfTests: SelfTestRow[];
   acceptances: FaultAcceptanceRow[];
-  farm: SeagateFarm | null;
 }
 
 export const MAX_HISTORY_POINTS = 500;
@@ -595,6 +593,9 @@ export function recordSmartReading({
           vendor: effectiveVendor(row),
         }),
         ...(parsed.farm ? { latestFarm: parsed.farm } : {}),
+        ...(parsed.deviceStatistics
+          ? { latestDeviceStatistics: parsed.deviceStatistics }
+          : {}),
       })
       .where(eq(disk.id, row.id))
       .run();
@@ -657,12 +658,11 @@ export function downsample<T extends { at: Date }>(
 
 function assertDiskExists(diskId: number) {
   const found = db
-    .select({ id: disk.id, latestFarm: disk.latestFarm })
+    .select({ id: disk.id })
     .from(disk)
     .where(eq(disk.id, diskId))
     .get();
   if (!found) throw notFound(`Disk ${diskId} not found`);
-  return found;
 }
 
 function rangeStart(range: SmartHistoryRange, now: Date) {
@@ -975,13 +975,12 @@ export function getSmartOverview(
   range: SmartHistoryRange,
   now = new Date(),
 ): SmartOverview {
-  const { latestFarm } = assertDiskExists(diskId);
+  assertDiskExists(diskId);
   return {
     reading: latestReading(diskId),
     attributes: latestAttributes(diskId),
     history: getSmartHistory(diskId, range, now),
     selfTests: listSelfTests(diskId),
     acceptances: listAcceptances(diskId),
-    farm: latestFarm,
   };
 }

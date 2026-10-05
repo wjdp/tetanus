@@ -1,3 +1,5 @@
+import type { DeviceStatistics } from "#shared/smart/deviceStatistics";
+
 export interface SmartctlXallDevice {
   name: string;
   type: string;
@@ -170,4 +172,5 @@ export interface SmartctlXallResult {
   selfTests?: SelfTestEntry[];
   sctTemperatureHistory?: SctTemperatureHistory;
   farm?: SeagateFarm;
+  deviceStatistics?: DeviceStatistics;
 }

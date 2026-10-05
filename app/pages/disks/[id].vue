@@ -5,7 +5,14 @@ import { diskLabel, displayName } from "~/components/disk/displayName";
 import type { DiskDetail } from "~/components/disk/types";
 import { DEVICE_STATUS_VOCABULARY } from "~/utils/vocabulary";
 
-const TABS = ["overview", "smart", "diary"] as const;
+const TABS = [
+  "overview",
+  "faults",
+  "smart",
+  "statistics",
+  "farm",
+  "diary",
+] as const;
 type Tab = (typeof TABS)[number];
 const DEFAULT_TAB: Tab = "overview";
 
@@ -52,7 +59,7 @@ const onUpdated = (updated: DiskDetail) => {
 };
 
 const isTab = (value: unknown): value is Tab =>
-  TABS.includes(value as Tab);
+  TABS.includes(value as Tab) && (value !== "farm" || Boolean(disk.value?.latestFarm));
 
 const activeTab = computed<Tab>({
   get: () => (isTab(route.query.tab) ? route.query.tab : DEFAULT_TAB),
@@ -63,6 +70,13 @@ const activeTab = computed<Tab>({
   },
 });
 
+const faultCounts = computed(() => {
+  const counts = disk.value?.faultCounts;
+  return counts
+    ? { error: counts.error, warning: counts.warning, neutral: counts.acknowledged }
+    : null;
+});
+
 const smartStatus = computed(() =>
   disk.value && disk.value.latestStatus !== "passed"
     ? DEVICE_STATUS_VOCABULARY[disk.value.latestStatus]
@@ -71,7 +85,12 @@ const smartStatus = computed(() =>
 
 const tabs = computed<TabsItem[]>(() => [
   { label: "Overview", slot: "overview", value: "overview" },
+  { label: "Faults", slot: "faults", value: "faults" },
   { label: "SMART", slot: "smart", value: "smart" },
+  { label: "Statistics", slot: "statistics", value: "statistics" },
+  ...(disk.value?.latestFarm
+    ? [{ label: "FARM", slot: "farm", value: "farm" }]
+    : []),
   {
     label: "Diary",
     slot: "diary",
@@ -131,8 +150,13 @@ const tabs = computed<TabsItem[]>(() => [
           :ui="TABS_UI"
         >
           <template #trailing="{ item }">
+            <AppNavCounts
+              v-if="item.value === 'faults' && faultCounts"
+              :counts="faultCounts"
+              data-testid="faults-tab-counts"
+            />
             <TopologyStatusDot
-              v-if="item.value === 'smart' && smartStatus"
+              v-else-if="item.value === 'smart' && smartStatus"
               :colour="smartStatus.colour"
               :shape="smartStatus.shape"
               :title="smartStatus.label"
@@ -158,12 +182,33 @@ const tabs = computed<TabsItem[]>(() => [
             </div>
           </template>
 
+          <template #faults>
+            <div class="py-4">
+              <DiskFaults :disk-id="disk.id" @changed="refresh" />
+            </div>
+          </template>
+
           <template #smart>
             <div class="py-4">
               <DiskSmart
                 :disk-id="disk.id"
                 :protocol="disk.protocol"
                 @changed="refresh"
+              />
+            </div>
+          </template>
+
+          <template #statistics>
+            <div class="py-4">
+              <DiskStatistics :disk-id="disk.id" />
+            </div>
+          </template>
+
+          <template v-if="disk.latestFarm" #farm>
+            <div class="py-4">
+              <DiskFarm
+                :farm="disk.latestFarm"
+                :smart-hours="disk.latestPowerOnHours"
               />
             </div>
           </template>

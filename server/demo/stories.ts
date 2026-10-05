@@ -1211,7 +1211,7 @@ function createSeeds(
         subject: disk("V2"),
         eventType: "smart-status-changed",
         value: "failed",
-        detail: "SMART failed (was passed)",
+        detail: "Failing (was healthy)",
         at: v2FailedAt,
       },
       {

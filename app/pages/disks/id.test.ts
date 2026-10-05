@@ -358,7 +358,7 @@ describe("disk page", () => {
     expect(text).not.toContain("WDC WD80EFAX");
 
     const strip = page.get('[data-testid="status-strip"]');
-    expect(strip.text()).toContain("SMART warning");
+    expect(strip.text()).toContain("Warning");
     expect(strip.get("span[data-state]").attributes("data-state")).toBe(
       "in-use",
     );
@@ -376,7 +376,7 @@ describe("disk page", () => {
     expect(strip.get('a[href="/zfs/3"]').text()).toBe("tank");
     expect(
       strip.get('[data-testid="disk-fault-badges"]').attributes("href"),
-    ).toBe("/faults?subject=disk:7");
+    ).toBe("/disks/7?tab=faults");
 
     expect(page.find('[data-testid="smart-tab-status"]').exists()).toBe(true);
     expect(page.get('[data-testid="diary-tab-count"]').text()).toBe("1");
@@ -435,6 +435,21 @@ describe("disk page", () => {
     expect(disposed.find('[data-testid="dispose-prominent"]').exists()).toBe(
       false,
     );
+  });
+
+  it("offers a FARM tab only for disks with a FARM log", async () => {
+    const tabLabels = async (route: string) =>
+      (await mountPage(route))
+        .findAll('[role="tab"]')
+        .map((tab) => tab.text().trim());
+    expect(await tabLabels("/disks/7")).toEqual([
+      "Overview",
+      expect.stringMatching(/^Faults/),
+      "SMART",
+      "Statistics",
+      expect.stringMatching(/^Diary/),
+    ]);
+    expect(await tabLabels("/disks/17")).toContain("FARM");
   });
 
   it("shows FARM hours on the power-on figure when SMART was reset", async () => {

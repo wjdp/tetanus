@@ -6,7 +6,11 @@ import {
 import type { DiarySubjectType } from "#shared/diary";
 import { type Disposal, describeDisk, isDisposed } from "#shared/disk";
 import { FAULT_KIND_DEFINITIONS, isFaultKind } from "#shared/faults";
+import { DEVICE_STATUS_LABELS, isDeviceStatus } from "#shared/smart/status";
 import type { DiaryEntryRow } from "~~/server/services/diary";
+
+const statusLabel = (status: unknown) =>
+  isDeviceStatus(status) ? DEVICE_STATUS_LABELS[status] : text(status);
 
 export interface AlertDisk {
   alias: string | null;
@@ -112,14 +116,14 @@ function matchDiskEntry(
         return {
           rule: "disk-failed",
           value: "failed",
-          detail: `SMART failed (was ${text(from)})`,
+          detail: `${DEVICE_STATUS_LABELS.failed} (was ${statusLabel(from).toLowerCase()})`,
         };
       }
       if (from === "failed") {
         return {
           rule: "disk-recovered",
           value: text(to),
-          detail: `SMART ${text(to)} (was failed)`,
+          detail: `${statusLabel(to)} (was ${DEVICE_STATUS_LABELS.failed.toLowerCase()})`,
         };
       }
       return null;

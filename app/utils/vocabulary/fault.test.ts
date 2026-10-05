@@ -59,6 +59,12 @@ describe("faultSubjectPath", () => {
       "/disks/3",
     );
   });
+
+  it("opens the FARM tab for a SMART counters reset", () => {
+    expect(faultSubjectPath(subject({ id: 3 }), "smart-counters-reset")).toBe(
+      "/disks/3?tab=farm",
+    );
+  });
 });
 
 describe("faultDiskPath", () => {
