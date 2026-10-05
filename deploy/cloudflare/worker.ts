@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { APP_NAME } from "../../shared/app";
 import { bindStorage, demoOperations, type SeedStep } from "./bridge";
-import { migrateStorage } from "./migrate";
+import { prepareSchema } from "./migrate";
 
 interface Env {
   DEMO: DurableObjectNamespace<TetanusDemo>;
@@ -107,7 +107,7 @@ export class TetanusDemo extends DurableObject<Env> {
     bindStorage(storage);
     const interrupted = await storage.get<SeedFlag>(SEED_KEY);
     if (interrupted) await storage.deleteAll();
-    await migrateStorage(storage);
+    await prepareSchema(storage);
     await loadNitroHandler();
     this.seeding = undefined;
     const { seeded } = await demoOperations().prepare(new Date());

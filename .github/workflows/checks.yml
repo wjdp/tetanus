@@ -62,7 +62,7 @@ jobs:
       - name: Test
         run: pnpm test
 
-  demo-migrations:
+  demo-schema:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -75,8 +75,8 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install
-      - name: Apply migrations in workerd
-        run: pnpm demo:check-migrations
+      - name: Build the demo schema in workerd
+        run: pnpm demo:check-schema
 
   host:
     runs-on: ubuntu-latest

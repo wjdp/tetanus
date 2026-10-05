@@ -157,8 +157,9 @@ deploy/cloudflare/
   nuxt.config.ts     Nuxt layer applied when TETANUS_TARGET=cloudflare
   worker.ts          Worker entry: fetch → DO, scheduled → DO; exports the DO class
   client.ts          db shim over drizzle-orm/durable-sqlite (aliased over server/database/client)
-  migrate.ts         runMigrations shim using the bundled migrations (aliased over server/database/migrate)
-  migrations.ts      generated: journal + SQL from server/database/migrations
+  migrate.ts         prepareSchema + runMigrations shim (aliased over server/database/migrate)
+  schemaBundle.ts    generated: drizzle-kit export SQL, its hash, latest migration tag
+  schemaCheck/       worker that builds the schema in workerd, run by checkSchema.ts in CI
   wrangler.jsonc
   tsconfig.json      @cloudflare/workers-types
 ```
@@ -173,7 +174,7 @@ deploy/cloudflare/
   triggers `0 * * * *` (tick) and `15 4 * * *` (reset) call internal DO methods via RPC
   (`stub.tick()`, `stub.reset()`), never over a public path.
 - **Durable Object.** Constructor, inside `blockConcurrencyWhile`: bind
-  `drizzle(ctx.storage, { schema })` into `client.ts`, run bundled migrations, import the
+  `drizzle(ctx.storage, { schema })` into `client.ts`, `prepareSchema`, import the
   built Nitro handler (`.output/server/index.mjs`), `ensureSettings()`,
   `applySmartPolicyIfStale()`; if `Host` is empty, write a `seed` flag and set an alarm.
   The seed runs in `alarm()` in 40-instant chunks (`seedSteps`), re-arming until done,
@@ -186,11 +187,14 @@ deploy/cloudflare/
 - **db shim.** `export const db` is a Proxy forwarding to the bound drizzle instance;
   `sqlite` exposes `prepare(sql).get()` over `storage.sql.exec` for `/health`.
   `Db` type stays.
-- **Migrations bundle.** Generated at build from `server/database/migrations/meta/_journal.json`
-  and the SQL files into the shape `drizzle-orm/durable-sqlite/migrator` expects; try
-  drizzle-kit's `driver: "durable-sqlite"` output first, fall back to a 30-line script.
-  The migrate shim mirrors `migrateWithoutForeignKeyEnforcement` if DO SQLite honours
-  `PRAGMA foreign_keys`; otherwise document the difference.
+- **Schema bundle.** The demo does not run migrations. `bundleSchema.ts` captures
+  `drizzle-kit export` (the whole current schema as SQL) and its hash at build.
+  `prepareSchema` compares the hash with the one in DO KV storage; on a mismatch it
+  `deleteAll()`s, runs the SQL and stores the hash, and the empty `Host` table triggers a
+  reseed. Demo data is disposable, and replaying migrations failed twice on DO SQLite
+  limits Node's SQLite lacks: `CREATE TEMP VIEW` (`SQLITE_AUTH`) and long GLOB patterns
+  in a data fix. Job `demo-schema` in `checks.yml` (`pnpm demo:check-schema`) builds the
+  schema in workerd. Migrations stay covered by the Node tests.
 - **Reset.** `storage.deleteAll()` (SQL and KV), then the constructor sequence, which
   schedules the seed alarm; viewers see the 503 holding page for ~1 min. Also runs on the
   first request after a deploy that finds no `Host` rows.
@@ -199,7 +203,7 @@ deploy/cloudflare/
   with `new_sqlite_classes`, `triggers.crons`, `vars.NUXT_PUBLIC_DEMO`,
   `limits.cpu_ms: 300000` (paid plan), a `ratelimits` binding, and `routes` for
   `tetanus-demo.wjdp.uk` (zone `wjdp.uk`).
-- **Scripts.** `pnpm build:demo` (`TETANUS_TARGET=cloudflare nuxt build` + migrations
+- **Scripts.** `pnpm build:demo` (`TETANUS_TARGET=cloudflare nuxt build` + schema
   bundle), `pnpm demo:dev` (`wrangler dev`, Miniflare supports DO SQLite locally),
   `pnpm demo:deploy`. Job `demo` in `main.yml`: on push to `master` after `checks`, build and
   `wrangler deploy` with `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets.

@@ -20,6 +20,6 @@ dist
 logs
 *.log
 
-# Cloudflare demo: local Miniflare state and the generated migrations bundle
+# Cloudflare demo: local Miniflare state and the generated schema bundle
 .wrangler
-deploy/cloudflare/migrations.ts
+deploy/cloudflare/schemaBundle.ts
