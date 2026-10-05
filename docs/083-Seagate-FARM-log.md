@@ -60,21 +60,97 @@ make that check.
 
 ## Step 2: use the data
 
-Scope once the step 1 fixtures are in.
+Fleet check on the re-captured fixtures (six SATA Exos):
 
-- Parse page 1 in `server/ingest/smartctl-xall.ts` into a typed `farm` block on the
-  reading.
-- A fault, or a diary entry, when SMART and FARM disagree: `poh` against attribute 9,
-  `power_cycle_count` against attribute 12, serial, WWN. Thresholds come from the
-  fleet fixtures, not guessed.
-- Show FARM hours on the disk page next to SMART power-on hours.
-- Maybe: `drive_recording_type` to back up the `recordingTech` inventory field, and
-  the assembly date where it's present.
-- SAS Seagates are in scope (their FARM log is a SCSI log page with a different
-  layout), but no SAS Seagate is in the fleet. Build from smartmontools' JSON keys
-  plus a synthetic fixture, and flag it as untested against hardware.
-- Out of scope: per-head metrics and pages 2–5 apart from what a fault needs.
+| FARM log version | Drives | FARM `poh` − SMART 9 | FARM − SMART 12 cycles | `date_of_assembly` |
+|---|---|---|---|---|
+| 4.x | 4 | 0–1 h | 1 | `YYWW`, e.g. `2203` |
+| 3.7 | 2 (same model) | ~2× SMART | 1.7–3.7× | empty |
 
-## Questions
+Both 3.7 drives are known grey-market. But on both, FARM `poh` is almost exactly 2× SMART
+(1.97 and 2.00), and FARM `spoh` matches SMART. A wipe would leave FARM `spoh`
+untouched and give an arbitrary ratio. So FARM 3.x may count `poh` at twice the rate.
+Check by comparing two readings a few hours apart. Until that's settled, the fault only
+fires on log version 4+, and 3.x figures are shown as not comparable.
 
-1. Raise the smartmontools minimum to 7.4, or keep 7.0 and gate FARM only?
+### Parse
+
+- `server/ingest/smartctl-xall.ts`: `farm?: SeagateFarm` on `SmartctlXallResult`, only when
+  `seagate_farm_log` has page data. The type lives in `shared/smartctl.ts`:
+  - `logVersion`
+  - page 1: `powerOnHours`, `spindleHours`, `headFlightHours`, `headLoadEvents`,
+    `powerCycles`, `serial` (trimmed), `wwn`, `recordingType`, `heads`,
+    `assembledOn` (`YYWW` → ISO week string, null when empty)
+  - page 2: read/write commands, random reads/writes, sectors read/written
+  - page 3: unrecoverable read/write errors, reallocated and candidate sectors, ASR
+    events, CRC errors, command timeouts
+  - page 4: observed temperature highest/lowest/average (`max_temp`/`min_temp` are spec
+    limits, not observations), 12 V and 5 V current/min/max (0 means not reported)
+  - page 5: `heliumPressureTrip`
+  - per head, arrays of length `number_of_heads`: MR head resistance, reallocated
+    sectors, reallocation candidates, write-workload power-on time (unit unknown: it
+    exceeds `poh`, so don't call it hours), cumulative unrecoverable reads (repeating
+    and unique), skip-write detections
+- SAS: smartctl's SCSI FARM JSON uses different keys. Take them from smartmontools'
+  `farmprint.cpp` (not from memory), use a synthetic fixture, and label it untested
+  against hardware.
+- FARM WWN is `0x…`, while `identity.wwn` is bare lowercase hex, so normalise before
+  comparing. Key names in the fixtures are misspelled (`curent_temp`,
+  `helium_presure_trip`); use them as they are.
+
+### Store
+
+- New `Disk.latestFarm` json column, from migration `disk_latest_farm`. It's written in
+  `recordSmartReading`'s `isLatest` branch like `ataSsdAttributes`, so standby readings
+  leave it alone. A reading without FARM leaves the last one in place.
+- It stays on `DiskSummary` (about 3 KB per Seagate) so the detector can read it.
+- `getSmartOverview` exposes it for the FARM section and `DiskDetail` for the headline.
+- No backfill. The next hourly reading fills it.
+- Add a Seagate Exos template to the demo (`server/demo/smartTemplates.ts`) so seeded
+  tests and the demo include FARM.
+
+### Fault
+
+- New kind `smart-counters-reset`: disk, persistent, warning (amber), key `diskId`. The
+  only way to deal with it is to accept it (decided 2026-10-05). Acceptance is
+  level-based on the gap in hours, so a later, bigger reset reopens it.
+- Raised when FARM log version is 4+ and FARM `poh` − SMART power-on hours > max(48 h,
+  5% of FARM `poh`). Skipped when SMART hours look wrapped (081): FARM above 65,535
+  and SMART below it. On the
+  fleet that's 0–1 h for healthy drives and thousands for wiped ones. Also raised when
+  the FARM serial or WWN differs from the drive's (after trimming).
+- The title gives FARM and SMART hours, e.g. "SMART reset: FARM 43,908 h, SMART 22,299 h".
+- Diary: the existing fault diary entries are enough, so it isn't diary-silent.
+- Wiring:
+  - `FAULT_KINDS` and the kind definitions in `shared/faults.ts`
+  - the detector list in `server/services/faults.ts`
+  - an alert rule, or listing it in `FAULT_KINDS_WITHOUT_ALERT_RULE`
+  - `SMART_FAULT_KINDS` in `app/utils/vocabulary/fault.ts`, so it links to the SMART tab
+  - both tables in [036](036-Faults-page.md)
+  - backfill isn't needed: the final sync recomputes it
+
+### Show
+
+- Disk page headline figures: when FARM is present and disagrees, power-on hours shows
+  FARM hours next to SMART hours.
+- `DiskSmart.vue`: a "Seagate FARM" section, only when `latestFarm` is present:
+  - fact group: log version, power-on, spindle and head-flight hours, power cycles,
+    head load events, recording type, assembly week, helium trip
+  - fact group: workload (random vs sequential share, totals), errors, voltages
+  - per-head table: one row per head with resistance, reallocated, candidates,
+    unrecoverable reads, write hours. Flag heads that stand out from the median
+    (resistance more than 20% off, any reallocations), with no fault attached
+- Inventory: `assembledOn` fills in where the inventory has no manufacture date. There
+  is no such field yet, so only show it on the page for now.
+
+### Out of scope
+
+- Alerts or faults on per-head values.
+- Keeping FARM history (only the latest is stored).
+- `recordingTech` auto-fill from `drive_recording_type`. Data model 031 owns that.
+
+## Decisions
+
+- smartmontools minimum stays 7.0; FARM is gated on 7.4+ (2026-10-05).
+- FARM is shown inside the SMART view, not on its own tab, so a disagreement sits next
+  to the SMART figure it contradicts.
