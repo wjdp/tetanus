@@ -18,6 +18,8 @@
       "--json",
       "-n",
       "standby",
+      "-l",
+      "farm",
       "-d",
       "scsi",
       "/dev/sde"
@@ -25,8 +27,8 @@
     "exit_status": 4
   },
   "local_time": {
-    "time_t": 1790972117,
-    "asctime": "Fri Oct  2 21:15:17 2026 BST"
+    "time_t": 1791169787,
+    "asctime": "Mon Oct  5 04:09:47 2026 BST"
   },
   "device": {
     "name": "/dev/sde",

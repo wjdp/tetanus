@@ -18,6 +18,8 @@
       "--json",
       "-n",
       "standby",
+      "-l",
+      "farm",
       "/dev/sdf"
     ],
     "drive_database_version": {
@@ -26,8 +28,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790972118,
-    "asctime": "Fri Oct  2 21:15:18 2026 BST"
+    "time_t": 1791169787,
+    "asctime": "Mon Oct  5 04:09:47 2026 BST"
   },
   "device": {
     "name": "/dev/sdf",
@@ -36,8 +38,8 @@
     "protocol": "ATA"
   },
   "power_mode": {
-    "ata_value": 129,
-    "name": "IDLE_A"
+    "ata_value": 255,
+    "name": "ACTIVE or IDLE"
   },
   "model_family": "Seagate Exos X18",
   "model_name": "ST12000NM000J-2TY103",
@@ -158,7 +160,7 @@
       {
         "id": 1,
         "name": "Raw_Read_Error_Rate",
-        "value": 78,
+        "value": 80,
         "worst": 64,
         "thresh": 44,
         "when_failed": "",
@@ -173,8 +175,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 66089904,
-          "string": "0/66089904"
+          "value": 92006296,
+          "string": "0/92006296"
         }
       },
       {
@@ -261,8 +263,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 907791290,
-          "string": "0/907791290"
+          "value": 908581907,
+          "string": "0/908581907"
         }
       },
       {
@@ -283,8 +285,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 33036,
-          "string": "33036"
+          "value": 33091,
+          "string": "33091"
         }
       },
       {
@@ -459,8 +461,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 18038,
-          "string": "18038"
+          "value": 18040,
+          "string": "18040"
         }
       },
       {
@@ -591,8 +593,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 8365591270291451,
-          "string": "30715h+32m+27.766s"
+          "value": 6990497360934962,
+          "string": "30770h+27m+07.602s"
         }
       },
       {
@@ -613,8 +615,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 98957443310,
-          "string": "98957443310"
+          "value": 99073924598,
+          "string": "99073924598"
         }
       },
       {
@@ -635,8 +637,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 17709767838687,
-          "string": "17709767838687"
+          "value": 17761461020655,
+          "string": "17761461020655"
         }
       }
     ]
@@ -646,7 +648,7 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 33036
+    "hours": 33091
   },
   "power_cycle_count": 76,
   "temperature": {
@@ -1292,7 +1294,7 @@
       "lifetime_min": 19,
       "lifetime_max": 54,
       "under_limit_count": 0,
-      "over_limit_count": 382
+      "over_limit_count": 412
     },
     "smart_status": {
       "passed": true
@@ -1343,64 +1345,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 74,
+    "index": 2,
     "table": [
-      44,
-      44,
-      43,
-      43,
-      43,
-      44,
-      43,
-      42,
-      42,
-      42,
-      42,
-      42,
-      43,
-      44,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      43,
-      42,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      42,
-      42,
-      43,
-      43,
-      43,
-      42,
-      43,
-      43,
-      43,
-      43,
-      42,
-      42,
-      42,
-      42,
-      42,
-      42,
-      42,
-      42,
       42,
       42,
       42,
@@ -1472,7 +1418,63 @@
       41,
       43,
       42,
-      41
+      41,
+      42,
+      41,
+      41,
+      41,
+      42,
+      41,
+      41,
+      42,
+      42,
+      42,
+      43,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      40,
+      36,
+      35,
+      35,
+      37,
+      37,
+      35,
+      38,
+      39,
+      39,
+      41,
+      41,
+      41,
+      39,
+      39,
+      40,
+      40,
+      41,
+      40,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      41,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40
     ]
   },
   "ata_sct_erc": {
@@ -1510,7 +1512,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 33036,
+            "value": 33091,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1524,7 +1526,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 98950607589,
+            "value": 99067088109,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1538,7 +1540,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 788910138,
+            "value": 789254209,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1552,7 +1554,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 17709761229918,
+            "value": 17761454414510,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1566,7 +1568,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 2526583659,
+            "value": 2527952856,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1600,7 +1602,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 32968,
+            "value": 33023,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1614,7 +1616,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 31431,
+            "value": 31486,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1628,7 +1630,7 @@
             "offset": 24,
             "name": "Head Load Events",
             "size": 4,
-            "value": 18038,
+            "value": 18040,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1782,7 +1784,7 @@
             "offset": 16,
             "name": "Average Short Term Temperature",
             "size": 1,
-            "value": 41,
+            "value": 39,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -2100,6 +2102,322 @@
     "reset": false
   },
   "seagate_farm_log": {
+    "page_0_log_header": {
+      "farm_log_version": [
+        4,
+        19
+      ],
+      "pages_supported": 6,
+      "log_size": 98304,
+      "page_size": 16384,
+      "heads_supported": 24,
+      "number_of_copies": 0,
+      "reason_for_frame_capture": 0
+    },
+    "page_1_drive_information": {
+      "serial_number": "IEQ07JCE",
+      "world_wide_name": "0x5000c506ced04297",
+      "device_interface": "SATA",
+      "device_capacity_in_sectors": 23437770752,
+      "physical_sector_size": 4096,
+      "logical_sector_size": 512,
+      "device_buffer_size": 268435456,
+      "number_of_heads": 12,
+      "form_factor": "3.5 inches",
+      "rotation_rate": 7200,
+      "firmware_rev": "SN02    ",
+      "poh": 33091,
+      "spoh": 33023,
+      "head_flight_hours": 31486,
+      "head_load_events": 18040,
+      "power_cycle_count": 77,
+      "reset_count": 205,
+      "spin_up_time": 8,
+      "time_to_ready": 22339,
+      "time_held": 3759,
+      "drive_recording_type": "CMR",
+      "max_number_for_reasign": 16384,
+      "date_of_assembly": "2203",
+      "depopulation_head_mask": 0
+    },
+    "page_2_workload_statistics": {
+      "total_read_commands": 2528008254,
+      "total_write_commands": 789321713,
+      "total_random_reads": 246646879,
+      "total_random_writes": 754160223,
+      "total_other_commands": 84531828,
+      "logical_sectors_written": 99073170326,
+      "logical_sectors_read": 4197052498380,
+      "dither": 28988,
+      "dither_random": 3610,
+      "dither_sequential": 554,
+      "read_commands_by_radius_0_3": 42366,
+      "read_commands_by_radius_3_25": 153692,
+      "read_commands_by_radius_25_75": 7390441,
+      "read_commands_by_radius_75_100": 2537350,
+      "write_commands_by_radius_0_3": 247120,
+      "write_commands_by_radius_3_25": 0,
+      "write_commands_by_radius_25_75": 1312,
+      "write_commands_by_radius_75_100": 2290505
+    },
+    "page_3_error_statistics": {
+      "number_of_unrecoverable_read_errors": 0,
+      "number_of_unrecoverable_write_errors": 0,
+      "number_of_reallocated_sectors": 0,
+      "number_of_read_recovery_attempts": 0,
+      "number_of_mechanical_start_failures": 0,
+      "number_of_reallocated_candidate_sectors": 0,
+      "total_asr_events": 42,
+      "total_crc_errors": 0,
+      "attr_spin_retry_count": 0,
+      "normal_spin_retry_count": 100,
+      "worst_spin_rretry_count": 100,
+      "number_of_ioedc_errors": 0,
+      "command_time_out_count_total": 1,
+      "command_time_out_over_5_seconds_count": 0,
+      "command_time_out_over_7_seconds_count": 0,
+      "total_flash_led": 0,
+      "index_flash_led": 0,
+      "uncorrectables": 0,
+      "cumulative_unrecoverable_read_erc": 0,
+      "total_flash_led_errors": 0,
+      "flash_led_event_0": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_7": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_6": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_5": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_4": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_3": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_2": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_1": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_0": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_1": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_2": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_3": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_4": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_5": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_6": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_7": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_8": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_9": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_10": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_11": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      }
+    },
+    "page_4_environment_statistics": {
+      "curent_temp": 41,
+      "highest_temp": 54,
+      "lowest_temp": 20,
+      "average_temp": 39,
+      "average_long_temp": 43,
+      "highest_short_temp": 51,
+      "lowest_short_temp": 35,
+      "highest_long_temp": 47,
+      "lowest_long_temp": 37,
+      "over_temp_time": 0,
+      "under_temp_time": 0,
+      "max_temp": 60,
+      "min_temp": 5,
+      "humidity": 0,
+      "current_motor_power": 1081,
+      "current_12v_in_mv": 12115,
+      "minimum_12v_in_mv": 12087,
+      "maximum_12v_in_mv": 12129,
+      "current_5v_in_mv": 5088,
+      "minimum_5v_in_mv": 5063,
+      "maximum_5v_in_mv": 5130,
+      "average_12v_power": 0,
+      "minimum_12v_power": 0,
+      "maximum_12v_power": 0,
+      "average_5v_power": 0,
+      "minimum_5v_power": 0,
+      "maximum_5v_power": 0
+    },
+    "page_5_reliability_statistics": {
+      "attr_error_rate_raw": 92017456,
+      "error_rate_normalized": 80,
+      "error_rate_worst": 64,
+      "attr_seek_error_rate_raw": 908581968,
+      "seek_error_rate_normalized": 90,
+      "seek_error_rate_worst": 60,
+      "high_priority_unload_events": 45,
+      "helium_presure_trip": 0,
+      "lbas_corrected_by_parity_sector": 0,
+      "dvga_skip_write_detect_by_head_0": 0,
+      "dvga_skip_write_detect_by_head_1": 0,
+      "dvga_skip_write_detect_by_head_2": 0,
+      "dvga_skip_write_detect_by_head_3": 0,
+      "dvga_skip_write_detect_by_head_4": 0,
+      "dvga_skip_write_detect_by_head_5": 0,
+      "dvga_skip_write_detect_by_head_6": 0,
+      "dvga_skip_write_detect_by_head_7": 0,
+      "dvga_skip_write_detect_by_head_8": 0,
+      "dvga_skip_write_detect_by_head_9": 0,
+      "dvga_skip_write_detect_by_head_10": 0,
+      "dvga_skip_write_detect_by_head_11": 0,
+      "rvga_skip_write_detect_by_head_0": 0,
+      "rvga_skip_write_detect_by_head_1": 0,
+      "rvga_skip_write_detect_by_head_2": 0,
+      "rvga_skip_write_detect_by_head_3": 0,
+      "rvga_skip_write_detect_by_head_4": 0,
+      "rvga_skip_write_detect_by_head_5": 0,
+      "rvga_skip_write_detect_by_head_6": 0,
+      "rvga_skip_write_detect_by_head_7": 0,
+      "rvga_skip_write_detect_by_head_8": 0,
+      "rvga_skip_write_detect_by_head_9": 0,
+      "rvga_skip_write_detect_by_head_10": 0,
+      "rvga_skip_write_detect_by_head_11": 0,
+      "fvga_skip_write_detect_by_head_0": 0,
+      "fvga_skip_write_detect_by_head_1": 0,
+      "fvga_skip_write_detect_by_head_2": 0,
+      "fvga_skip_write_detect_by_head_3": 0,
+      "fvga_skip_write_detect_by_head_4": 0,
+      "fvga_skip_write_detect_by_head_5": 0,
+      "fvga_skip_write_detect_by_head_6": 0,
+      "fvga_skip_write_detect_by_head_7": 0,
+      "fvga_skip_write_detect_by_head_8": 0,
+      "fvga_skip_write_detect_by_head_9": 0,
+      "fvga_skip_write_detect_by_head_10": 0,
+      "fvga_skip_write_detect_by_head_11": 0,
+      "skip_write_detect_threshold_exceeded_by_head_0": 0,
+      "skip_write_detect_threshold_exceeded_by_head_1": 0,
+      "skip_write_detect_threshold_exceeded_by_head_2": 0,
+      "skip_write_detect_threshold_exceeded_by_head_3": 0,
+      "skip_write_detect_threshold_exceeded_by_head_4": 0,
+      "skip_write_detect_threshold_exceeded_by_head_5": 0,
+      "skip_write_detect_threshold_exceeded_by_head_6": 0,
+      "skip_write_detect_threshold_exceeded_by_head_7": 0,
+      "skip_write_detect_threshold_exceeded_by_head_8": 0,
+      "skip_write_detect_threshold_exceeded_by_head_9": 0,
+      "skip_write_detect_threshold_exceeded_by_head_10": 0,
+      "skip_write_detect_threshold_exceeded_by_head_11": 0,
+      "write_workload_power_on_time_by_head_0": 44217,
+      "write_workload_power_on_time_by_head_1": 18461,
+      "write_workload_power_on_time_by_head_2": 18875,
+      "write_workload_power_on_time_by_head_3": 19270,
+      "write_workload_power_on_time_by_head_4": 17675,
+      "write_workload_power_on_time_by_head_5": 18185,
+      "write_workload_power_on_time_by_head_6": 17902,
+      "write_workload_power_on_time_by_head_7": 18364,
+      "write_workload_power_on_time_by_head_8": 18822,
+      "write_workload_power_on_time_by_head_9": 18302,
+      "write_workload_power_on_time_by_head_10": 18806,
+      "write_workload_power_on_time_by_head_11": 18924,
+      "mr_head_resistance_from_head_0": 387,
+      "mr_head_resistance_from_head_1": 415,
+      "mr_head_resistance_from_head_2": 423,
+      "mr_head_resistance_from_head_3": 330,
+      "mr_head_resistance_from_head_4": 404,
+      "mr_head_resistance_from_head_5": 463,
+      "mr_head_resistance_from_head_6": 490,
+      "mr_head_resistance_from_head_7": 375,
+      "mr_head_resistance_from_head_8": 394,
+      "mr_head_resistance_from_head_9": 405,
+      "mr_head_resistance_from_head_10": 488,
+      "mr_head_resistance_from_head_11": 425,
+      "second_mr_head_resistance_by_head_0": 411,
+      "second_mr_head_resistance_by_head_1": 373,
+      "second_mr_head_resistance_by_head_2": 474,
+      "second_mr_head_resistance_by_head_3": 361,
+      "second_mr_head_resistance_by_head_4": 336,
+      "second_mr_head_resistance_by_head_5": 395,
+      "second_mr_head_resistance_by_head_6": 459,
+      "second_mr_head_resistance_by_head_7": 419,
+      "second_mr_head_resistance_by_head_8": 328,
+      "second_mr_head_resistance_by_head_9": 468,
+      "second_mr_head_resistance_by_head_10": 369,
+      "second_mr_head_resistance_by_head_11": 386,
+      "number_of_reallocated_sectors_by_head_0": 0,
+      "number_of_reallocated_sectors_by_head_1": 0,
+      "number_of_reallocated_sectors_by_head_2": 0,
+      "number_of_reallocated_sectors_by_head_3": 0,
+      "number_of_reallocated_sectors_by_head_4": 0,
+      "number_of_reallocated_sectors_by_head_5": 0,
+      "number_of_reallocated_sectors_by_head_6": 0,
+      "number_of_reallocated_sectors_by_head_7": 0,
+      "number_of_reallocated_sectors_by_head_8": 0,
+      "number_of_reallocated_sectors_by_head_9": 0,
+      "number_of_reallocated_sectors_by_head_10": 0,
+      "number_of_reallocated_sectors_by_head_11": 0,
+      "number_of_reallocation_candidate_sectors_by_head_0": 0,
+      "number_of_reallocation_candidate_sectors_by_head_1": 0,
+      "number_of_reallocation_candidate_sectors_by_head_2": 0,
+      "number_of_reallocation_candidate_sectors_by_head_3": 0,
+      "number_of_reallocation_candidate_sectors_by_head_4": 0,
+      "number_of_reallocation_candidate_sectors_by_head_5": 0,
+      "number_of_reallocation_candidate_sectors_by_head_6": 0,
+      "number_of_reallocation_candidate_sectors_by_head_7": 0,
+      "number_of_reallocation_candidate_sectors_by_head_8": 0,
+      "number_of_reallocation_candidate_sectors_by_head_9": 0,
+      "number_of_reallocation_candidate_sectors_by_head_10": 0,
+      "number_of_reallocation_candidate_sectors_by_head_11": 0
+    },
     "supported": true
   }
 }

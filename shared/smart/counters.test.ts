@@ -64,7 +64,7 @@ describe("countersFrom on fixtures", () => {
       logicalBlockSize: 512,
     });
     expect(counters.wearPercent).toEqual({ value: 0, status: "passed" });
-    expect(counters.bytesWritten).toBe(1327539 * 32 * MIB);
+    expect(counters.bytesWritten).toBe(1330057 * 32 * MIB);
     expect(counters.bytesWrittenInferred).toBe(false);
   });
 
@@ -74,7 +74,7 @@ describe("countersFrom on fixtures", () => {
       pending: null,
       uncorrectable: { value: 0, status: "passed" },
       wearPercent: { value: 0, status: "passed" },
-      bytesWritten: 630453820 * NVME_DATA_UNIT_BYTES,
+      bytesWritten: 630852939 * NVME_DATA_UNIT_BYTES,
       bytesWrittenInferred: false,
     });
   });

@@ -17,17 +17,10 @@ replay() {
   exit "$(command -p cat "$fixture.exit")"
 }
 
-replay_recorded() {
-  local fixture recorded
-  while IFS=$'\t' read -r fixture _ recorded; do
-    [[ $fixture == \#* ]] && continue
-    [[ ${recorded% | tail -n *} == "$1" ]] && replay "$fixture"
-  done <"$STUB_FIXTURES/manifest.txt"
-}
-
-replay_recorded "$argv"
-# Until mars is re-captured with collector 0.7.0's -l farm (docs/083-Seagate-FARM-log.md).
-[[ $argv == "smartctl --xall "*" -l farm "* ]] && replay_recorded "${argv/ -l farm/}"
+while IFS=$'\t' read -r fixture _ recorded; do
+  [[ $fixture == \#* ]] && continue
+  [[ ${recorded% | tail -n *} == "$argv" ]] && replay "$fixture"
+done <"$STUB_FIXTURES/manifest.txt"
 
 # Until mars is re-captured with collector 0.4.0's commands (docs/015-Replication-health.md).
 case $argv in

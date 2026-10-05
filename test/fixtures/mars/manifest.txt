@@ -82,43 +82,43 @@ udev/b259-1	0	cat /run/udev/data/b259:1
 udev/b259-2	0	cat /run/udev/data/b259:2
 udev/b259-3	0	cat /run/udev/data/b259:3
 smartctl-scan	0	smartctl --scan --json
-smartctl/xall-sda	4	smartctl --xall --json -n standby -d scsi /dev/sda
-smartctl/xall-sda-auto	0	smartctl --xall --json -n standby /dev/sda
-smartctl/xall-sdb	4	smartctl --xall --json -n standby -d scsi /dev/sdb
-smartctl/xall-sdb-auto	0	smartctl --xall --json -n standby /dev/sdb
-smartctl/xall-sdc	4	smartctl --xall --json -n standby -d scsi /dev/sdc
-smartctl/xall-sdc-auto	0	smartctl --xall --json -n standby /dev/sdc
-smartctl/xall-sdd	4	smartctl --xall --json -n standby -d scsi /dev/sdd
-smartctl/xall-sdd-auto	0	smartctl --xall --json -n standby /dev/sdd
-smartctl/xall-sde	4	smartctl --xall --json -n standby -d scsi /dev/sde
-smartctl/xall-sde-auto	0	smartctl --xall --json -n standby /dev/sde
-smartctl/xall-sdf	4	smartctl --xall --json -n standby -d scsi /dev/sdf
-smartctl/xall-sdf-auto	0	smartctl --xall --json -n standby /dev/sdf
-smartctl/xall-sdg	4	smartctl --xall --json -n standby -d scsi /dev/sdg
-smartctl/xall-sdg-auto	0	smartctl --xall --json -n standby /dev/sdg
-smartctl/xall-sdh	4	smartctl --xall --json -n standby -d scsi /dev/sdh
-smartctl/xall-sdh-auto	0	smartctl --xall --json -n standby /dev/sdh
-smartctl/xall-sdi	4	smartctl --xall --json -n standby -d scsi /dev/sdi
-smartctl/xall-sdi-auto	0	smartctl --xall --json -n standby /dev/sdi
-smartctl/xall-sdj	4	smartctl --xall --json -n standby -d scsi /dev/sdj
-smartctl/xall-sdj-auto	64	smartctl --xall --json -n standby /dev/sdj
-smartctl/xall-sdk	4	smartctl --xall --json -n standby -d scsi /dev/sdk
-smartctl/xall-sdk-auto	0	smartctl --xall --json -n standby /dev/sdk
-smartctl/xall-sdl	4	smartctl --xall --json -n standby -d scsi /dev/sdl
-smartctl/xall-sdl-auto	0	smartctl --xall --json -n standby /dev/sdl
-smartctl/xall-sdm	4	smartctl --xall --json -n standby -d scsi /dev/sdm
-smartctl/xall-sdm-auto	0	smartctl --xall --json -n standby /dev/sdm
-smartctl/xall-sdn	4	smartctl --xall --json -n standby -d scsi /dev/sdn
-smartctl/xall-sdn-auto	4	smartctl --xall --json -n standby /dev/sdn
-smartctl/xall-sdo	4	smartctl --xall --json -n standby -d scsi /dev/sdo
-smartctl/xall-sdo-auto	0	smartctl --xall --json -n standby /dev/sdo
-smartctl/xall-sdp	4	smartctl --xall --json -n standby -d scsi /dev/sdp
-smartctl/xall-sdp-auto	0	smartctl --xall --json -n standby /dev/sdp
-smartctl/xall-sdq	4	smartctl --xall --json -n standby -d scsi /dev/sdq
-smartctl/xall-sdq-auto	0	smartctl --xall --json -n standby /dev/sdq
-smartctl/xall-sdr	4	smartctl --xall --json -n standby -d scsi /dev/sdr
-smartctl/xall-sdr-auto	0	smartctl --xall --json -n standby /dev/sdr
-smartctl/xall-sds	4	smartctl --xall --json -n standby -d scsi /dev/sds
-smartctl/xall-sds-auto	0	smartctl --xall --json -n standby /dev/sds
-smartctl/xall-nvme0	0	smartctl --xall --json -n standby -d nvme /dev/nvme0
+smartctl/xall-sda	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sda
+smartctl/xall-sda-auto	0	smartctl --xall --json -n standby -l farm /dev/sda
+smartctl/xall-sdb	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdb
+smartctl/xall-sdb-auto	0	smartctl --xall --json -n standby -l farm /dev/sdb
+smartctl/xall-sdc	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdc
+smartctl/xall-sdc-auto	0	smartctl --xall --json -n standby -l farm /dev/sdc
+smartctl/xall-sdd	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdd
+smartctl/xall-sdd-auto	0	smartctl --xall --json -n standby -l farm /dev/sdd
+smartctl/xall-sde	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sde
+smartctl/xall-sde-auto	0	smartctl --xall --json -n standby -l farm /dev/sde
+smartctl/xall-sdf	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdf
+smartctl/xall-sdf-auto	0	smartctl --xall --json -n standby -l farm /dev/sdf
+smartctl/xall-sdg	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdg
+smartctl/xall-sdg-auto	0	smartctl --xall --json -n standby -l farm /dev/sdg
+smartctl/xall-sdh	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdh
+smartctl/xall-sdh-auto	0	smartctl --xall --json -n standby -l farm /dev/sdh
+smartctl/xall-sdi	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdi
+smartctl/xall-sdi-auto	0	smartctl --xall --json -n standby -l farm /dev/sdi
+smartctl/xall-sdj	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdj
+smartctl/xall-sdj-auto	64	smartctl --xall --json -n standby -l farm /dev/sdj
+smartctl/xall-sdk	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdk
+smartctl/xall-sdk-auto	0	smartctl --xall --json -n standby -l farm /dev/sdk
+smartctl/xall-sdl	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdl
+smartctl/xall-sdl-auto	0	smartctl --xall --json -n standby -l farm /dev/sdl
+smartctl/xall-sdm	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdm
+smartctl/xall-sdm-auto	0	smartctl --xall --json -n standby -l farm /dev/sdm
+smartctl/xall-sdn	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdn
+smartctl/xall-sdn-auto	4	smartctl --xall --json -n standby -l farm /dev/sdn
+smartctl/xall-sdo	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdo
+smartctl/xall-sdo-auto	0	smartctl --xall --json -n standby -l farm /dev/sdo
+smartctl/xall-sdp	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdp
+smartctl/xall-sdp-auto	0	smartctl --xall --json -n standby -l farm /dev/sdp
+smartctl/xall-sdq	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdq
+smartctl/xall-sdq-auto	0	smartctl --xall --json -n standby -l farm /dev/sdq
+smartctl/xall-sdr	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sdr
+smartctl/xall-sdr-auto	0	smartctl --xall --json -n standby -l farm /dev/sdr
+smartctl/xall-sds	4	smartctl --xall --json -n standby -l farm -d scsi /dev/sds
+smartctl/xall-sds-auto	0	smartctl --xall --json -n standby -l farm /dev/sds
+smartctl/xall-nvme0	0	smartctl --xall --json -n standby -l farm -d nvme /dev/nvme0
 enclosure	0	bin/capture-enclosure.sh

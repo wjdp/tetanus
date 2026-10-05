@@ -211,7 +211,7 @@ describe("failSelfTest", () => {
         type: "Short",
         status: "Completed: failed segments",
         passed: false,
-        lifetimeHours: 49_085,
+        lifetimeHours: 49_139,
         lba: 42,
       },
     ]);

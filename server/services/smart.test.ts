@@ -97,8 +97,8 @@ describe("recordSmartReading", () => {
     expect(row).toMatchObject({
       latestRaw: body,
       latestStatus: "failed",
-      latestTemp: 42,
-      latestPowerOnHours: 50379,
+      latestTemp: 41,
+      latestPowerOnHours: 50434,
       latestReadingAt: t0,
     });
     expect(row.latestPowerCycles).toBe(JSON.parse(body).power_cycle_count);
@@ -126,7 +126,7 @@ describe("recordSmartReading", () => {
       transformedValue: 16,
     });
     expect(attributes.find((a) => a.attrId === "194")?.transformedValue).toBe(
-      42,
+      41,
     );
   });
 
@@ -341,7 +341,7 @@ describe("history", () => {
       { at: t0, value: 0 },
       { at: at(HOUR_MS), value: 4 },
     ]);
-    expect(history.attributes["194"][0].value).toBe(41);
+    expect(history.attributes["194"][0].value).toBe(40);
     expect(history.temperature.length).toBeGreaterThan(100);
   });
 
@@ -513,7 +513,7 @@ describe("evaluateMinimalReading", () => {
       evaluateNamedAttributes(parsed).map(strip),
     );
     expect(minimal.deviceStatus).toBe("failed");
-    expect(minimal.temp).toBe(42);
+    expect(minimal.temp).toBe(41);
   });
 
   it("names ATA attributes from our metadata", () => {

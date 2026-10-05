@@ -18,6 +18,8 @@
       "--json",
       "-n",
       "standby",
+      "-l",
+      "farm",
       "/dev/sdh"
     ],
     "drive_database_version": {
@@ -26,8 +28,8 @@
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790972119,
-    "asctime": "Fri Oct  2 21:15:19 2026 BST"
+    "time_t": 1791169789,
+    "asctime": "Mon Oct  5 04:09:49 2026 BST"
   },
   "device": {
     "name": "/dev/sdh",
@@ -36,8 +38,8 @@
     "protocol": "ATA"
   },
   "power_mode": {
-    "ata_value": 129,
-    "name": "IDLE_A"
+    "ata_value": 255,
+    "name": "ACTIVE or IDLE"
   },
   "model_family": "Seagate Exos X18",
   "model_name": "ST18000NM000J-2TV103",
@@ -158,7 +160,7 @@
       {
         "id": 1,
         "name": "Raw_Read_Error_Rate",
-        "value": 71,
+        "value": 76,
         "worst": 64,
         "thresh": 44,
         "when_failed": "",
@@ -173,8 +175,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 11677696,
-          "string": "0/11677696"
+          "value": 36946872,
+          "string": "0/36946872"
         }
       },
       {
@@ -261,8 +263,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 694395780,
-          "string": "0/694395780"
+          "value": 695448433,
+          "string": "0/695448433"
         }
       },
       {
@@ -283,8 +285,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 23986,
-          "string": "23986"
+          "value": 24041,
+          "string": "24041"
         }
       },
       {
@@ -459,8 +461,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 1046,
-          "string": "1046"
+          "value": 1048,
+          "string": "1048"
         }
       },
       {
@@ -591,8 +593,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 4156802493078957,
-          "string": "23981h+16m+07.831s"
+          "value": 2760246632144356,
+          "string": "24036h+10m+42.670s"
         }
       },
       {
@@ -613,8 +615,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 164791369647,
-          "string": "164791369647"
+          "value": 165039128143,
+          "string": "165039128143"
         }
       },
       {
@@ -635,8 +637,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 7469512345613,
-          "string": "7469512345613"
+          "value": 7495547941077,
+          "string": "7495547941077"
         }
       }
     ]
@@ -646,11 +648,11 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 23986
+    "hours": 24041
   },
   "power_cycle_count": 37,
   "temperature": {
-    "current": 41,
+    "current": 40,
     "power_cycle_min": 28,
     "power_cycle_max": 45,
     "lifetime_min": 21,
@@ -1292,7 +1294,7 @@
       "lifetime_min": 19,
       "lifetime_max": 55,
       "under_limit_count": 0,
-      "over_limit_count": 286
+      "over_limit_count": 295
     },
     "smart_status": {
       "passed": true
@@ -1343,64 +1345,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 3,
+    "index": 59,
     "table": [
-      42,
-      43,
-      43,
-      42,
-      42,
-      43,
-      42,
-      41,
-      41,
-      41,
-      41,
-      41,
-      43,
-      45,
-      44,
-      44,
-      43,
-      43,
-      43,
-      42,
-      42,
-      42,
-      42,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      42,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
       41,
       41,
       41,
@@ -1472,7 +1418,63 @@
       40,
       42,
       41,
-      41
+      41,
+      41,
+      41,
+      40,
+      40,
+      41,
+      40,
+      40,
+      41,
+      41,
+      41,
+      42,
+      41,
+      40,
+      40,
+      40,
+      40,
+      40,
+      39,
+      35,
+      35,
+      35,
+      37,
+      37,
+      35,
+      37,
+      38,
+      39,
+      40,
+      41,
+      39,
+      39,
+      38,
+      39,
+      39,
+      39,
+      39,
+      39,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      40,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39
     ]
   },
   "ata_sct_erc": {
@@ -1510,7 +1512,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 23986,
+            "value": 24041,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1524,7 +1526,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 164778082319,
+            "value": 165025846703,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1538,7 +1540,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 692696349,
+            "value": 693077558,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1552,7 +1554,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 7469511712983,
+            "value": 7495547315991,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1566,7 +1568,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 2378102992,
+            "value": 2380107600,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1600,7 +1602,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 23983,
+            "value": 24038,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1614,7 +1616,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 23979,
+            "value": 24034,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1628,7 +1630,7 @@
             "offset": 24,
             "name": "Head Load Events",
             "size": 4,
-            "value": 1046,
+            "value": 1048,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1768,7 +1770,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 41,
+            "value": 40,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1782,7 +1784,7 @@
             "offset": 16,
             "name": "Average Short Term Temperature",
             "size": 1,
-            "value": 40,
+            "value": 38,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1796,7 +1798,7 @@
             "offset": 24,
             "name": "Average Long Term Temperature",
             "size": 1,
-            "value": 43,
+            "value": 42,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1852,7 +1854,7 @@
             "offset": 56,
             "name": "Lowest Average Short Term Temperature",
             "size": 1,
-            "value": 39,
+            "value": 38,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -2100,6 +2102,400 @@
     "reset": false
   },
   "seagate_farm_log": {
+    "page_0_log_header": {
+      "farm_log_version": [
+        4,
+        19
+      ],
+      "pages_supported": 6,
+      "log_size": 98304,
+      "page_size": 16384,
+      "heads_supported": 24,
+      "number_of_copies": 0,
+      "reason_for_frame_capture": 0
+    },
+    "page_1_drive_information": {
+      "serial_number": "PE188A15",
+      "world_wide_name": "0x5000c50560fece4b",
+      "device_interface": "SATA",
+      "device_capacity_in_sectors": 35156656128,
+      "physical_sector_size": 4096,
+      "logical_sector_size": 512,
+      "device_buffer_size": 268435456,
+      "number_of_heads": 18,
+      "form_factor": "3.5 inches",
+      "rotation_rate": 7200,
+      "firmware_rev": "SN02    ",
+      "poh": 24041,
+      "spoh": 24038,
+      "head_flight_hours": 24034,
+      "head_load_events": 1048,
+      "power_cycle_count": 38,
+      "reset_count": 114,
+      "spin_up_time": 10,
+      "time_to_ready": 26908,
+      "time_held": 5663,
+      "drive_recording_type": "CMR",
+      "max_number_for_reasign": 16384,
+      "date_of_assembly": "2146",
+      "depopulation_head_mask": 0
+    },
+    "page_2_workload_statistics": {
+      "total_read_commands": 2380120753,
+      "total_write_commands": 693182700,
+      "total_random_reads": 173164785,
+      "total_random_writes": 633915927,
+      "total_other_commands": 72859102,
+      "logical_sectors_written": 165039134031,
+      "logical_sectors_read": 2481011763531,
+      "dither": 28207,
+      "dither_random": 12553,
+      "dither_sequential": 1324,
+      "read_commands_by_radius_0_3": 142391,
+      "read_commands_by_radius_3_25": 1335688,
+      "read_commands_by_radius_25_75": 2048366,
+      "read_commands_by_radius_75_100": 11237719,
+      "write_commands_by_radius_0_3": 291684,
+      "write_commands_by_radius_3_25": 1391154,
+      "write_commands_by_radius_25_75": 1079627,
+      "write_commands_by_radius_75_100": 437410
+    },
+    "page_3_error_statistics": {
+      "number_of_unrecoverable_read_errors": 0,
+      "number_of_unrecoverable_write_errors": 0,
+      "number_of_reallocated_sectors": 0,
+      "number_of_read_recovery_attempts": 0,
+      "number_of_mechanical_start_failures": 0,
+      "number_of_reallocated_candidate_sectors": 0,
+      "total_asr_events": 26,
+      "total_crc_errors": 0,
+      "attr_spin_retry_count": 0,
+      "normal_spin_retry_count": 100,
+      "worst_spin_rretry_count": 100,
+      "number_of_ioedc_errors": 0,
+      "command_time_out_count_total": 2,
+      "command_time_out_over_5_seconds_count": 0,
+      "command_time_out_over_7_seconds_count": 0,
+      "total_flash_led": 0,
+      "index_flash_led": 0,
+      "uncorrectables": 0,
+      "cumulative_unrecoverable_read_erc": 0,
+      "total_flash_led_errors": 0,
+      "flash_led_event_0": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_7": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_6": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_5": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_4": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_3": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_2": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_1": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_0": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_1": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_2": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_3": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_4": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_5": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_6": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_7": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_8": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_9": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_10": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_11": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_12": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_13": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_14": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_15": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_16": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_17": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      }
+    },
+    "page_4_environment_statistics": {
+      "curent_temp": 40,
+      "highest_temp": 55,
+      "lowest_temp": 21,
+      "average_temp": 38,
+      "average_long_temp": 42,
+      "highest_short_temp": 51,
+      "lowest_short_temp": 38,
+      "highest_long_temp": 48,
+      "lowest_long_temp": 41,
+      "over_temp_time": 0,
+      "under_temp_time": 0,
+      "max_temp": 60,
+      "min_temp": 5,
+      "humidity": 0,
+      "current_motor_power": 3602,
+      "current_12v_in_mv": 12112,
+      "minimum_12v_in_mv": 12076,
+      "maximum_12v_in_mv": 12143,
+      "current_5v_in_mv": 5106,
+      "minimum_5v_in_mv": 5069,
+      "maximum_5v_in_mv": 5129,
+      "average_12v_power": 0,
+      "minimum_12v_power": 0,
+      "maximum_12v_power": 0,
+      "average_5v_power": 0,
+      "minimum_5v_power": 0,
+      "maximum_5v_power": 0
+    },
+    "page_5_reliability_statistics": {
+      "attr_error_rate_raw": 36971432,
+      "error_rate_normalized": 76,
+      "error_rate_worst": 64,
+      "attr_seek_error_rate_raw": 695448530,
+      "seek_error_rate_normalized": 88,
+      "seek_error_rate_worst": 60,
+      "high_priority_unload_events": 29,
+      "helium_presure_trip": 0,
+      "lbas_corrected_by_parity_sector": 0,
+      "dvga_skip_write_detect_by_head_0": 0,
+      "dvga_skip_write_detect_by_head_1": 0,
+      "dvga_skip_write_detect_by_head_2": 0,
+      "dvga_skip_write_detect_by_head_3": 0,
+      "dvga_skip_write_detect_by_head_4": 0,
+      "dvga_skip_write_detect_by_head_5": 0,
+      "dvga_skip_write_detect_by_head_6": 0,
+      "dvga_skip_write_detect_by_head_7": 0,
+      "dvga_skip_write_detect_by_head_8": 0,
+      "dvga_skip_write_detect_by_head_9": 0,
+      "dvga_skip_write_detect_by_head_10": 0,
+      "dvga_skip_write_detect_by_head_11": 0,
+      "dvga_skip_write_detect_by_head_12": 0,
+      "dvga_skip_write_detect_by_head_13": 0,
+      "dvga_skip_write_detect_by_head_14": 0,
+      "dvga_skip_write_detect_by_head_15": 0,
+      "dvga_skip_write_detect_by_head_16": 0,
+      "dvga_skip_write_detect_by_head_17": 0,
+      "rvga_skip_write_detect_by_head_0": 0,
+      "rvga_skip_write_detect_by_head_1": 0,
+      "rvga_skip_write_detect_by_head_2": 0,
+      "rvga_skip_write_detect_by_head_3": 0,
+      "rvga_skip_write_detect_by_head_4": 0,
+      "rvga_skip_write_detect_by_head_5": 0,
+      "rvga_skip_write_detect_by_head_6": 0,
+      "rvga_skip_write_detect_by_head_7": 0,
+      "rvga_skip_write_detect_by_head_8": 0,
+      "rvga_skip_write_detect_by_head_9": 0,
+      "rvga_skip_write_detect_by_head_10": 0,
+      "rvga_skip_write_detect_by_head_11": 0,
+      "rvga_skip_write_detect_by_head_12": 0,
+      "rvga_skip_write_detect_by_head_13": 0,
+      "rvga_skip_write_detect_by_head_14": 0,
+      "rvga_skip_write_detect_by_head_15": 0,
+      "rvga_skip_write_detect_by_head_16": 0,
+      "rvga_skip_write_detect_by_head_17": 0,
+      "fvga_skip_write_detect_by_head_0": 0,
+      "fvga_skip_write_detect_by_head_1": 0,
+      "fvga_skip_write_detect_by_head_2": 0,
+      "fvga_skip_write_detect_by_head_3": 0,
+      "fvga_skip_write_detect_by_head_4": 0,
+      "fvga_skip_write_detect_by_head_5": 0,
+      "fvga_skip_write_detect_by_head_6": 0,
+      "fvga_skip_write_detect_by_head_7": 0,
+      "fvga_skip_write_detect_by_head_8": 0,
+      "fvga_skip_write_detect_by_head_9": 0,
+      "fvga_skip_write_detect_by_head_10": 0,
+      "fvga_skip_write_detect_by_head_11": 0,
+      "fvga_skip_write_detect_by_head_12": 0,
+      "fvga_skip_write_detect_by_head_13": 0,
+      "fvga_skip_write_detect_by_head_14": 0,
+      "fvga_skip_write_detect_by_head_15": 0,
+      "fvga_skip_write_detect_by_head_16": 0,
+      "fvga_skip_write_detect_by_head_17": 0,
+      "skip_write_detect_threshold_exceeded_by_head_0": 0,
+      "skip_write_detect_threshold_exceeded_by_head_1": 0,
+      "skip_write_detect_threshold_exceeded_by_head_2": 0,
+      "skip_write_detect_threshold_exceeded_by_head_3": 0,
+      "skip_write_detect_threshold_exceeded_by_head_4": 0,
+      "skip_write_detect_threshold_exceeded_by_head_5": 0,
+      "skip_write_detect_threshold_exceeded_by_head_6": 0,
+      "skip_write_detect_threshold_exceeded_by_head_7": 0,
+      "skip_write_detect_threshold_exceeded_by_head_8": 0,
+      "skip_write_detect_threshold_exceeded_by_head_9": 0,
+      "skip_write_detect_threshold_exceeded_by_head_10": 0,
+      "skip_write_detect_threshold_exceeded_by_head_11": 0,
+      "skip_write_detect_threshold_exceeded_by_head_12": 0,
+      "skip_write_detect_threshold_exceeded_by_head_13": 0,
+      "skip_write_detect_threshold_exceeded_by_head_14": 0,
+      "skip_write_detect_threshold_exceeded_by_head_15": 0,
+      "skip_write_detect_threshold_exceeded_by_head_16": 0,
+      "skip_write_detect_threshold_exceeded_by_head_17": 0,
+      "write_workload_power_on_time_by_head_0": 24109,
+      "write_workload_power_on_time_by_head_1": 19336,
+      "write_workload_power_on_time_by_head_2": 20459,
+      "write_workload_power_on_time_by_head_3": 20545,
+      "write_workload_power_on_time_by_head_4": 20175,
+      "write_workload_power_on_time_by_head_5": 19850,
+      "write_workload_power_on_time_by_head_6": 19209,
+      "write_workload_power_on_time_by_head_7": 20069,
+      "write_workload_power_on_time_by_head_8": 20223,
+      "write_workload_power_on_time_by_head_9": 33515,
+      "write_workload_power_on_time_by_head_10": 20383,
+      "write_workload_power_on_time_by_head_11": 19046,
+      "write_workload_power_on_time_by_head_12": 18896,
+      "write_workload_power_on_time_by_head_13": 20935,
+      "write_workload_power_on_time_by_head_14": 20332,
+      "write_workload_power_on_time_by_head_15": 20075,
+      "write_workload_power_on_time_by_head_16": 19333,
+      "write_workload_power_on_time_by_head_17": 18914,
+      "mr_head_resistance_from_head_0": 440,
+      "mr_head_resistance_from_head_1": 403,
+      "mr_head_resistance_from_head_2": 404,
+      "mr_head_resistance_from_head_3": 422,
+      "mr_head_resistance_from_head_4": 357,
+      "mr_head_resistance_from_head_5": 414,
+      "mr_head_resistance_from_head_6": 356,
+      "mr_head_resistance_from_head_7": 392,
+      "mr_head_resistance_from_head_8": 326,
+      "mr_head_resistance_from_head_9": 415,
+      "mr_head_resistance_from_head_10": 352,
+      "mr_head_resistance_from_head_11": 482,
+      "mr_head_resistance_from_head_12": 406,
+      "mr_head_resistance_from_head_13": 440,
+      "mr_head_resistance_from_head_14": 398,
+      "mr_head_resistance_from_head_15": 438,
+      "mr_head_resistance_from_head_16": 349,
+      "mr_head_resistance_from_head_17": 426,
+      "second_mr_head_resistance_by_head_0": 322,
+      "second_mr_head_resistance_by_head_1": 425,
+      "second_mr_head_resistance_by_head_2": 399,
+      "second_mr_head_resistance_by_head_3": 470,
+      "second_mr_head_resistance_by_head_4": 350,
+      "second_mr_head_resistance_by_head_5": 444,
+      "second_mr_head_resistance_by_head_6": 315,
+      "second_mr_head_resistance_by_head_7": 409,
+      "second_mr_head_resistance_by_head_8": 349,
+      "second_mr_head_resistance_by_head_9": 367,
+      "second_mr_head_resistance_by_head_10": 287,
+      "second_mr_head_resistance_by_head_11": 507,
+      "second_mr_head_resistance_by_head_12": 350,
+      "second_mr_head_resistance_by_head_13": 498,
+      "second_mr_head_resistance_by_head_14": 317,
+      "second_mr_head_resistance_by_head_15": 458,
+      "second_mr_head_resistance_by_head_16": 340,
+      "second_mr_head_resistance_by_head_17": 477,
+      "number_of_reallocated_sectors_by_head_0": 0,
+      "number_of_reallocated_sectors_by_head_1": 0,
+      "number_of_reallocated_sectors_by_head_2": 0,
+      "number_of_reallocated_sectors_by_head_3": 0,
+      "number_of_reallocated_sectors_by_head_4": 0,
+      "number_of_reallocated_sectors_by_head_5": 0,
+      "number_of_reallocated_sectors_by_head_6": 0,
+      "number_of_reallocated_sectors_by_head_7": 0,
+      "number_of_reallocated_sectors_by_head_8": 0,
+      "number_of_reallocated_sectors_by_head_9": 0,
+      "number_of_reallocated_sectors_by_head_10": 0,
+      "number_of_reallocated_sectors_by_head_11": 0,
+      "number_of_reallocated_sectors_by_head_12": 0,
+      "number_of_reallocated_sectors_by_head_13": 0,
+      "number_of_reallocated_sectors_by_head_14": 0,
+      "number_of_reallocated_sectors_by_head_15": 0,
+      "number_of_reallocated_sectors_by_head_16": 0,
+      "number_of_reallocated_sectors_by_head_17": 0,
+      "number_of_reallocation_candidate_sectors_by_head_0": 0,
+      "number_of_reallocation_candidate_sectors_by_head_1": 0,
+      "number_of_reallocation_candidate_sectors_by_head_2": 0,
+      "number_of_reallocation_candidate_sectors_by_head_3": 0,
+      "number_of_reallocation_candidate_sectors_by_head_4": 0,
+      "number_of_reallocation_candidate_sectors_by_head_5": 0,
+      "number_of_reallocation_candidate_sectors_by_head_6": 0,
+      "number_of_reallocation_candidate_sectors_by_head_7": 0,
+      "number_of_reallocation_candidate_sectors_by_head_8": 0,
+      "number_of_reallocation_candidate_sectors_by_head_9": 0,
+      "number_of_reallocation_candidate_sectors_by_head_10": 0,
+      "number_of_reallocation_candidate_sectors_by_head_11": 0,
+      "number_of_reallocation_candidate_sectors_by_head_12": 0,
+      "number_of_reallocation_candidate_sectors_by_head_13": 0,
+      "number_of_reallocation_candidate_sectors_by_head_14": 0,
+      "number_of_reallocation_candidate_sectors_by_head_15": 0,
+      "number_of_reallocation_candidate_sectors_by_head_16": 0,
+      "number_of_reallocation_candidate_sectors_by_head_17": 0
+    },
     "supported": true
   }
 }

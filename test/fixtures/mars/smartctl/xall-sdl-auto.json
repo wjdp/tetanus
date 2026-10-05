@@ -18,13 +18,15 @@
       "--json",
       "-n",
       "standby",
+      "-l",
+      "farm",
       "/dev/sdl"
     ],
     "exit_status": 0
   },
   "local_time": {
-    "time_t": 1790972122,
-    "asctime": "Fri Oct  2 21:15:22 2026 BST"
+    "time_t": 1791169795,
+    "asctime": "Mon Oct  5 04:09:55 2026 BST"
   },
   "device": {
     "name": "/dev/sdl",
@@ -33,8 +35,8 @@
     "protocol": "ATA"
   },
   "power_mode": {
-    "ata_value": 129,
-    "name": "IDLE_A"
+    "ata_value": 255,
+    "name": "ACTIVE or IDLE"
   },
   "model_family": "Seagate Exos X16",
   "model_name": "ST16000NM001G-2KK103",
@@ -155,7 +157,7 @@
       {
         "id": 1,
         "name": "Raw_Read_Error_Rate",
-        "value": 81,
+        "value": 75,
         "worst": 64,
         "thresh": 44,
         "when_failed": "",
@@ -170,8 +172,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 127232944,
-          "string": "0/127232944"
+          "value": 33540248,
+          "string": "0/33540248"
         }
       },
       {
@@ -258,8 +260,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 375371945,
-          "string": "0/375371945"
+          "value": 376386692,
+          "string": "0/376386692"
         }
       },
       {
@@ -280,8 +282,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 15218,
-          "string": "15218"
+          "value": 15273,
+          "string": "15273"
         }
       },
       {
@@ -397,7 +399,7 @@
       {
         "id": 190,
         "name": "Airflow_Temperature_Cel",
-        "value": 59,
+        "value": 58,
         "worst": 45,
         "thresh": 40,
         "when_failed": "",
@@ -412,8 +414,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 790298665,
-          "string": "41 (Min/Max 27/47)"
+          "value": 790298666,
+          "string": "42 (Min/Max 27/47)"
         }
       },
       {
@@ -456,14 +458,14 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 668,
-          "string": "668"
+          "value": 670,
+          "string": "670"
         }
       },
       {
         "id": 194,
         "name": "Temperature_Celsius",
-        "value": 41,
+        "value": 42,
         "worst": 55,
         "thresh": 0,
         "when_failed": "",
@@ -478,8 +480,8 @@
           "auto_keep": true
         },
         "raw": {
-          "value": 81604378665,
-          "string": "41 (0 19 0 0 0)"
+          "value": 81604378666,
+          "string": "42 (0 19 0 0 0)"
         }
       },
       {
@@ -588,8 +590,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 10909620658781019,
-          "string": "15195h+42m+20.094s"
+          "value": 9415946997349266,
+          "string": "15250h+36m+32.321s"
         }
       },
       {
@@ -610,8 +612,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 97820309649,
-          "string": "97820309649"
+          "value": 98000361761,
+          "string": "98000361761"
         }
       },
       {
@@ -632,8 +634,8 @@
           "auto_keep": false
         },
         "raw": {
-          "value": 306399287442,
-          "string": "306399287442"
+          "value": 306613824034,
+          "string": "306613824034"
         }
       }
     ]
@@ -643,11 +645,11 @@
     "threshold_percent": 10
   },
   "power_on_time": {
-    "hours": 15218
+    "hours": 15273
   },
   "power_cycle_count": 32,
   "temperature": {
-    "current": 41,
+    "current": 42,
     "power_cycle_min": 27,
     "power_cycle_max": 47,
     "lifetime_min": 25,
@@ -1301,13 +1303,13 @@
       "string": "Active"
     },
     "temperature": {
-      "current": 41,
+      "current": 42,
       "power_cycle_min": 27,
       "power_cycle_max": 47,
       "lifetime_min": 19,
       "lifetime_max": 55,
       "under_limit_count": 0,
-      "over_limit_count": 290
+      "over_limit_count": 309
     },
     "smart_status": {
       "passed": true
@@ -1358,64 +1360,8 @@
       "limit_max": 60
     },
     "size": 128,
-    "index": 8,
+    "index": 64,
     "table": [
-      43,
-      43,
-      44,
-      43,
-      43,
-      44,
-      42,
-      42,
-      42,
-      42,
-      42,
-      42,
-      44,
-      46,
-      45,
-      45,
-      44,
-      45,
-      44,
-      43,
-      43,
-      42,
-      42,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      40,
-      42,
-      42,
-      42,
-      42,
-      42,
-      41,
-      42,
-      42,
-      42,
-      42,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
-      41,
       41,
       42,
       41,
@@ -1487,7 +1433,63 @@
       40,
       42,
       41,
-      41
+      41,
+      41,
+      41,
+      40,
+      41,
+      42,
+      41,
+      40,
+      42,
+      41,
+      42,
+      42,
+      42,
+      41,
+      41,
+      40,
+      41,
+      41,
+      39,
+      36,
+      35,
+      35,
+      37,
+      37,
+      35,
+      38,
+      38,
+      39,
+      41,
+      42,
+      40,
+      39,
+      38,
+      40,
+      39,
+      40,
+      40,
+      40,
+      40,
+      41,
+      41,
+      41,
+      40,
+      40,
+      40,
+      40,
+      40,
+      39,
+      39,
+      39,
+      40,
+      40,
+      39,
+      39,
+      39,
+      39,
+      39
     ]
   },
   "ata_sct_erc": {
@@ -1525,7 +1527,7 @@
             "offset": 16,
             "name": "Power-on Hours",
             "size": 4,
-            "value": 15218,
+            "value": 15273,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1539,7 +1541,7 @@
             "offset": 24,
             "name": "Logical Sectors Written",
             "size": 6,
-            "value": 97818654793,
+            "value": 97998706905,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1553,7 +1555,7 @@
             "offset": 32,
             "name": "Number of Write Commands",
             "size": 6,
-            "value": 328649667,
+            "value": 328987363,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1567,7 +1569,7 @@
             "offset": 40,
             "name": "Logical Sectors Read",
             "size": 6,
-            "value": 306398994729,
+            "value": 306613535273,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1581,7 +1583,7 @@
             "offset": 48,
             "name": "Number of Read Commands",
             "size": 6,
-            "value": 1271269250,
+            "value": 1273089814,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1615,7 +1617,7 @@
             "offset": 8,
             "name": "Spindle Motor Power-on Hours",
             "size": 4,
-            "value": 15196,
+            "value": 15251,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1629,7 +1631,7 @@
             "offset": 16,
             "name": "Head Flying Hours",
             "size": 4,
-            "value": 15193,
+            "value": 15248,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1643,7 +1645,7 @@
             "offset": 24,
             "name": "Head Load Events",
             "size": 4,
-            "value": 668,
+            "value": 670,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1783,7 +1785,7 @@
             "offset": 8,
             "name": "Current Temperature",
             "size": 1,
-            "value": 41,
+            "value": 42,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1797,7 +1799,7 @@
             "offset": 16,
             "name": "Average Short Term Temperature",
             "size": 1,
-            "value": 40,
+            "value": 39,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -1811,7 +1813,7 @@
             "offset": 24,
             "name": "Average Long Term Temperature",
             "size": 1,
-            "value": 43,
+            "value": 42,
             "flags": {
               "value": 192,
               "string": "V--- ",
@@ -2115,6 +2117,400 @@
     "reset": false
   },
   "seagate_farm_log": {
+    "page_0_log_header": {
+      "farm_log_version": [
+        3,
+        7
+      ],
+      "pages_supported": 6,
+      "log_size": 98304,
+      "page_size": 16384,
+      "heads_supported": 24,
+      "number_of_copies": 0,
+      "reason_for_frame_capture": 0
+    },
+    "page_1_drive_information": {
+      "serial_number": "DD5EQGL2",
+      "world_wide_name": "0x5000c5063b08b482",
+      "device_interface": "SATA",
+      "device_capacity_in_sectors": 31251759104,
+      "physical_sector_size": 4096,
+      "logical_sector_size": 512,
+      "device_buffer_size": 268435456,
+      "number_of_heads": 18,
+      "form_factor": "3.5 inches",
+      "rotation_rate": 7200,
+      "firmware_rev": "SN03    ",
+      "poh": 30529,
+      "spoh": 15251,
+      "head_flight_hours": 15248,
+      "head_load_events": 670,
+      "power_cycle_count": 54,
+      "reset_count": 52,
+      "spin_up_time": 10,
+      "time_to_ready": 22836,
+      "time_held": 0,
+      "drive_recording_type": "CMR",
+      "max_number_for_reasign": 57754,
+      "date_of_assembly": "",
+      "depopulation_head_mask": 0
+    },
+    "page_2_workload_statistics": {
+      "total_read_commands": 1273095926,
+      "total_write_commands": 329018365,
+      "total_random_reads": 107581213,
+      "total_random_writes": 289282032,
+      "total_other_commands": 42061104,
+      "logical_sectors_written": 98000361761,
+      "logical_sectors_read": 306613833120,
+      "dither": 32017,
+      "dither_random": 111905,
+      "dither_sequential": 14880,
+      "read_commands_by_radius_0_3": 0,
+      "read_commands_by_radius_3_25": 0,
+      "read_commands_by_radius_25_75": 0,
+      "read_commands_by_radius_75_100": 0,
+      "write_commands_by_radius_0_3": 0,
+      "write_commands_by_radius_3_25": 0,
+      "write_commands_by_radius_25_75": 0,
+      "write_commands_by_radius_75_100": 0
+    },
+    "page_3_error_statistics": {
+      "number_of_unrecoverable_read_errors": 0,
+      "number_of_unrecoverable_write_errors": 0,
+      "number_of_reallocated_sectors": 0,
+      "number_of_read_recovery_attempts": 0,
+      "number_of_mechanical_start_failures": 0,
+      "number_of_reallocated_candidate_sectors": 0,
+      "total_asr_events": 8,
+      "total_crc_errors": 0,
+      "attr_spin_retry_count": 0,
+      "normal_spin_retry_count": 100,
+      "worst_spin_rretry_count": 100,
+      "number_of_ioedc_errors": 0,
+      "command_time_out_count_total": 3,
+      "command_time_out_over_5_seconds_count": 1,
+      "command_time_out_over_7_seconds_count": 1,
+      "total_flash_led": 0,
+      "index_flash_led": 0,
+      "uncorrectables": 0,
+      "cumulative_unrecoverable_read_erc": 0,
+      "total_flash_led_errors": 0,
+      "flash_led_event_0": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_7": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_6": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_5": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_4": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_3": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_2": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "flash_led_event_1": {
+        "timestamp_of_event": 0,
+        "event_information": 0,
+        "power_cycle_event": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_0": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_1": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_2": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_3": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_4": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_5": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_6": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_7": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_8": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_9": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_10": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_11": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_12": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_13": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_14": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_15": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_16": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      },
+      "cum_lifetime_unrecoverable_by_head_17": {
+        "cum_lifetime_unrecoverable_read_repeating": 0,
+        "cum_lifetime_unrecoverable_read_unique": 0
+      }
+    },
+    "page_4_environment_statistics": {
+      "curent_temp": 42,
+      "highest_temp": 55,
+      "lowest_temp": 25,
+      "average_temp": 39,
+      "average_long_temp": 42,
+      "highest_short_temp": 49,
+      "lowest_short_temp": 37,
+      "highest_long_temp": 46,
+      "lowest_long_temp": 41,
+      "over_temp_time": 0,
+      "under_temp_time": 0,
+      "max_temp": 60,
+      "min_temp": 5,
+      "humidity": 0,
+      "current_motor_power": 4521,
+      "current_12v_in_mv": 12116,
+      "minimum_12v_in_mv": 12067,
+      "maximum_12v_in_mv": 12133,
+      "current_5v_in_mv": 5130,
+      "minimum_5v_in_mv": 5085,
+      "maximum_5v_in_mv": 5142,
+      "average_12v_power": 0,
+      "minimum_12v_power": 0,
+      "maximum_12v_power": 0,
+      "average_5v_power": 0,
+      "minimum_5v_power": 0,
+      "maximum_5v_power": 0
+    },
+    "page_5_reliability_statistics": {
+      "attr_error_rate_raw": 33551888,
+      "error_rate_normalized": 75,
+      "error_rate_worst": 64,
+      "attr_seek_error_rate_raw": 376386773,
+      "seek_error_rate_normalized": 86,
+      "seek_error_rate_worst": 60,
+      "high_priority_unload_events": 23,
+      "helium_presure_trip": 0,
+      "lbas_corrected_by_parity_sector": 0,
+      "dvga_skip_write_detect_by_head_0": 0,
+      "dvga_skip_write_detect_by_head_1": 0,
+      "dvga_skip_write_detect_by_head_2": 0,
+      "dvga_skip_write_detect_by_head_3": 0,
+      "dvga_skip_write_detect_by_head_4": 0,
+      "dvga_skip_write_detect_by_head_5": 0,
+      "dvga_skip_write_detect_by_head_6": 0,
+      "dvga_skip_write_detect_by_head_7": 0,
+      "dvga_skip_write_detect_by_head_8": 0,
+      "dvga_skip_write_detect_by_head_9": 0,
+      "dvga_skip_write_detect_by_head_10": 0,
+      "dvga_skip_write_detect_by_head_11": 0,
+      "dvga_skip_write_detect_by_head_12": 0,
+      "dvga_skip_write_detect_by_head_13": 0,
+      "dvga_skip_write_detect_by_head_14": 0,
+      "dvga_skip_write_detect_by_head_15": 0,
+      "dvga_skip_write_detect_by_head_16": 0,
+      "dvga_skip_write_detect_by_head_17": 0,
+      "rvga_skip_write_detect_by_head_0": 0,
+      "rvga_skip_write_detect_by_head_1": 0,
+      "rvga_skip_write_detect_by_head_2": 0,
+      "rvga_skip_write_detect_by_head_3": 0,
+      "rvga_skip_write_detect_by_head_4": 0,
+      "rvga_skip_write_detect_by_head_5": 0,
+      "rvga_skip_write_detect_by_head_6": 0,
+      "rvga_skip_write_detect_by_head_7": 0,
+      "rvga_skip_write_detect_by_head_8": 0,
+      "rvga_skip_write_detect_by_head_9": 0,
+      "rvga_skip_write_detect_by_head_10": 0,
+      "rvga_skip_write_detect_by_head_11": 0,
+      "rvga_skip_write_detect_by_head_12": 0,
+      "rvga_skip_write_detect_by_head_13": 0,
+      "rvga_skip_write_detect_by_head_14": 0,
+      "rvga_skip_write_detect_by_head_15": 0,
+      "rvga_skip_write_detect_by_head_16": 0,
+      "rvga_skip_write_detect_by_head_17": 0,
+      "fvga_skip_write_detect_by_head_0": 0,
+      "fvga_skip_write_detect_by_head_1": 0,
+      "fvga_skip_write_detect_by_head_2": 0,
+      "fvga_skip_write_detect_by_head_3": 0,
+      "fvga_skip_write_detect_by_head_4": 0,
+      "fvga_skip_write_detect_by_head_5": 0,
+      "fvga_skip_write_detect_by_head_6": 0,
+      "fvga_skip_write_detect_by_head_7": 0,
+      "fvga_skip_write_detect_by_head_8": 0,
+      "fvga_skip_write_detect_by_head_9": 0,
+      "fvga_skip_write_detect_by_head_10": 0,
+      "fvga_skip_write_detect_by_head_11": 0,
+      "fvga_skip_write_detect_by_head_12": 0,
+      "fvga_skip_write_detect_by_head_13": 0,
+      "fvga_skip_write_detect_by_head_14": 0,
+      "fvga_skip_write_detect_by_head_15": 0,
+      "fvga_skip_write_detect_by_head_16": 0,
+      "fvga_skip_write_detect_by_head_17": 0,
+      "skip_write_detect_threshold_exceeded_by_head_0": 0,
+      "skip_write_detect_threshold_exceeded_by_head_1": 0,
+      "skip_write_detect_threshold_exceeded_by_head_2": 0,
+      "skip_write_detect_threshold_exceeded_by_head_3": 0,
+      "skip_write_detect_threshold_exceeded_by_head_4": 0,
+      "skip_write_detect_threshold_exceeded_by_head_5": 0,
+      "skip_write_detect_threshold_exceeded_by_head_6": 0,
+      "skip_write_detect_threshold_exceeded_by_head_7": 0,
+      "skip_write_detect_threshold_exceeded_by_head_8": 0,
+      "skip_write_detect_threshold_exceeded_by_head_9": 0,
+      "skip_write_detect_threshold_exceeded_by_head_10": 0,
+      "skip_write_detect_threshold_exceeded_by_head_11": 0,
+      "skip_write_detect_threshold_exceeded_by_head_12": 0,
+      "skip_write_detect_threshold_exceeded_by_head_13": 0,
+      "skip_write_detect_threshold_exceeded_by_head_14": 0,
+      "skip_write_detect_threshold_exceeded_by_head_15": 0,
+      "skip_write_detect_threshold_exceeded_by_head_16": 0,
+      "skip_write_detect_threshold_exceeded_by_head_17": 0,
+      "write_workload_power_on_time_by_head_0": 15020,
+      "write_workload_power_on_time_by_head_1": 12464,
+      "write_workload_power_on_time_by_head_2": 13035,
+      "write_workload_power_on_time_by_head_3": 11737,
+      "write_workload_power_on_time_by_head_4": 12233,
+      "write_workload_power_on_time_by_head_5": 11611,
+      "write_workload_power_on_time_by_head_6": 12659,
+      "write_workload_power_on_time_by_head_7": 11793,
+      "write_workload_power_on_time_by_head_8": 18011,
+      "write_workload_power_on_time_by_head_9": 12129,
+      "write_workload_power_on_time_by_head_10": 12515,
+      "write_workload_power_on_time_by_head_11": 12556,
+      "write_workload_power_on_time_by_head_12": 11544,
+      "write_workload_power_on_time_by_head_13": 12131,
+      "write_workload_power_on_time_by_head_14": 12831,
+      "write_workload_power_on_time_by_head_15": 12933,
+      "write_workload_power_on_time_by_head_16": 12946,
+      "write_workload_power_on_time_by_head_17": 12375,
+      "mr_head_resistance_from_head_0": 456,
+      "mr_head_resistance_from_head_1": 424,
+      "mr_head_resistance_from_head_2": 478,
+      "mr_head_resistance_from_head_3": 488,
+      "mr_head_resistance_from_head_4": 424,
+      "mr_head_resistance_from_head_5": 417,
+      "mr_head_resistance_from_head_6": 425,
+      "mr_head_resistance_from_head_7": 480,
+      "mr_head_resistance_from_head_8": 450,
+      "mr_head_resistance_from_head_9": 325,
+      "mr_head_resistance_from_head_10": 391,
+      "mr_head_resistance_from_head_11": 458,
+      "mr_head_resistance_from_head_12": 470,
+      "mr_head_resistance_from_head_13": 482,
+      "mr_head_resistance_from_head_14": 495,
+      "mr_head_resistance_from_head_15": 415,
+      "mr_head_resistance_from_head_16": 419,
+      "mr_head_resistance_from_head_17": 498,
+      "second_mr_head_resistance_by_head_0": 456,
+      "second_mr_head_resistance_by_head_1": 424,
+      "second_mr_head_resistance_by_head_2": 478,
+      "second_mr_head_resistance_by_head_3": 488,
+      "second_mr_head_resistance_by_head_4": 424,
+      "second_mr_head_resistance_by_head_5": 417,
+      "second_mr_head_resistance_by_head_6": 425,
+      "second_mr_head_resistance_by_head_7": 480,
+      "second_mr_head_resistance_by_head_8": 450,
+      "second_mr_head_resistance_by_head_9": 325,
+      "second_mr_head_resistance_by_head_10": 391,
+      "second_mr_head_resistance_by_head_11": 458,
+      "second_mr_head_resistance_by_head_12": 470,
+      "second_mr_head_resistance_by_head_13": 482,
+      "second_mr_head_resistance_by_head_14": 495,
+      "second_mr_head_resistance_by_head_15": 415,
+      "second_mr_head_resistance_by_head_16": 419,
+      "second_mr_head_resistance_by_head_17": 498,
+      "number_of_reallocated_sectors_by_head_0": 0,
+      "number_of_reallocated_sectors_by_head_1": 0,
+      "number_of_reallocated_sectors_by_head_2": 0,
+      "number_of_reallocated_sectors_by_head_3": 0,
+      "number_of_reallocated_sectors_by_head_4": 0,
+      "number_of_reallocated_sectors_by_head_5": 0,
+      "number_of_reallocated_sectors_by_head_6": 0,
+      "number_of_reallocated_sectors_by_head_7": 0,
+      "number_of_reallocated_sectors_by_head_8": 0,
+      "number_of_reallocated_sectors_by_head_9": 0,
+      "number_of_reallocated_sectors_by_head_10": 0,
+      "number_of_reallocated_sectors_by_head_11": 0,
+      "number_of_reallocated_sectors_by_head_12": 0,
+      "number_of_reallocated_sectors_by_head_13": 0,
+      "number_of_reallocated_sectors_by_head_14": 0,
+      "number_of_reallocated_sectors_by_head_15": 0,
+      "number_of_reallocated_sectors_by_head_16": 0,
+      "number_of_reallocated_sectors_by_head_17": 0,
+      "number_of_reallocation_candidate_sectors_by_head_0": 0,
+      "number_of_reallocation_candidate_sectors_by_head_1": 0,
+      "number_of_reallocation_candidate_sectors_by_head_2": 0,
+      "number_of_reallocation_candidate_sectors_by_head_3": 0,
+      "number_of_reallocation_candidate_sectors_by_head_4": 0,
+      "number_of_reallocation_candidate_sectors_by_head_5": 0,
+      "number_of_reallocation_candidate_sectors_by_head_6": 0,
+      "number_of_reallocation_candidate_sectors_by_head_7": 0,
+      "number_of_reallocation_candidate_sectors_by_head_8": 0,
+      "number_of_reallocation_candidate_sectors_by_head_9": 0,
+      "number_of_reallocation_candidate_sectors_by_head_10": 0,
+      "number_of_reallocation_candidate_sectors_by_head_11": 0,
+      "number_of_reallocation_candidate_sectors_by_head_12": 0,
+      "number_of_reallocation_candidate_sectors_by_head_13": 0,
+      "number_of_reallocation_candidate_sectors_by_head_14": 0,
+      "number_of_reallocation_candidate_sectors_by_head_15": 0,
+      "number_of_reallocation_candidate_sectors_by_head_16": 0,
+      "number_of_reallocation_candidate_sectors_by_head_17": 0
+    },
     "supported": true
   }
 }

@@ -18,6 +18,8 @@
       "--json",
       "-n",
       "standby",
+      "-l",
+      "farm",
       "-d",
       "scsi",
       "/dev/sdm"
@@ -25,8 +27,8 @@
     "exit_status": 4
   },
   "local_time": {
-    "time_t": 1790972122,
-    "asctime": "Fri Oct  2 21:15:22 2026 BST"
+    "time_t": 1791169796,
+    "asctime": "Mon Oct  5 04:09:56 2026 BST"
   },
   "device": {
     "name": "/dev/sdm",
@@ -78,7 +80,7 @@
     "passed": true
   },
   "temperature": {
-    "current": 43,
+    "current": 40,
     "drive_trip": 0
   },
   "seagate_farm_log": {

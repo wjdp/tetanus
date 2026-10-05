@@ -166,7 +166,7 @@ describe("/api/disks", () => {
         pending: { value: 0, status: "passed" },
         uncorrectable: { value: 0, status: "passed" },
         wearPercent: { value: 0, status: "passed" },
-        bytesWritten: 1327539 * 32 * 1024 ** 2,
+        bytesWritten: 1330057 * 32 * 1024 ** 2,
         bytesWrittenInferred: false,
       },
       faultCounts: { error: 0, warning: 1, acknowledged: 0 },
