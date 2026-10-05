@@ -182,6 +182,12 @@ const temperatureSeries = computed(() => [
       />
 
       <DiskSelfTests :self-tests="smart.selfTests" />
+
+      <DiskFarm
+        v-if="smart.farm"
+        :farm="smart.farm"
+        :smart-hours="smart.reading.powerOnHours ?? null"
+      />
     </template>
 
     <DiskAcceptFaultModal

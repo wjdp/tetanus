@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { smartResetHours } from "#shared/smart/farm";
 import { temperatureColour } from "#shared/temperature";
 import { type EffectiveWarranty, effectiveWarranty } from "#shared/warranty";
 import { warrantyClass } from "~/components/inventory/types";
@@ -9,6 +10,7 @@ import type { DiskDetail } from "./types";
 const props = defineProps<{ disk: DiskDetail }>();
 
 const SMART_TAB = { query: { tab: "smart" } };
+const NuxtLink = resolveComponent("NuxtLink");
 
 interface Figure {
   id: string;
@@ -30,18 +32,7 @@ const figures = computed<Figure[]>(() => {
       class: temperatureClass(disk),
       toSmart: true,
     },
-    disk.latestPowerOnHours === null
-      ? null
-      : {
-          id: "power-on",
-          label: "Powered on",
-          value: formatHours(disk.latestPowerOnHours),
-          note:
-            disk.latestPowerCycles === null
-              ? undefined
-              : `${disk.latestPowerCycles.toLocaleString("en-GB")} cycles`,
-          toSmart: true,
-        },
+    powerOnFigure(disk),
     disk.ageDays === null
       ? null
       : {
@@ -57,6 +48,25 @@ const figures = computed<Figure[]>(() => {
   ];
   return list.filter((figure): figure is Figure => figure !== null);
 });
+
+function powerOnFigure(disk: DiskDetail): Figure | null {
+  if (disk.latestPowerOnHours === null) return null;
+  const cycles =
+    disk.latestPowerCycles === null
+      ? undefined
+      : `${disk.latestPowerCycles.toLocaleString("en-GB")} cycles`;
+  const farmHours = disk.latestFarm?.powerOnHours;
+  const reset =
+    disk.latestFarm && smartResetHours(disk.latestFarm, disk.latestPowerOnHours) !== null;
+  return {
+    id: "power-on",
+    label: "Powered on",
+    value: formatHours(disk.latestPowerOnHours),
+    note: reset && farmHours !== undefined ? `FARM ${formatHours(farmHours)}` : cycles,
+    class: reset ? STATUS_TEXT_CLASS.warning : undefined,
+    toSmart: true,
+  };
+}
 
 function temperatureClass(disk: DiskDetail): string | undefined {
   if (disk.latestTemp === null) return "text-dimmed";
@@ -126,7 +136,7 @@ function wearFigure(disk: DiskDetail): Figure | null {
       </dt>
       <dd class="tabular text-xl font-semibold tracking-tight">
         <component
-          :is="figure.toSmart ? 'NuxtLink' : 'span'"
+          :is="figure.toSmart ? NuxtLink : 'span'"
           :to="figure.toSmart ? SMART_TAB : undefined"
           :class="figure.class ?? 'text-highlighted'"
           >{{ figure.value }}</component

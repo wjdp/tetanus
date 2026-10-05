@@ -110,6 +110,19 @@ const detail = {
 };
 
 registerEndpoint("/api/disks/7", () => detail);
+registerEndpoint("/api/disks/17", () => ({
+  ...detail,
+  id: 17,
+  latestFarm: {
+    interface: "ata",
+    logVersion: "4.19",
+    powerOnHours: 60_000,
+    workload: {},
+    errors: {},
+    environment: {},
+    perHead: [],
+  },
+}));
 registerEndpoint("/api/disks/8", () => ({
   ...detail,
   id: 8,
@@ -422,6 +435,13 @@ describe("disk page", () => {
     expect(disposed.find('[data-testid="dispose-prominent"]').exists()).toBe(
       false,
     );
+  });
+
+  it("shows FARM hours on the power-on figure when SMART was reset", async () => {
+    const page = await mountPage("/disks/17");
+    const figure = page.get('[data-figure="power-on"]');
+    expect(figure.text()).toContain("FARM 6.8 y");
+    expect(figure.get("a").classes()).toContain("text-warning");
   });
 
   it("shows headline figures above the tabs and groups as panels, Health first", async () => {

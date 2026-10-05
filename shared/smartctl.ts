@@ -120,6 +120,7 @@ export interface SeagateFarm {
   powerCycles?: number;
   resetCount?: number;
   heads?: number;
+  logicalSectorSize?: number;
   recordingType?: string;
   assembledWeek?: string;
   heliumPressureTripped?: boolean;

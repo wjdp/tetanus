@@ -106,6 +106,7 @@ function parseAta(log: Json): SeagateFarm {
     powerCycles: number(drive.power_cycle_count),
     resetCount: number(drive.reset_count),
     heads,
+    logicalSectorSize: number(drive.logical_sector_size),
     recordingType: trimmed(drive.drive_recording_type),
     assembledWeek: assembledWeek(drive.date_of_assembly),
     heliumPressureTripped:
@@ -204,6 +205,7 @@ function parseScsi(log: Json): SeagateFarm {
     powerCycles: number(drive.power_cycle_count),
     resetCount: number(drive.hardware_reset_count),
     heads,
+    logicalSectorSize: number(drive.logical_sector_size),
     recordingType: trimmed(driveContinued.drive_recording_type),
     assembledWeek: assembledWeek(drive.date_of_assembled),
     heliumPressureTripped:

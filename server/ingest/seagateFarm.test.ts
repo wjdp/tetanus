@@ -18,6 +18,7 @@ describe("extractSeagateFarm", () => {
       spindleHours: 33023,
       powerCycles: 77,
       heads: 12,
+      logicalSectorSize: 512,
       recordingType: "CMR",
       assembledWeek: "2022-W03",
       heliumPressureTripped: false,
