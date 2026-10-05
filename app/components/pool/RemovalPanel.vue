@@ -35,7 +35,7 @@ const { formatZfsBytes } = useZfsByteSystem();
       <p class="text-info tabular text-sm">removing {{ percent }} %</p>
     </div>
     <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-      <dt class="text-muted">Vdev</dt>
+      <dt class="text-muted">vdev</dt>
       <dd class="text-highlighted tabular">{{ removal.removingVdev }}</dd>
       <dt class="text-muted">State</dt>
       <dd class="text-highlighted">{{ stateLabel }}</dd>

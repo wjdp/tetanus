@@ -42,7 +42,7 @@ export const RETENTION_RULES: RetentionRule[] = [
       "Temperature faults look back 7 days. Older charts keep the peaks and the daily range rather than every sample.",
   },
   {
-    data: "Vdev error counters",
+    data: "vdev error counters",
     kept: "Forever.",
     reason:
       "Written only when a counter or state changes, and fault detection compares against old baselines.",

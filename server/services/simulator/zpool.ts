@@ -677,7 +677,7 @@ export function detachToSingle(pool: StatusPool, groupName: string) {
   const group = groupNamed(pool, groupName);
   const [kept, ...detached] = childrenOf(pool, group);
   if (!kept || !isLeaf(kept)) {
-    throw new Error(`Vdev ${groupName} has no leaf to keep`);
+    throw new Error(`vdev ${groupName} has no leaf to keep`);
   }
   if (group.parent === undefined) delete kept.parent;
   else kept.parent = group.parent;

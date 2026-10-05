@@ -698,7 +698,7 @@ export const specialNearlyFull = defineScenario({
   applies: (subject) =>
     hasStatus(subject) && allocationClassVdevs(statusPool(subject)).length > 0,
   params: (subject) => [
-    vdevParam("vdev", "Vdev", allocationClassVdevs(statusPool(subject))),
+    vdevParam("vdev", "vdev", allocationClassVdevs(statusPool(subject))),
     numberParam("cap", "Capacity", 92, { min: 0, max: 100, unit: "%" }),
   ],
   plan: (subject, params) => ({

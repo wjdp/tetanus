@@ -71,7 +71,7 @@ describe("InventoryColumnPicker", () => {
       expect.arrayContaining(["Form factor", "TRIM"]),
     );
     expect(group("Placement")).toEqual(
-      expect.arrayContaining(["Device", "Vdev"]),
+      expect.arrayContaining(["Device", "vdev"]),
     );
     expect(group("Health")).toEqual(
       expect.arrayContaining([

@@ -431,7 +431,7 @@ export function getVdevReadings(
     .from(vdev)
     .where(and(eq(vdev.id, vdevId), eq(vdev.poolId, poolId)))
     .get();
-  if (!vdevRow) throw notFound(`Vdev ${vdevId} not found in pool ${poolId}`);
+  if (!vdevRow) throw notFound(`vdev ${vdevId} not found in pool ${poolId}`);
   const windowStart = new Date(now.getTime() - VDEV_READING_DAYS * DAY_MS);
   const inForceAtStart = db
     .select()

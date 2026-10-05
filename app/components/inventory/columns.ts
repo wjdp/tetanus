@@ -221,7 +221,7 @@ export const INVENTORY_COLUMNS: InventoryColumn[] = [
   },
   {
     id: "vdev",
-    label: "Vdev",
+    label: "vdev",
     group: "Placement",
     value: (disk) => vdevPlacement(disk.membership)?.label ?? null,
     defaultVisible: false,

@@ -78,7 +78,7 @@ watch(activeTab, (tab) => {
 });
 
 const tabs = computed<TabsItem[]>(() => [
-  { label: "Vdevs", slot: "vdevs", value: "vdevs" },
+  { label: "vdevs", slot: "vdevs", value: "vdevs" },
   {
     label: "Datasets",
     slot: "datasets",
