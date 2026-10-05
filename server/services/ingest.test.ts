@@ -94,6 +94,36 @@ describe("recordIngest", () => {
     expect(db.select().from(collectorRun).all()).toHaveLength(2);
   });
 
+  it("keeps only the latest run of per-event sources", () => {
+    const later = new Date("2026-09-01T11:00:00Z");
+    for (const source of ["zed-event", "versions"]) {
+      for (const at of [receivedAt, later]) {
+        recordIngest({
+          hostName: "mars",
+          source,
+          meta: { failed: 1 },
+          body: "",
+          receivedAt: at,
+        });
+      }
+    }
+
+    expect(
+      db
+        .select({
+          source: collectorRun.source,
+          receivedAt: collectorRun.receivedAt,
+        })
+        .from(collectorRun)
+        .orderBy(collectorRun.source, collectorRun.receivedAt)
+        .all(),
+    ).toEqual([
+      { source: "versions", receivedAt },
+      { source: "versions", receivedAt: later },
+      { source: "zed-event", receivedAt: later },
+    ]);
+  });
+
   it("keeps separate payloads per device", () => {
     for (const device of ["/dev/sda", "/dev/sdb", "/dev/sda"]) {
       recordIngest({

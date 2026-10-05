@@ -17,6 +17,7 @@ import {
   downsample,
   evaluateMinimalReading,
   evaluateNamedAttributes,
+  FULL_TEMPERATURE_DAYS,
   getSmartHistory,
   getSmartOverview,
   insertSmartReading,
@@ -194,6 +195,18 @@ describe("recordSmartReading", () => {
       { at: new Date("2026-09-01T09:30:00Z"), celsius: 30 },
       { at: new Date("2026-09-01T10:00:00Z"), celsius: 33 },
     ]);
+  });
+
+  it("drops SCT history older than the full-detail window", () => {
+    const receivedAt = new Date("2026-09-01T00:00:00Z");
+    const points = sctTemperaturePoints(
+      { intervalMinutes: 24 * 60, values: Array(40).fill(30) },
+      receivedAt,
+    );
+    expect(points).toHaveLength(FULL_TEMPERATURE_DAYS + 1);
+    expect(points[0]?.at).toEqual(
+      new Date(receivedAt.getTime() - FULL_TEMPERATURE_DAYS * DAY_MS),
+    );
   });
 
   it("upserts self-tests on type and lifetime hours", () => {

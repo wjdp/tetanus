@@ -164,6 +164,9 @@ function presentTemperature(celsius: number | null | undefined) {
   return typeof celsius === "number" && celsius > 0 ? celsius : null;
 }
 
+export const FULL_TEMPERATURE_DAYS = 30;
+
+/** Older points would land in hours retention has already collapsed. */
 export function sctTemperaturePoints(
   history: SctTemperatureHistory | undefined,
   receivedAt: Date,
@@ -171,10 +174,12 @@ export function sctTemperaturePoints(
   if (!history?.intervalMinutes || history.intervalMinutes <= 0) return [];
   const intervalMs = history.intervalMinutes * MINUTE_MS;
   const newestIndex = history.values.length - 1;
+  const oldest = receivedAt.getTime() - FULL_TEMPERATURE_DAYS * DAY_MS;
   return history.values.flatMap((value, index) => {
     const celsius = presentTemperature(value);
     if (celsius === null) return [];
     const unaligned = receivedAt.getTime() - (newestIndex - index) * intervalMs;
+    if (unaligned < oldest) return [];
     const at = new Date(Math.floor(unaligned / intervalMs) * intervalMs);
     return [{ at, celsius }];
   });

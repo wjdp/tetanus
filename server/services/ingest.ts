@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { parseCollectorProducer } from "#shared/collector";
 import {
   type IngestMeta,
@@ -30,6 +31,27 @@ export type IngestOutcome =
   | { ok: false; error: string; reported?: true };
 
 const STDERR_LINES = 3;
+
+/** Sources posted once per event rather than per run: only the latest run is kept. */
+const LATEST_RUN_ONLY_SOURCES: ReadonlySet<IngestSource> = new Set([
+  "zed-event",
+]);
+
+type CollectorRunValues = typeof collectorRun.$inferInsert;
+
+function recordRun(values: CollectorRunValues) {
+  if (LATEST_RUN_ONLY_SOURCES.has(values.source as IngestSource)) {
+    db.delete(collectorRun)
+      .where(
+        and(
+          eq(collectorRun.hostId, values.hostId),
+          eq(collectorRun.source, values.source),
+        ),
+      )
+      .run();
+  }
+  db.insert(collectorRun).values(values).run();
+}
 
 function commandFailure(status: number, stderr: string) {
   const lines = stderr
@@ -93,9 +115,7 @@ export function recordIngest({
 
   if (meta.failed !== undefined) {
     const error = commandFailure(meta.failed, body);
-    db.insert(collectorRun)
-      .values({ ...run, exitStatus: meta.failed, ok: false, error })
-      .run();
+    recordRun({ ...run, exitStatus: meta.failed, ok: false, error });
     return { ok: false, error, reported: true };
   }
 
@@ -104,9 +124,7 @@ export function recordIngest({
     parsed = PARSERS[source](body, meta);
   } catch (error) {
     const message = describeError(error);
-    db.insert(collectorRun)
-      .values({ ...run, ok: false, error: message })
-      .run();
+    recordRun({ ...run, ok: false, error: message });
     return { ok: false, error: message };
   }
 
@@ -132,9 +150,7 @@ export function recordIngest({
       data: parsed.data,
       body,
     });
-    db.insert(collectorRun)
-      .values({ ...run, ok: true, error: handlerError })
-      .run();
+    recordRun({ ...run, ok: true, error: handlerError });
   });
 
   void requestAlertsTick();
