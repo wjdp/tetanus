@@ -86,6 +86,7 @@ describe("/api/pools/:id/datasets", () => {
       depth: 0,
       parentId: null,
       present: true,
+      growth: null,
     });
     expect(
       datasets.find((row: DatasetListing) => row.name === UTN),

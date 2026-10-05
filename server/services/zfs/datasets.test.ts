@@ -22,6 +22,7 @@ import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
 import { archivePool } from "./archive";
 import {
+  type DatasetSummary,
   datasetCounts,
   getDataset,
   listDatasets,
@@ -487,6 +488,74 @@ describe("dataset queries", () => {
       const rows = listDatasets(tank.id);
       expect(rows.at(-1)).toMatchObject({ name: "tank/a6k", present: false });
       expect(rows.slice(0, -1).every((row) => row.present)).toBe(true);
+    });
+
+    describe("growth", () => {
+      const daysAfter = (days: number) => hoursAfter(days * 24);
+      const growthOf = (rows: DatasetSummary[], name: string) =>
+        rows.find((row) => row.name === name)?.growth;
+      const name = "tank/delf";
+      const used = 25746410464;
+
+      it("is null with under seven days of readings", () => {
+        const { tank } = seedAll();
+        const rows = listDatasets(tank.id, daysAfter(6));
+        expect(rows.every((row) => row.growth === null)).toBe(true);
+      });
+
+      it("falls back to the earliest reading for a young dataset", () => {
+        const { hostId, tank } = seedAll();
+        const grown = Math.round(used * 1.02);
+        observeZfsList(
+          hostId,
+          withUsed(marsList(), name, grown),
+          daysAfter(10),
+        );
+        expect(growthOf(listDatasets(tank.id, daysAfter(10)), name)).toEqual({
+          used: grown - used,
+          data: 0,
+          snapshots: 0,
+          sinceAt: T0,
+        });
+      });
+
+      it("measures from the latest reading at or before 30 days ago", () => {
+        const { hostId, tank } = seedAll();
+        const atDayFive = Math.round(used * 1.02);
+        const atDayForty = Math.round(used * 1.05);
+        observeZfsList(
+          hostId,
+          withUsed(marsList(), name, atDayFive),
+          daysAfter(5),
+        );
+        observeZfsList(
+          hostId,
+          withUsed(marsList(), name, atDayForty),
+          daysAfter(40),
+        );
+        expect(growthOf(listDatasets(tank.id, daysAfter(40)), name)).toEqual(
+          expect.objectContaining({
+            used: atDayForty - atDayFive,
+            sinceAt: daysAfter(5),
+          }),
+        );
+      });
+
+      it("has no data growth from a reading without the space split", () => {
+        const { tank } = seedAll();
+        db.update(datasetReading).set({ usedByDataset: null }).run();
+        expect(growthOf(listDatasets(tank.id, daysAfter(10)), name)).toEqual(
+          expect.objectContaining({ data: null, snapshots: 0 }),
+        );
+      });
+
+      it("is null for a destroyed dataset", () => {
+        const { hostId, tank } = seedAll();
+        destroy(hostId, "tank/a6k");
+        expect(
+          growthOf(listDatasets(tank.id, daysAfter(10)), "tank/a6k"),
+        ).toBeNull();
+      });
     });
 
     it("404s for an unknown pool", () => {

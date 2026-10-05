@@ -9,6 +9,7 @@ import {
   inArray,
   isNull,
   lt,
+  lte,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -498,10 +499,20 @@ export function observeZfsSnapshots(
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const DATASET_READING_DAYS = 90;
+export const GROWTH_WINDOW_DAYS = 30;
+export const GROWTH_MINIMUM_DAYS = 7;
 export const DATASET_SEARCH_LIMIT = 20;
+
+export interface DatasetGrowth {
+  used: number;
+  data: number | null;
+  snapshots: number | null;
+  sinceAt: Date;
+}
 
 export interface DatasetSummary extends DatasetRow {
   depth: number;
+  growth: DatasetGrowth | null;
 }
 
 export interface DatasetHost {
@@ -521,7 +532,8 @@ export interface DatasetSnapshot extends SnapshotRow {
   ageMs: number;
 }
 
-export interface DatasetDetail extends DatasetSummary {
+export interface DatasetDetail extends DatasetRow {
+  depth: number;
   pool: { id: number; name: string; guid: string };
   host: DatasetHost;
   children: DatasetChild[];
@@ -558,13 +570,68 @@ function compareDatasetPaths(a: string, b: string) {
   return left.length - right.length;
 }
 
-export function listDatasets(poolId: number): DatasetSummary[] {
+function difference(now: number | null, then: number | null) {
+  return now === null || then === null ? null : now - then;
+}
+
+function growthBaselines(poolId: number, now: Date) {
+  const readingIds = (aggregate: SQL<number>, at?: SQL) =>
+    db
+      .select({ id: aggregate })
+      .from(datasetReading)
+      .innerJoin(dataset, eq(dataset.id, datasetReading.datasetId))
+      .where(and(eq(dataset.poolId, poolId), eq(dataset.present, true), at))
+      .groupBy(datasetReading.datasetId);
+  const readingsByDataset = (ids: ReturnType<typeof readingIds>) =>
+    new Map(
+      db
+        .select()
+        .from(datasetReading)
+        .where(inArray(datasetReading.id, ids))
+        .all()
+        .map((reading) => [reading.datasetId, reading]),
+    );
+  const windowStart = new Date(now.getTime() - GROWTH_WINDOW_DAYS * DAY_MS);
+  const minimumStart = new Date(now.getTime() - GROWTH_MINIMUM_DAYS * DAY_MS);
+  const atWindowStart = readingsByDataset(
+    readingIds(
+      sql<number>`max(${datasetReading.id})`,
+      lte(datasetReading.at, windowStart),
+    ),
+  );
+  const earliest = readingsByDataset(
+    readingIds(sql<number>`min(${datasetReading.id})`),
+  );
+  return (datasetId: number) => {
+    const baseline = atWindowStart.get(datasetId) ?? earliest.get(datasetId);
+    return baseline && baseline.at <= minimumStart ? baseline : undefined;
+  };
+}
+
+function growthOf(
+  row: DatasetRow,
+  baseline: DatasetReadingRow | undefined,
+): DatasetGrowth | null {
+  if (!row.present || !baseline) return null;
+  return {
+    used: row.used - baseline.used,
+    data: difference(row.usedByDataset, baseline.usedByDataset),
+    snapshots: difference(row.usedBySnapshots, baseline.usedBySnapshots),
+    sinceAt: baseline.at,
+  };
+}
+
+export function listDatasets(
+  poolId: number,
+  now = new Date(),
+): DatasetSummary[] {
   const poolRow = db
     .select({ id: pool.id })
     .from(pool)
     .where(eq(pool.id, poolId))
     .get();
   if (!poolRow) throw notFound(`Pool ${poolId} not found`);
+  const baselineOf = growthBaselines(poolId, now);
   return db
     .select()
     .from(dataset)
@@ -575,7 +642,11 @@ export function listDatasets(poolId: number): DatasetSummary[] {
         Number(b.present) - Number(a.present) ||
         compareDatasetPaths(a.name, b.name),
     )
-    .map((row) => ({ ...row, depth: depthOf(row.name) }));
+    .map((row) => ({
+      ...row,
+      depth: depthOf(row.name),
+      growth: growthOf(row, baselineOf(row.id)),
+    }));
 }
 
 function datasetChildren(id: number): DatasetChild[] {
