@@ -27,6 +27,7 @@ Nuxt 4 (Vue, Nuxt UI 4, Tailwind 4) with a Nitro server, Drizzle ORM on better-s
 - `pnpm typecheck`
 - `pnpm db:migrate` — apply migrations (not automatic in dev; the Nitro plugin migrates at boot in production)
 - `pnpm exec drizzle-kit generate --name <snake_case_name>` — generate a migration after editing `server/database/schema.ts`
+- `pnpm db:check` — fail if migrations are out of step with `schema.ts` (CI runs it; leaves a `schema_drift` migration behind on failure)
 - `pnpm dev` — dev server on :3000; do not run it yourself, the user should have one running already
 
 ## Conventions

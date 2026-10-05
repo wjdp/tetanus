@@ -25,6 +25,8 @@ jobs:
         run: pnpm install
       - name: Lint
         run: pnpm run lint:ci
+      - name: Migrations match schema
+        run: pnpm db:check
 
   typecheck:
     runs-on: ubuntu-latest

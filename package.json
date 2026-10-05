@@ -15,6 +15,7 @@
     "test": "vitest",
     "test:host": "bash host/test/run.sh",
     "db:migrate": "tsx server/database/migrate-cli.ts",
+    "db:check": "drizzle-kit check && drizzle-kit generate --name schema_drift && git diff --quiet HEAD -- server/database/migrations && test -z \"$(git ls-files --others --exclude-standard server/database/migrations)\" || { echo \"Migrations are out of step with schema.ts; run drizzle-kit generate\" >&2; exit 1; }",
     "db:studio": "drizzle-kit studio",
     "demo:seed": "tsx --tsconfig .nuxt/tsconfig.server.json server/demo/cli.ts seed",
     "demo:tick": "tsx --tsconfig .nuxt/tsconfig.server.json server/demo/cli.ts tick",
