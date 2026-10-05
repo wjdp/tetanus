@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 import { version } from "./package.json";
 import { APP_NAME } from "./shared/app";
+import { RETENTION_SCHEDULE } from "./shared/retention";
 
 const relaxedIndexAccess = () => ({
   compilerOptions: { noUncheckedIndexedAccess: false },
@@ -65,7 +66,7 @@ export default defineNuxtConfig({
     ],
     scheduledTasks: {
       "*/5 * * * *": ["alerts:tick", "healthchecks:ping"],
-      "0 3 * * *": ["retention:prune"],
+      [RETENTION_SCHEDULE]: ["retention:prune"],
     },
     ignore: ["**/*.test.ts"],
   },

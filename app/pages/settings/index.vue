@@ -12,34 +12,6 @@ const copyEnrolToken = () => {
   return copyToClipboard(settings.value.enrolToken, "Enrol token");
 };
 
-const { data: databaseSize } = await useFetch("/api/database", {
-  key: "database-size",
-});
-const optimising = ref(false);
-
-const optimiseDatabase = async () => {
-  optimising.value = true;
-  try {
-    const { before, after } = await $fetch("/api/database/optimise", {
-      method: "POST",
-    });
-    databaseSize.value = after;
-    toast.add({
-      title: "Database optimised",
-      description: `${formatBytes(before.bytes)} → ${formatBytes(after.bytes)}`,
-      color: "success",
-    });
-  } catch (error) {
-    toast.add({
-      title: "Could not optimise the database",
-      description: (error as { data?: { message?: string } }).data?.message,
-      color: "error",
-    });
-  } finally {
-    optimising.value = false;
-  }
-};
-
 const currencyOptions = currencyItems();
 
 const saveCurrency = async (currency: string) => {
@@ -117,37 +89,6 @@ const saveCurrency = async (currency: string) => {
       <p v-else class="text-muted text-sm" data-testid="demo-collectors-note">
         Collectors are disabled in the demo.
       </p>
-    </section>
-
-    <section v-if="!demo" class="flex flex-col gap-4">
-      <h2 class="text-highlighted text-lg font-semibold">Database</h2>
-
-      <UFormField
-        label="Optimise"
-        name="optimise"
-        description="Rebuilds the database file to reclaim space left by deleted rows and refreshes the query planner's statistics. Ingest pauses while it runs."
-      >
-        <div class="flex flex-wrap items-center gap-4">
-          <UButton
-            icon="i-lucide-database-zap"
-            color="neutral"
-            variant="outline"
-            :loading="optimising"
-            data-testid="optimise-database"
-            @click="optimiseDatabase"
-          >
-            Optimise database
-          </UButton>
-          <span
-            v-if="databaseSize"
-            class="text-muted text-sm"
-            data-testid="database-size"
-          >
-            {{ formatBytes(databaseSize.bytes) }},
-            {{ formatBytes(databaseSize.reclaimableBytes) }} reclaimable
-          </span>
-        </div>
-      </UFormField>
     </section>
   </div>
 </template>

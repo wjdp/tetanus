@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { APP_NAME } from "#shared/app";
 import {
   SCRUTINY_DEFAULT_URL,
   type ScrutinyDeviceImport,
@@ -151,7 +152,7 @@ const totals = computed(() =>
       <template #header>
         <h3 class="text-highlighted font-semibold">Scrutiny</h3>
         <p class="text-muted text-sm">
-          Only readings from before the day of tetanus's first reading for
+          Only readings from before the day of {{ APP_NAME }}'s first reading for
           each disk are imported, at scrutiny's daily resolution.
         </p>
       </template>

@@ -61,11 +61,12 @@ describe("isNavigationActive", () => {
 });
 
 describe("SETTINGS_NAVIGATION", () => {
-  it("lists General, Alerts and Import", () => {
+  it("lists General, Alerts, Import and Database", () => {
     expect(SETTINGS_NAVIGATION.map(({ label, to }) => [label, to])).toEqual([
       ["General", "/settings"],
       ["Alerts", "/settings/alerts"],
       ["Import", "/settings/import"],
+      ["Database", "/settings/database"],
     ]);
   });
 });

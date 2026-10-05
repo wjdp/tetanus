@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, gte, lte, ne } from "drizzle-orm";
 import type { DiskProtocol } from "#shared/disk";
 import type { IngestMeta } from "#shared/ingest";
+import { FULL_TEMPERATURE_DAYS } from "#shared/retention";
 import type { SmartHistoryRange } from "#shared/schemas/smart";
 import { ataSsdAttributesFrom } from "#shared/smart/ataSsdAttributes";
 import {
@@ -163,8 +164,6 @@ function attributeName(
 function presentTemperature(celsius: number | null | undefined) {
   return typeof celsius === "number" && celsius > 0 ? celsius : null;
 }
-
-export const FULL_TEMPERATURE_DAYS = 30;
 
 /** Older points would land in hours retention has already collapsed. */
 export function sctTemperaturePoints(

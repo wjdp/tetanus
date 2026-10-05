@@ -16,7 +16,7 @@ function snapshot() {
   return {
     hosts: listHosts(),
     latestReadings: diskIds().map((id) => latestReading(id)?.id ?? null),
-    pools: listPools(SEEDED_AT),
+    pools: listPools(),
     faults: count("Fault"),
     diary: count("DiaryEntry"),
   };

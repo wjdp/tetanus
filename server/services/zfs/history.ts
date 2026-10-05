@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { ROUTINE_HISTORY_DAYS } from "#shared/retention";
 import { db } from "~~/server/database/client";
 import { pool, poolHistory } from "~~/server/database/schema";
 import type {
@@ -8,7 +9,6 @@ import type {
 import { RECEIVE_WINDOW_MS } from "~~/server/services/replications/population";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const ROUTINE_HISTORY_DAYS = 14;
 
 const ROUTINE_COMMAND_RE =
   /^zfs (?:(?:snapshot|receive|recv|send|hold|release) |destroy (?:-\S+ )*\S*@)/;

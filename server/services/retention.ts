@@ -1,6 +1,14 @@
+import {
+  COLLECTOR_RUN_DAYS,
+  FULL_DATASET_READING_DAYS,
+  FULL_POOL_READING_DAYS,
+  FULL_SMART_DAYS,
+  FULL_TEMPERATURE_DAYS,
+  HISTORY_EVENT_DAYS,
+  HOURLY_TEMPERATURE_DAYS,
+} from "#shared/retention";
 import { sqlite } from "~~/server/database/client";
 import { optimiseDatabase } from "~~/server/services/database";
-import { FULL_TEMPERATURE_DAYS } from "~~/server/services/smart";
 import {
   isRoutineHistory,
   routineHistoryCutoff,
@@ -8,13 +16,6 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
-
-export const HISTORY_EVENT_DAYS = 2;
-export const COLLECTOR_RUN_DAYS = 30;
-export const FULL_DATASET_READING_DAYS = 90;
-export const FULL_POOL_READING_DAYS = 30;
-export const FULL_SMART_DAYS = 30;
-export const HOURLY_TEMPERATURE_DAYS = 365;
 
 const BATCH_SIZE = 2000;
 const AUTO_VACUUM_INCREMENTAL = 2;

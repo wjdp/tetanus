@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { FULL_TEMPERATURE_DAYS } from "#shared/retention";
 import { db } from "~~/server/database/client";
 import {
   disk,
@@ -17,7 +18,6 @@ import {
   downsample,
   evaluateMinimalReading,
   evaluateNamedAttributes,
-  FULL_TEMPERATURE_DAYS,
   getSmartHistory,
   getSmartOverview,
   insertSmartReading,

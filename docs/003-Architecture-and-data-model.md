@@ -321,6 +321,7 @@ stay real columns because everything joins on them.
 
 Retention ([063](063-Retention-and-downsampling.md)): a daily `retention:prune` task
 (`server/services/retention.ts`, Node only) prunes noise and downsamples readings;
+periods and their explanations live in `shared/retention.ts` and are shown on Settings → Database;
 history that is the product is kept, at lower resolution once it is old.
 
 | Table | Kept |
