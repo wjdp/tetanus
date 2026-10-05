@@ -10,6 +10,7 @@ import type {
   SmartctlXallResult,
 } from "#shared/smartctl";
 import { ParseError } from "./parseError";
+import { extractSeagateFarm } from "./seagateFarm";
 
 export type {
   AtaAttribute,
@@ -17,6 +18,8 @@ export type {
   ScsiErrorCounters,
   ScsiInfo,
   SctTemperatureHistory,
+  SeagateFarm,
+  SeagateFarmHead,
   SelfTestEntry,
   SmartctlExitFlags,
   SmartctlXallDevice,
@@ -364,6 +367,8 @@ export const parse: Parser<SmartctlXallResult> = (body, meta) => {
   if (selfTests) data.selfTests = selfTests;
   const sctTemperatureHistory = extractSctTemperatureHistory(json);
   if (sctTemperatureHistory) data.sctTemperatureHistory = sctTemperatureHistory;
+  const farm = extractSeagateFarm(json.seagate_farm_log);
+  if (farm) data.farm = farm;
 
   return {
     data,

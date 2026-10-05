@@ -91,6 +91,68 @@ export interface SmartctlXallIdentity {
   nvmeVersion?: string;
 }
 
+export interface SeagateFarmHead {
+  mrResistance?: number;
+  secondMrResistance?: number;
+  reallocatedSectors?: number;
+  reallocationCandidates?: number;
+  writeWorkloadPowerOn?: number;
+  unrecoverableReadsRepeating?: number;
+  unrecoverableReadsUnique?: number;
+  skipWriteDetections?: number;
+}
+
+export interface VoltageRange {
+  current?: number;
+  minimum?: number;
+  maximum?: number;
+}
+
+export interface SeagateFarm {
+  interface: "ata" | "scsi";
+  logVersion?: string;
+  serial?: string;
+  wwn?: string;
+  powerOnHours?: number;
+  spindleHours?: number;
+  headFlightHours?: number;
+  headLoadEvents?: number;
+  powerCycles?: number;
+  resetCount?: number;
+  heads?: number;
+  recordingType?: string;
+  assembledWeek?: string;
+  heliumPressureTripped?: boolean;
+  workload: {
+    readCommands?: number;
+    writeCommands?: number;
+    randomReads?: number;
+    randomWrites?: number;
+    sectorsRead?: number;
+    sectorsWritten?: number;
+  };
+  errors: {
+    unrecoverableReads?: number;
+    unrecoverableWrites?: number;
+    reallocatedSectors?: number;
+    reallocationCandidates?: number;
+    mechanicalStartFailures?: number;
+    asrEvents?: number;
+    crcErrors?: number;
+    commandTimeouts?: number;
+  };
+  environment: {
+    highestCelsius?: number;
+    lowestCelsius?: number;
+    averageCelsius?: number;
+    specifiedMaxCelsius?: number;
+    specifiedMinCelsius?: number;
+    millivolts12?: VoltageRange;
+    millivolts5?: VoltageRange;
+  };
+  perHead: SeagateFarmHead[];
+}
+
 export interface SmartctlXallResult {
   device: SmartctlXallDevice;
   smartctl: { version: string; exitStatus: SmartctlExitFlags };
@@ -106,4 +168,5 @@ export interface SmartctlXallResult {
   scsi?: ScsiInfo;
   selfTests?: SelfTestEntry[];
   sctTemperatureHistory?: SctTemperatureHistory;
+  farm?: SeagateFarm;
 }
