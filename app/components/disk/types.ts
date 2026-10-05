@@ -4,6 +4,8 @@ import type { Inventory } from "#shared/inventory-fields";
 
 export type DiskDetail = InternalApi["/api/disks/:id"]["get"];
 export type SmartOverview = InternalApi["/api/disks/:id/smart"]["get"];
+export type DiskStatisticsView =
+  InternalApi["/api/disks/:id/statistics"]["get"];
 export type LatestAttribute = SmartOverview["attributes"][number];
 export type DiaryEntry = InternalApi["/api/diary"]["get"][number];
 

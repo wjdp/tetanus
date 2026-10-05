@@ -20,21 +20,21 @@ export function faultHostLabel(fault: Pick<FaultView, "subject">): string {
   return fault.subject.hostName ?? fault.subject.label;
 }
 
-const SMART_FAULT_KINDS: readonly FaultKind[] = [
-  "smart-attribute",
-  "smart-health-failed",
-  "temperature-high",
-  "smart-counters-reset",
-];
+const DISK_FAULT_TABS: Partial<Record<FaultKind, string>> = {
+  "smart-attribute": "smart",
+  "smart-health-failed": "smart",
+  "temperature-high": "smart",
+  "smart-counters-reset": "farm",
+};
 
 export function faultSubjectPath(
   subject: FaultSubject,
   kind?: FaultKind,
 ): string {
-  if (subject.type === "disk")
-    return kind && SMART_FAULT_KINDS.includes(kind)
-      ? `/disks/${subject.id}?tab=smart`
-      : `/disks/${subject.id}`;
+  if (subject.type === "disk") {
+    const tab = kind && DISK_FAULT_TABS[kind];
+    return tab ? `/disks/${subject.id}?tab=${tab}` : `/disks/${subject.id}`;
+  }
   if (subject.type === "pool") return `/zfs/${subject.id}`;
   if (subject.type === "replication") return `/replications/${subject.id}`;
   return `/hosts/${subject.id}`;

@@ -5,7 +5,7 @@ import { diskLabel, displayName } from "~/components/disk/displayName";
 import type { DiskDetail } from "~/components/disk/types";
 import { DEVICE_STATUS_VOCABULARY } from "~/utils/vocabulary";
 
-const TABS = ["overview", "smart", "diary"] as const;
+const TABS = ["overview", "smart", "statistics", "farm", "diary"] as const;
 type Tab = (typeof TABS)[number];
 const DEFAULT_TAB: Tab = "overview";
 
@@ -52,7 +52,7 @@ const onUpdated = (updated: DiskDetail) => {
 };
 
 const isTab = (value: unknown): value is Tab =>
-  TABS.includes(value as Tab);
+  TABS.includes(value as Tab) && (value !== "farm" || Boolean(disk.value?.latestFarm));
 
 const activeTab = computed<Tab>({
   get: () => (isTab(route.query.tab) ? route.query.tab : DEFAULT_TAB),
@@ -72,6 +72,10 @@ const smartStatus = computed(() =>
 const tabs = computed<TabsItem[]>(() => [
   { label: "Overview", slot: "overview", value: "overview" },
   { label: "SMART", slot: "smart", value: "smart" },
+  { label: "Statistics", slot: "statistics", value: "statistics" },
+  ...(disk.value?.latestFarm
+    ? [{ label: "FARM", slot: "farm", value: "farm" }]
+    : []),
   {
     label: "Diary",
     slot: "diary",
@@ -164,6 +168,21 @@ const tabs = computed<TabsItem[]>(() => [
                 :disk-id="disk.id"
                 :protocol="disk.protocol"
                 @changed="refresh"
+              />
+            </div>
+          </template>
+
+          <template #statistics>
+            <div class="py-4">
+              <DiskStatistics :disk-id="disk.id" />
+            </div>
+          </template>
+
+          <template v-if="disk.latestFarm" #farm>
+            <div class="py-4">
+              <DiskFarm
+                :farm="disk.latestFarm"
+                :smart-hours="disk.latestPowerOnHours"
               />
             </div>
           </template>

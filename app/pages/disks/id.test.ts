@@ -437,6 +437,20 @@ describe("disk page", () => {
     );
   });
 
+  it("offers a FARM tab only for disks with a FARM log", async () => {
+    const tabLabels = async (route: string) =>
+      (await mountPage(route))
+        .findAll('[role="tab"]')
+        .map((tab) => tab.text().trim());
+    expect(await tabLabels("/disks/7")).toEqual([
+      "Overview",
+      "SMART",
+      "Statistics",
+      expect.stringMatching(/^Diary/),
+    ]);
+    expect(await tabLabels("/disks/17")).toContain("FARM");
+  });
+
   it("shows FARM hours on the power-on figure when SMART was reset", async () => {
     const page = await mountPage("/disks/17");
     const figure = page.get('[data-figure="power-on"]');

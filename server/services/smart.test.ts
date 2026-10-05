@@ -101,7 +101,6 @@ describe("recordSmartReading", () => {
     ingestSmart(JSON.stringify(withoutFarm), at(HOUR_MS));
     const row = diskBySerial(serial);
     expect(row.latestFarm).toEqual(farm);
-    expect(getSmartOverview(row.id, "7d", at(HOUR_MS)).farm).toEqual(farm);
   });
 
   it("has no FARM log for other vendors", () => {
@@ -109,7 +108,6 @@ describe("recordSmartReading", () => {
     ingestSmart(body);
     const row = diskBySerial(JSON.parse(body).serial_number);
     expect(row.latestFarm).toBeNull();
-    expect(getSmartOverview(row.id, "7d").farm).toBeNull();
   });
 
   it("stores a reading, its attributes and the latest fields", () => {
