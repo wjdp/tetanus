@@ -9,6 +9,7 @@ import type {
   SmartctlXallIdentity,
   SmartctlXallResult,
 } from "#shared/smartctl";
+import { extractDeviceStatistics } from "./deviceStatistics";
 import { ParseError } from "./parseError";
 import { extractSeagateFarm } from "./seagateFarm";
 
@@ -369,6 +370,8 @@ export const parse: Parser<SmartctlXallResult> = (body, meta) => {
   if (sctTemperatureHistory) data.sctTemperatureHistory = sctTemperatureHistory;
   const farm = extractSeagateFarm(json.seagate_farm_log);
   if (farm) data.farm = farm;
+  const deviceStatistics = extractDeviceStatistics(json.ata_device_statistics);
+  if (deviceStatistics) data.deviceStatistics = deviceStatistics;
 
   return {
     data,
