@@ -6,6 +6,7 @@ const props = defineProps<{
   faults: FaultView[];
   now: number;
   perform: (id: number, action: FaultAction, note?: string) => Promise<void>;
+  hideSubject?: boolean;
 }>();
 
 const emit = defineEmits<{ changed: [] }>();
@@ -49,6 +50,7 @@ const performFor =
       :now="now"
       :upgrade-command="command"
       :perform="performFor(fault)"
+      :hide-subject="hideSubject"
       @changed="emit('changed')"
     />
   </div>

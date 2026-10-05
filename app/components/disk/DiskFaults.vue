@@ -33,6 +33,7 @@ const onChanged = async () => {
       :faults="live.faults.value"
       :now="now"
       :perform="live.perform"
+      hide-subject
       @changed="onChanged"
     />
     <p v-else class="text-muted text-sm" data-testid="disk-faults-none">
@@ -53,6 +54,7 @@ const onChanged = async () => {
         :faults="recentlyResolved"
         :now="now"
         :perform="resolved.perform"
+        hide-subject
         @changed="onChanged"
       />
     </div>

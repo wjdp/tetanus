@@ -49,6 +49,7 @@ describe("DiskFaults", () => {
     expect(lists).toHaveLength(2);
     expect(lists[0]?.text()).toContain("SMART counters reset");
     expect(lists[1]?.text()).toContain("SMART counters reset");
+    expect(lists[0]?.text()).not.toContain("mars");
   });
 
   it("says so when there are no faults", async () => {

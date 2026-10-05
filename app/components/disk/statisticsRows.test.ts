@@ -84,6 +84,13 @@ describe("statisticPanes", () => {
       value: "1.02 TB",
     });
     expect(panes[1]?.clear).toEqual(["Media errors"]);
+    expect(panes[1]?.facts).toEqual([
+      {
+        label: "Error log entries",
+        value: "2",
+        note: "mostly benign command errors",
+      },
+    ]);
     expect(panes[2]?.facts[0]).toMatchObject({ value: "5 min", warning: true });
   });
 

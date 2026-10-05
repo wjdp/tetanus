@@ -190,10 +190,12 @@ function nvmePanes(
       ],
       clear: [],
     },
-    errorPane([
-      ["Media errors", nvme.mediaErrors],
-      ["Error log entries", nvme.errorLogEntries],
-    ]),
+    errorPane(
+      [["Media errors", nvme.mediaErrors]],
+      fact("Error log entries", nvme.errorLogEntries, count, {
+        note: "mostly benign command errors",
+      }),
+    ),
     {
       id: "environment",
       title: "Environment",

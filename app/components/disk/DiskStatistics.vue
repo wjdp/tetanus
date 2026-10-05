@@ -16,7 +16,8 @@ const panes = computed(() =>
 <template>
   <section class="flex flex-col gap-3" data-testid="statistics">
     <p v-if="!panes.length" class="text-muted text-sm">
-      This drive reports no device statistics.
+      No device statistics yet. They arrive with the next reading from a drive
+      that keeps them.
     </p>
     <template v-else>
       <p class="text-dimmed text-xs">
