@@ -13,7 +13,7 @@ import {
 } from "./replications";
 import { observeZfsList, observeZfsSnapshots } from "./zfs/datasets";
 import { observeZedEvent, observeZpoolEvents } from "./zfs/events";
-import { observeZpoolHistory } from "./zfs/history";
+import { observeZpoolHistory, retainedHistoryEntries } from "./zfs/history";
 import { observeZpoolList, observeZpoolStatus } from "./zfs/topology";
 
 export {
@@ -83,8 +83,9 @@ const zpoolHistory: IngestHandler<ZpoolHistoryResult> = ({
   data,
   receivedAt,
 }) => {
-  observeZpoolHistory(hostId, data);
-  observeReceives(hostId, data.entries, receivedAt);
+  const entries = retainedHistoryEntries(data.entries, receivedAt);
+  observeZpoolHistory(hostId, { entries });
+  observeReceives(hostId, entries, receivedAt);
 };
 
 const zfsList: IngestHandler<ZfsListResult> = ({
