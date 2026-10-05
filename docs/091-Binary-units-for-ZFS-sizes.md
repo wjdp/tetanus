@@ -1,11 +1,16 @@
 ---
 type: task
-status: todo
+status: in-progress
 ---
 
 # Binary units for ZFS sizes
 
-Decided 2026-10-05: default to TiB; the TB/TiB choice is a per-viewer `localStorage` setting. Server-built text (alerts, diary, fault reasons) uses TiB for ZFS sizes, since it can't see the viewer's setting.
+Decided 2026-10-05:
+
+- Default to TiB. The TB/TiB choice is a per-viewer cookie, like the inventory preferences. A cookie rather than `localStorage`, so the server render already uses the viewer's choice and nothing flashes from TiB to TB after hydration.
+- The toggle is a TiB | TB control in the headers of the pool list, pool and dataset pages. All three share the one setting.
+- Pool, vdev, dataset, snapshot, scan and removal figures follow the toggle. Anything that is a disk size or a sum of disk sizes stays decimal: disk capacity, host "raw" capacity and inventory totals.
+- Server-built text (alerts, diary, fault reasons) uses TiB for ZFS sizes, since it can't see the viewer's setting. None of it shows sizes today; the pool capacity fault is a percentage.
 
 Unit labels are always exact: binary values are written KiB, MiB, GiB, TiB, PiB, never KB/MB/GB/TB and never the CLI's bare "T". TB only ever means 10¹² bytes.
 
