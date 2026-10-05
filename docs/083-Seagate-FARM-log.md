@@ -153,7 +153,8 @@ like 4.x (the wipe evidently rewrote `spoh` too).
 
 - smartmontools minimum stays 7.0; FARM is gated on 7.4+ (2026-10-05).
 - FARM is shown inside the SMART view, not on its own tab, so a disagreement sits next
-  to the SMART figure it contradicts.
+  to the SMART figure it contradicts. Reversed by [084](084-Statistics-tab.md): FARM moves to
+  the Statistics tab, and the fault and power-on headline keep the disagreement visible.
 
 ## Status
 
