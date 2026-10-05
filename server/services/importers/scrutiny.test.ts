@@ -231,8 +231,10 @@ describe("importScrutiny readings", () => {
 
     const devices = byKey((await run()).devices);
 
+    const startOfDay = new Date(earliestTemperature);
+    startOfDay.setUTCHours(0, 0, 0, 0);
     expect(devices[ATA_KEY]).toMatchObject({
-      cutoff: earliestTemperature,
+      cutoff: startOfDay,
       readings: 3,
       skipped: 2,
     });

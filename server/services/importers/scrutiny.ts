@@ -117,7 +117,14 @@ function matchDisk(device: ScrutinyDevice): DiskMatch | null {
   return null;
 }
 
-function earliest(diskId: number): Date | null {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Start of the UTC day of the disk's earliest reading or temperature. Whole days,
+ * because retention collapses old readings to one per day and could otherwise
+ * move the earliest point later and let a re-import fill the gap.
+ */
+function importCutoff(diskId: number): Date | null {
   const reading = db
     .select({ at: smartReading.takenAt })
     .from(smartReading)
@@ -134,7 +141,8 @@ function earliest(diskId: number): Date | null {
     .get()?.at;
   const times = [reading, temperature].filter((at) => at !== undefined);
   if (times.length === 0) return null;
-  return new Date(Math.min(...times.map((at) => at.getTime())));
+  const first = Math.min(...times.map((at) => at.getTime()));
+  return new Date(first - (first % DAY_MS));
 }
 
 function isBefore(cutoff: Date | null, at: Date) {
@@ -272,7 +280,7 @@ function planDevice(
   temperatureHistory: ScrutinyTemperaturePoint[],
 ): DevicePlan {
   const match = matchDisk(device);
-  const cutoff = match ? earliest(match.diskId) : null;
+  const cutoff = match ? importCutoff(match.diskId) : null;
   const points = details.smart_results.filter((point) =>
     isBefore(cutoff, point.date),
   );

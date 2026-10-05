@@ -151,8 +151,8 @@ const totals = computed(() =>
       <template #header>
         <h3 class="text-highlighted font-semibold">Scrutiny</h3>
         <p class="text-muted text-sm">
-          Only readings older than tetanus's first reading for each disk are
-          imported, at scrutiny's daily resolution.
+          Only readings from before the day of tetanus's first reading for
+          each disk are imported, at scrutiny's daily resolution.
         </p>
       </template>
 
