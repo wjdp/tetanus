@@ -163,3 +163,17 @@ concerns are notes.
 - History of these values. Only the latest is kept, as for FARM.
 - Vendor-specific page 255.
 - SAS log pages, until there's a real SAS fixture.
+
+## Proof of concept
+
+Built on branch `084-statistics-tab` (2026-10-05). Differences from the plan:
+
+- FARM has its own tab, shown only for drives with a FARM log, rather than a section on
+  Statistics. The counters-reset fault links to it.
+- A Faults tab lists the disk's live faults with their actions, plus the ten most
+  recently resolved. The fault badges open it instead of the Faults page, so a disk's
+  faults can be seen and dealt with on the disk itself.
+- NVMe error-log entries are a plain figure, not an error.
+- Not built yet: notes ("Worth a look"), de-duplicating figures FARM and device
+  statistics share, and a statistics e2e test.
+
