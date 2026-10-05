@@ -1,4 +1,4 @@
-CREATE TEMP VIEW `DiskLabel` AS
+CREATE VIEW `DiskLabel` AS
   SELECT `id`, COALESCE(
     NULLIF(`alias`, ''),
     NULLIF(TRIM(COALESCE(`model`, '') || ' ' || COALESCE(`serial`, '')), ''),
