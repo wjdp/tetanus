@@ -266,6 +266,30 @@ describe("DiskOverview", () => {
     expect(row(ssd, "Recording")).toBeNull();
   });
 
+  it("shows a wear bar after the percentage, coloured by status", async () => {
+    const ssd = await mountOverview({ media: "ssd" });
+    const bar = ssd.get(
+      '[data-counter="wear"] [data-testid="overview-wear-bar"]',
+    );
+    expect(bar.classes()).toContain("w-32");
+    expect(ssd.findAll('[data-testid="overview-wear-bar"]')).toHaveLength(1);
+
+    const worn = await mountOverview({
+      media: "ssd",
+      counters: {
+        reallocated: null,
+        pending: null,
+        uncorrectable: null,
+        wearPercent: { value: 120, status: "failed" },
+        bytesWritten: null,
+        bytesWrittenInferred: false,
+      },
+    });
+    expect(worn.get('[data-testid="overview-wear-bar"]').html()).toContain(
+      "bg-error",
+    );
+  });
+
   it("links counters to the SMART tab", async () => {
     const wrapper = await mountOverview();
     expect(

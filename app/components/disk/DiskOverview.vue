@@ -6,6 +6,7 @@ import type { StatusCounter } from "#shared/smart/counters";
 import { temperatureColour } from "#shared/temperature";
 import { usageDetail } from "#shared/usage";
 import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
+import { ATTRIBUTE_STATUS_DOT } from "./attributeRows";
 import { specFooter, specRows } from "./specRows";
 import type { DiskDetail, ReplacementCandidate } from "./types";
 
@@ -205,9 +206,19 @@ const optionalDate = (value: string | null) =>
         :label="row.label"
         :data-counter="row.id"
       >
-        <NuxtLink :to="SMART_TAB" class="inline-flex hover:underline">
-          <InventoryStatusCounter :counter="row.counter" :suffix="row.suffix" />
-        </NuxtLink>
+        <span class="inline-flex items-center gap-2">
+          <NuxtLink :to="SMART_TAB" class="inline-flex hover:underline">
+            <InventoryStatusCounter :counter="row.counter" :suffix="row.suffix" />
+          </NuxtLink>
+          <UProgress
+            v-if="row.id === 'wear'"
+            :model-value="Math.min(row.counter.value, 100)"
+            :color="ATTRIBUTE_STATUS_DOT[row.counter.status]?.colour ?? 'neutral'"
+            size="2xs"
+            class="w-32"
+            data-testid="overview-wear-bar"
+          />
+        </span>
       </DiskFact>
       <DiskFact
         v-if="disk.counters.bytesWritten !== null"
