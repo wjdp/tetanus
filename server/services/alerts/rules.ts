@@ -167,6 +167,7 @@ function matchDiskEntry(
 // fault opens, and again if it is raised to error.
 const FAULT_OPENED_RULES = new Set<AlertRule>([
   "temperature-high",
+  "smart-counters-reset",
   "pool-capacity",
   "pool-missing",
   "scrub-overdue",

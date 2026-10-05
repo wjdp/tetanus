@@ -58,6 +58,7 @@ acknowledgement is attached to:
 | `smart-health-failed` | disk | persistent | error | `diskId` | acknowledge, clear |
 | `disk-missing` | disk | transient | error | `diskId` | acknowledge, clear |
 | `identity-conflict` | disk | until acknowledged | error | `diskId:<sorted diskIds>` | acknowledge (resolves it) |
+| `smart-counters-reset` | disk | persistent | warning | `diskId` | accept, clear ([083](083-Seagate-FARM-log.md)) |
 | `pool-degraded` | zfs | transient | by state, 037 `zfsStateColour` | `poolId` | acknowledge, accept, clear |
 | `pool-missing` | zfs | until seen again | warning | `poolId` | acknowledge, accept, clear |
 | `leaf-errors` | zfs | until resolved by hand | warning on a leaf, error on a group | `poolId:vdevGuid` | acknowledge, accept, clear, resolve |
@@ -185,7 +186,7 @@ Replay per kind, oldest first:
 | any non-SMART | `fault-state-changed` for acknowledgements (none exist before this task) |
 
 Gaps, which start at the final sync with `openedAt = now`: `collector-silent` (no
-trail); attributes failing on their first reading, after a scrutiny import or after
+trail); `smart-counters-reset` (only the latest FARM log is kept); attributes failing on their first reading, after a scrutiny import or after
 `reapplySmartPolicy` (no `attribute-status-changed`); `collector-outdated` for a host
 first seen outdated (first sighting writes no entry).
 

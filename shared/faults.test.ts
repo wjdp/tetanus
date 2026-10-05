@@ -43,6 +43,7 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "identity-conflict": "identity-conflict",
   "disposed-disk-seen": null,
   "temperature-high": "temperature-high",
+  "smart-counters-reset": "smart-counters-reset",
   "collector-incompatible": "collector-incompatible",
 };
 

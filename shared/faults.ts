@@ -40,6 +40,7 @@ export const FAULT_KINDS = [
   "disk-missing",
   "identity-conflict",
   "temperature-high",
+  "smart-counters-reset",
   "pool-degraded",
   "pool-missing",
   "leaf-errors",
@@ -201,6 +202,31 @@ function temperatureHighTitle(data: FaultData, now: number) {
   return age ? `${reading}, hot for ${age}` : reading;
 }
 
+const hours = (value: unknown) =>
+  typeof value === "number" ? `${value.toLocaleString("en-GB")} h` : "?";
+
+const FARM_IDENTITY_LABELS: Record<string, string> = {
+  serial: "serial",
+  wwn: "WWN",
+};
+
+function smartCountersResetTitle(data: FaultData) {
+  const parts: string[] = [];
+  if (typeof data.resetHours === "number") {
+    parts.push(
+      `SMART power-on hours reset: FARM ${hours(data.farmHours)}, SMART ${hours(data.smartHours)}`,
+    );
+  }
+  const mismatches = Array.isArray(data.mismatches) ? data.mismatches : [];
+  if (mismatches.length > 0) {
+    const fields = mismatches
+      .map((field) => FARM_IDENTITY_LABELS[String(field)] ?? String(field))
+      .join(" and ");
+    parts.push(`FARM ${fields} differs from the drive's`);
+  }
+  return parts.join(" · ") || "SMART counters reset";
+}
+
 function replicationTitle(state: string) {
   return (data: FaultData, now: number) => {
     const age = ageSince(data.lastSyncAt, now);
@@ -250,6 +276,13 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: temperatureHighTitle,
+  },
+  "smart-counters-reset": {
+    category: "disk",
+    subjectType: "disk",
+    lifetime: "persistent",
+    actions: ["accept", "clear"],
+    title: smartCountersResetTitle,
   },
   "pool-degraded": {
     category: "zfs",

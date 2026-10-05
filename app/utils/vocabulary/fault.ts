@@ -24,6 +24,7 @@ const SMART_FAULT_KINDS: readonly FaultKind[] = [
   "smart-attribute",
   "smart-health-failed",
   "temperature-high",
+  "smart-counters-reset",
 ];
 
 export function faultSubjectPath(

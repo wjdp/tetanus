@@ -36,6 +36,7 @@ export const ALERT_RULES = {
   "identity-conflict": { label: "Disk identity conflict", severity: "alert" },
   "disposed-disk-seen": { label: "Disposed disk seen", severity: "alert" },
   "temperature-high": { label: "Running hot", severity: "alert" },
+  "smart-counters-reset": { label: "SMART counters reset", severity: "alert" },
   "collector-incompatible": {
     label: "Collector incompatible",
     severity: "alert",

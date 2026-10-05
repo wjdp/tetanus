@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { FAULT_KIND_DEFINITIONS } from "#shared/faults";
 import type { VdevRole } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
@@ -1658,5 +1659,78 @@ describe("listFaults", () => {
         .where(and(eq(fault.category, "zfs")))
         .all(),
     ).toHaveLength(1);
+  });
+});
+
+describe("smart-counters-reset", () => {
+  const EXOS = readFixture("mars/smartctl/xall-sdf-auto.json");
+  const EXOS_SERIAL = JSON.parse(EXOS).serial_number as string;
+
+  function withSmartHours(smartHours: number, farmHours: number) {
+    const json = JSON.parse(EXOS);
+    json.power_on_time.hours = smartHours;
+    json.seagate_farm_log.page_1_drive_information.poh = farmHours;
+    return JSON.stringify(json);
+  }
+
+  async function read(body: string, offsetMs: number) {
+    ingestSmart(body, at(offsetMs));
+    await syncFaults(at(offsetMs));
+  }
+
+  const exosId = () =>
+    (
+      db
+        .select({ id: disk.id })
+        .from(disk)
+        .where(eq(disk.serial, EXOS_SERIAL))
+        .get() as { id: number }
+    ).id;
+  const reset = () => liveFault("smart-counters-reset", String(exosId()));
+
+  it("stays quiet while FARM and SMART agree", async () => {
+    await read(EXOS, 0);
+    expect(reset()).toBeUndefined();
+  });
+
+  it("opens amber on a reset, holds once accepted, and reopens on a further reset", async () => {
+    await read(withSmartHours(1_000, 21_000), 0);
+    const opened = reset() as FaultRow;
+    expect(opened).toMatchObject({
+      severity: "warning",
+      state: "open",
+      data: { farmHours: 21_000, smartHours: 1_000, resetHours: 20_000 },
+    });
+    expect(
+      FAULT_KIND_DEFINITIONS["smart-counters-reset"].title(opened.data, 0),
+    ).toBe("SMART power-on hours reset: FARM 21,000 h, SMART 1,000 h");
+    expectServiceError(
+      () => performFaultAction(opened.id, "acknowledge", { now: at(0) }),
+      409,
+    );
+
+    performFaultAction(opened.id, "accept", { now: at(0) });
+    await read(withSmartHours(1_001, 21_001), HOUR_MS);
+    expect(reset()).toMatchObject({ id: opened.id, state: "accepted" });
+
+    await read(withSmartHours(2, 21_002), 2 * HOUR_MS);
+    expect(reset()).toMatchObject({ id: opened.id, state: "open" });
+  });
+
+  it("flags a FARM serial that differs from the drive's", async () => {
+    const json = JSON.parse(EXOS);
+    json.seagate_farm_log.page_1_drive_information.serial_number = "OTHER123";
+    await read(JSON.stringify(json), 0);
+    expect(reset()?.data).toMatchObject({
+      resetHours: null,
+      mismatches: ["serial"],
+    });
+  });
+
+  it("ignores FARM 3.x logs", async () => {
+    const json = JSON.parse(withSmartHours(1_000, 21_000));
+    json.seagate_farm_log.page_0_log_header.farm_log_version = [3, 7];
+    await read(JSON.stringify(json), 0);
+    expect(reset()).toBeUndefined();
   });
 });

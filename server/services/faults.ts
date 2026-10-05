@@ -45,6 +45,7 @@ import {
   describeDisks,
   listDisks,
 } from "~~/server/services/disks";
+import { detectSmartCountersReset } from "~~/server/services/farmFaults";
 import { type HostWithRuns, listHosts } from "~~/server/services/hosts";
 import { detectPoolFaults } from "~~/server/services/poolFaults";
 import { detectReplicationFaults } from "~~/server/services/replications/faults";
@@ -339,6 +340,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...detectSmartAttributes(context),
       ...detectHealthFailed(context),
       ...detectTemperatureHigh(context),
+      ...detectSmartCountersReset(context),
       ...detectMissing(context, suppressedDiskIds),
       ...detectIdentityConflicts(context),
       ...pools.detections,
