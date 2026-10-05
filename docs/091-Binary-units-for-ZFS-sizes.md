@@ -7,6 +7,8 @@ status: todo
 
 Decided 2026-10-05: default to TiB; the TB/TiB choice is a per-viewer `localStorage` setting. Server-built text (alerts, diary, fault reasons) uses TiB for ZFS sizes, since it can't see the viewer's setting.
 
+Unit labels are always exact: binary values are written KiB, MiB, GiB, TiB, PiB, never KB/MB/GB/TB and never the CLI's bare "T". TB only ever means 10¹² bytes.
+
 ## Problem
 
 The app shows every size in decimal units (TB). `zfs` and `zpool` print binary units, where a "T" is a TiB, so ZFS figures don't match the CLI. For example, `zfs list` shows 37.4T available on a pool where the app shows 41.2 TB. People think about pools and datasets in file terms and compare against the CLI. ZFS sizes should default to TiB, with a toggle between TB and TiB. Disk sizes stay decimal, because that's how vendors quote them.
