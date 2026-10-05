@@ -213,7 +213,13 @@ const tabs = computed<TabsItem[]>(() => [
               </dd>
             </div>
             <div>
-              <dt class="text-muted text-sm">Available</dt>
+              <dt class="text-muted flex h-5 items-center gap-1 text-sm">
+                Available
+                <PoolAvailableNote
+                  :vdevs="pool.vdevs"
+                  :free-bytes="pool.freeBytes"
+                />
+              </dt>
               <dd class="text-highlighted tabular text-lg font-semibold">
                 {{ formatZfsBytes(pool.usable.available) }}
               </dd>
