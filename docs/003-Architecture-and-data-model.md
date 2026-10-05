@@ -246,7 +246,7 @@ Table names PascalCase for consistency with grate. Sketch, not schema:
 
 ```
 Host            id, name (unique, hostname -s), displayName?, toolVersions (json),
-                healthchecksUrl?, notes, firstSeenAt, lastSeenAt
+                healthchecksUrl?, notes, zpoolEventsOldestEid?, firstSeenAt, lastSeenAt
 Disk            id, alias? (unique), scrutinyUuid, model, modelFull, serial, firmware, capacityBytes,
                 rotationRate, protocol (ata|nvme|scsi), transport, formFactor,
                 firstSeenAt, lastSeenAt, lastSeenHostId, lastDevicePath, lastDeviceType,
@@ -284,7 +284,7 @@ Dataset         id, poolId, name, parentId?, type, used, referenced, available, 
                 quota, refQuota, reservation, recordSize, compression, encryption, creation,
                 present, firstSeenAt, lastSeenAt, latestSnapshotAt?, snapshotCount
 DatasetReading  datasetId, at, used, referenced, available, usedBySnapshots, usedByDataset?,
-                usedByChildren?   (daily, plus on a 1 % change in used; 400 d retention)
+                usedByChildren?   (daily, plus on a 1 % change in used)
 Snapshot        id, datasetId, name, guid?, used, referenced, written, creation, lastSeenAt
 ZfsEvent        hostId, eid, at, class, poolGuid?, vdevGuid?, payload (json)   unique(hostId, eid)
 PoolHistory     poolId, at, internal, text                                unique(poolId, at, text)
@@ -319,8 +319,24 @@ inventory table columns and the importer's column mapping. Values live in
 warranty remaining) are derived in the service from registry keys. `alias` and `notes`
 stay real columns because everything joins on them.
 
-Retention: keep everything in v1; schema leaves `SmartAttribute` easy to downsample by
-`DELETE ... WHERE takenAt < x AND takenAt NOT IN (daily last)` later.
+Retention ([063](063-Retention-and-downsampling.md)): a daily `retention:prune` task
+(`server/services/retention.ts`, Node only) prunes noise and downsamples readings;
+history that is the product is kept, at lower resolution once it is old.
+
+| Table | Kept |
+|---|---|
+| `ZfsEvent` `history_event` | 2 days, and while still in the kernel buffer (`Host.zpoolEventsOldestEid`) |
+| `ZfsEvent` other classes, `VdevReading`, `ReplicationSync` | forever |
+| `CollectorRun` | 30 days, plus the newest per (host, source, device); `zed-event` keeps only its latest run |
+| `PoolHistory` | routine lines (snapshot, destroy of snapshots, hold, release, receive) 14 days, and skipped at ingest once older; the rest forever |
+| `DatasetReading` | full for 90 days, then the last per day |
+| `PoolReading` | full for 30 days, then the last per day |
+| `SmartReading` + `SmartAttribute` | full for 30 days, then the last reading per disk per day |
+| `TemperatureReading` | full for 30 days, then each hour's maximum; past a year, each day's minimum and maximum. SCT points older than 30 days are dropped at ingest |
+
+Collector output overlaps run to run, so nothing pruned may be re-sent and re-inserted;
+each rule above pairs with an ingest guard where that could happen. The first run
+switches the database to incremental auto-vacuum with one `VACUUM`.
 
 ## Services
 

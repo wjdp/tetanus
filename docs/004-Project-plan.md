@@ -232,7 +232,6 @@ Stubbed 2026-10-04 from a review of Starosdev's scrutiny fork, unordered:
   [023](023-Disk-stats-ingest.md) covers most of the need.
 - vdev_id.conf proposal renderer.
 - Actions behind a flag: short/long self-test, scrub, `zpool clear`.
-- Retention/downsampling if the DB grows past comfort.
 - Physical bay mapping ([061](061-Physical-bay-mapping.md)): SES slots from `/sys/class/enclosure`, `ID_PATH` otherwise, user-labelled bays.
 - Scrutiny-collector adapter routes, if detection on other people's hardware needs it.
   Needs the host header mapped.
