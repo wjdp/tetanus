@@ -235,7 +235,7 @@ test_smartctl_farm_only_from_7_4() {
   # shellcheck source=host/tetanus-collect
   source "$collector"
   local smartctl_version
-  # shellcheck disable=SC2329 # called by smartctl_reads_farm
+  # shellcheck disable=SC2317,SC2329 # called by smartctl_reads_farm
   smartctl() { printf 'smartctl %s r1 [x86_64-linux] (local build)\n' "$smartctl_version"; }
   for smartctl_version in "7.4 2023-08-01" "7.5 2025-04-30" "8.0 2030-01-01"; do
     smartctl_reads_farm || fail "no FARM on smartctl $smartctl_version"
