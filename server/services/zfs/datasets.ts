@@ -38,6 +38,7 @@ import {
 } from "~~/server/services/diary";
 import { notFound } from "~~/server/utils/serviceError";
 import type { PoolRow } from "./topology";
+import { recordPoolUsable } from "./usable";
 
 export type DatasetRow = typeof dataset.$inferSelect;
 export type DatasetReadingRow = typeof datasetReading.$inferSelect;
@@ -321,6 +322,7 @@ function observePoolDatasets(
   }
 
   recordReadings(poolRow, receivedAt);
+  recordPoolUsable(poolRow, receivedAt);
   return {
     created: firstIngest ? 0 : arrived.length,
     destroyed: departed.length,

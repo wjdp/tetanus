@@ -440,6 +440,8 @@ export const poolReading = sqliteTable(
     frag: integer(),
     cap: integer(),
     state: text().notNull(),
+    usedBytes: integer(),
+    availableBytes: integer(),
   },
   (table) => [index("PoolReading_poolId_at_idx").on(table.poolId, table.at)],
 );

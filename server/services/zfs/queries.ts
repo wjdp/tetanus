@@ -50,6 +50,7 @@ import { resolvePurpose } from "~~/server/services/usage";
 import { invalidRequest, notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
 import type { PoolRow, VdevRow } from "./topology";
+import { type PoolUsable, usableByPool } from "./usable";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const POOL_READING_DAYS = 30;
@@ -90,6 +91,7 @@ export interface PoolSummary extends Omit<PoolRow, "hostId"> {
   vdevs: VdevNode | null;
   datasetCount: number;
   snapshotCount: number;
+  usable: PoolUsable | null;
 }
 
 export type PoolReadingRow = typeof poolReading.$inferSelect;
@@ -236,6 +238,7 @@ function summarise(
   const poolIds = rows.map((row) => row.pool.id);
   const trees = vdevTrees(poolIds);
   const counts = datasetCountsByPool(poolIds);
+  const usable = usableByPool(rows.map((row) => row.pool));
   return rows.map(({ pool: poolRow, host: hostRow }) => {
     const { hostId: _hostId, ...columns } = poolRow;
     const poolCounts = counts.get(poolRow.id);
@@ -247,6 +250,7 @@ function summarise(
       vdevs: trees.get(poolRow.id) ?? null,
       datasetCount: poolCounts?.datasets ?? 0,
       snapshotCount: poolCounts?.snapshots ?? 0,
+      usable: usable.get(poolRow.id) ?? null,
     };
   });
 }
