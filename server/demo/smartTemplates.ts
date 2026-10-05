@@ -74,6 +74,10 @@ export interface SmartctlJson {
   power_cycle_count?: number;
   temperature: Record<string, number>;
   ata_smart_error_log?: Record<string, unknown>;
+  seagate_farm_log?: {
+    page_1_drive_information?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
   ata_smart_self_test_log?: Record<string, unknown>;
   ata_sct_status?: {
     temperature: Record<string, number>;

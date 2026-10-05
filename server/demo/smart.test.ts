@@ -179,6 +179,21 @@ describe("stories at the anchor", () => {
     expect(result?.smartctl.exitStatus.errorLogHasErrors).toBe(true);
   });
 
+  it("Exos FARM logs agree with the rewritten SMART identity and hours", () => {
+    const results = fleet.disks
+      .filter((model) => model.template.startsWith("exos"))
+      .flatMap((model) => xall(model.alias, anchor) ?? []);
+    expect(results.length).toBeGreaterThan(2);
+    for (const result of results) {
+      expect(result.farm).toMatchObject({
+        serial: result.identity.serial,
+        wwn: result.identity.wwn,
+        powerOnHours: result.powerOnHours,
+        powerCycles: result.powerCycles,
+      });
+    }
+  });
+
   it("P1 reads 87 % used", () => {
     expect(xall("P1", anchor)?.nvme?.percentageUsed).toBe(87);
   });

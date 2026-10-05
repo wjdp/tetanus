@@ -768,6 +768,22 @@ function rewriteIdentity(json: SmartctlJson, disk: DiskModel) {
   }
 }
 
+/** Keeps FARM in step with the rewritten SMART identity and counters, as on an untouched drive. */
+function rewriteFarm(
+  json: SmartctlJson,
+  disk: DiskModel,
+  counters: SmartCounters,
+) {
+  const drive = json.seagate_farm_log?.page_1_drive_information;
+  if (!drive) return;
+  drive.serial_number = disk.serial;
+  drive.world_wide_name = `0x${disk.wwn}`;
+  drive.poh = counters.powerOnHours;
+  drive.spoh = counters.powerOnHours;
+  drive.head_flight_hours = counters.powerOnHours;
+  drive.power_cycle_count = counters.powerCycles;
+}
+
 function exitStatusOf(json: SmartctlJson, context: RenderContext): number {
   const table = json.ata_smart_attributes?.table ?? [];
   const bits = [
@@ -828,6 +844,7 @@ export function renderXall(
   if (json.power_cycle_count !== undefined) {
     json.power_cycle_count = counters.powerCycles;
   }
+  rewriteFarm(json, disk, counters);
 
   if (disk.protocol === "nvme") {
     rewriteNvme(json, context);
