@@ -103,10 +103,13 @@ const laid = computed(() =>
     ? layoutSpace(zoomBox.value, width.value, height.value)
     : null,
 );
+type VisibleNode = LaidOut & { data: SpaceNode };
+
 const visibleNodes = computed(() =>
   (laid.value?.descendants() ?? []).filter(
-    (node) =>
+    (node): node is VisibleNode =>
       node.depth > 0 &&
+      node.data.kind !== "own" &&
       node.x1 - node.x0 >= MIN_TILE_PX &&
       node.y1 - node.y0 >= MIN_TILE_PX,
   ),
@@ -153,7 +156,7 @@ function colourOf(node: SpaceNode) {
     : `var(--space-${slot + 1})`;
 }
 
-function nodeStyle(node: LaidOut) {
+function nodeStyle(node: VisibleNode) {
   const colour = colourOf(node.data);
   return {
     left: `${node.x0}px`,

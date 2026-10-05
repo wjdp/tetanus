@@ -53,6 +53,25 @@ describe("layoutSpace", () => {
     const tile = box?.children?.[0];
     expect(box && tile ? tile.y0 - box.y0 : 0).toBe(HEADER_HEIGHT);
   });
+
+  it("stacks a dataset's own tiles with snapshots under data, whatever their size", () => {
+    const tree = buildSpaceHierarchy([
+      {
+        ...dataset(1, null, 300),
+        usedByDataset: 100,
+        usedBySnapshots: 200,
+        usedByChildren: 0,
+      },
+    ]);
+    if (!tree) throw new Error("no tree");
+    const laid = layoutSpace(tree, 400, 200);
+    const tile = (key: string) =>
+      laid.descendants().find((node) => node.data.key === key);
+    const data = tile("1:data");
+    const snapshots = tile("1:snapshots");
+    expect(snapshots?.y0).toBeGreaterThan(data?.y1 ?? Infinity);
+    expect(snapshots?.x0).toBe(data?.x0);
+  });
 });
 
 describe("branchSlots", () => {

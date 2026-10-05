@@ -2,9 +2,15 @@ import {
   type HierarchyRectangularNode,
   hierarchy,
   treemap,
+  treemapSlice,
   treemapSquarify,
 } from "d3-hierarchy";
-import type { SpaceBox, SpaceNode } from "./spaceHierarchy";
+import type {
+  SpaceBox,
+  SpaceDataset,
+  SpaceNode,
+  SpaceTile,
+} from "./spaceHierarchy";
 
 export const HEADER_HEIGHT = 20;
 const HEADER_MIN_WIDTH = 48;
@@ -12,10 +18,45 @@ const HEADER_MIN_HEIGHT = 40;
 const HEADER_MAX_DEPTH = 2;
 export const BRANCH_SLOTS = 7;
 
-export type LaidOut = HierarchyRectangularNode<SpaceNode>;
+/** A dataset's own tiles, stacked top to bottom so snapshots always sit under data. */
+export interface OwnTiles {
+  kind: "own";
+  key: string;
+  dataset: SpaceDataset;
+  children: SpaceTile[];
+}
 
-const nodeBytes = (node: SpaceNode) =>
-  node.kind === "dataset" ? 0 : node.bytes;
+export type LayoutNode = SpaceNode | OwnTiles;
+export type LaidOut = HierarchyRectangularNode<LayoutNode>;
+
+const OWN_TILE_ORDER = ["data", "snapshots", "reserved"];
+const isOwnTile = (node: SpaceNode): node is SpaceTile =>
+  OWN_TILE_ORDER.includes(node.kind);
+
+function layoutChildren(node: LayoutNode): LayoutNode[] | undefined {
+  if (node.kind === "own") return node.children;
+  if (node.kind !== "dataset") return undefined;
+  const own = node.children.filter(isOwnTile);
+  const rest = node.children.filter((child) => !isOwnTile(child));
+  if (own.length === 0) return rest;
+  return [
+    {
+      kind: "own",
+      key: `${node.key}:own`,
+      dataset: node.dataset,
+      children: own,
+    },
+    ...rest,
+  ];
+}
+
+const nodeBytes = (node: LayoutNode) =>
+  node.kind === "dataset" || node.kind === "own" ? 0 : node.bytes;
+
+const bySize = (a: LaidOut, b: LaidOut) =>
+  a.parent?.data.kind === "own"
+    ? OWN_TILE_ORDER.indexOf(a.data.kind) - OWN_TILE_ORDER.indexOf(b.data.kind)
+    : (b.value ?? 0) - (a.value ?? 0);
 
 export const hasHeader = (node: LaidOut) =>
   node.data.kind === "dataset" &&
@@ -29,18 +70,25 @@ export function layoutSpace(
   width: number,
   height: number,
 ): LaidOut {
-  const nodes = hierarchy<SpaceNode>(root, (node) =>
-    node.kind === "dataset" ? node.children : undefined,
-  )
+  const nodes = hierarchy<LayoutNode>(root, layoutChildren)
     .sum(nodeBytes)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-  return treemap<SpaceNode>()
-    .tile(treemapSquarify)
+    .sort((a, b) => bySize(a as LaidOut, b as LaidOut));
+  const flush = (node: LaidOut) => node.depth === 0 || node.data.kind === "own";
+  return treemap<LayoutNode>()
+    .tile((node, x0, y0, x1, y1) =>
+      (node.data.kind === "own" ? treemapSlice : treemapSquarify)(
+        node,
+        x0,
+        y0,
+        x1,
+        y1,
+      ),
+    )
     .size([width, height])
     .paddingInner(1)
-    .paddingOuter((node) => (node.depth === 0 ? 0 : 1))
+    .paddingOuter((node) => (flush(node) ? 0 : 1))
     .paddingTop((node) =>
-      hasHeader(node) ? HEADER_HEIGHT : node.depth === 0 ? 0 : 1,
+      hasHeader(node) ? HEADER_HEIGHT : flush(node) ? 0 : 1,
     )
     .round(true)(nodes);
 }
