@@ -70,7 +70,8 @@ const {
 });
 
 watch(activeTab, (tab) => {
-  if (tab === "datasets" && datasetsStatus.value === "idle") loadDatasets();
+  const needsDatasets = tab === "datasets" || tab === "space";
+  if (needsDatasets && datasetsStatus.value === "idle") loadDatasets();
 });
 
 const tabs = computed<TabsItem[]>(() => [
@@ -81,6 +82,7 @@ const tabs = computed<TabsItem[]>(() => [
     value: "datasets",
     badge: pool.value?.datasetCount || undefined,
   },
+  { label: "Space", slot: "space", value: "space" },
   {
     label: "Events",
     slot: "events",
@@ -279,6 +281,30 @@ const tabs = computed<TabsItem[]>(() => [
             :now="now"
             :loading="datasetsStatus === 'pending'"
           />
+        </template>
+
+        <template #space>
+          <p
+            v-if="datasetsStatus === 'error'"
+            class="text-error py-4 text-sm"
+          >
+            Could not load the datasets.
+          </p>
+          <template v-else>
+            <p class="text-muted py-4 text-sm md:hidden">
+              The space map needs a wider screen. The Datasets tab lists the
+              same figures.
+            </p>
+            <div class="hidden md:block">
+              <p
+                v-if="datasetsStatus === 'pending'"
+                class="text-dimmed py-4 text-sm"
+              >
+                Loading datasets…
+              </p>
+              <DatasetTreemap v-else :datasets="datasets?.datasets ?? []" />
+            </div>
+          </template>
         </template>
 
         <template #events>

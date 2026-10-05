@@ -408,6 +408,21 @@ describe("pool page", () => {
     expect(datasetRequests).toHaveLength(1);
   });
 
+  it("shows the space map on its own tab, with a note for narrow screens", async () => {
+    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const tab = page
+      .findAll('[role="tab"]')
+      .find((element) => element.text() === "Space");
+
+    await tab?.trigger("mousedown", { button: 0 });
+    await flushPromises();
+
+    await vi.waitFor(() =>
+      expect(page.find('[data-testid="dataset-treemap"]').exists()).toBe(true),
+    );
+    expect(page.text()).toContain("The space map needs a wider screen.");
+  });
+
   it("shows no archive banner for a pool in use", async () => {
     const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
     expect(page.find('[data-testid="pool-archived-banner"]').exists()).toBe(
