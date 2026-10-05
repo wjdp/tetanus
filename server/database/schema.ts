@@ -49,6 +49,7 @@ import type {
   AttributeStatus,
   DeviceStatus,
 } from "../../shared/smart/status";
+import type { SeagateFarm } from "../../shared/smartctl";
 import type { HostTemperatureThresholds } from "../../shared/temperature";
 import type { DiskUsage } from "../../shared/usage";
 import type { Vendor } from "../../shared/vendor";
@@ -181,6 +182,7 @@ export const disk = sqliteTable(
     latestPowerCycles: integer(),
     latestReadingAt: datetime(),
     ataSsdAttributes: json().$type<AtaSsdAttributes>(),
+    latestFarm: json().$type<SeagateFarm>(),
     disposal: json().$type<Disposal>(),
     replacesDiskId: integer().references((): AnySQLiteColumn => disk.id, {
       onDelete: "set null",

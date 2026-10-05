@@ -89,6 +89,29 @@ beforeEach(() => {
 });
 
 describe("recordSmartReading", () => {
+  it("keeps the latest Seagate FARM log, and the last one when a reading has none", () => {
+    const body = readFixture("mars/smartctl/xall-sdf-auto.json");
+    ingestSmart(body);
+    const serial = JSON.parse(body).serial_number;
+    const farm = diskBySerial(serial).latestFarm;
+    expect(farm).toMatchObject({ logVersion: "4.19", powerOnHours: 33091 });
+
+    const withoutFarm = JSON.parse(body);
+    withoutFarm.seagate_farm_log = { supported: true };
+    ingestSmart(JSON.stringify(withoutFarm), at(HOUR_MS));
+    const row = diskBySerial(serial);
+    expect(row.latestFarm).toEqual(farm);
+    expect(getSmartOverview(row.id, "7d", at(HOUR_MS)).farm).toEqual(farm);
+  });
+
+  it("has no FARM log for other vendors", () => {
+    const body = readFixture("mars/smartctl/xall-sda-auto.json");
+    ingestSmart(body);
+    const row = diskBySerial(JSON.parse(body).serial_number);
+    expect(row.latestFarm).toBeNull();
+    expect(getSmartOverview(row.id, "7d").farm).toBeNull();
+  });
+
   it("stores a reading, its attributes and the latest fields", () => {
     const body = readFixture("mars/smartctl/xall-sdb-auto.json");
     ingestSmart(body);

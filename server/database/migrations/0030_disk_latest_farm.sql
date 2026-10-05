@@ -1,0 +1,1 @@
+ALTER TABLE `Disk` ADD `latestFarm` text;
