@@ -279,9 +279,13 @@ Vdev            id, poolId, guid, parentId?, name, type (root|raidz1|raidz2|drai
                 present, lastSeenAt
 PoolReading     poolId, at, alloc, free, frag, cap, state
 VdevReading     vdevId, at, readErrors, writeErrors, cksumErrors, slowIos, state, alloc?, frag?
-Dataset         id, poolId, name, type, used, referenced, available, logicalUsed,
-                compressRatio, usedBySnapshots, mountpoint, quota, creation, lastSeenAt
-Snapshot        id, datasetId, name, used, referenced, written, creation, lastSeenAt
+Dataset         id, poolId, name, parentId?, type, used, referenced, available, logicalUsed,
+                compressRatio, usedBySnapshots, usedByDataset, usedByChildren, mountpoint,
+                quota, refQuota, reservation, recordSize, compression, encryption, creation,
+                present, firstSeenAt, lastSeenAt, latestSnapshotAt?, snapshotCount
+DatasetReading  datasetId, at, used, referenced, available, usedBySnapshots, usedByDataset?,
+                usedByChildren?   (daily, plus on a 1 % change in used; 400 d retention)
+Snapshot        id, datasetId, name, guid?, used, referenced, written, creation, lastSeenAt
 ZfsEvent        hostId, eid, at, class, poolGuid?, vdevGuid?, payload (json)   unique(hostId, eid)
 PoolHistory     poolId, at, internal, text                                unique(poolId, at, text)
 DiaryEntry      id, subjectType (disk|pool|vdev|host|system), subjectId, at, kind (manual|auto),

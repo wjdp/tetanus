@@ -25,7 +25,7 @@ The pool page's Datasets tab is a tree table. It answers "how big is X" but not 
 
 ## Library
 
-Use `d3-hierarchy` for layout and render in Vue SVG, as the existing charts do. Researched 2026-10-05:
+Use `d3-hierarchy` for layout. Rendered as absolutely positioned divs rather than SVG: text truncation, `NuxtLink`, focus and CSS transitions come free, and ~1500 elements is fine. Researched 2026-10-05:
 
 | Library | Verdict |
 | --- | --- |
@@ -43,7 +43,7 @@ A sunburst or icicle view (`d3.partition`) could reuse the same hierarchy data l
 ### Layout
 
 - Root is the pool's root dataset. Each dataset is a nested box containing its children, with a header strip for its name when the box is big enough (`paddingTop`).
-- Each dataset with its own space gets leaf tiles:
+- Each dataset with its own space gets leaf tiles, grouped and stacked top to bottom (`treemapSlice`) so snapshots always sit under data whatever their size:
   - **data** (`usedbydataset`)
   - **snapshots** (`usedbysnapshots`), hatched so snapshot bloat stands out; this is the main payoff
   - **reserved** (the derived refreservation residue, only if > 0)
@@ -57,8 +57,8 @@ A sunburst or icicle view (`d3.partition`) could reuse the same hierarchy data l
 
 A toggle between two modes:
 
-- **Branch** (default): each first-level child of the root gets a hue from a fixed categorical palette of 8, cycling beyond that, and its descendants share it, as in WinDirStat. The root's own tiles are grey. Snapshot and reserved tiles use a tint of their dataset's hue.
-- **Growth**: a diverging scale on per-tile growth, zero-centred, signed symlog, clamped at the 95th percentile of |growth| so a few big datasets don't saturate it. Colour-vision-safe pair (blue–orange or purple–green), never red–green; the hatch stays the non-colour cue for snapshots. Tiles with null growth are neutral grey.
+- **Branch** (default): the seven biggest first-level children of the root get a hue from the dataviz reference categorical palette (its red slot left out, as red means alarm here), and their descendants share it, as in WinDirStat. Further branches fold into grey "other" rather than cycling. The root's own tiles are grey. Snapshot and reserved tiles use a tint of their dataset's hue.
+- **Growth**: a diverging scale on per-tile growth, zero-centred, signed symlog, clamped at the 95th percentile of |growth| so a few big datasets don't saturate it. Blue (shrinking) to red (growing) through a grey midpoint, the reference palette's colour-vision-safe diverging pair; the hatch stays the non-colour cue for snapshots. Tiles with null growth are neutral grey.
 
 All colours are CSS variables with light and dark values.
 
@@ -88,7 +88,7 @@ Computed once in `listDatasets` and added to each row as `growth: { used, data, 
 
 ### Placement
 
-- New **Space** tab on the pool page, after Datasets. It loads `/api/pools/:id/datasets` lazily and shares the result with the Datasets tab, so switching tabs doesn't refetch.
+- New **Space** tab on the pool page, after Datasets. The map is 80vh tall (at least 360 px). It loads `/api/pools/:id/datasets` lazily and shares the result with the Datasets tab, so switching tabs doesn't refetch.
 - Below `md` (phones) the tab stays listed and its content is a "needs a wider screen" note, done with CSS (`hidden md:block`) to avoid a hydration mismatch.
 - Colour mode and free-tile toggle remembered per viewer in `localStorage`, read in `onMounted` with try/catch as `DiskAttributeTable.vue` does.
 
@@ -102,7 +102,7 @@ Computed once in `listDatasets` and added to each row as `growth: { used, data, 
 - `DatasetTreemap.vue`: layout, SVG render, hatch `<pattern>` (id via `useId()`, fill via `currentColor`), colour scales, tooltip, zoom and breadcrumb, legend, keyboard, resize observer.
 - The Space tab in `app/pages/zfs/[id].vue`, with shared lazy loading.
 - Check that the demo fleet (`server/demo/zfsDatasets.ts`) has a varied enough tree and some snapshot-heavy datasets for the map to look right.
-- Demo readings: make sure seeded `DatasetReading` history covers 30 days with the new columns.
+- Demo readings: daily grid instants in the last 40 days post `zfs-list`, so the demo has a 30-day baseline (`isDatasetHistoryRun` in `server/demo/seed.ts`).
 - App tests for the component and tab.
 - Update the `Dataset` and `DatasetReading` columns in [003](003-Architecture-and-data-model.md) §Data model, which are out of date.
 

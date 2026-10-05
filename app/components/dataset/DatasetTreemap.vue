@@ -436,7 +436,7 @@ const legendBranches = computed(() => {
         </span>
       </template>
       <template v-else>
-        <span class="flex items-center gap-1.5">
+        <span v-if="scale.clamp > 0" class="flex items-center gap-1.5">
           <span class="tabular">−{{ formatBytes(scale.clamp) }}</span>
           <span class="space-diverging h-3 w-32 rounded-sm" />
           <span class="tabular">+{{ formatBytes(scale.clamp) }}</span>
