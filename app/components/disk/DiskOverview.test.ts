@@ -290,6 +290,48 @@ describe("DiskOverview", () => {
     );
   });
 
+  describe("FARM hours check", () => {
+    const farm = (logVersion: string, powerOnHours: number) => ({
+      latestFarm: {
+        interface: "ata",
+        logVersion,
+        powerOnHours,
+        workload: {},
+        errors: {},
+        environment: {},
+        perHead: [],
+      },
+    });
+    const check = '[data-testid="overview-farm"]';
+
+    it.each([
+      ["agrees", "4.19", 40_000, "Power-on hours match against FARM", "text-default"],
+      ["reset", "4.19", 60_000, "FARM 6.8 y, SMART reset", "text-warning"],
+      [
+        "not-comparable",
+        "2.1",
+        60_000,
+        "FARM can't confirm hours",
+        "text-dimmed",
+      ],
+    ])(
+      "shows %s, linking to the FARM tab",
+      async (verdict, version, hours, text, colour) => {
+        const wrapper = await mountOverview(farm(version, hours));
+        const fact = wrapper.get(check);
+        expect(fact.attributes("data-verdict")).toBe(verdict);
+        const link = fact.get("a");
+        expect(link.text()).toBe(text);
+        expect(link.classes()).toContain(colour);
+        expect(link.attributes("href")).toContain("?tab=farm");
+      },
+    );
+
+    it("is absent without a FARM log", async () => {
+      expect((await mountOverview()).find(check).exists()).toBe(false);
+    });
+  });
+
   it("links counters to the SMART tab", async () => {
     const wrapper = await mountOverview();
     expect(

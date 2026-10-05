@@ -7,6 +7,7 @@ import { temperatureColour } from "#shared/temperature";
 import { usageDetail } from "#shared/usage";
 import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 import { ATTRIBUTE_STATUS_DOT } from "./attributeRows";
+import { farmHoursCheck } from "./farmRows";
 import { specFooter, specRows } from "./specRows";
 import type { DiskDetail, ReplacementCandidate } from "./types";
 
@@ -156,6 +157,19 @@ const formatCount = (value: number | null) =>
 
 const optionalDate = (value: string | null) =>
   value === null ? null : formatDate(value);
+
+const FARM_TAB = { query: { tab: "farm" } };
+const FARM_CHECK_CLASS = {
+  agrees: "text-default",
+  reset: "text-warning",
+  "not-comparable": "text-dimmed",
+} as const;
+
+const farmCheck = computed(() =>
+  props.disk.latestFarm
+    ? farmHoursCheck(props.disk.latestFarm, props.disk.latestPowerOnHours)
+    : null,
+);
 </script>
 
 <template>
@@ -195,6 +209,19 @@ const optionalDate = (value: string | null) =>
         label="Power-on"
         :value="formatHours(disk.latestPowerOnHours)"
       />
+      <DiskFact
+        v-if="farmCheck"
+        label="FARM"
+        :data-verdict="farmCheck.verdict"
+        data-testid="overview-farm"
+      >
+        <NuxtLink
+          :to="FARM_TAB"
+          class="hover:underline"
+          :class="FARM_CHECK_CLASS[farmCheck.verdict]"
+          >{{ farmCheck.text }}</NuxtLink
+        >
+      </DiskFact>
       <DiskFact
         v-if="disk.latestPowerCycles !== null"
         label="Power cycles"
