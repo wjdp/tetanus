@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { sqlite } from "~~/server/database/client";
+import { parse as parseZpoolHistory } from "~~/server/ingest/zpool-history";
+import { recordIngest } from "~~/server/services/ingest";
 import { flushDb } from "~~/test/db";
+import { readFixture } from "~~/test/fixtures";
 import { pruneDatabase, reclaimSpace } from "./retention";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -237,6 +240,46 @@ describe("readings", () => {
       recentToo,
     ]);
   });
+});
+
+it("is not undone by the collector resending what it pruned", async () => {
+  const history = readFixture("mars/zpool-history.txt");
+  const events = readFixture("mars/zpool-events.txt");
+  const newest = Math.max(
+    ...parseZpoolHistory(history, {}).data.entries.map((entry) =>
+      Date.parse(entry.at),
+    ),
+  );
+  const ingest = (receivedAt: Date) => {
+    for (const [source, body] of [
+      ["zpool-history", history],
+      ["zfs-receives", history],
+      ["zpool-events", events],
+    ] as const) {
+      const outcome = recordIngest({
+        hostName: "mars",
+        source,
+        meta: {},
+        body,
+        receivedAt,
+      });
+      expect(outcome.ok).toBe(true);
+    }
+  };
+  const rows = () => ({
+    history: ids("PoolHistory").length,
+    events: ids("ZfsEvent").length,
+  });
+  ingest(new Date(newest));
+  const ingested = rows();
+  const later = new Date(newest + 20 * DAY_MS);
+  await pruneDatabase(later);
+  const pruned = rows();
+  expect(pruned.history).toBeLessThan(ingested.history);
+
+  ingest(later);
+
+  expect(rows()).toEqual(pruned);
 });
 
 it("deletes nothing on a second run", async () => {
