@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
+import { capacitySeries } from "~/components/pool/capacityChart";
 import { formatTimestamp } from "~/components/pool/timestamp";
 import { capacityColour } from "~/utils/vocabulary";
 
@@ -49,29 +50,16 @@ const menuItems = computed<DropdownMenuItem[]>(() => [
 
 const { system, formatZfsBytes } = useZfsByteSystem();
 
-const capacityChart = computed(() => {
-  const readings = (pool.value?.readings ?? []).flatMap((reading) =>
-    reading.allocBytes === null
-      ? []
-      : [{ at: reading.at, allocBytes: reading.allocBytes }],
-  );
-  const { unit, divisor } = byteUnitFor(
-    Math.max(0, ...readings.map((reading) => reading.allocBytes)),
-    system.value,
-  );
-  return {
-    unit,
-    series: [
-      {
-        label: "Allocated",
-        points: readings.map((reading) => ({
-          at: reading.at,
-          value: Number((reading.allocBytes / divisor).toFixed(2)),
-        })),
-      },
-    ],
-  };
+const usablePercent = computed(() => {
+  const usable = pool.value?.usable;
+  if (!usable) return null;
+  const total = usable.used + usable.available;
+  return total > 0 ? Math.round((usable.used / total) * 100) : null;
 });
+
+const capacityChart = computed(() =>
+  capacitySeries(pool.value?.readings ?? [], system.value),
+);
 
 const activeTab = ref("vdevs");
 
@@ -213,40 +201,71 @@ const tabs = computed<TabsItem[]>(() => [
           data-testid="capacity-panel"
         >
           <h2 class="text-highlighted font-semibold">Capacity</h2>
-          <dl class="grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+          <dl
+            v-if="pool.usable"
+            class="grid grid-cols-3 gap-2 sm:grid-cols-6"
+            data-testid="usable-space"
+          >
             <div>
-              <dt class="text-muted">Size</dt>
-              <dd class="text-highlighted tabular">
-                {{ formatZfsBytes(pool.sizeBytes) }}
+              <dt class="text-muted text-sm">Used</dt>
+              <dd class="text-highlighted tabular text-lg font-semibold">
+                {{ formatZfsBytes(pool.usable.used) }}
               </dd>
             </div>
             <div>
-              <dt class="text-muted">Alloc</dt>
-              <dd class="text-highlighted tabular">
-                {{ formatZfsBytes(pool.allocBytes) }}
+              <dt class="text-muted text-sm">Available</dt>
+              <dd class="text-highlighted tabular text-lg font-semibold">
+                {{ formatZfsBytes(pool.usable.available) }}
               </dd>
             </div>
             <div>
-              <dt class="text-muted">Free</dt>
-              <dd class="text-highlighted tabular">
-                {{ formatZfsBytes(pool.freeBytes) }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-muted">Cap</dt>
-              <dd class="text-highlighted tabular">{{ pool.cap ?? "—" }} %</dd>
-            </div>
-            <div>
-              <dt class="text-muted">Frag</dt>
-              <dd class="text-highlighted tabular">{{ pool.frag ?? "—" }} %</dd>
-            </div>
-            <div>
-              <dt class="text-muted">Dedup</dt>
-              <dd class="text-highlighted tabular">
-                {{ pool.dedup === null ? "—" : `${pool.dedup.toFixed(2)}×` }}
+              <dt class="text-muted text-sm">Used %</dt>
+              <dd class="text-highlighted tabular text-lg font-semibold">
+                {{ usablePercent ?? "—" }} %
               </dd>
             </div>
           </dl>
+          <p v-else class="text-muted text-sm" data-testid="usable-missing">
+            No recent <span class="font-mono">zfs list</span> for this pool, so
+            usable space is unknown; raw figures include parity.
+          </p>
+          <div class="flex flex-col gap-1" data-testid="raw-space">
+            <h3 class="text-muted text-xs">Raw, incl. parity</h3>
+            <dl class="grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+              <div>
+                <dt class="text-muted">Size</dt>
+                <dd class="text-toned tabular">
+                  {{ formatZfsBytes(pool.sizeBytes) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted">Alloc</dt>
+                <dd class="text-toned tabular">
+                  {{ formatZfsBytes(pool.allocBytes) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted">Free</dt>
+                <dd class="text-toned tabular">
+                  {{ formatZfsBytes(pool.freeBytes) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted">Cap</dt>
+                <dd class="text-toned tabular">{{ pool.cap ?? "—" }} %</dd>
+              </div>
+              <div>
+                <dt class="text-muted">Frag</dt>
+                <dd class="text-toned tabular">{{ pool.frag ?? "—" }} %</dd>
+              </div>
+              <div>
+                <dt class="text-muted">Dedup</dt>
+                <dd class="text-toned tabular">
+                  {{ pool.dedup === null ? "—" : `${pool.dedup.toFixed(2)}×` }}
+                </dd>
+              </div>
+            </dl>
+          </div>
           <UProgress
             v-if="pool.cap !== null"
             :model-value="pool.cap"

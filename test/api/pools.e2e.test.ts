@@ -83,6 +83,7 @@ beforeAll(async () => {
     readFixture("mars/zpool-status-stored-paths.json"),
   );
   await ingest("zpool-list", readFixture("mars/zpool-list.json"));
+  await ingest("zfs-list", readFixture("mars/zfs-list.json"));
   await ingest("zpool-events", readFixture("mars/zpool-events.txt"));
   await ingest("zpool-history", readFixture("mars/zpool-history.txt"));
 });
@@ -153,6 +154,15 @@ describe("/api/pools", () => {
       resolvedConfig: { scrubIntervalDays: 35, slowIoThreshold: 10 },
     });
     expect(detail.readings).toHaveLength(1);
+    expect(detail.usable).toEqual({
+      used: expect.any(Number),
+      available: expect.any(Number),
+      at: expect.any(String),
+    });
+    expect(detail.readings[0]).toMatchObject({
+      usedBytes: detail.usable.used,
+      availableBytes: detail.usable.available,
+    });
     expect(detail.history).toHaveLength(50);
     expect(detail.events).toHaveLength(50);
   });

@@ -26,10 +26,14 @@ const pool = (
   archivedAt,
   archiveNote: "",
   host: { id: 1, name: "mars", displayName: null },
+  usable: null as { used: number; available: number } | null,
 });
 
 registerEndpoint("/api/pools", (event) => {
-  const tank = pool(1, "tank", null);
+  const tank = {
+    ...pool(1, "tank", null),
+    usable: { used: 2 ** 40, available: 2 ** 39 },
+  };
   const zeta = pool(3, "zeta", null, "MISSING");
   const tfault = pool(2, "tfault", "2026-10-02T09:00:00.000Z");
   return getQuery(event).archived === "include"
@@ -55,6 +59,20 @@ describe("ZFS page", () => {
       expect(poolNames(page)).toEqual(["tank", "tfault", "zeta"]),
     );
     expect(page.findAll('[data-testid="pool-archived-badge"]')).toHaveLength(1);
+  });
+
+  it("shows usable used and available, marking raw figures when unknown", async () => {
+    const page = await mountSuspended(ZfsPage, { route: "/zfs" });
+    const cells = (name: string) =>
+      page
+        .findAll("tbody tr")
+        .find((row) => row.text().includes(name))
+        ?.findAll("td")
+        .slice(3, 5)
+        .map((cell) => cell.text().replace(/\s+/g, " "));
+
+    expect(cells("tank")).toEqual(["1.00 TiB", "512 GiB"]);
+    expect(cells("zeta")).toEqual(["466 GiB raw", "466 GiB raw"]);
   });
 
   it("reads the toggle from the query string", async () => {

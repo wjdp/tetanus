@@ -277,7 +277,7 @@ Vdev            id, poolId, guid, parentId?, name, type (root|raidz1|raidz2|drai
                 role (normal|log|cache|special|dedup|spare), state, spareState?, readErrors, writeErrors,
                 cksumErrors, slowIos, path?, devid?, physPath?, diskId?, sizeBytes?, allocBytes?, frag?,
                 present, lastSeenAt
-PoolReading     poolId, at, alloc, free, frag, cap, state
+PoolReading     poolId, at, alloc, free, frag, cap, state, used, available (root dataset, from the same run's zfs list)
 VdevReading     vdevId, at, readErrors, writeErrors, cksumErrors, slowIos, state, alloc?, frag?
 Dataset         id, poolId, name, parentId?, type, used, referenced, available, logicalUsed,
                 compressRatio, usedBySnapshots, usedByDataset, usedByChildren, mountpoint,

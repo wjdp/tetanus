@@ -20,6 +20,7 @@ const poolOf = (children: TopologyVdev[]): TopologyPool => ({
   displayState: "ONLINE",
   sizeBytes: null,
   allocBytes: null,
+  usable: null,
   cap: 85,
   frag: null,
   scan: null,
@@ -38,6 +39,21 @@ const rowLabels = (card: Awaited<ReturnType<typeof mountCard>>) =>
     .map((row) => row.find(".font-mono").text());
 
 describe("TopologyPoolCard", () => {
+  it("leads with usable space and falls back to raw figures", async () => {
+    const space = async (extra: Partial<TopologyPool>) =>
+      (await mountCard({ ...poolOf([]), ...extra }))
+        .get('[data-testid="pool-space"]')
+        .text()
+        .replace(/\s+/g, " ");
+
+    expect(
+      await space({ usable: { used: 2 ** 40, available: 3 * 2 ** 40 } }),
+    ).toBe("1.00 TiB used · 3.00 TiB available · cap 85 % · frag — %");
+    expect(await space({ allocBytes: 2 ** 41, sizeBytes: 2 ** 42 })).toBe(
+      "2.00 TiB of 4.00 TiB raw · cap 85 % · frag — %",
+    );
+  });
+
   it("sets class vdevs apart below the data vdevs", async () => {
     const card = await mountCard(
       poolOf([

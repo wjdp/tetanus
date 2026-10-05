@@ -58,9 +58,16 @@ const { formatZfsBytes } = useZfsByteSystem();
         :color="capColour"
         size="sm"
       />
-      <p class="text-muted tabular text-sm">
-        {{ formatZfsBytes(pool.allocBytes) }} of {{ formatZfsBytes(pool.sizeBytes) }}
-        · {{ pool.cap ?? "—" }} % · frag {{ pool.frag ?? "—" }} %
+      <p class="text-muted tabular text-sm" data-testid="pool-space">
+        <template v-if="pool.usable">
+          {{ formatZfsBytes(pool.usable.used) }} used ·
+          {{ formatZfsBytes(pool.usable.available) }} available
+        </template>
+        <template v-else>
+          {{ formatZfsBytes(pool.allocBytes) }} of
+          {{ formatZfsBytes(pool.sizeBytes) }} raw
+        </template>
+        · cap {{ pool.cap ?? "—" }} % · frag {{ pool.frag ?? "—" }} %
       </p>
       <template v-if="scanRunning">
         <UProgress

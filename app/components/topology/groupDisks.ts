@@ -76,6 +76,7 @@ export interface TopologyPool {
   displayState: string;
   sizeBytes: number | null;
   allocBytes: number | null;
+  usable: { used: number; available: number } | null;
   cap: number | null;
   frag: number | null;
   scan: PoolScan | null;

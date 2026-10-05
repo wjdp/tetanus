@@ -13,7 +13,7 @@ import { listHostBays } from "~~/server/services/locations";
 import { listReplications } from "~~/server/services/replications";
 import { latestAttributes } from "~~/server/services/smart";
 import { listDatasets } from "~~/server/services/zfs/datasets";
-import { listPools } from "~~/server/services/zfs/queries";
+import { getPool, listPools } from "~~/server/services/zfs/queries";
 import { loadSeededDatabase, SEEDED_AT, seededReport } from "~~/test/seeded";
 import { type SeedReport, tick } from "./seed";
 import { DAY_MS, DEMO_EPOCH, HOUR_MS } from "./timeline";
@@ -160,6 +160,22 @@ describe("seed", () => {
           (row.growth?.snapshots ?? 0) > 0,
       ),
     ).toBe(true);
+  });
+
+  it("gives every pool with datasets usable space below its raw size, charted", () => {
+    const pools = listPools().filter((row) => row.datasetCount > 0);
+    expect(pools.length).toBeGreaterThan(0);
+    for (const row of pools) {
+      expect(row.usable, row.name).not.toBeNull();
+      const total = (row.usable?.used ?? 0) + (row.usable?.available ?? 0);
+      expect(total, row.name).toBeLessThanOrEqual(row.sizeBytes ?? 0);
+    }
+    const charted = pools.filter((row) =>
+      getPool(row.id, NOW).readings.some(
+        (reading) => reading.usedBytes !== null,
+      ),
+    );
+    expect(charted.length).toBe(pools.length);
   });
 
   it("A3: pending sectors accepted at 8", () => {

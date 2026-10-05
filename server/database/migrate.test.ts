@@ -38,7 +38,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 32;
+const MIGRATION_COUNT = 34;
 
 const openConnections: Database.Database[] = [];
 
@@ -171,10 +171,14 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Disk DROP COLUMN lastLocationKey;
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 15
+            ORDER BY created_at DESC LIMIT 17
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -204,6 +208,8 @@ describe("0009_host_collector_version", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -266,10 +272,14 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE Disk DROP COLUMN lastLocationKey;
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 23
+            ORDER BY created_at DESC LIMIT 25
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -305,6 +315,8 @@ describe("0009_host_collector_version", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     expect(
       sqlite
@@ -341,10 +353,14 @@ describe("0018_vdev_role_backfill", () => {
       ALTER TABLE Disk DROP COLUMN lastLocationKey;
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 14
+            ORDER BY created_at DESC LIMIT 16
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -375,6 +391,8 @@ describe("0018_vdev_role_backfill", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -408,10 +426,14 @@ describe("0022_disk_disposal", () => {
       ALTER TABLE Disk DROP COLUMN lastLocationKey;
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 10
+            ORDER BY created_at DESC LIMIT 12
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -437,6 +459,8 @@ describe("0022_disk_disposal", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
@@ -490,10 +514,14 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       ALTER TABLE Disk DROP COLUMN lastLocationKey;
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 9
+            ORDER BY created_at DESC LIMIT 11
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -519,6 +547,8 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     expect(
       sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),
@@ -539,10 +569,14 @@ describe("0026_diary_titles_without_ids", () => {
     sqlite.exec(`
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 6
+            ORDER BY created_at DESC LIMIT 8
         );
       INSERT INTO Disk (alias, model, serial, firstSeenAt)
         VALUES ('K1', NULL, NULL, 0), (NULL, 'ST18000NM', 'ZR2', 0);
@@ -559,6 +593,8 @@ describe("0026_diary_titles_without_ids", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     expect(
       sqlite.prepare("SELECT title FROM DiaryEntry ORDER BY id").all(),
@@ -576,10 +612,14 @@ describe("0027_zfs_event_repair", () => {
     sqlite.exec(`
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 5
+            ORDER BY created_at DESC LIMIT 7
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title)
@@ -605,6 +645,8 @@ describe("0027_zfs_event_repair", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     expect(sqlite.prepare("SELECT title FROM DiaryEntry").all()).toEqual([
       { title: "kept" },
@@ -627,10 +669,14 @@ describe("0028_placeholder_wwn_keys", () => {
     sqlite.exec(`
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 4
+            ORDER BY created_at DESC LIMIT 6
         );
       INSERT INTO Disk (firstSeenAt) VALUES (0);
       INSERT INTO DiskKey (diskId, kind, value)
@@ -650,6 +696,8 @@ describe("0028_placeholder_wwn_keys", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     expect(
       sqlite.prepare("SELECT kind, value FROM DiskKey ORDER BY id").all(),
@@ -668,10 +716,14 @@ describe("0029_clear_purpose_other", () => {
     sqlite.exec(`
       ALTER TABLE Disk DROP COLUMN latestFarm;
       ALTER TABLE Disk DROP COLUMN latestDeviceStatistics;
+      ALTER TABLE PoolReading DROP COLUMN availableBytes;
+      ALTER TABLE PoolReading DROP COLUMN usedBytes;
+      ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
+      ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 3
+            ORDER BY created_at DESC LIMIT 5
         );
       INSERT INTO Disk (firstSeenAt, inventory)
         VALUES
@@ -684,6 +736,8 @@ describe("0029_clear_purpose_other", () => {
       "0029_clear_purpose_other",
       "0030_disk_latest_farm",
       "0031_disk_latest_device_statistics",
+      "0032_dataset_reading_space_split",
+      "0033_pool_reading_usable",
     ]);
     expect(
       sqlite.prepare("SELECT inventory FROM Disk ORDER BY id").all(),

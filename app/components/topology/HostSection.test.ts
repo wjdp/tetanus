@@ -29,6 +29,7 @@ const pool: TopologyPool = {
   displayState: "ONLINE",
   sizeBytes: null,
   allocBytes: null,
+  usable: null,
   cap: null,
   frag: null,
   scan: null,

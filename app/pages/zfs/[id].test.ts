@@ -90,6 +90,11 @@ const tank = {
     ]),
   ]),
   readings: [],
+  usable: {
+    used: 2 ** 43,
+    available: 3 * 2 ** 43,
+    at: "2026-09-28T10:00:00.000Z",
+  },
   diary: [],
   history: [
     {
@@ -108,7 +113,12 @@ const tank = {
 };
 
 registerEndpoint("/api/pools/7", () => tank);
-registerEndpoint("/api/pools/8", () => ({ ...tank, id: 8, cap: 92 }));
+registerEndpoint("/api/pools/8", () => ({
+  ...tank,
+  id: 8,
+  cap: 92,
+  usable: null,
+}));
 registerEndpoint("/api/pools/8/datasets", () => ({ datasets: [] }));
 
 let tfaultArchived = true;
@@ -395,6 +405,25 @@ describe("pool page", () => {
       ?.trigger("click");
     expect(capacity()).toContain("36.0 TB");
     expect(document.cookie).toContain(`${ZFS_BYTE_SYSTEM_COOKIE}=decimal`);
+  });
+
+  it("leads with usable space and keeps raw figures below, labelled", async () => {
+    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const usable = page.get('[data-testid="usable-space"]').text();
+    expect(usable).toContain("8.00 TiB");
+    expect(usable).toContain("24.0 TiB");
+    expect(usable).toContain("25 %");
+    const raw = page.get('[data-testid="raw-space"]').text();
+    expect(raw).toContain("Raw, incl. parity");
+    expect(raw).toContain("32.7 TiB");
+  });
+
+  it("explains missing usable space and shows only raw figures", async () => {
+    const page = await mountSuspended(PoolPage, { route: "/zfs/8" });
+    expect(page.find('[data-testid="usable-space"]').exists()).toBe(false);
+    expect(page.get('[data-testid="usable-missing"]').text()).toContain(
+      "raw figures include parity",
+    );
   });
 
   it("colours the capacity bar by the capacity thresholds", async () => {

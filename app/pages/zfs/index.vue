@@ -6,8 +6,6 @@ import { capacityColour } from "~/utils/vocabulary";
 
 useSeoMeta({ title: getPageTitle("ZFS") });
 
-const { formatZfsBytes } = useZfsByteSystem();
-
 const route = useRoute();
 const router = useRouter();
 
@@ -31,9 +29,8 @@ const columns: TableColumn<Pool>[] = [
   { id: "host", header: "Host" },
   { accessorKey: "name", header: "Pool" },
   { id: "state", accessorKey: "displayState", header: "State" },
-  { id: "size", header: "Size" },
-  { id: "alloc", header: "Alloc" },
-  { id: "free", header: "Free" },
+  { id: "used", header: "Used" },
+  { id: "available", header: "Available" },
   { id: "cap", header: "Cap" },
   { id: "frag", header: "Frag" },
   { id: "dedup", header: "Dedup" },
@@ -102,14 +99,17 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
       <template #state-cell="{ row }">
         <PoolStateBadge :pool="row.original" size="sm" />
       </template>
-      <template #size-cell="{ row }">
-        <span class="tabular">{{ formatZfsBytes(row.original.sizeBytes) }}</span>
+      <template #used-cell="{ row }">
+        <PoolUsableFigure
+          :usable="row.original.usable?.used"
+          :raw="row.original.allocBytes"
+        />
       </template>
-      <template #alloc-cell="{ row }">
-        <span class="tabular">{{ formatZfsBytes(row.original.allocBytes) }}</span>
-      </template>
-      <template #free-cell="{ row }">
-        <span class="tabular">{{ formatZfsBytes(row.original.freeBytes) }}</span>
+      <template #available-cell="{ row }">
+        <PoolUsableFigure
+          :usable="row.original.usable?.available"
+          :raw="row.original.freeBytes"
+        />
       </template>
       <template #cap-cell="{ row }">
         <div class="flex min-w-20 flex-col gap-1">
