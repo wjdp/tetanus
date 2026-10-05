@@ -251,7 +251,7 @@ const formatShare = (bytes: number) =>
 const formatGrowth = (bytes: number | null, sinceAt: string | undefined) => {
   if (bytes === null || !sinceAt) return "No history yet";
   const sign = bytes > 0 ? "+" : bytes < 0 ? "−" : "±";
-  return `${sign}${formatBytes(Math.abs(bytes))} since ${formatDate(sinceAt)}`;
+  return `${sign}${formatZfsBytes(Math.abs(bytes))} since ${formatDate(sinceAt)}`;
 };
 
 const tooltip = computed(() => {
@@ -269,9 +269,9 @@ const tooltip = computed(() => {
       childBoxes(space).reduce((sum, child) => sum + child.dataset.used, 0),
     );
     lines.push(
-      `Data ${formatBytes(split.data)} · snapshots ${formatBytes(split.snapshots)} · children ${formatBytes(split.children)}`,
+      `Data ${formatZfsBytes(split.data)} · snapshots ${formatZfsBytes(split.snapshots)} · children ${formatZfsBytes(split.children)}`,
     );
-    if (split.reserved > 0) lines.push(`Reserved ${formatBytes(split.reserved)}`);
+    if (split.reserved > 0) lines.push(`Reserved ${formatZfsBytes(split.reserved)}`);
     if (row?.compressRatio) lines.push(`Compression ${row.compressRatio.toFixed(2)}×`);
   }
   if (space.kind !== "free") {
@@ -283,7 +283,7 @@ const tooltip = computed(() => {
   return {
     title: space.dataset.name,
     kind: space.kind === "dataset" ? null : KIND_LABELS[space.kind],
-    size: `${formatBytes(bytes)} · ${formatShare(bytes)}`,
+    size: `${formatZfsBytes(bytes)} · ${formatShare(bytes)}`,
     lines,
     left: Math.min(pointer.value.x + 12, Math.max(0, width.value - 280)),
     top: pointer.value.y + 16,
@@ -307,6 +307,8 @@ const legendBranches = computed(() => {
     },
   ];
 });
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>
@@ -389,7 +391,7 @@ const legendBranches = computed(() => {
         :role="hasHeader(node) ? 'button' : undefined"
         :aria-label="
           hasHeader(node)
-            ? `${node.data.dataset.name}, ${formatBytes(node.data.dataset.used)}`
+            ? `${node.data.dataset.name}, ${formatZfsBytes(node.data.dataset.used)}`
             : undefined
         "
       >
@@ -405,7 +407,7 @@ const legendBranches = computed(() => {
             {{ lastSegment(node.data.dataset.name) }}
           </NuxtLink>
           <span class="text-muted tabular shrink-0">
-            {{ formatBytes(node.data.dataset.used) }}
+            {{ formatZfsBytes(node.data.dataset.used) }}
           </span>
         </div>
       </div>
@@ -437,9 +439,9 @@ const legendBranches = computed(() => {
       </template>
       <template v-else>
         <span v-if="scale.clamp > 0" class="flex items-center gap-1.5">
-          <span class="tabular">−{{ formatBytes(scale.clamp) }}</span>
+          <span class="tabular">−{{ formatZfsBytes(scale.clamp) }}</span>
           <span class="space-diverging h-3 w-32 rounded-sm" />
-          <span class="tabular">+{{ formatBytes(scale.clamp) }}</span>
+          <span class="tabular">+{{ formatZfsBytes(scale.clamp) }}</span>
         </span>
         <span class="flex items-center gap-1.5">
           <span class="size-3 rounded-sm" style="background-color: var(--space-none)" />

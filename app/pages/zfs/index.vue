@@ -6,6 +6,8 @@ import { capacityColour } from "~/utils/vocabulary";
 
 useSeoMeta({ title: getPageTitle("ZFS") });
 
+const { formatZfsBytes } = useZfsByteSystem();
+
 const route = useRoute();
 const router = useRouter();
 
@@ -58,11 +60,11 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
       <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
         ZFS
       </h1>
+      <ZfsByteUnitToggle class="ms-auto" />
       <USwitch
         v-model="showArchived"
         label="Show archived"
         size="sm"
-        class="ms-auto"
         data-testid="show-archived"
       />
     </div>
@@ -101,13 +103,13 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
         <PoolStateBadge :pool="row.original" size="sm" />
       </template>
       <template #size-cell="{ row }">
-        <span class="tabular">{{ formatBytes(row.original.sizeBytes) }}</span>
+        <span class="tabular">{{ formatZfsBytes(row.original.sizeBytes) }}</span>
       </template>
       <template #alloc-cell="{ row }">
-        <span class="tabular">{{ formatBytes(row.original.allocBytes) }}</span>
+        <span class="tabular">{{ formatZfsBytes(row.original.allocBytes) }}</span>
       </template>
       <template #free-cell="{ row }">
-        <span class="tabular">{{ formatBytes(row.original.freeBytes) }}</span>
+        <span class="tabular">{{ formatZfsBytes(row.original.freeBytes) }}</span>
       </template>
       <template #cap-cell="{ row }">
         <div class="flex min-w-20 flex-col gap-1">

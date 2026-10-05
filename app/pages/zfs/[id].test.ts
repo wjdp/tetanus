@@ -4,6 +4,8 @@ import { flushPromises } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearNuxtData } from "#app";
 import type { FaultView } from "#shared/faults";
+import { ZFS_BYTE_SYSTEM_COOKIE } from "~/composables/useZfsByteSystem";
+import { clearCookie } from "~~/test/cookies";
 import { FakeEventSource } from "~~/test/fakeEventSource";
 import PoolPage from "./[id].vue";
 
@@ -335,6 +337,8 @@ registerEndpoint("/api/pools/10/vdevs/101/readings", (event) => {
 beforeEach(() => {
   FakeEventSource.install();
   clearNuxtData();
+  clearNuxtState(ZFS_BYTE_SYSTEM_COOKIE);
+  clearCookie(ZFS_BYTE_SYSTEM_COOKIE);
 });
 
 describe("pool page", () => {
@@ -378,6 +382,19 @@ describe("pool page", () => {
       ["success", "filled"],
       ["neutral", "hollow"],
     ]);
+  });
+
+  it("shows sizes in binary units like zpool, with a switch to decimal", async () => {
+    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const capacity = () => page.get('[data-testid="capacity-panel"]').text();
+    expect(capacity()).toContain("32.7 TiB");
+
+    await page
+      .findAll('[aria-label="Size units"] button')
+      .find((button) => button.text() === "TB")
+      ?.trigger("click");
+    expect(capacity()).toContain("36.0 TB");
+    expect(document.cookie).toContain(`${ZFS_BYTE_SYSTEM_COOKIE}=decimal`);
   });
 
   it("colours the capacity bar by the capacity thresholds", async () => {
@@ -507,14 +524,14 @@ describe("pool page", () => {
   it("shows scan repairs, red scan errors and the removal panel", async () => {
     const page = await mountSuspended(PoolPage, { route: "/zfs/10" });
     const scan = page.get('[data-testid="scan-panel"]');
-    expect(scan.get('[data-testid="scan-repaired"]').text()).toBe("4.10 kB");
+    expect(scan.get('[data-testid="scan-repaired"]').text()).toBe("4.00 KiB");
     expect(scan.get('[data-testid="scan-errors"]').classes()).toContain(
       "text-error",
     );
     const removal = page.get('[data-testid="removal-panel"]').text();
     expect(removal).toContain("2025-11-11 15:21 UTC");
-    expect(removal).toContain("97.1 GB of 97.1 GB");
-    expect(removal).toContain("3.11 MB");
+    expect(removal).toContain("90.4 GiB of 90.4 GiB");
+    expect(removal).toContain("2.97 MiB");
   });
 
   it("groups log and spare devices, badges spares and flags slow I/Os over the threshold", async () => {

@@ -1,15 +1,25 @@
-const BYTE_UNITS = ["B", "kB", "MB", "GB", "TB", "PB"];
+export type ByteSystem = "decimal" | "binary";
 
-export function formatBytes(bytes: number | null | undefined): string {
+const BYTE_SYSTEMS: Record<ByteSystem, { base: number; units: string[] }> = {
+  decimal: { base: 1000, units: ["B", "kB", "MB", "GB", "TB", "PB"] },
+  binary: { base: 1024, units: ["B", "KiB", "MiB", "GiB", "TiB", "PiB"] },
+};
+
+export function formatBytes(
+  bytes: number | null | undefined,
+  system: ByteSystem = "decimal",
+): string {
   if (bytes === null || bytes === undefined) return "—";
+  const { base, units } = BYTE_SYSTEMS[system];
   let value = bytes;
   let unit = 0;
-  while (value >= 1000 && unit < BYTE_UNITS.length - 1) {
-    value /= 1000;
+  while (Math.abs(value) >= base && unit < units.length - 1) {
+    value /= base;
     unit += 1;
   }
-  const digits = unit === 0 || value >= 100 ? 0 : value >= 10 ? 1 : 2;
-  return `${value.toFixed(digits)} ${BYTE_UNITS[unit]}`;
+  const magnitude = Math.abs(value);
+  const digits = unit === 0 || magnitude >= 100 ? 0 : magnitude >= 10 ? 1 : 2;
+  return `${value.toFixed(digits)} ${units[unit]}`;
 }
 
 export function formatHours(hours: number | null | undefined): string {
@@ -36,8 +46,12 @@ export function formatCelsius(celsius: number | null | undefined): string {
   return celsius === null || celsius === undefined ? "—" : `${celsius} °C`;
 }
 
-export function byteUnitFor(bytes: number): { unit: string; divisor: number } {
+export function byteUnitFor(
+  bytes: number,
+  system: ByteSystem = "decimal",
+): { unit: string; divisor: number } {
+  const { base, units } = BYTE_SYSTEMS[system];
   let unit = 0;
-  while (bytes >= 1000 ** (unit + 1) && unit < BYTE_UNITS.length - 1) unit += 1;
-  return { unit: BYTE_UNITS[unit], divisor: 1000 ** unit };
+  while (bytes >= base ** (unit + 1) && unit < units.length - 1) unit += 1;
+  return { unit: units[unit], divisor: base ** unit };
 }

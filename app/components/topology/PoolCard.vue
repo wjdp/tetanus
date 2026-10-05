@@ -22,6 +22,8 @@ const lastScan = computed(() => {
   };
 });
 const capColour = computed(() => capacityColour(props.pool.cap));
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>
@@ -57,7 +59,7 @@ const capColour = computed(() => capacityColour(props.pool.cap));
         size="sm"
       />
       <p class="text-muted tabular text-sm">
-        {{ formatBytes(pool.allocBytes) }} of {{ formatBytes(pool.sizeBytes) }}
+        {{ formatZfsBytes(pool.allocBytes) }} of {{ formatZfsBytes(pool.sizeBytes) }}
         · {{ pool.cap ?? "—" }} % · frag {{ pool.frag ?? "—" }} %
       </p>
       <template v-if="scanRunning">

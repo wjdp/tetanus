@@ -93,7 +93,7 @@ describe("dataset page", () => {
     expect(properties).toContain("1.07×");
     expect(properties).toContain("zstd");
     expect(properties).toContain("aes-256-gcm");
-    expect(properties).toContain("2.00 TB");
+    expect(properties).toContain("1.82 TiB");
     expect(properties).toContain("2024-03-01 12:00 UTC");
 
     expect(page.get('[data-testid="used-panel"]').text()).toContain(

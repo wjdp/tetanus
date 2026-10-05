@@ -89,7 +89,7 @@ describe("DatasetTree", () => {
     const [, media, , volume] = rowTexts(await mountTree());
 
     expect(media).toContain("1.01×");
-    expect(media).toContain("5.00 TB");
+    expect(media).toContain("4.55 TiB");
     expect(media).toContain("12");
     expect(media).toContain("3 h ago");
     expect(volume).toContain("volume");

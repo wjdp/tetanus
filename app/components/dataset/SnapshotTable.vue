@@ -20,6 +20,8 @@ const columns: TableColumn<DatasetSnapshot>[] = [
   { id: "referenced", header: "Referenced" },
   { id: "written", header: "Written" },
 ];
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>
@@ -46,16 +48,16 @@ const columns: TableColumn<DatasetSnapshot>[] = [
         </span>
       </template>
       <template #used-cell="{ row }">
-        <span class="tabular">{{ formatBytes(row.original.used) }}</span>
+        <span class="tabular">{{ formatZfsBytes(row.original.used) }}</span>
       </template>
       <template #referenced-cell="{ row }">
         <span class="text-muted tabular">
-          {{ formatBytes(row.original.referenced) }}
+          {{ formatZfsBytes(row.original.referenced) }}
         </span>
       </template>
       <template #written-cell="{ row }">
         <span class="text-muted tabular">
-          {{ formatBytes(row.original.written) }}
+          {{ formatZfsBytes(row.original.written) }}
         </span>
       </template>
     </UTable>

@@ -20,6 +20,8 @@ const stateLabel = computed(() =>
       ? "cancelled"
       : props.removal.state.toLowerCase(),
 );
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>
@@ -51,10 +53,10 @@ const stateLabel = computed(() =>
       </dd>
       <dt class="text-muted">Copied</dt>
       <dd class="tabular">
-        {{ formatBytes(removal.copied) }} of {{ formatBytes(removal.toCopy) }}
+        {{ formatZfsBytes(removal.copied) }} of {{ formatZfsBytes(removal.toCopy) }}
       </dd>
       <dt class="text-muted">Mapping memory</dt>
-      <dd class="tabular">{{ formatBytes(removal.mappingMemory) }}</dd>
+      <dd class="tabular">{{ formatZfsBytes(removal.mappingMemory) }}</dd>
     </dl>
   </section>
 </template>

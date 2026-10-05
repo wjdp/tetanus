@@ -97,7 +97,7 @@ describe("ScanPanel", () => {
     });
     const lastScrub = panel.get('[data-testid="last-scrub"]');
     expect(lastScrub.text()).toContain("2 errors");
-    expect(lastScrub.text()).toContain("repaired 4.10 kB");
+    expect(lastScrub.text()).toContain("repaired 4.00 KiB");
     expect(lastScrub.text()).toContain("took 2 h");
     expect(lastScrub.classes()).toContain("text-error");
   });

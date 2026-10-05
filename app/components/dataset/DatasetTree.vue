@@ -38,6 +38,8 @@ const formatRatio = (ratio: number | null) =>
 
 const snapshotAge = (at: string | null) =>
   at ? `${formatDuration(props.now - new Date(at).getTime())} ago` : "—";
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>
@@ -104,11 +106,11 @@ const snapshotAge = (at: string | null) =>
       <span v-else class="text-muted">{{ row.original.dataset.type }}</span>
     </template>
     <template #used-cell="{ row }">
-      <span class="tabular">{{ formatBytes(row.original.dataset.used) }}</span>
+      <span class="tabular">{{ formatZfsBytes(row.original.dataset.used) }}</span>
     </template>
     <template #referenced-cell="{ row }">
       <span class="text-muted tabular">
-        {{ formatBytes(row.original.dataset.referenced) }}
+        {{ formatZfsBytes(row.original.dataset.referenced) }}
       </span>
     </template>
     <template #ratio-cell="{ row }">
@@ -118,7 +120,7 @@ const snapshotAge = (at: string | null) =>
     </template>
     <template #quota-cell="{ row }">
       <span class="text-muted tabular">
-        {{ formatBytes(row.original.dataset.quota) }}
+        {{ formatZfsBytes(row.original.dataset.quota) }}
       </span>
     </template>
     <template #snapshots-cell="{ row }">

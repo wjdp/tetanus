@@ -58,6 +58,8 @@ const deviceDetails = (node: PoolVdev) =>
   ]
     .filter(Boolean)
     .join("\n") || undefined;
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>
@@ -171,8 +173,8 @@ const deviceDetails = (node: PoolVdev) =>
         v-if="row.original.kind === 'vdev' && row.original.node.sizeBytes !== null"
         class="text-muted tabular whitespace-nowrap"
       >
-        {{ formatBytes(row.original.node.allocBytes) }} /
-        {{ formatBytes(row.original.node.sizeBytes) }}
+        {{ formatZfsBytes(row.original.node.allocBytes) }} /
+        {{ formatZfsBytes(row.original.node.sizeBytes) }}
       </span>
     </template>
     <template #frag-cell="{ row }">

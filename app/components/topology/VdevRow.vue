@@ -24,9 +24,11 @@ const usage = computed(() => {
   return {
     percent,
     colour: capacityColour(percent),
-    text: `${formatBytes(allocBytes)} of ${formatBytes(sizeBytes)} · ${percent} %`,
+    text: `${formatZfsBytes(allocBytes)} of ${formatZfsBytes(sizeBytes)} · ${percent} %`,
   };
 });
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>

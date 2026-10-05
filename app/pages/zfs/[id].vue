@@ -47,16 +47,31 @@ const menuItems = computed<DropdownMenuItem[]>(() => [
       },
 ]);
 
-const capacitySeries = computed(() => [
-  {
-    label: "Allocated",
-    points: (pool.value?.readings ?? []).flatMap((reading) =>
-      reading.allocBytes === null
-        ? []
-        : [{ at: reading.at, value: reading.allocBytes / 1e12 }],
-    ),
-  },
-]);
+const { system, formatZfsBytes } = useZfsByteSystem();
+
+const capacityChart = computed(() => {
+  const readings = (pool.value?.readings ?? []).flatMap((reading) =>
+    reading.allocBytes === null
+      ? []
+      : [{ at: reading.at, allocBytes: reading.allocBytes }],
+  );
+  const { unit, divisor } = byteUnitFor(
+    Math.max(0, ...readings.map((reading) => reading.allocBytes)),
+    system.value,
+  );
+  return {
+    unit,
+    series: [
+      {
+        label: "Allocated",
+        points: readings.map((reading) => ({
+          at: reading.at,
+          value: Number((reading.allocBytes / divisor).toFixed(2)),
+        })),
+      },
+    ],
+  };
+});
 
 const activeTab = ref("vdevs");
 
@@ -115,6 +130,7 @@ const tabs = computed<TabsItem[]>(() => [
             Data errors {{ pool.errors }}
           </span>
           <div class="ms-auto flex items-center gap-2">
+            <ZfsByteUnitToggle />
             <PoolConfigPopover
               :pool-id="pool.id"
               :config="pool.config"
@@ -201,19 +217,19 @@ const tabs = computed<TabsItem[]>(() => [
             <div>
               <dt class="text-muted">Size</dt>
               <dd class="text-highlighted tabular">
-                {{ formatBytes(pool.sizeBytes) }}
+                {{ formatZfsBytes(pool.sizeBytes) }}
               </dd>
             </div>
             <div>
               <dt class="text-muted">Alloc</dt>
               <dd class="text-highlighted tabular">
-                {{ formatBytes(pool.allocBytes) }}
+                {{ formatZfsBytes(pool.allocBytes) }}
               </dd>
             </div>
             <div>
               <dt class="text-muted">Free</dt>
               <dd class="text-highlighted tabular">
-                {{ formatBytes(pool.freeBytes) }}
+                {{ formatZfsBytes(pool.freeBytes) }}
               </dd>
             </div>
             <div>
@@ -238,7 +254,10 @@ const tabs = computed<TabsItem[]>(() => [
             size="xs"
             data-testid="pool-capacity-bar"
           />
-          <ChartsTimeSeriesChart :series="capacitySeries" unit="TB" />
+          <ChartsTimeSeriesChart
+            :series="capacityChart.series"
+            :unit="capacityChart.unit"
+          />
         </section>
 
         <div class="flex flex-col gap-4">

@@ -222,7 +222,7 @@ describe("index page", () => {
     const group = page.get('[data-testid="vdev-group"]');
     expect(group.text()).toContain("raidz1-0");
     expect(group.get('[data-testid="vdev-usage"]').text()).toBe(
-      "18.0 TB of 36.0 TB · 50 %",
+      "16.4 TiB of 32.7 TiB · 50 %",
     );
     const tiles = group.findAll('[data-testid="disk-tile"]');
     expect(

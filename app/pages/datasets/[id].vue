@@ -21,6 +21,8 @@ useSeoMeta({ title: getPageTitle(dataset.value?.name ?? "Dataset") });
 
 const now = Date.now();
 
+const { system, formatZfsBytes } = useZfsByteSystem();
+
 const shortName = computed(() =>
   dataset.value ? lastSegment(dataset.value.name) : "Dataset",
 );
@@ -29,6 +31,7 @@ const usedSeries = computed(() => {
   const readings = dataset.value?.readings ?? [];
   const { unit, divisor } = byteUnitFor(
     Math.max(0, ...readings.map((reading) => reading.used)),
+    system.value,
   );
   return {
     unit,
@@ -51,18 +54,18 @@ const properties = computed(() => {
   const row = dataset.value;
   if (!row) return [];
   return [
-    { label: "Used", value: formatBytes(row.used) },
-    { label: "Referenced", value: formatBytes(row.referenced) },
-    { label: "Available", value: formatBytes(row.available) },
-    { label: "Logical used", value: formatBytes(row.logicalUsed) },
+    { label: "Used", value: formatZfsBytes(row.used) },
+    { label: "Referenced", value: formatZfsBytes(row.referenced) },
+    { label: "Available", value: formatZfsBytes(row.available) },
+    { label: "Logical used", value: formatZfsBytes(row.logicalUsed) },
     { label: "Ratio", value: formatRatio(row.compressRatio) },
-    { label: "Used by snapshots", value: formatBytes(row.usedBySnapshots) },
-    { label: "Used by dataset", value: formatBytes(row.usedByDataset) },
-    { label: "Used by children", value: formatBytes(row.usedByChildren) },
-    { label: "Quota", value: formatBytes(row.quota) },
-    { label: "Refquota", value: formatBytes(row.refQuota) },
-    { label: "Reservation", value: formatBytes(row.reservation) },
-    { label: "Recordsize", value: formatBytes(row.recordSize) },
+    { label: "Used by snapshots", value: formatZfsBytes(row.usedBySnapshots) },
+    { label: "Used by dataset", value: formatZfsBytes(row.usedByDataset) },
+    { label: "Used by children", value: formatZfsBytes(row.usedByChildren) },
+    { label: "Quota", value: formatZfsBytes(row.quota) },
+    { label: "Refquota", value: formatZfsBytes(row.refQuota) },
+    { label: "Reservation", value: formatZfsBytes(row.reservation) },
+    { label: "Recordsize", value: formatZfsBytes(row.recordSize) },
     { label: "Compression", value: row.compression ?? "—" },
     { label: "Encryption", value: row.encryption ?? "—" },
     { label: "Created", value: formatTimestamp(row.creation) },
@@ -94,6 +97,7 @@ const properties = computed(() => {
             {{ dataset.host.displayName || dataset.host.name }} ·
             {{ dataset.pool.name }}
           </NuxtLink>
+          <ZfsByteUnitToggle class="ms-auto" />
         </div>
         <p class="text-dimmed font-mono text-sm">{{ dataset.name }}</p>
         <p v-if="dataset.mountpoint" class="text-muted text-sm">

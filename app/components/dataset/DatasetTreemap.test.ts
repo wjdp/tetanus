@@ -97,9 +97,9 @@ describe("DatasetTreemap", () => {
     const map = await mountMap();
     const headers = map.findAll('[role="button"]');
     expect(headers.map((header) => header.attributes("aria-label"))).toEqual([
-      "tank/media, 300 GB",
-      "tank/home, 100 GB",
-      "tank/media/films, 200 GB",
+      "tank/media, 279 GiB",
+      "tank/home, 93.1 GiB",
+      "tank/media/films, 186 GiB",
     ]);
     expect(map.find('[data-key="4:snapshots"]').exists()).toBe(true);
     expect(map.find('a[href="/datasets/2"]').exists()).toBe(true);
@@ -110,8 +110,8 @@ describe("DatasetTreemap", () => {
     await map.find('[data-key="2:data"]').trigger("pointermove");
     const tooltip = map.find('[role="tooltip"]');
     expect(tooltip.text()).toContain("tank/media");
-    expect(tooltip.text()).toContain("100 GB · 25.0 % of pool");
-    expect(tooltip.text()).toContain("+20.0 GB since 2026-09-05");
+    expect(tooltip.text()).toContain("93.1 GiB · 25.0 % of pool");
+    expect(tooltip.text()).toContain("+18.6 GiB since 2026-09-05");
   });
 
   it("zooms into a branch on click and back out with Escape", async () => {

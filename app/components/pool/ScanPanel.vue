@@ -56,6 +56,8 @@ const overdue = computed(() =>
   ),
 );
 const lastScrubbed = computed(() => lastScrubAt(props.scan, props.lastScrub));
+
+const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
 <template>
@@ -97,12 +99,12 @@ const lastScrubbed = computed(() => lastScrubAt(props.scan, props.lastScrub));
         </template>
         <dt class="text-muted">Examined</dt>
         <dd class="tabular">
-          {{ formatBytes(scan.examined) }} of {{ formatBytes(scan.toExamine) }}
+          {{ formatZfsBytes(scan.examined) }} of {{ formatZfsBytes(scan.toExamine) }}
         </dd>
         <template v-if="scan.processed !== undefined">
           <dt class="text-muted">Repaired</dt>
           <dd class="tabular" data-testid="scan-repaired">
-            {{ formatBytes(scan.processed) }}
+            {{ formatZfsBytes(scan.processed) }}
           </dd>
         </template>
         <dt class="text-muted">Errors</dt>
@@ -125,7 +127,7 @@ const lastScrubbed = computed(() => lastScrubAt(props.scan, props.lastScrub));
       {{ previousScrub.errors }} errors<template
         v-if="previousScrub.repairedBytes"
       >
-        · repaired {{ formatBytes(previousScrub.repairedBytes) }}</template
+        · repaired {{ formatZfsBytes(previousScrub.repairedBytes) }}</template
       >
       · took {{ formatDuration(previousScrub.durationS * 1000) }}
     </p>
