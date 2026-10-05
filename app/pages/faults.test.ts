@@ -324,7 +324,7 @@ describe("faults page", () => {
     expect(
       document.body.querySelector('[data-testid="fault-acknowledge-kind"]')
         ?.textContent,
-    ).toMatch(/Acknowledge.*Accept/);
+    ).toMatch(/Keep watching.*Accept as normal/);
     textarea.value = "Resilvering onto the new disk";
     textarea.dispatchEvent(new Event("input"));
     document.body

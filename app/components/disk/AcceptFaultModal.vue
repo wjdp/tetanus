@@ -32,7 +32,7 @@ const kindItems = computed(() =>
     (candidate) => candidate !== props.attribute?.acceptance?.kind,
   ).map((value) => ({
     value,
-    label: ACCEPTANCE_KIND_VOCABULARY[value].action,
+    label: ACCEPTANCE_KIND_VOCABULARY[value].option,
     description: ACCEPTANCE_KIND_VOCABULARY[value].description,
   })),
 );

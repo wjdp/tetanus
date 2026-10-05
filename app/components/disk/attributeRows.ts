@@ -117,6 +117,7 @@ export const ATTRIBUTE_STATUS_DOT: Record<
 
 export interface AcceptanceKindVocabulary {
   action: string;
+  option: string;
   verb: string;
   short: string;
   noun: string;
@@ -131,22 +132,24 @@ export const ACCEPTANCE_KIND_VOCABULARY: Record<
 > = {
   acknowledge: {
     action: "Acknowledge",
+    option: "Keep watching",
     verb: "acknowledged",
     short: "ack",
     noun: "acknowledgement",
     icon: "i-lucide-eye",
     description:
-      "Still a fault, but the disk drops to a warning. Back to its real status if the value rises.",
+      "Still listed as a fault. The disk shows a warning while you investigate.",
     notePlaceholder: "What you are doing about it (optional)",
   },
   accept: {
     action: "Accept",
+    option: "Accept as normal",
     verb: "accepted",
     short: "accepted",
     noun: "acceptance",
     icon: "i-lucide-shield-check",
     description:
-      "Normal for this disk: stops counting towards its status. Back to its real status if the value rises.",
+      "Treated as this disk's baseline. Only raised again if the value rises.",
     notePlaceholder: "Why this is acceptable (optional)",
   },
 };

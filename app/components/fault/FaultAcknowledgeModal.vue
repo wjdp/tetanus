@@ -13,18 +13,25 @@ const open = defineModel<boolean>("open", { default: false });
 
 const FAULT_KIND_VOCABULARY: Record<
   AcceptanceKind,
-  { action: string; description: string; notePlaceholder: string }
+  {
+    action: string;
+    option: string;
+    description: string;
+    notePlaceholder: string;
+  }
 > = {
   acknowledge: {
     action: "Acknowledge",
+    option: "Keep watching",
     description:
-      "Seen and in hand: stays live, off the banner and the badge. Back to open if it gets worse.",
+      "Still listed as a fault, off the banner and badge while you investigate. Reopens if it gets worse.",
     notePlaceholder: "What you are doing about it (optional)",
   },
   accept: {
     action: "Accept",
+    option: "Accept as normal",
     description:
-      "This state is intended: leaves the live view. Back to open if it gets worse.",
+      "Treated as intended. Leaves the live view; reopens if it gets worse.",
     notePlaceholder: "Why this is fine (optional)",
   },
 };
@@ -36,7 +43,7 @@ const vocabulary = computed(() => FAULT_KIND_VOCABULARY[kind.value]);
 const kindItems = computed(() =>
   props.kinds.map((value) => ({
     value,
-    label: FAULT_KIND_VOCABULARY[value].action,
+    label: FAULT_KIND_VOCABULARY[value].option,
     description: FAULT_KIND_VOCABULARY[value].description,
   })),
 );
