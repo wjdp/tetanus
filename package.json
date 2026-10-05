@@ -29,6 +29,7 @@
   "dependencies": {
     "@iconify-json/lucide": "^1.2.137",
     "better-sqlite3": "^13.0.3",
+    "d3-hierarchy": "^3.1.2",
     "drizzle-orm": "^0.45.3",
     "fflate": "^0.8.3",
     "h3": "^1.15.11",
@@ -46,6 +47,7 @@
     "@nuxt/ui": "^4.11.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
+    "@types/d3-hierarchy": "^3.1.7",
     "@types/markdown-it": "^14.2.0",
     "@types/sortablejs": "^1.15.9",
     "@vue/test-utils": "^2.5.1",
