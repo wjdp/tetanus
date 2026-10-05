@@ -42,7 +42,11 @@ import {
   type DiskCounters,
   NO_COUNTERS,
 } from "#shared/smart/counters";
-import type { AcceptedLevel } from "#shared/smart/status";
+import {
+  type AcceptedLevel,
+  healthStatus,
+  type SmartVerdict,
+} from "#shared/smart/status";
 import {
   resolveTemperatureThresholds,
   type TemperatureThresholds,
@@ -95,6 +99,7 @@ import {
   scrutinyUuid,
 } from "~~/server/services/identity";
 import { getSettings } from "~~/server/services/settings";
+import { latestAttributes, latestReading } from "~~/server/services/smart";
 import { inferUsage, resolvePurpose } from "~~/server/services/usage";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
@@ -182,6 +187,7 @@ export interface DisposedDiskSighting {
 
 export interface DiskDetail extends DiskSummary {
   latestRaw: string | null;
+  smartVerdict: SmartVerdict | null;
   diaryCount: number;
   seenSinceDisposal: DisposedDiskSighting | null;
 }
@@ -1048,6 +1054,23 @@ export async function listDisks(now = new Date()): Promise<DiskSummary[]> {
   return summarise(rows, now, resolveState);
 }
 
+function smartVerdict(diskId: number): SmartVerdict | null {
+  const reading = latestReading(diskId);
+  if (!reading) return null;
+  const statuses = latestAttributes(diskId).map(
+    (attribute) => attribute.displayStatus,
+  );
+  return {
+    drive: healthStatus(reading.smartPassed, reading.exitStatus),
+    attributes: {
+      failed: statuses.filter((status) => status === "failed").length,
+      warning: statuses.filter(
+        (status) => status === "warning" || status === "acknowledged",
+      ).length,
+    },
+  };
+}
+
 export async function getDisk(
   id: number,
   now = new Date(),
@@ -1059,6 +1082,7 @@ export async function getDisk(
   return {
     ...summary,
     latestRaw: row.latestRaw,
+    smartVerdict: smartVerdict(id),
     diaryCount: countDiary("disk", id),
     seenSinceDisposal: seenSinceDisposal(row),
   };

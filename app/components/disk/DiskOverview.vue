@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { APP_NAME } from "#shared/app";
 import { interfaceLabel } from "#shared/hardware";
 import { formatDuration } from "#shared/hostFreshness";
 import { bareModel, displayModel } from "#shared/model";
@@ -170,6 +171,28 @@ const farmCheck = computed(() =>
     ? farmHoursCheck(props.disk.latestFarm, props.disk.latestPowerOnHours)
     : null,
 );
+
+const DRIVE_VERDICT = {
+  passed: { text: "Passed", class: undefined },
+  warning: { text: "Warning", class: "text-warning" },
+  failed: { text: "Failed", class: "text-error" },
+  unknown: { text: "Not reported", class: "text-dimmed" },
+} as const;
+
+const attributeSummary = computed(() => {
+  const counts = props.disk.smartVerdict?.attributes;
+  if (!counts || counts.failed + counts.warning === 0) {
+    return { text: "All within limits", class: "text-default" };
+  }
+  const parts = [
+    counts.failed && `${counts.failed} failed`,
+    counts.warning && `${counts.warning} warning`,
+  ].filter(Boolean);
+  return {
+    text: parts.join(", "),
+    class: counts.failed ? "text-error" : "text-warning",
+  };
+});
 </script>
 
 <template>
@@ -178,7 +201,7 @@ const farmCheck = computed(() =>
       title="Health"
       data-testid="group-health"
     >
-      <DiskFact label="SMART">
+      <DiskFact label="Overall">
         <span class="inline-flex flex-wrap items-center gap-2">
           <UBadge
             color="neutral"
@@ -198,6 +221,25 @@ const farmCheck = computed(() =>
           </span>
         </span>
       </DiskFact>
+      <template v-if="disk.smartVerdict">
+        <DiskFact
+          label="Drive verdict"
+          :class="DRIVE_VERDICT[disk.smartVerdict.drive].class"
+          data-testid="overview-drive-verdict"
+        >
+          {{ DRIVE_VERDICT[disk.smartVerdict.drive].text }}
+          <span class="text-dimmed text-xs">· the drive's own SMART check</span>
+        </DiskFact>
+        <DiskFact label="Attributes" data-testid="overview-attributes">
+          <NuxtLink
+            :to="SMART_TAB"
+            class="hover:underline"
+            :class="attributeSummary.class"
+            >{{ attributeSummary.text }}</NuxtLink
+          >
+          <span class="text-dimmed text-xs"> · checked by {{ APP_NAME }}</span>
+        </DiskFact>
+      </template>
       <DiskFact
         label="Temperature"
         :value="formatCelsius(disk.latestTemp)"

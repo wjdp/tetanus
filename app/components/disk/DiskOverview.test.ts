@@ -87,6 +87,7 @@ const baseDisk = {
     bytesWrittenInferred: false,
   },
   faultCounts: { error: 0, warning: 0, acknowledged: 0 },
+  smartVerdict: null,
   replacesDiskId: null,
   modelShort: "Red Plus",
   usage: { kind: "empty", fsTypes: [], mounts: [], system: false },
@@ -197,7 +198,7 @@ describe("DiskOverview", () => {
     expect(row(wrapper, "Sectors")).toBe("512e");
     expect(row(wrapper, "Host")).toBe("mars");
     expect(row(wrapper, "Usage")).toBe("empty");
-    expect(row(wrapper, "SMART")).toContain("read 2026-09-01");
+    expect(row(wrapper, "Overall")).toContain("read 2026-09-01");
   });
 
   it("hides null rows and shows always-rows as —", async () => {
@@ -288,6 +289,40 @@ describe("DiskOverview", () => {
     expect(worn.get('[data-testid="overview-wear-bar"]').html()).toContain(
       "bg-error",
     );
+  });
+
+  describe("SMART verdicts", () => {
+    const verdict = (drive: string, failed: number, warning: number) => ({
+      smartVerdict: { drive, attributes: { failed, warning } },
+    });
+
+    it("separates the drive's own check from the attribute checks", async () => {
+      const wrapper = await mountOverview(verdict("passed", 1, 2));
+      expect(wrapper.get('[data-testid="overview-drive-verdict"]').text()).toBe(
+        "Passed · the drive's own SMART check",
+      );
+      const attributes = wrapper.get('[data-testid="overview-attributes"] a');
+      expect(attributes.text()).toBe("1 failed, 2 warning");
+      expect(attributes.classes()).toContain("text-error");
+      expect(attributes.attributes("href")).toContain("?tab=smart");
+    });
+
+    it("shows a failing drive verdict and clean attributes", async () => {
+      const wrapper = await mountOverview(verdict("failed", 0, 0));
+      expect(
+        wrapper.get('[data-testid="overview-drive-verdict"]').classes(),
+      ).toContain("text-error");
+      expect(wrapper.get('[data-testid="overview-attributes"] a').text()).toBe(
+        "All within limits",
+      );
+    });
+
+    it("is absent before any reading", async () => {
+      const wrapper = await mountOverview({ smartVerdict: null });
+      expect(
+        wrapper.find('[data-testid="overview-drive-verdict"]').exists(),
+      ).toBe(false);
+    });
   });
 
   describe("FARM hours check", () => {

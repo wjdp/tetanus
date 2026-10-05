@@ -96,3 +96,9 @@ export function effectiveDeviceStatus(
   );
   return worstStatus(health, ...contributions);
 }
+
+/** The drive's own SMART self-assessment, apart from tetanus's attribute checks. */
+export interface SmartVerdict {
+  drive: DeviceStatus;
+  attributes: { failed: number; warning: number };
+}

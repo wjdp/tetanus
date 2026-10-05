@@ -103,6 +103,17 @@ describe("recordSmartReading", () => {
     expect(row.latestFarm).toEqual(farm);
   });
 
+  it("reports the drive's verdict apart from failing attributes", async () => {
+    const { getDisk } = await import("~~/server/services/disks");
+    const body = readFixture("mars/smartctl/xall-sdb-auto.json");
+    ingestSmart(body);
+    const row = diskBySerial(JSON.parse(body).serial_number);
+    expect(row.latestStatus).toBe("failed");
+    const { smartVerdict } = await getDisk(row.id);
+    expect(smartVerdict?.drive).toBe("passed");
+    expect(smartVerdict?.attributes.failed).toBeGreaterThan(0);
+  });
+
   it("has no FARM log for other vendors", () => {
     const body = readFixture("mars/smartctl/xall-sda-auto.json");
     ingestSmart(body);
