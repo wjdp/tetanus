@@ -17,7 +17,7 @@ describe("farmHoursVerdict", () => {
   it.each([
     ["agrees", farm(), 30_000],
     ["reset", farm(), 1_000],
-    ["not-comparable", farm({ logVersion: "3.7" }), 1_000],
+    ["not-comparable", farm({ logVersion: "2.1" }), 1_000],
     ["unknown", farm(), null],
     ["unknown", farm({ powerOnHours: undefined }), 1_000],
   ] as const)("%s", (verdict, value, smartHours) => {

@@ -40,9 +40,10 @@ describe("smartResetHours", () => {
     expect(smartResetHours(farm({ powerOnHours: 70_000 }), 1_000)).toBe(69_000);
   });
 
-  it("does not compare FARM 3.x logs", () => {
-    expect(farmHoursComparable(farm({ logVersion: "3.7" }))).toBe(false);
-    expect(smartResetHours(farm({ logVersion: "3.7" }), 1_000)).toBeNull();
+  it("compares FARM 3.x and later, not older logs", () => {
+    expect(farmHoursComparable(farm({ logVersion: "3.7" }))).toBe(true);
+    expect(farmHoursComparable(farm({ logVersion: "2.1" }))).toBe(false);
+    expect(smartResetHours(farm({ logVersion: "2.1" }), 1_000)).toBeNull();
     expect(smartResetHours(farm({ logVersion: undefined }), 1_000)).toBeNull();
   });
 });

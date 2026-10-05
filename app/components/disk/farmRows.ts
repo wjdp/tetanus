@@ -63,7 +63,7 @@ const VERDICT_NOTES: Record<FarmHoursVerdict, (smart: string) => string> = {
   agrees: (smart) => `SMART ${smart}`,
   reset: (smart) => `SMART shows ${smart}: counters reset`,
   "not-comparable": (smart) =>
-    `SMART ${smart}; FARM 3.x hours are not compared`,
+    `SMART ${smart}; hours in this FARM log version are not compared`,
   unknown: () => "",
 };
 

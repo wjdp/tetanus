@@ -1727,9 +1727,26 @@ describe("smart-counters-reset", () => {
     });
   });
 
-  it("ignores FARM 3.x logs", async () => {
+  it("opens on the grey-market FARM 3.x fixture", async () => {
+    const body = readFixture("mars/smartctl/xall-sdj-auto.json");
+    const serial = JSON.parse(body).serial_number as string;
+    await read(body, 0);
+    const id = (
+      db
+        .select({ id: disk.id })
+        .from(disk)
+        .where(eq(disk.serial, serial))
+        .get() as { id: number }
+    ).id;
+    expect(liveFault("smart-counters-reset", String(id))?.data).toMatchObject({
+      farmHours: JSON.parse(body).seagate_farm_log.page_1_drive_information.poh,
+      smartHours: JSON.parse(body).power_on_time.hours,
+    });
+  });
+
+  it("ignores logs older than 3.x", async () => {
     const json = JSON.parse(withSmartHours(1_000, 21_000));
-    json.seagate_farm_log.page_0_log_header.farm_log_version = [3, 7];
+    json.seagate_farm_log.page_0_log_header.farm_log_version = [2, 1];
     await read(JSON.stringify(json), 0);
     expect(reset()).toBeUndefined();
   });

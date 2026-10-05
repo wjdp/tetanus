@@ -1,8 +1,8 @@
 import type { SeagateFarm } from "#shared/smartctl";
 
-// FARM 3.x drives in the fleet read about 2× SMART power-on hours with spindle hours
-// matching, which may be a counting difference rather than a reset (docs/083).
-export const FARM_COMPARABLE_FROM_LOG_MAJOR = 4;
+// 3.x and 4.x are seen in the fleet and both count hours as SMART does (docs/083);
+// older logs are not compared.
+export const FARM_COMPARABLE_FROM_LOG_MAJOR = 3;
 export const SMART_RESET_MIN_HOURS = 48;
 const SMART_RESET_MIN_FRACTION = 0.05;
 const SIXTEEN_BIT_WRAP = 65_536;

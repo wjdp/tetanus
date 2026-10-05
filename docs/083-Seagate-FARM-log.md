@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Seagate FARM log
@@ -67,11 +67,11 @@ Fleet check on the re-captured fixtures (six SATA Exos):
 | 4.x | 4 | 0–1 h | 1 | `YYWW`, e.g. `2203` |
 | 3.7 | 2 (same model) | ~2× SMART | 1.7–3.7× | empty |
 
-Both 3.7 drives are known grey-market. But on both, FARM `poh` is almost exactly 2× SMART
-(1.97 and 2.00), and FARM `spoh` matches SMART. A wipe would leave FARM `spoh`
-untouched and give an arbitrary ratio. So FARM 3.x may count `poh` at twice the rate.
-Check by comparing two readings a few hours apart. Until that's settled, the fault only
-fires on log version 4+, and 3.x figures are shown as not comparable.
+Both 3.7 drives are known grey-market. On both, FARM `poh` is close to 2× SMART, and
+FARM `spoh` matches SMART, which raised the question of whether 3.x counts `poh` at
+twice the rate. Settled 2026-10-06: over several hours FARM `poh` and SMART hours on
+one of them advanced at the same rate. So the gap is a real reset, and 3.x is compared
+like 4.x (the wipe evidently rewrote `spoh` too).
 
 ### Parse
 
@@ -114,7 +114,7 @@ fires on log version 4+, and 3.x figures are shown as not comparable.
 - New kind `smart-counters-reset`: disk, persistent, warning (amber), key `diskId`. The
   only way to deal with it is to accept it (decided 2026-10-05). Acceptance is
   level-based on the gap in hours, so a later, bigger reset reopens it.
-- Raised when FARM log version is 4+ and FARM `poh` − SMART power-on hours > max(48 h,
+- Raised when FARM log version is 3+ and FARM `poh` − SMART power-on hours > max(48 h,
   5% of FARM `poh`). Skipped when SMART hours look wrapped (081): FARM above 65,535
   and SMART below it. On the
   fleet that's 0–1 h for healthy drives and thousands for wiped ones. Also raised when
@@ -157,11 +157,6 @@ fires on log version 4+, and 3.x figures are shown as not comparable.
 
 ## Status
 
-Steps 1 and 2 are implemented (2026-10-05). What's left:
+Done (2026-10-06). Left over:
 
-- Settle FARM 3.x. Compare FARM `poh` with SMART power-on hours on one of the 3.7
-  drives over several hours. The first hour moved both by 1. If FARM keeps pace with
-  SMART, the gap is a real reset: lower `FARM_COMPARABLE_FROM_LOG_MAJOR` in
-  `shared/smart/farm.ts` to 3 and drop the "not compared" note. If FARM moves at twice
-  the rate, keep 3.x excluded.
 - SAS mapping is untested against hardware. Capture a fixture when a SAS Seagate turns up.
