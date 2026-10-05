@@ -340,7 +340,13 @@ describe("DiskOverview", () => {
     const check = '[data-testid="overview-farm"]';
 
     it.each([
-      ["agrees", "4.19", 40_000, "Power-on hours match against FARM", "text-default"],
+      [
+        "agrees",
+        "4.19",
+        40_000,
+        "Power-on hours match against FARM",
+        "text-default",
+      ],
       ["reset", "4.19", 60_000, "FARM 6.8 y, SMART reset", "text-warning"],
       [
         "not-comparable",
