@@ -262,6 +262,19 @@ describe("observeZfsList", () => {
     expect(readingsOf(name).at(-1)?.at).toEqual(hoursAfter(8));
   });
 
+  it("records the dataset, snapshot and children split in each reading", () => {
+    const { hostId } = seedTank();
+    observeZfsList(hostId, marsList(), T0);
+    const stored = datasetNamed("tank");
+    const [reading] = readingsOf("tank");
+    expect(reading).toMatchObject({
+      usedByDataset: stored.usedByDataset,
+      usedBySnapshots: stored.usedBySnapshots,
+      usedByChildren: stored.usedByChildren,
+    });
+    expect(reading?.usedByChildren).toBeGreaterThan(0);
+  });
+
   it("prunes readings older than 400 days", () => {
     const { hostId } = seedTank();
     observeZfsList(hostId, marsList(), T0);

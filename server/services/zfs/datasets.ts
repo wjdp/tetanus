@@ -256,6 +256,8 @@ function recordReadings(poolRow: PoolRow, receivedAt: Date) {
       referenced: row.referenced,
       available: row.available,
       usedBySnapshots: row.usedBySnapshots,
+      usedByDataset: row.usedByDataset,
+      usedByChildren: row.usedByChildren,
     }));
   for (const chunk of rowChunks(datasetReading, due)) {
     db.insert(datasetReading).values(chunk).run();

@@ -513,6 +513,8 @@ export const datasetReading = sqliteTable(
     referenced: integer(),
     available: integer(),
     usedBySnapshots: integer(),
+    usedByDataset: integer(),
+    usedByChildren: integer(),
   },
   (table) => [
     index("DatasetReading_datasetId_at_idx").on(table.datasetId, table.at),
