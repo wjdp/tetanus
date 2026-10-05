@@ -51,6 +51,9 @@ const hiddenCount = computed(
 );
 const rows = computed(() => (showAll.value ? ordered.value : shownByDefault.value));
 
+const FAILURE_RATE_TOOLTIP =
+  "Annual failure rate from Backblaze's drive data: of the drives whose value for this attribute fell in the same range as this one, the share that failed within a year. It describes that population, not this drive, and ignores model and age. 10 % or more fails a defect attribute such as reallocated, pending or uncorrectable sectors; for other attributes it is context only, in blue when notably high.";
+
 const LESS_USEFUL_TOOLTIP =
   "Usage and environment counters with unremarkable values. They never affect disk status.";
 
@@ -197,6 +200,16 @@ const rowClass = (row: { original: LatestAttribute }) =>
 
       <template #ideal-cell="{ row }">
         {{ row.original.metadata?.ideal || "—" }}
+      </template>
+
+      <template #failureRate-header>
+        <UTooltip :text="FAILURE_RATE_TOOLTIP" :content="{ side: 'top' }">
+          <span
+            class="decoration-dimmed cursor-help underline decoration-dotted underline-offset-4"
+            data-testid="failure-rate-header"
+            >Failure rate</span
+          >
+        </UTooltip>
       </template>
 
       <template #failureRate-cell="{ row }">

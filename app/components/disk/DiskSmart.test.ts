@@ -1,9 +1,19 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { describe, expect, it } from "vitest";
+import { defineComponent } from "vue";
 import DiskSmart from "./DiskSmart.vue";
 
 const at = "2026-09-20T12:00:00.000Z";
+
+// UTooltip needs the provider UApp installs in app.vue; the component is mounted alone.
+const TooltipPassthrough = defineComponent({
+  setup:
+    (_, { slots }) =>
+    () =>
+      slots.default?.(),
+});
+const global = { stubs: { UTooltip: TooltipPassthrough } };
 
 function smartOverview(importedUntil: string | null, deviceStatus = "passed") {
   return {
@@ -37,6 +47,7 @@ const note = '[data-testid="imported-note"]';
 describe("DiskSmart", () => {
   it("notes when readings in range were imported from scrutiny", async () => {
     const component = await mountSuspended(DiskSmart, {
+      global,
       props: { diskId: 21, protocol: "ata" },
     });
 
@@ -47,6 +58,7 @@ describe("DiskSmart", () => {
 
   it("shows no note for collector-only history", async () => {
     const component = await mountSuspended(DiskSmart, {
+      global,
       props: { diskId: 22, protocol: "ata" },
     });
 
@@ -62,6 +74,7 @@ describe("DiskSmart", () => {
     "badges disk %i as %s in %s, leaving green to the nameplate",
     async (diskId, status, textClass) => {
       const component = await mountSuspended(DiskSmart, {
+        global,
         props: { diskId, protocol: "ata" },
       });
 
@@ -74,6 +87,7 @@ describe("DiskSmart", () => {
 
   it("shows the range tabs without a heading, even with no readings", async () => {
     const component = await mountSuspended(DiskSmart, {
+      global,
       props: { diskId: 25, protocol: "ata" },
     });
 
@@ -82,5 +96,15 @@ describe("DiskSmart", () => {
     expect(
       component.findAll('[role="tab"]').map((tab) => tab.text()),
     ).toContain("30d");
+  });
+
+  it("marks the failure rate header as explained by a tooltip", async () => {
+    const component = await mountSuspended(DiskSmart, {
+      global,
+      props: { diskId: 22, protocol: "ata" },
+    });
+    expect(component.get('[data-testid="failure-rate-header"]').text()).toBe(
+      "Failure rate",
+    );
   });
 });
