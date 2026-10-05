@@ -154,3 +154,14 @@ fires on log version 4+, and 3.x figures are shown as not comparable.
 - smartmontools minimum stays 7.0; FARM is gated on 7.4+ (2026-10-05).
 - FARM is shown inside the SMART view, not on its own tab, so a disagreement sits next
   to the SMART figure it contradicts.
+
+## Status
+
+Steps 1 and 2 are implemented (2026-10-05). What's left:
+
+- Settle FARM 3.x. Compare FARM `poh` with SMART power-on hours on one of the 3.7
+  drives over several hours. The first hour moved both by 1. If FARM keeps pace with
+  SMART, the gap is a real reset: lower `FARM_COMPARABLE_FROM_LOG_MAJOR` in
+  `shared/smart/farm.ts` to 3 and drop the "not compared" note. If FARM moves at twice
+  the rate, keep 3.x excluded.
+- SAS mapping is untested against hardware. Capture a fixture when a SAS Seagate turns up.
