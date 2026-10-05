@@ -49,6 +49,8 @@ export const demoProducer = (host: HostModel) =>
   `tetanus-collect/${host.collectorVersion ?? COLLECTOR_VERSION}`;
 
 const DAILY_FOR_MS = 90 * DAY_MS;
+/** Daily grid instants within this window also post datasets, so growth has a 30 d baseline. */
+const DATASET_HISTORY_MS = 40 * DAY_MS;
 
 /**
  * `full` is the reset schedule: hourly for a day and every third day to 90 d keeps the
@@ -233,6 +235,11 @@ const isSwitchedOff = (host: HostModel, at: Date) =>
 
 const isHostsLastRun = (host: HostModel, at: Date) =>
   host.lastRunAt !== undefined && ms(at) === ms(host.lastRunAt);
+
+function isDatasetHistoryRun(lastHour: Date, at: Date) {
+  const ago = ms(lastHour) - ms(at);
+  return ago > DAY_MS && ago <= DATASET_HISTORY_MS && ago % DAY_MS === 0;
+}
 
 function hostPayloadsAt(
   world: DemoWorld,
@@ -676,7 +683,13 @@ export async function* seedSteps(
         () =>
           trim(
             host.name,
-            hostPayloadsAt(world, host, instant.at, instant.xall, isHostsLast),
+            hostPayloadsAt(
+              world,
+              host,
+              instant.at,
+              instant.xall,
+              isHostsLast || isDatasetHistoryRun(lastHour, instant.at),
+            ),
             { xallForAll: instant.xall === "all", isLast: isHostsLast },
           ),
         instant.at,

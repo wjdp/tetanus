@@ -12,10 +12,11 @@ import { listHosts } from "~~/server/services/hosts";
 import { listHostBays } from "~~/server/services/locations";
 import { listReplications } from "~~/server/services/replications";
 import { latestAttributes } from "~~/server/services/smart";
+import { listDatasets } from "~~/server/services/zfs/datasets";
 import { listPools } from "~~/server/services/zfs/queries";
 import { loadSeededDatabase, SEEDED_AT, seededReport } from "~~/test/seeded";
 import { type SeedReport, tick } from "./seed";
-import { DEMO_EPOCH, HOUR_MS } from "./timeline";
+import { DAY_MS, DEMO_EPOCH, HOUR_MS } from "./timeline";
 import { createWorld } from "./world";
 
 // A full replay takes over a minute; the short one keeps every story instant.
@@ -144,6 +145,21 @@ describe("seed", () => {
     );
     expect(snapshots).toBeGreaterThan(1000);
     expect(snapshots).toBeLessThan(2000);
+  });
+
+  it("has a month of dataset readings, so datasets show growth", () => {
+    const rows = listPools().flatMap((row) => listDatasets(row.id, NOW));
+    const grown = rows.filter((row) => row.growth !== null);
+    expect(grown.length).toBeGreaterThan(rows.length / 2);
+    expect(
+      grown.some(
+        (row) =>
+          (row.growth?.sinceAt.getTime() ?? Infinity) <=
+            NOW.getTime() - 30 * DAY_MS &&
+          (row.growth?.used ?? 0) > 0 &&
+          (row.growth?.snapshots ?? 0) > 0,
+      ),
+    ).toBe(true);
   });
 
   it("A3: pending sectors accepted at 8", () => {
