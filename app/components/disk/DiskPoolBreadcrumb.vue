@@ -21,7 +21,7 @@ const groupName = computed(() =>
 
 <template>
   <span
-    class="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+    class="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm"
     :class="{ 'opacity-60': membership.poolArchived }"
     :data-archived="membership.poolArchived"
     data-testid="pool-breadcrumb"
@@ -34,16 +34,16 @@ const groupName = computed(() =>
       />
       <ULink
         :to="membership.poolPath"
-        class="text-highlighted hover:text-primary font-medium"
+        class="text-highlighted hover:text-primary shrink-0 font-medium"
       >
         {{ membership.poolName }}
       </ULink>
       <template v-if="groupName">
-        <UIcon name="i-lucide-chevron-right" class="text-dimmed size-4" />
+        <UIcon name="i-lucide-chevron-right" class="text-dimmed size-4 shrink-0" />
         <VdevTypeIcon v-if="membership.groupType" :type="membership.groupType" />
         <span class="text-default">{{ groupName }}</span>
       </template>
-      <UIcon name="i-lucide-chevron-right" class="text-dimmed size-4" />
+      <UIcon name="i-lucide-chevron-right" class="text-dimmed size-4 shrink-0" />
       <VdevTypeIcon v-if="isTopLevelDisk" type="disk" />
       <span class="text-default truncate font-mono text-xs" :title="membership.vdevName">
         {{ leafName }}
