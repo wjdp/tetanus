@@ -55,9 +55,7 @@ const deviceDetails = (node: PoolVdev) =>
     node.path && `path ${node.path}`,
     node.devid && `devid ${node.devid}`,
     node.physPath && `phys path ${node.physPath}`,
-  ]
-    .filter(Boolean)
-    .join("\n") || undefined;
+  ].filter((line): line is string => Boolean(line));
 
 const leafName = (node: PoolVdev) => node.name.split("/").at(-1);
 
@@ -99,29 +97,40 @@ const { formatZfsBytes } = useZfsByteSystem();
         />
         {{ row.original.label }}
       </span>
-      <span
+      <UTooltip
         v-else
-        class="flex items-center gap-1.5 font-mono text-sm"
-        :class="row.original.node.children.length ? 'text-toned' : 'text-highlighted'"
-        :style="{ paddingLeft: `${row.original.depth * 1.25}rem` }"
-        :title="deviceDetails(row.original.node)"
-        data-testid="vdev-name"
+        :disabled="deviceDetails(row.original.node).length === 0"
+        :ui="{ content: 'h-auto' }"
       >
-        <VdevTypeIcon
-          v-if="row.original.showsTypeIcon"
-          :type="row.original.node.type"
-        />
-        <span class="max-w-64 truncate">{{ leafName(row.original.node) }}</span>
-        <UBadge
-          v-if="row.original.node.spareState"
-          :color="zfsStateColour(row.original.node.spareState)"
-          variant="subtle"
-          size="sm"
-          data-testid="spare-state"
+        <span
+          class="flex items-center gap-1.5 font-mono text-sm"
+          :class="row.original.node.children.length ? 'text-toned' : 'text-highlighted'"
+          :style="{ paddingLeft: `${row.original.depth * 1.25}rem` }"
+          data-testid="vdev-name"
         >
-          {{ row.original.node.spareState }}
-        </UBadge>
-      </span>
+          <VdevTypeIcon
+            v-if="row.original.showsTypeIcon"
+            :type="row.original.node.type"
+          />
+          <span class="max-w-64 truncate">{{ leafName(row.original.node) }}</span>
+          <UBadge
+            v-if="row.original.node.spareState"
+            :color="zfsStateColour(row.original.node.spareState)"
+            variant="subtle"
+            size="sm"
+            data-testid="spare-state"
+          >
+            {{ row.original.node.spareState }}
+          </UBadge>
+        </span>
+        <template #content>
+          <div class="font-mono" data-testid="vdev-details">
+            <div v-for="line in deviceDetails(row.original.node)" :key="line">
+              {{ line }}
+            </div>
+          </div>
+        </template>
+      </UTooltip>
     </template>
     <template #type-cell="{ row }">
       <span v-if="row.original.kind === 'vdev'" class="text-muted">

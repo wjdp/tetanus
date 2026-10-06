@@ -1,7 +1,8 @@
 // @vitest-environment nuxt
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
-import { flushPromises } from "@vue/test-utils";
+import { config, flushPromises } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { defineComponent } from "vue";
 import { clearNuxtData } from "#app";
 import type { FaultView } from "#shared/faults";
 import { ZFS_BYTE_SYSTEM_COOKIE } from "~/composables/useZfsByteSystem";
@@ -10,6 +11,13 @@ import { FakeEventSource } from "~~/test/fakeEventSource";
 import PoolPage from "./Page.vue";
 import { tank, vdev } from "./testFixtures";
 import type { PoolDetail } from "./types";
+
+// UTooltip needs the provider UApp installs in app.vue; the page is mounted alone.
+config.global.stubs.UTooltip = defineComponent({
+  setup:
+    (_, { slots }) =>
+    () => [slots.default?.(), slots.content?.()],
+});
 
 const asPool = (pool: object) => pool as PoolDetail;
 
@@ -513,11 +521,13 @@ describe("pool page", () => {
     expect(slowFor("4")).not.toContain("text-warning");
 
     const z1 = tree
-      .findAll('[data-testid="vdev-name"]')
-      .find((cell) => cell.text().includes("Z1-part1"));
-    expect(z1?.attributes("title")).toBe(
-      "path /dev/disk/by-vdev/Z1-part1\ndevid ata-Samsung_SSD-part1\nphys path pci-0000:06:00.1-ata-5.0",
-    );
+      .findAll('[data-testid="vdev-details"]')
+      .find((details) => details.text().includes("Z1-part1"));
+    expect(z1?.findAll("div").map((line) => line.text())).toEqual([
+      "path /dev/disk/by-vdev/Z1-part1",
+      "devid ata-Samsung_SSD-part1",
+      "phys path pci-0000:06:00.1-ata-5.0",
+    ]);
   });
 
   it("loads a vdev's history when its row is expanded", async () => {
