@@ -9,7 +9,7 @@ import {
   NVME_DATA_UNIT_BYTES,
 } from "./counters";
 import { evaluateReading } from "./evaluate";
-import type { AcceptedLevel } from "./status";
+import type { AcceptedLevel, AttributeStatus } from "./status";
 
 const MIB = 1024 ** 2;
 const NO_ACCEPTANCES = new Map<string, AcceptedLevel>();
@@ -156,13 +156,14 @@ describe("countersFrom", () => {
     });
   });
 
-  it("raises NVMe wear to warning at 80 % and failed at 100 %", () => {
-    const wear = (percent: number) =>
-      countersFrom([row("percentage_used", percent)], null, NO_ACCEPTANCES)
-        .wearPercent;
-    expect(wear(79)?.status).toBe("passed");
-    expect(wear(80)?.status).toBe("warning");
-    expect(wear(100)?.status).toBe("failed");
+  it("shows NVMe wear with the stored attribute status", () => {
+    expect(
+      countersFrom(
+        [row("percentage_used", 85, "warning")],
+        null,
+        NO_ACCEPTANCES,
+      ).wearPercent,
+    ).toEqual({ value: 85, status: "warning" });
   });
 
   it("keeps an accepted NVMe wear quiet when the attribute itself failed", () => {
@@ -174,16 +175,15 @@ describe("countersFrom", () => {
     expect(counters.wearPercent).toEqual({ value: 101, status: "accepted" });
   });
 
-  it("derives ATA wear from the normalised value with fixed thresholds", () => {
-    const wear = (value: number) =>
+  it("derives ATA wear from the normalised value with the stored status", () => {
+    const wear = (value: number, status: AttributeStatus) =>
       countersFrom(
-        [row("177", 999, "passed", value)],
+        [row("177", 999, status, value)],
         { wear: "177", written: null },
         NO_ACCEPTANCES,
       ).wearPercent;
-    expect(wear(21)).toEqual({ value: 79, status: "passed" });
-    expect(wear(20)).toEqual({ value: 80, status: "warning" });
-    expect(wear(0)).toEqual({ value: 100, status: "failed" });
-    expect(wear(200)).toEqual({ value: 0, status: "passed" });
+    expect(wear(21, "passed")).toEqual({ value: 79, status: "passed" });
+    expect(wear(20, "warning")).toEqual({ value: 80, status: "warning" });
+    expect(wear(200, "passed")).toEqual({ value: 0, status: "passed" });
   });
 });

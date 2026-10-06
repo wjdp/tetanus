@@ -1,6 +1,7 @@
 import type { Media } from "../hardware";
 import type { SmartctlXallResult } from "../smartctl";
 import type { Vendor } from "../vendor";
+import { isAtaReservedSpaceAttribute } from "./ssdPolicy";
 import { writtenUnit } from "./writtenBytes";
 
 /** Normalised SATA SSD life attributes in preference order, by name since vendors reuse ids (Intel 233 is Total_LBAs_Written on some models). */
@@ -23,6 +24,8 @@ export interface AtaWrittenAttribute {
 export interface AtaSsdAttributes {
   wear: string | null;
   written: AtaWrittenAttribute | null;
+  /** Absent on rows stored before reserved-space matching. */
+  reserved?: string[];
 }
 
 export interface AtaSsdDisk {
@@ -58,5 +61,8 @@ export function ataSsdAttributesFrom(
           }),
         }
       : null,
+    reserved: attributes
+      .filter((attribute) => isAtaReservedSpaceAttribute(attribute.name))
+      .map((attribute) => String(attribute.id)),
   };
 }

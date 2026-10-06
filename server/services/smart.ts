@@ -3,7 +3,11 @@ import type { DiskProtocol } from "#shared/disk";
 import type { IngestMeta } from "#shared/ingest";
 import { FULL_TEMPERATURE_DAYS } from "#shared/retention";
 import type { SmartHistoryRange } from "#shared/schemas/smart";
-import { ataSsdAttributesFrom } from "#shared/smart/ataSsdAttributes";
+import {
+  type AtaSsdAttributes,
+  ataSsdAttributesFrom,
+} from "#shared/smart/ataSsdAttributes";
+import type { DeviceStatistics } from "#shared/smart/deviceStatistics";
 import {
   type EvaluatedAttribute,
   evaluateReading,
@@ -13,6 +17,11 @@ import {
   attributeMetadata,
   type SmartProtocol,
 } from "#shared/smart/metadata";
+import {
+  applySsdPolicy,
+  NO_SSD_CONTEXT,
+  type SsdPolicyContext,
+} from "#shared/smart/ssdPolicy";
 import {
   ATTRIBUTE_STATUSES,
   type AttributeDisplayStatus,
@@ -328,16 +337,34 @@ function recordAttributeStatusChanges(
   }
 }
 
+export function ssdPolicyContext(
+  ataSsdAttributes: AtaSsdAttributes | null,
+  deviceStatistics: DeviceStatistics | null | undefined,
+): SsdPolicyContext {
+  const percentageUsed = deviceStatistics?.percentageUsed;
+  return {
+    ataSsdAttributes,
+    percentageUsed:
+      typeof percentageUsed === "number" &&
+      !deviceStatistics?.normalised.includes("percentageUsed")
+        ? percentageUsed
+        : null,
+  };
+}
+
 export function evaluateNamedAttributes(
   parsed: SmartctlXallResult,
+  context: SsdPolicyContext = NO_SSD_CONTEXT,
 ): EvaluatedAttribute[] {
   const protocol = isSmartProtocol(parsed.device.protocol)
     ? parsed.device.protocol
     : undefined;
-  return evaluateReading(parsed).attributes.map((attribute) => ({
-    ...attribute,
-    name: attributeName(protocol, attribute),
-  }));
+  return applySsdPolicy(evaluateReading(parsed).attributes, context).map(
+    (attribute) => ({
+      ...attribute,
+      name: attributeName(protocol, attribute),
+    }),
+  );
 }
 
 export interface MinimalSmartAttribute {
@@ -529,7 +556,14 @@ export function recordSmartReading({
 }: SmartReadingInput): SmartReadingRow | null {
   if (parsed.standby) return null;
 
-  const evaluated = evaluateNamedAttributes(parsed);
+  const ataSsdAttributes = ataSsdAttributesFrom(parsed, {
+    ...row,
+    vendor: effectiveVendor(row),
+  });
+  const evaluated = evaluateNamedAttributes(
+    parsed,
+    ssdPolicyContext(ataSsdAttributes, parsed.deviceStatistics),
+  );
   const temp = presentTemperature(parsed.temperature);
   const smartPassed = parsed.smartStatus?.passed ?? null;
   const exitStatus = parsed.smartctl.exitStatus.raw;
@@ -592,10 +626,7 @@ export function recordSmartReading({
         latestPowerOnHours: reading.powerOnHours,
         latestPowerCycles: reading.powerCycles,
         latestReadingAt: receivedAt,
-        ataSsdAttributes: ataSsdAttributesFrom(parsed, {
-          ...row,
-          vendor: effectiveVendor(row),
-        }),
+        ataSsdAttributes,
         ...(parsed.farm ? { latestFarm: parsed.farm } : {}),
         ...(parsed.deviceStatistics
           ? { latestDeviceStatistics: parsed.deviceStatistics }

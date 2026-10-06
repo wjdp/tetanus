@@ -293,6 +293,7 @@ describe("recordSmartReading", () => {
     const serial = JSON.parse(sdo).serial_number as string;
     const expected = {
       wear: "177",
+      reserved: ["179"],
       written: { attrId: "241", unitBytes: 512, inferred: true },
     };
     ingestSmart(sdo, t0);
