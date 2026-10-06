@@ -5,6 +5,7 @@ import { describeDisk, isDisposed, isHistoryState } from "#shared/disk";
 import { hostPath } from "#shared/entityPaths";
 import {
   allowedActions,
+  DISK_NAMING_FAULT_KINDS,
   FAULT_KIND_DEFINITIONS,
   FAULT_SEVERITY_RANK,
   FAULT_STATES,
@@ -19,6 +20,7 @@ import {
   type FaultsResponse,
   type FaultView,
   faultTitle,
+  namedDiskIds,
 } from "#shared/faults";
 import { type CadenceOverrides, isHostSilent } from "#shared/hostFreshness";
 import { unsupportedTools } from "#shared/hostTools";
@@ -78,6 +80,7 @@ export interface Detection {
   data: FaultData;
   state?: FaultState;
   reopen?: (previous: FaultData) => boolean;
+  carry?: (previous: FaultData) => FaultData;
 }
 
 export interface FaultReference {
@@ -457,10 +460,11 @@ function withoutAcknowledgedLevel({
 }
 
 function refreshedData(row: FaultRow, detection: Detection, state: FaultState) {
+  const data = detection.carry?.(row.data) ?? detection.data;
   if (!isQuiet(state) || row.data.acknowledgedCounts === undefined) {
-    return detection.data;
+    return data;
   }
-  return { ...detection.data, acknowledgedCounts: row.data.acknowledgedCounts };
+  return { ...data, acknowledgedCounts: row.data.acknowledgedCounts };
 }
 
 function openFault(detection: Detection, now: Date): FaultRow {
@@ -930,12 +934,20 @@ export function listFaults(query: FaultsQuery): FaultsResponse {
         eq(fault.subjectType, query.subject.type),
         eq(fault.subjectId, query.subject.id),
       ),
+    query.namesDisk === undefined
+      ? undefined
+      : inArray(fault.kind, [...DISK_NAMING_FAULT_KINDS]),
   ].filter((condition) => condition !== undefined);
   const matching = db
     .select()
     .from(fault)
     .where(and(...conditions))
     .all()
+    .filter(
+      (row) =>
+        query.namesDisk === undefined ||
+        namedDiskIds(row.data).includes(query.namesDisk),
+    )
     .map((row) => present(row, lookup))
     .filter((view) => !query.host || view.subject.hostName === query.host);
   const counts = Object.fromEntries(

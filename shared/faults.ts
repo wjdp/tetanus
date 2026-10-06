@@ -138,6 +138,24 @@ export interface PoolDegradedLeaf extends LeafCounts {
   diskMissing: boolean;
 }
 
+export function poolDegradedLeaves(data: FaultData): PoolDegradedLeaf[] {
+  return Array.isArray(data.leaves) ? (data.leaves as PoolDegradedLeaf[]) : [];
+}
+
+export const DISK_NAMING_FAULT_KINDS = [
+  "leaf-errors",
+  "leaf-slow",
+  "pool-degraded",
+] as const satisfies readonly FaultKind[];
+
+export function namedDiskIds(data: FaultData): number[] {
+  const ids = [
+    data.diskId,
+    ...poolDegradedLeaves(data).map((leaf) => leaf.diskId),
+  ];
+  return ids.filter((id): id is number => typeof id === "number");
+}
+
 export function leafLabel(name: unknown) {
   return text(name).split("/").at(-1) ?? "";
 }
@@ -151,9 +169,7 @@ function poolDegradedLeafText(leaf: PoolDegradedLeaf) {
 function poolDegradedTitle(data: FaultData) {
   const state = text(data.state);
   const pool = `Pool ${text(data.poolName)}${state === "ONLINE" ? "" : ` ${state}`}`;
-  const leaves = Array.isArray(data.leaves)
-    ? (data.leaves as PoolDegradedLeaf[])
-    : [];
+  const leaves = poolDegradedLeaves(data);
   if (leaves.length === 0) return pool;
   return `${pool}: ${leaves.map(poolDegradedLeafText).join(", ")}`;
 }

@@ -221,6 +221,11 @@ describe("GET /api/faults", () => {
   it("400s for an invalid state", async () => {
     expect((await fetch("/api/faults?state=dismissed")).status).toBe(400);
     expect((await fetch("/api/faults?state=")).status).toBe(400);
+    expect((await fetch("/api/faults?namesDisk=disk")).status).toBe(400);
+  });
+
+  it("lists only device faults naming the disk for namesDisk", async () => {
+    expect((await getFaults("?namesDisk=999999")).faults).toEqual([]);
   });
 });
 

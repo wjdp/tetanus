@@ -243,6 +243,7 @@ function detectPoolDegraded(
       ...leafCounts(leaf),
     }),
   );
+  const data = { state: row.state, poolName: row.name, leaves: leafData };
   return {
     listed,
     detection: {
@@ -250,10 +251,36 @@ function detectPoolDegraded(
       key: String(row.id),
       subjectId: row.id,
       severity: worstSeverity(severities),
-      data: { state: row.state, poolName: row.name, leaves: leafData },
+      data,
       reopen: (previous) => poolDegradedWorsened(leafData, previous.leaves),
+      carry: (previous) => ({
+        ...data,
+        leaves: withLeafDisksKept(leafData, previous.leaves, missingDiskIds),
+      }),
     },
   };
+}
+
+// A fault stays with the disk its leaf resolved to when it was raised, even
+// if the leaf later resolves to another disk or to none.
+function withLeafDisksKept(
+  leaves: PoolDegradedLeaf[],
+  previousLeaves: unknown,
+  missingDiskIds: Set<number>,
+) {
+  const before = listedLeaves(previousLeaves);
+  return leaves.map((leaf): PoolDegradedLeaf => {
+    const diskId = before.get(leaf.vdevGuid)?.diskId;
+    if (typeof diskId !== "number") return leaf;
+    return { ...leaf, diskId, diskMissing: missingDiskIds.has(diskId) };
+  });
+}
+
+function withDiskKept(data: FaultData) {
+  return (previous: FaultData): FaultData =>
+    typeof previous.diskId === "number"
+      ? { ...data, diskId: previous.diskId }
+      : data;
 }
 
 function leafData(row: PoolRow, leaf: VdevRow): FaultData {
@@ -350,18 +377,20 @@ function detectLeafErrors(
     const total = leafErrorsTotal(key, leaf, referenceAt, history);
     if (!total) return [];
     const data = leafData(row, leaf);
+    const errorsData = {
+      ...data,
+      ...leafCounts(leaf),
+      total,
+      rise24h: totalOf(riseInWindow(leaf, referenceAt)),
+    };
     return [
       {
         kind: "leaf-errors",
         key,
         subjectId: row.id,
         severity: leafErrorsSeverity(data.role),
-        data: {
-          ...data,
-          ...leafCounts(leaf),
-          total,
-          rise24h: totalOf(riseInWindow(leaf, referenceAt)),
-        },
+        data: errorsData,
+        carry: withDiskKept(errorsData),
         reopen: (previous) =>
           countsRose(total, previous.acknowledgedCounts ?? previous.total),
       },
@@ -379,18 +408,20 @@ function detectLeafSlow({ row, leaves, referenceAt }: PoolScope) {
     if (leaf.slowIos === null) return [];
     const rise = riseInWindow(leaf, referenceAt).slowIos;
     if (rise < threshold) return [];
+    const slowData = {
+      ...leafData(row, leaf),
+      slowIos: leaf.slowIos,
+      rise24h: rise,
+      threshold,
+    };
     return [
       {
         kind: "leaf-slow",
         key: leafKey(row.id, leaf.guid),
         subjectId: row.id,
         severity: "warning",
-        data: {
-          ...leafData(row, leaf),
-          slowIos: leaf.slowIos,
-          rise24h: rise,
-          threshold,
-        },
+        data: slowData,
+        carry: withDiskKept(slowData),
       },
     ];
   });

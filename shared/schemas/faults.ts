@@ -29,6 +29,7 @@ export const faultsQuerySchema = z.object({
   severity: z.enum(FAULT_SEVERITIES).optional(),
   host: z.string().trim().min(1).max(200).optional(),
   subject: subject.optional(),
+  namesDisk: z.coerce.number().int().positive().optional(),
 });
 
 export type FaultsQuery = z.infer<typeof faultsQuerySchema>;

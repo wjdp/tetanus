@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { FAULT_KIND_DEFINITIONS } from "#shared/faults";
+import { faultsQuerySchema } from "#shared/schemas/faults";
 import type { VdevRole } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
@@ -1750,5 +1751,116 @@ describe("smart-counters-reset", () => {
     json.seagate_farm_log.page_0_log_header.farm_log_version = [2, 1];
     await read(JSON.stringify(json), 0);
     expect(reset()).toBeUndefined();
+  });
+});
+
+describe("disks named on device faults", () => {
+  function insertDisk(alias: string) {
+    return db.insert(disk).values({ alias, lastSeenAt: t0 }).returning().get()
+      .id;
+  }
+
+  function setUp() {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    return { mars, vault };
+  }
+
+  const namingDisk = (diskId: number) =>
+    listFaults(faultsQuerySchema.parse({ namesDisk: String(diskId) })).faults;
+
+  it("names the leaf's disk on leaf-errors, and none on a group", async () => {
+    const { vault } = setUp();
+    const d1 = insertDisk("D1");
+    insertVdev(vault.id, {
+      guid: "40",
+      name: "raidz1-0",
+      type: "raidz",
+      checksumErrors: 2,
+    });
+    insertVdev(vault.id, {
+      guid: "41",
+      name: "/dev/disk/by-vdev/A1",
+      diskId: d1,
+      checksumErrors: 3,
+    });
+    insertVdev(vault.id, {
+      guid: "42",
+      name: "/dev/disk/by-vdev/A2",
+      readErrors: 1,
+    });
+
+    await syncFaults(t0);
+
+    expect(liveFault("leaf-errors", `${vault.id}:41`)?.data.diskId).toBe(d1);
+    expect(liveFault("leaf-errors", `${vault.id}:42`)?.data.diskId).toBeNull();
+    expect(liveFault("leaf-errors", `${vault.id}:40`)?.data.diskId).toBeNull();
+    expect(namingDisk(d1)).toMatchObject([
+      {
+        kind: "leaf-errors",
+        key: `${vault.id}:41`,
+        subject: { type: "pool", label: "vault" },
+      },
+    ]);
+  });
+
+  it("keeps a leaf fault on the disk it was raised against", async () => {
+    const { mars, vault } = setUp();
+    const d1 = insertDisk("D1");
+    const d2 = insertDisk("D2");
+    insertVdev(vault.id, {
+      guid: "41",
+      name: "/dev/disk/by-vdev/A1",
+      diskId: d1,
+      checksumErrors: 3,
+    });
+    await syncFaults(t0);
+
+    setVdev("41", { diskId: d2 });
+    observePool(vault.id, mars.id, "ONLINE", at(MINUTE_MS));
+    await syncFaults(at(MINUTE_MS));
+
+    expect(liveFault("leaf-errors", `${vault.id}:41`)?.data.diskId).toBe(d1);
+    expect(namingDisk(d1)).toHaveLength(1);
+    expect(namingDisk(d2)).toEqual([]);
+  });
+
+  it("names each listed leaf's disk on pool-degraded and keeps it", async () => {
+    const { mars, vault } = setUp();
+    const d1 = insertDisk("D1");
+    const d2 = insertDisk("D2");
+    observePool(vault.id, mars.id, "DEGRADED", t0);
+    insertVdev(vault.id, {
+      guid: "41",
+      name: "/dev/disk/by-vdev/A1",
+      diskId: d1,
+      state: "FAULTED",
+    });
+    insertVdev(vault.id, {
+      guid: "42",
+      name: "/dev/disk/by-vdev/A2",
+      state: "UNAVAIL",
+    });
+    await syncFaults(t0);
+
+    const leaves = () =>
+      (liveFault("pool-degraded", String(vault.id))?.data.leaves ??
+        []) as Array<{ vdevGuid: string; diskId: number | null }>;
+    expect(leaves().map(({ vdevGuid, diskId }) => [vdevGuid, diskId])).toEqual([
+      ["41", d1],
+      ["42", null],
+    ]);
+    expect(namingDisk(d1)).toMatchObject([{ kind: "pool-degraded" }]);
+
+    setVdev("41", { diskId: d2 });
+    setVdev("42", { diskId: d2 });
+    observePool(vault.id, mars.id, "DEGRADED", at(MINUTE_MS));
+    await syncFaults(at(MINUTE_MS));
+
+    expect(leaves().map(({ vdevGuid, diskId }) => [vdevGuid, diskId])).toEqual([
+      ["41", d1],
+      ["42", d2],
+    ]);
   });
 });
