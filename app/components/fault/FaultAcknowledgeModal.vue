@@ -24,14 +24,14 @@ const FAULT_KIND_VOCABULARY: Record<
     action: "Acknowledge",
     option: "Keep watching",
     description:
-      "Still listed as a fault, off the banner and badge while you investigate. Reopens if it gets worse.",
+      "Still listed as a fault. Banner is dismissed while you investigate. Reopens automatically if it gets worse.",
     notePlaceholder: "What you are doing about it (optional)",
   },
   accept: {
     action: "Accept",
     option: "Accept as normal",
     description:
-      "Treated as intended. Leaves the live view; reopens if it gets worse.",
+      "Treated as intended, fault moves to the accepted tab. Reopens automatically if it gets worse.",
     notePlaceholder: "Why this is fine (optional)",
   },
 };
