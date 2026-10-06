@@ -557,6 +557,23 @@ describe("SSD defect counts", () => {
   });
 });
 
+describe("substitute defect counts", () => {
+  function withReportedUncorrectable(body: string, value: number) {
+    const json = JSON.parse(body);
+    const page = json.ata_device_statistics.pages.find(
+      (candidate: { number: number }) => candidate.number === 4,
+    );
+    page.table.find((entry: { offset: number }) => entry.offset === 8).value =
+      value;
+    return JSON.stringify(json);
+  }
+
+  it("fails the disk on the first reading carrying the statistic", () => {
+    ingestSmart(withReportedUncorrectable(SDA, 3), t0);
+    expect(diskBySerial(SDA_SERIAL).latestStatus).toBe("failed");
+  });
+});
+
 describe("attribute row history", () => {
   function pendingOf(diskId: number) {
     return latestAttributes(diskId).find(

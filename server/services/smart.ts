@@ -41,6 +41,7 @@ import type {
   AtaAttribute,
   ScsiInfo,
   SctTemperatureHistory,
+  SeagateFarm,
   SelfTestEntry,
   SmartctlXallResult,
 } from "#shared/smartctl";
@@ -609,6 +610,7 @@ export function recordSmartReading({
     ...substitutesFor(
       row.id,
       evaluated.map(({ attrId }) => attrId),
+      { deviceStatistics: parsed.deviceStatistics, farm: parsed.farm },
     ),
   ];
   const superseded = isLatest
@@ -1058,6 +1060,10 @@ export function diskProtocol(diskId: number): SmartProtocol | undefined {
 export function substitutesFor(
   diskId: number,
   presentAttrIds: readonly string[],
+  incoming: {
+    deviceStatistics?: DeviceStatistics | null;
+    farm?: SeagateFarm | null;
+  } = {},
 ): SubstituteAttribute[] {
   if (presentAttrIds.length === 0) return [];
   const row = db
@@ -1072,8 +1078,8 @@ export function substitutesFor(
   if (!row?.protocol || PROTOCOLS[row.protocol] !== "ATA") return [];
   return substituteDefects(
     new Set(presentAttrIds),
-    row.deviceStatistics,
-    row.farm,
+    incoming.deviceStatistics ?? row.deviceStatistics,
+    incoming.farm ?? row.farm,
   );
 }
 
