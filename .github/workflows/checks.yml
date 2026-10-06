@@ -47,8 +47,13 @@ jobs:
         run: pnpm demo:typecheck
 
   vitest:
+    name: vitest (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [unit, seeded, app, e2e]
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -62,7 +67,7 @@ jobs:
       - name: Prepare Nuxt types
         run: pnpm nuxt prepare
       - name: Test
-        run: pnpm test
+        run: pnpm test --project ${{ matrix.project }}
 
   demo-schema:
     runs-on: ubuntu-latest
