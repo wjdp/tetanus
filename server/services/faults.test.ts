@@ -1310,6 +1310,61 @@ describe("identity-conflict", () => {
   });
 });
 
+describe("capacity-changed", () => {
+  const TB = 1_000_000_000_000;
+  const change = (diskId: number, offsetMs: number) =>
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: diskId,
+      eventType: "capacity-changed",
+      title: "capacity changed from 16.0 TB to 15.0 TB",
+      data: { from: 16 * TB, to: 15 * TB },
+      at: at(offsetMs),
+    });
+
+  it("resolves on acknowledge and only reopens for a new change", async () => {
+    const a = db.insert(disk).values({ alias: "K1" }).returning().get().id;
+
+    change(a, 0);
+    await syncFaults(at(MINUTE_MS));
+    const open = liveFault("capacity-changed", String(a)) as FaultRow;
+    expect(open).toMatchObject({
+      state: "open",
+      subjectId: a,
+      severity: "warning",
+      data: { from: 16 * TB, to: 15 * TB, changedAt: t0.toISOString() },
+    });
+
+    performFaultAction(open.id, "acknowledge", { now: at(2 * MINUTE_MS) });
+    await syncFaults(at(3 * MINUTE_MS));
+    expect(faultsOf("capacity-changed")).toMatchObject([
+      { state: "resolved", resolvedAt: at(2 * MINUTE_MS) },
+    ]);
+
+    change(a, HOUR_MS);
+    await syncFaults(at(HOUR_MS));
+    expect(faultsOf("capacity-changed")).toMatchObject([
+      { state: "resolved" },
+      { state: "open" },
+    ]);
+  });
+
+  it("raises on a disk in a history state", async () => {
+    const a = db
+      .insert(disk)
+      .values({ alias: "K1", stateOverride: "dead" })
+      .returning()
+      .get().id;
+
+    change(a, 0);
+    await syncFaults(at(MINUTE_MS));
+
+    expect(liveFault("capacity-changed", String(a))).toMatchObject({
+      state: "open",
+    });
+  });
+});
+
 describe("disk-missing", () => {
   it("opens while the disk is missing", async () => {
     const mars = upsertHostByName("mars", t0);

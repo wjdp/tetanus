@@ -73,6 +73,7 @@ const REPLAYED_EVENTS = [
   "pool-archived",
   "pool-unarchived",
   "identity-conflict",
+  "capacity-changed",
   "collector-status-changed",
   "fault-opened",
   "fault-state-changed",
@@ -374,6 +375,7 @@ function replayDiskEntry(
       for (const row of replay.liveOf(["identity-conflict"], `${diskId}:`)) {
         replay.resolve(row, at);
       }
+      replay.resolve(replay.get("capacity-changed", String(diskId)), at);
       return;
     }
     case "disposal-cleared": {
@@ -389,6 +391,20 @@ function replayDiskEntry(
           subjectId: diskId,
           severity: "error",
           data: { diskIds: data.diskIds, conflictAt: iso(at) },
+        },
+        at,
+      );
+      return;
+    }
+    case "capacity-changed": {
+      if (context.disposedDiskIds.has(diskId)) return;
+      replay.observe(
+        {
+          kind: "capacity-changed",
+          key: String(diskId),
+          subjectId: diskId,
+          severity: "warning",
+          data: { from: data.from, to: data.to, changedAt: iso(at) },
         },
         at,
       );

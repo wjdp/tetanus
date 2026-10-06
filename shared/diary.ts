@@ -43,6 +43,7 @@ export const DIARY_EVENT_TYPES = [
   "alias-set",
   "alias-drift",
   "identity-conflict",
+  "capacity-changed",
   "bridge-linked",
   "usage-changed",
   "dataset-created",
