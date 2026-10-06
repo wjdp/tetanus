@@ -1,10 +1,13 @@
+import type { SeagateFarm } from "#shared/smartctl";
 import type { AtaSsdAttributes } from "./ataSsdAttributes";
+import type { DeviceStatistics } from "./deviceStatistics";
 import {
   type AcceptedLevel,
   type AttributeDisplayStatus,
   type AttributeStatus,
   overlayStatus,
 } from "./status";
+import { substituteDefects } from "./substituteDefects";
 
 export interface CounterAttribute {
   attrId: string;
@@ -63,6 +66,31 @@ export function counterAttributeIds(
     ...(ataSsdAttributes?.wear ? [ataSsdAttributes.wear] : []),
     ...(ataSsdAttributes?.written ? [ataSsdAttributes.written.attrId] : []),
   ];
+}
+
+const SUBSTITUTED_COUNTER_IDS: ReadonlySet<string> = new Set([
+  COUNTER_IDS.ataReallocated,
+  COUNTER_IDS.ataPending,
+]);
+
+export function withSubstituteCounters(
+  rows: readonly CounterAttribute[],
+  statistics: DeviceStatistics | null | undefined,
+  farm: SeagateFarm | null | undefined,
+): CounterAttribute[] {
+  const substitutes = substituteDefects(
+    new Set(rows.map((row) => row.attrId)),
+    statistics,
+    farm,
+  )
+    .filter((substitute) => SUBSTITUTED_COUNTER_IDS.has(substitute.attrId))
+    .map(({ attrId, transformedValue, status }) => ({
+      attrId,
+      value: null,
+      transformedValue,
+      status,
+    }));
+  return [...rows, ...substitutes];
 }
 
 const DISPLAY_SEVERITY: Record<AttributeDisplayStatus, number> = {

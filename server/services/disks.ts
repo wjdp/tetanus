@@ -41,6 +41,7 @@ import {
   countersFrom,
   type DiskCounters,
   NO_COUNTERS,
+  withSubstituteCounters,
 } from "#shared/smart/counters";
 import { usablePercentageUsed } from "#shared/smart/ssdPolicy";
 import {
@@ -776,11 +777,8 @@ function latestReadingIdOf(diskId: typeof disk.id) {
     .limit(1);
 }
 
-function latestCounterAttributes(rows: DiskRow[]) {
-  const attrIds = new Set(
-    rows.flatMap((row) => counterAttributeIds(row.ataSsdAttributes)),
-  );
-  const latestReadingIds = db
+function latestReadingIdsOf(rows: DiskRow[]) {
+  return db
     .select({ id: sql<number>`(${latestReadingIdOf(disk.id)})` })
     .from(disk)
     .where(
@@ -789,6 +787,23 @@ function latestCounterAttributes(rows: DiskRow[]) {
         rows.map((row) => row.id),
       ),
     );
+}
+
+function disksWithLatestAttributes(rows: DiskRow[]): Set<number> {
+  if (rows.length === 0) return new Set();
+  const found = db
+    .selectDistinct({ diskId: smartAttribute.diskId })
+    .from(smartAttribute)
+    .where(inArray(smartAttribute.readingId, latestReadingIdsOf(rows)))
+    .all();
+  return new Set(found.map(({ diskId }) => diskId));
+}
+
+function latestCounterAttributes(rows: DiskRow[]) {
+  const attrIds = new Set(
+    rows.flatMap((row) => counterAttributeIds(row.ataSsdAttributes)),
+  );
+  const latestReadingIds = latestReadingIdsOf(rows);
   return db
     .select({
       diskId: smartAttribute.diskId,
@@ -841,11 +856,24 @@ function countersOf(rows: DiskRow[]): Map<number, DiskCounters> {
     (attribute) => attribute.diskId,
   );
   const acceptances = activeAcceptancesOf(rows.map((row) => row.id));
+  const withAttributes = disksWithLatestAttributes(
+    rows.filter((row) => row.protocol === "ata"),
+  );
+  const attributesOf = (row: DiskRow) => {
+    const attributes = attributesByDisk.get(row.id) ?? [];
+    return withAttributes.has(row.id)
+      ? withSubstituteCounters(
+          attributes,
+          row.latestDeviceStatistics,
+          row.latestFarm,
+        )
+      : attributes;
+  };
   return new Map(
     rows.map((row) => [
       row.id,
       countersFrom(
-        attributesByDisk.get(row.id) ?? [],
+        attributesOf(row),
         row.ataSsdAttributes,
         acceptances.get(row.id) ?? new Map(),
         usablePercentageUsed(row.latestDeviceStatistics),

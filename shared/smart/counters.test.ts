@@ -7,8 +7,9 @@ import {
   countersFrom,
   NO_COUNTERS,
   NVME_DATA_UNIT_BYTES,
+  withSubstituteCounters,
 } from "./counters";
-import { evaluateReading } from "./evaluate";
+import { evaluateAtaRawCount, evaluateReading } from "./evaluate";
 import type { AcceptedLevel, AttributeStatus } from "./status";
 
 const MIB = 1024 ** 2;
@@ -196,5 +197,67 @@ describe("countersFrom", () => {
         83,
       ).wearPercent,
     ).toEqual({ value: 83, status: "warning" });
+  });
+});
+
+describe("withSubstituteCounters", () => {
+  const present = (attrId: string, transformedValue: number) => ({
+    attrId,
+    value: 100,
+    transformedValue,
+    status: "passed" as const,
+  });
+
+  it("fills reallocated and pending from device statistics when the attributes are absent", () => {
+    const rows = withSubstituteCounters(
+      [present("198", 0)],
+      { reallocatedSectors: 24, pendingErrors: 3, normalised: [] },
+      null,
+    );
+    const counters = countersFrom(rows, null, NO_ACCEPTANCES);
+    expect(counters.reallocated).toEqual({
+      value: 24,
+      status: evaluateAtaRawCount("5", 24).status,
+    });
+    expect(counters.pending).toEqual({
+      value: 3,
+      status: evaluateAtaRawCount("197", 3).status,
+    });
+    expect(counters.pending?.status).not.toBe("passed");
+    expect(counters.uncorrectable).toEqual({ value: 0, status: "passed" });
+  });
+
+  it("keeps attributes the reading has over substitutes", () => {
+    const rows = withSubstituteCounters(
+      [present("5", 0), present("197", 0)],
+      { reallocatedSectors: 24, pendingErrors: 3, normalised: [] },
+      null,
+    );
+    expect(rows.map((row) => row.attrId)).toEqual(["5", "197"]);
+  });
+
+  it("leaves reported uncorrectables out of the uncorrectable counter", () => {
+    const rows = withSubstituteCounters(
+      [present("5", 0)],
+      { reportedUncorrectables: 9, normalised: [] },
+      null,
+    );
+    expect(rows.map((row) => row.attrId)).toEqual(["5"]);
+  });
+
+  it("overlays an acceptance on a substitute", () => {
+    const rows = withSubstituteCounters(
+      [present("198", 0)],
+      { reallocatedSectors: 24, normalised: [] },
+      null,
+    );
+    const counters = countersFrom(
+      rows,
+      null,
+      new Map<string, AcceptedLevel>([
+        ["5", { kind: "accept", acceptedValue: 24 }],
+      ]),
+    );
+    expect(counters.reallocated).toEqual({ value: 24, status: "accepted" });
   });
 });
