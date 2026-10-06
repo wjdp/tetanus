@@ -67,20 +67,24 @@ const sortIcon = (column: DatasetColumn) => {
   return sorting.value.desc ? "i-lucide-arrow-down" : "i-lucide-arrow-up";
 };
 
+const sortButton = (column: DatasetColumn) => ({
+  color: "neutral" as const,
+  variant: "ghost" as const,
+  size: "xs" as const,
+  label: column.label,
+  class: "text-highlighted -mx-2 text-sm font-semibold",
+  trailingIcon: sortIcon(column),
+  "aria-label": `Sort by ${column.label}`,
+  "data-testid": `dataset-sort-${column.id}`,
+  onClick: () => {
+    sorting.value = nextSorting(sorting.value, column);
+  },
+});
+
 const sortableHeader = (column: DatasetColumn) => () =>
-  h(UButton, {
-    color: "neutral",
-    variant: "ghost",
-    size: "xs",
-    label: column.label,
-    class: "-mx-2",
-    trailingIcon: sortIcon(column),
-    "aria-label": `Sort by ${column.label}`,
-    "data-testid": `dataset-sort-${column.id}`,
-    onClick: () => {
-      sorting.value = nextSorting(sorting.value, column);
-    },
-  });
+  h(UButton, sortButton(column));
+
+const nameColumn = DATASET_COLUMNS.find(({ id }) => id === "name");
 
 const columns = computed<TableColumn<Row>[]>(() =>
   DATASET_COLUMNS.map((column) => ({
@@ -152,29 +156,7 @@ const limits = (dataset: DatasetTreeRow) =>
 </script>
 
 <template>
-  <div class="@container flex flex-col gap-2">
-    <div class="flex justify-end gap-2">
-      <UFieldGroup size="sm">
-        <UButton
-          color="neutral"
-          variant="outline"
-          icon="i-lucide-chevrons-up-down"
-          label="Expand all"
-          :disabled="collapsedIds.size === 0"
-          data-testid="dataset-expand-all"
-          @click="expandAll"
-        />
-        <UButton
-          color="neutral"
-          variant="outline"
-          icon="i-lucide-chevrons-down-up"
-          label="Collapse all"
-          :disabled="collapsibleIds.length === 0"
-          data-testid="dataset-collapse-all"
-          @click="collapseAll"
-        />
-      </UFieldGroup>
-    </div>
+  <div class="@container">
     <UTable
       :data="rows"
       :columns="columns"
@@ -187,6 +169,35 @@ const limits = (dataset: DatasetTreeRow) =>
       }"
       data-testid="dataset-tree"
     >
+      <template v-if="nameColumn" #name-header>
+        <span class="flex items-center gap-3">
+          <UButton v-bind="sortButton(nameColumn)" />
+          <span class="flex items-center">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-chevrons-up-down"
+              title="Expand all"
+              aria-label="Expand all"
+              :disabled="collapsedIds.size === 0"
+              data-testid="dataset-expand-all"
+              @click="expandAll"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-chevrons-down-up"
+              title="Collapse all"
+              aria-label="Collapse all"
+              :disabled="collapsibleIds.length === 0"
+              data-testid="dataset-collapse-all"
+              @click="collapseAll"
+            />
+          </span>
+        </span>
+      </template>
       <template #name-cell="{ row }">
         <div
           class="flex items-center gap-1"
