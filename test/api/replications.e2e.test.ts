@@ -183,7 +183,19 @@ describe("/api/pools/:id/datasets replications", () => {
     expect(datasets).toEqual([
       expect.objectContaining({
         id: sourceId,
-        replications: [{ id, role: "source", status: "ok" }],
+        replications: [
+          {
+            id,
+            role: "source",
+            status: "ok",
+            peer: {
+              host: { name: "vault", displayName: null },
+              pool: "vpool",
+              dataset: "vpool/tank/a",
+              sameHost: false,
+            },
+          },
+        ],
       }),
     ]);
   });
