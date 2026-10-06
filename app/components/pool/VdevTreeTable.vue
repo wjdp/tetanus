@@ -25,30 +25,95 @@ const expanded = ref<Record<string, boolean>>({});
 const rowId = (row: Row) =>
   row.kind === "section" ? `section-${row.role}` : row.node.guid;
 
+const WIDE_ONLY_CELL = "hidden @5xl:table-cell";
+const COUNTER_CELL = "hidden px-2 @3xl:table-cell @5xl:px-3";
+const NARROW_ONLY_CELL = "@3xl:hidden";
+
+const cellClass = (classes: string) => ({
+  meta: { class: { th: classes, td: classes } },
+});
+
 const columns: TableColumn<Row>[] = [
   { id: "expand", header: "", meta: { class: { td: "w-8 pe-0" } } },
   { id: "name", header: "Name" },
-  { id: "type", header: "Type" },
+  { id: "type", header: "Type", ...cellClass(WIDE_ONLY_CELL) },
   { id: "state", header: "State" },
-  { id: "read", header: "Read" },
-  { id: "write", header: "Write" },
-  { id: "cksum", header: "Cksum" },
-  { id: "slow", header: "Slow IOs" },
+  { id: "read", ...cellClass(COUNTER_CELL) },
+  { id: "write", ...cellClass(COUNTER_CELL) },
+  { id: "cksum", ...cellClass(COUNTER_CELL) },
+  { id: "slow", ...cellClass(COUNTER_CELL) },
+  { id: "errors", header: "Errors", ...cellClass(NARROW_ONLY_CELL) },
   { id: "used", header: "Alloc / size" },
   { id: "frag", header: "Frag" },
 ];
 
-const counterClass = (count: number | null) =>
-  count ? "text-error font-mono tabular" : "text-dimmed font-mono tabular";
+const COUNTER_TEXT = "font-mono tabular";
+
+const errorClass = (count: number | null) =>
+  count ? `text-error ${COUNTER_TEXT}` : `text-dimmed ${COUNTER_TEXT}`;
 
 const slowClass = (count: number | null) => {
-  if (!count) return "text-dimmed font-mono tabular";
+  if (!count) return `text-dimmed ${COUNTER_TEXT}`;
   const isOverThreshold =
     props.slowIoThreshold > 0 && count >= props.slowIoThreshold;
   return isOverThreshold
-    ? "text-warning font-mono tabular"
-    : "text-highlighted font-mono tabular";
+    ? `text-warning ${COUNTER_TEXT}`
+    : `text-highlighted ${COUNTER_TEXT}`;
 };
+
+type CounterId = "read" | "write" | "cksum" | "slow";
+
+interface Counter {
+  id: CounterId;
+  title: string;
+  shortTitle: string;
+  unit: string;
+  count: (node: PoolVdev) => number | null;
+  textClass: (count: number | null) => string;
+  placeholder: string;
+}
+
+const COUNTERS: Counter[] = [
+  {
+    id: "read",
+    title: "Read",
+    shortTitle: "R",
+    unit: "read",
+    count: (node) => node.readErrors,
+    textClass: errorClass,
+    placeholder: "",
+  },
+  {
+    id: "write",
+    title: "Write",
+    shortTitle: "W",
+    unit: "write",
+    count: (node) => node.writeErrors,
+    textClass: errorClass,
+    placeholder: "",
+  },
+  {
+    id: "cksum",
+    title: "Cksum",
+    shortTitle: "C",
+    unit: "cksum",
+    count: (node) => node.checksumErrors,
+    textClass: errorClass,
+    placeholder: "",
+  },
+  {
+    id: "slow",
+    title: "Slow IOs",
+    shortTitle: "Slow",
+    unit: "slow",
+    count: (node) => node.slowIos,
+    textClass: slowClass,
+    placeholder: "—",
+  },
+];
+
+const nonZeroCounters = (node: PoolVdev) =>
+  COUNTERS.filter((counter) => counter.count(node));
 
 const deviceDetails = (node: PoolVdev) =>
   [
@@ -94,6 +159,7 @@ const { formatZfsBytes } = useZfsByteSystem();
     :columns="columns"
     :get-row-id="rowId"
     empty="No vdevs reported."
+    class="@container"
     data-testid="vdev-tree"
   >
     <template #expand-cell="{ row }">
@@ -205,38 +271,61 @@ const { formatZfsBytes } = useZfsByteSystem();
         {{ row.original.node.state }}
       </span>
     </template>
-    <template #read-cell="{ row }">
-      <span
-        v-if="row.original.kind === 'vdev'"
-        :class="counterClass(row.original.node.readErrors)"
-      >
-        {{ row.original.node.readErrors }}
+    <template
+      v-for="counter in COUNTERS"
+      :key="`${counter.id}-header`"
+      #[`${counter.id}-header`]
+    >
+      <span class="hidden @5xl:inline">{{ counter.title }}</span>
+      <span class="@5xl:hidden" :title="counter.title">
+        {{ counter.shortTitle }}
       </span>
     </template>
-    <template #write-cell="{ row }">
+    <template
+      v-for="counter in COUNTERS"
+      :key="`${counter.id}-cell`"
+      #[`${counter.id}-cell`]="{ row }"
+    >
       <span
         v-if="row.original.kind === 'vdev'"
-        :class="counterClass(row.original.node.writeErrors)"
+        :class="counter.textClass(counter.count(row.original.node))"
+        :data-testid="`vdev-${counter.id}`"
       >
-        {{ row.original.node.writeErrors }}
+        {{ counter.count(row.original.node) ?? counter.placeholder }}
       </span>
     </template>
-    <template #cksum-cell="{ row }">
-      <span
+    <template #errors-cell="{ row }">
+      <UTooltip
         v-if="row.original.kind === 'vdev'"
-        :class="counterClass(row.original.node.checksumErrors)"
+        :ui="{ content: 'h-auto' }"
       >
-        {{ row.original.node.checksumErrors }}
-      </span>
-    </template>
-    <template #slow-cell="{ row }">
-      <span
-        v-if="row.original.kind === 'vdev'"
-        :class="slowClass(row.original.node.slowIos)"
-        data-testid="vdev-slow"
-      >
-        {{ row.original.node.slowIos ?? "—" }}
-      </span>
+        <span
+          class="flex flex-col text-sm whitespace-nowrap"
+          data-testid="vdev-errors"
+        >
+          <span
+            v-if="nonZeroCounters(row.original.node).length === 0"
+            class="text-dimmed"
+          >
+            —
+          </span>
+          <span
+            v-for="counter in nonZeroCounters(row.original.node)"
+            :key="counter.id"
+            :class="counter.textClass(counter.count(row.original.node))"
+          >
+            {{ counter.count(row.original.node) }} {{ counter.unit }}
+          </span>
+        </span>
+        <template #content>
+          <div class="font-mono">
+            <div v-for="counter in COUNTERS" :key="counter.id">
+              {{ counter.title }}
+              {{ counter.count(row.original.node) ?? "—" }}
+            </div>
+          </div>
+        </template>
+      </UTooltip>
     </template>
     <template #used-header>
       <span class="flex items-center gap-2">
