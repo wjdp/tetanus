@@ -1,12 +1,18 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, lte } from "drizzle-orm";
 import type { DiaryEventType } from "#shared/diary";
 import {
   type AcceptanceKind,
+  type AttributeStatus,
   isCovered,
   type OverlaidAttribute,
+  worstStatus,
 } from "#shared/smart/status";
 import { db } from "~~/server/database/client";
-import { disk, faultAcceptance } from "~~/server/database/schema";
+import {
+  disk,
+  faultAcceptance,
+  smartAttribute,
+} from "~~/server/database/schema";
 import { addAutoEvent } from "~~/server/services/diary";
 import { setSmartAttributeFaultState } from "~~/server/services/faults";
 import {
@@ -180,6 +186,30 @@ export function clearAcceptance(
   });
 }
 
+function statusWhenAccepted(
+  diskId: number,
+  attrId: string,
+  acceptedAt: Date,
+): AttributeStatus | undefined {
+  return db
+    .select({ status: smartAttribute.status })
+    .from(smartAttribute)
+    .where(
+      and(
+        eq(smartAttribute.diskId, diskId),
+        eq(smartAttribute.attrId, attrId),
+        lte(smartAttribute.takenAt, acceptedAt),
+      ),
+    )
+    .orderBy(desc(smartAttribute.takenAt), desc(smartAttribute.id))
+    .limit(1)
+    .get()?.status;
+}
+
+function hasWorsened(then: AttributeStatus | undefined, now: AttributeStatus) {
+  return then !== undefined && then !== now && worstStatus(then, now) === now;
+}
+
 export function supersedeIfRisen(
   diskId: number,
   attributes: NamedAttribute[],
@@ -191,8 +221,13 @@ export function supersedeIfRisen(
   const superseded = new Set<string>();
   for (const active of activeAcceptances(diskId).values()) {
     const attribute = byAttr.get(active.attrId);
+    if (!attribute) continue;
+    const worsened = hasWorsened(
+      statusWhenAccepted(diskId, active.attrId, active.acceptedAt),
+      attribute.status,
+    );
     if (
-      !attribute ||
+      !worsened &&
       isCovered(active.acceptedValue, attribute.transformedValue)
     ) {
       continue;
@@ -207,7 +242,9 @@ export function supersedeIfRisen(
       subjectType: "disk",
       subjectId: diskId,
       eventType: vocabulary.superseded,
-      title: `${attribute.name} rose to ${value} (${vocabulary.verb} at ${active.acceptedValue})`,
+      title: worsened
+        ? `${attribute.name} worsened to ${attribute.status} at ${value} (${vocabulary.verb} at ${active.acceptedValue})`
+        : `${attribute.name} rose to ${value} (${vocabulary.verb} at ${active.acceptedValue})`,
       data: {
         attrId: active.attrId,
         acceptedValue: active.acceptedValue,
