@@ -66,13 +66,23 @@ describe("linkSpeedDisplay", () => {
     ).toEqual({
       text: "6.0 Gb/s",
       belowMax: true,
-      title: "negotiated below 12.0 Gb/s max",
+      title:
+        "Negotiated 6.0 Gb/s; the drive supports 12.0 Gb/s. A slower port, cable or backplane.",
     });
     expect(
       linkSpeedDisplay({ linkSpeed: { maxBps: 6e9, currentBps: 6e9 } })
         ?.belowMax,
     ).toBe(false);
     expect(linkSpeedDisplay({})).toBeNull();
+  });
+
+  it("does not flag when either speed is unknown", () => {
+    expect(
+      linkSpeedDisplay({ linkSpeed: { maxBps: 0, currentBps: 3e9 } }),
+    ).toEqual({ text: "3.0 Gb/s", belowMax: false, title: undefined });
+    expect(
+      linkSpeedDisplay({ linkSpeed: { maxBps: 6e9, currentBps: 0 } }),
+    ).toBeNull();
   });
 });
 

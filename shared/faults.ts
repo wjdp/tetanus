@@ -2,6 +2,10 @@ import { formatBytes } from "#shared/bytes";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { formatDuration } from "#shared/hostFreshness";
 import { HOST_TOOL_REQUIREMENTS, type HostTool } from "#shared/hostTools";
+import {
+  SUBSTITUTE_SOURCE_LABELS,
+  type SubstituteSource,
+} from "#shared/smart/substituteDefects";
 
 export const FAULT_STATES = [
   "open",
@@ -43,6 +47,11 @@ export const FAULT_KINDS = [
   "capacity-changed",
   "temperature-high",
   "smart-counters-reset",
+  "self-test-failed",
+  "helium-tripped",
+  "smart-unavailable",
+  "error-log-growth",
+  "interface-errors",
   "pool-degraded",
   "pool-missing",
   "leaf-errors",
@@ -90,6 +99,7 @@ interface FaultKindDefinition {
   actions: readonly FaultAction[];
   upgradeCommand?: true;
   title(data: FaultData, now: number): string;
+  hint?(data: FaultData): string | null;
 }
 
 const text = (value: unknown) =>
@@ -110,9 +120,26 @@ function hostDegradedTitle(data: FaultData) {
   return requirement ? `${older}: ${requirement.missing}` : older;
 }
 
+function smartUnavailableHint(data: FaultData) {
+  if (data.reason === "unreadable")
+    return "Often a USB bridge that needs a smartctl device type.";
+  if (data.reason === "disabled")
+    return "Turn it on with smartctl -s on <device>.";
+  return null;
+}
+
+function smartAttributeName(data: FaultData) {
+  const source =
+    SUBSTITUTE_SOURCE_LABELS[data.source as SubstituteSource] ?? null;
+  return source ? `${text(data.name)} (${source})` : text(data.name);
+}
+
 function smartAttributeTitle(data: FaultData) {
-  const parts = [`${text(data.name)} ${text(data.value)}`];
+  const parts = [`${smartAttributeName(data)} ${text(data.value)}`];
   if (data.trend === "worsening") parts[0] += ", worsening";
+  if (typeof data.errorLogRise === "number" && data.errorLogRise > 0) {
+    parts[0] += `, error log +${data.errorLogRise}`;
+  }
   if (typeof data.acceptedValue === "number") {
     const label = data.acceptanceKind === "acknowledge" ? "ack" : "accepted";
     parts.push(`${label} at ${data.acceptedValue}`);
@@ -135,6 +162,24 @@ export interface PoolDegradedLeaf extends LeafCounts {
   diskMissing: boolean;
 }
 
+export function poolDegradedLeaves(data: FaultData): PoolDegradedLeaf[] {
+  return Array.isArray(data.leaves) ? (data.leaves as PoolDegradedLeaf[]) : [];
+}
+
+export const DISK_NAMING_FAULT_KINDS = [
+  "leaf-errors",
+  "leaf-slow",
+  "pool-degraded",
+] as const satisfies readonly FaultKind[];
+
+export function namedDiskIds(data: FaultData): number[] {
+  const ids = [
+    data.diskId,
+    ...poolDegradedLeaves(data).map((leaf) => leaf.diskId),
+  ];
+  return ids.filter((id): id is number => typeof id === "number");
+}
+
 export function leafLabel(name: unknown) {
   return text(name).split("/").at(-1) ?? "";
 }
@@ -148,9 +193,7 @@ function poolDegradedLeafText(leaf: PoolDegradedLeaf) {
 function poolDegradedTitle(data: FaultData) {
   const state = text(data.state);
   const pool = `Pool ${text(data.poolName)}${state === "ONLINE" ? "" : ` ${state}`}`;
-  const leaves = Array.isArray(data.leaves)
-    ? (data.leaves as PoolDegradedLeaf[])
-    : [];
+  const leaves = poolDegradedLeaves(data);
   if (leaves.length === 0) return pool;
   return `${pool}: ${leaves.map(poolDegradedLeafText).join(", ")}`;
 }
@@ -232,6 +275,55 @@ function smartCountersResetTitle(data: FaultData) {
     parts.push(`FARM ${fields} differs from the drive's`);
   }
   return parts.join(" · ") || "SMART counters reset";
+}
+
+const SELF_TEST_TYPE_LABELS: [RegExp, string][] = [
+  [/extended|long/i, "Long"],
+  [/short/i, "Short"],
+  [/conveyance/i, "Conveyance"],
+  [/selective/i, "Selective"],
+];
+
+function selfTestTypeLabel(type: unknown) {
+  const raw = text(type).trim();
+  const match = SELF_TEST_TYPE_LABELS.find(([pattern]) => pattern.test(raw));
+  return match?.[1] ?? raw;
+}
+
+function selfTestFailure(status: unknown) {
+  const raw = text(status).trim();
+  const detail = raw.includes(":") ? raw.slice(raw.lastIndexOf(":") + 1) : raw;
+  return detail.trim().toLowerCase();
+}
+
+function selfTestFailedTitle(data: FaultData) {
+  const type = selfTestTypeLabel(data.type);
+  const failure = selfTestFailure(data.status);
+  const head = type ? `${type} self-test failed` : "Self-test failed";
+  const location = typeof data.lba === "number" ? ` at LBA ${data.lba}` : "";
+  if (failure) return `${head}: ${failure}${location}`;
+  return `${head}${location}`;
+}
+
+const SMART_UNAVAILABLE_TITLES: Record<string, string> = {
+  unsupported: "SMART is not supported",
+  disabled: "SMART is disabled",
+  unreadable: "SMART data could not be read",
+};
+
+function smartUnavailableTitle(data: FaultData) {
+  return SMART_UNAVAILABLE_TITLES[text(data.reason)] ?? "No usable SMART data";
+}
+
+function errorLogGrowthTitle(data: FaultData) {
+  const rise = typeof data.rise === "number" ? data.rise : "?";
+  const count = typeof data.count === "number" ? data.count : "?";
+  return `Error log grew by ${rise} (${count} total)`;
+}
+
+function interfaceErrorsTitle(data: FaultData) {
+  const rise = typeof data.rise === "number" ? `: +${data.rise} in 7 days` : "";
+  return `Interface CRC errors rising${rise} (cabling, not the drive)`;
 }
 
 function replicationTitle(state: string) {
@@ -346,6 +438,71 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "persistent",
     actions: ["accept", "clear"],
     title: smartCountersResetTitle,
+  },
+  "self-test-failed": {
+    label: "Self-test failed",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["error"],
+    trigger:
+      "The newest failed entry in a disk's self-test log completed with a failure: read failure, electrical, servo, unknown failure or handling damage. Tests aborted by the host, interrupted by a reset or still in progress do not count.",
+    resolves:
+      "A later test of the same or a longer type passes: a passed long test resolves a failed short or long test, a passed short test only a failed short test. An acknowledged or accepted fault reopens when a newer test fails.",
+    lifetime: "persistent",
+    actions: ["acknowledge", "accept", "clear"],
+    title: selfTestFailedTitle,
+  },
+  "helium-tripped": {
+    label: "Helium pressure tripped",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["error"],
+    trigger:
+      "The drive's Seagate FARM log reports that its helium pressure threshold has tripped.",
+    resolves:
+      "The drive's FARM log no longer reports the helium pressure threshold as tripped.",
+    lifetime: "persistent",
+    actions: ["acknowledge", "accept", "clear"],
+    title: () => "Helium pressure threshold tripped",
+  },
+  "smart-unavailable": {
+    label: "No usable SMART data",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "The latest reading of an in-service disk, not in standby, reports SMART as unsupported or disabled, or smartctl failed and returned no attributes, NVMe log or SCSI counters.",
+    resolves:
+      "A reading arrives with usable SMART data. An accepted fault reopens if the reason changes.",
+    lifetime: "persistent",
+    actions: ["acknowledge", "accept", "clear"],
+    title: smartUnavailableTitle,
+    hint: smartUnavailableHint,
+  },
+  "error-log-growth": {
+    label: "Error log growth",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "The ATA device error count is higher than at the previous reading. The first reading sets the baseline; a falling count is treated as a reset and re-baselined. A rise on a disk with a live defect attribute fault is recorded on that fault instead.",
+    resolves:
+      "Does not clear on its own; acknowledge, accept or resolve it. An acknowledged or accepted fault reopens when the count rises above the count at that time.",
+    lifetime: "until-resolved",
+    actions: ["acknowledge", "accept", "clear", "resolve"],
+    title: errorLogGrowthTitle,
+  },
+  "interface-errors": {
+    label: "Interface errors",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "The interface CRC error count (attribute 199) has risen across three or more readings in the last 7 days. CRC errors usually point to the cable, backplane or controller rather than the drive.",
+    resolves: "7 days pass without a rise.",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: interfaceErrorsTitle,
   },
   "pool-degraded": {
     label: "Pool degraded",
@@ -614,6 +771,13 @@ export function faultTitle(
   now = Date.now(),
 ): string {
   return FAULT_KIND_DEFINITIONS[fault.kind].title(fault.data, now);
+}
+
+export function faultHint(fault: {
+  kind: FaultKind;
+  data: FaultData;
+}): string | null {
+  return FAULT_KIND_DEFINITIONS[fault.kind].hint?.(fault.data) ?? null;
 }
 
 export function allowedActions(fault: {

@@ -421,8 +421,9 @@ const attributeSummary = computed(() => {
           }}<template v-if="linkSpeed">
             ·
             <span
-              :class="{ 'text-error': linkSpeed.belowMax }"
+              :class="{ 'text-warning': linkSpeed.belowMax }"
               :title="linkSpeed.title"
+              data-testid="link-speed"
               >{{ linkSpeed.text }}</span
             ></template
           ></span

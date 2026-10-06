@@ -98,11 +98,15 @@ export function setReplicationsBackfilledAt(at: Date) {
     .run();
 }
 
-export function setAtaSsdAttributesBackfilledAt(at: Date) {
+export function setAtaSsdAttributesBackfilled(at: Date, version: number) {
   const row = ensureSettings();
   db.update(setting)
     .set({
-      config: { ...row.config, ataSsdAttributesBackfilledAt: at.toISOString() },
+      config: {
+        ...row.config,
+        ataSsdAttributesBackfilledAt: at.toISOString(),
+        ataSsdAttributesVersion: version,
+      },
     })
     .where(eq(setting.id, SETTING_ROW_ID))
     .run();

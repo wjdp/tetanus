@@ -31,7 +31,7 @@ describe("vendored scrutiny metadata", () => {
 
   it("covers NVMe and SCSI keys", () => {
     expect(Object.keys(NVME_METADATA)).toHaveLength(16);
-    expect(Object.keys(SCSI_METADATA)).toHaveLength(13);
+    expect(Object.keys(SCSI_METADATA)).toHaveLength(19);
     expect(attributeMetadata("NVMe", "media_errors")?.ideal).toBe("low");
     expect(attributeMetadata("SCSI", "scsi_grown_defect_list")).toMatchObject({
       ideal: "low",

@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { SMART_POLICY_VERSION } from "#shared/smart/classification";
 import type { SmartProtocol } from "#shared/smart/metadata";
+import type { SsdPolicyContext } from "#shared/smart/ssdPolicy";
 import { db } from "~~/server/database/client";
 import {
   disk,
@@ -16,8 +17,10 @@ import {
   type MinimalSmartAttribute,
   parsedFromMinimal,
   recomputeLatestStatus,
+  risenDefects,
   type SmartAttributeRow,
   type SmartReadingRow,
+  ssdPolicyContext,
 } from "~~/server/services/smart";
 
 const SETTING_ROW_ID = 1;
@@ -53,6 +56,7 @@ function reevaluateAttributes(
   reading: SmartReadingRow,
   protocol: SmartProtocol,
   stored: SmartAttributeRow[],
+  context: SsdPolicyContext,
 ) {
   const evaluated = evaluateNamedAttributes(
     parsedFromMinimal({
@@ -62,6 +66,7 @@ function reevaluateAttributes(
       powerOnHours: reading.powerOnHours,
       powerCycles: reading.powerCycles,
     }),
+    context,
   );
   const byAttrId = new Map(
     evaluated.map((attribute) => [attribute.attrId, attribute]),
@@ -93,7 +98,12 @@ export function reapplySmartPolicy(now = new Date()): SmartPolicyOutcome {
   return db.transaction(() => {
     const outcome: SmartPolicyOutcome = { disks: 0, changed: 0 };
     const disks = db
-      .select({ id: disk.id, latestReadingAt: disk.latestReadingAt })
+      .select({
+        id: disk.id,
+        latestReadingAt: disk.latestReadingAt,
+        ataSsdAttributes: disk.ataSsdAttributes,
+        latestDeviceStatistics: disk.latestDeviceStatistics,
+      })
       .from(disk)
       .where(
         inArray(
@@ -102,13 +112,27 @@ export function reapplySmartPolicy(now = new Date()): SmartPolicyOutcome {
         ),
       )
       .all();
-    for (const { id, latestReadingAt } of disks) {
+    for (const {
+      id,
+      latestReadingAt,
+      ataSsdAttributes,
+      latestDeviceStatistics,
+    } of disks) {
       const reading = latestReading(id);
       if (!reading) continue;
       const stored = attributesOfReading(reading.id);
       const protocol = protocolOf(id, stored);
       if (!protocol) continue;
-      reevaluateAttributes(reading, protocol, stored);
+      reevaluateAttributes(
+        reading,
+        protocol,
+        stored,
+        ssdPolicyContext(
+          ataSsdAttributes,
+          latestDeviceStatistics,
+          risenDefects(id, ataSsdAttributes, reading.takenAt),
+        ),
+      );
       if (latestReadingAt === null) {
         outcome.disks += 1;
         continue;

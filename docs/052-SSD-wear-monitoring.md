@@ -1,6 +1,6 @@
 ---
 type: task
-status: planned
+status: done
 ---
 
 # SSD wear monitoring
@@ -43,3 +43,26 @@ only, like NVMe.
 - Faults backfill for disks already past the threshold.
 - Spare capacity (NVMe `available_spare`, ATA reserved blocks) in scope?
 - Wear rate / projected end of life from history: here or separate?
+
+## Decided (2026-10-06)
+
+From the [085](085-Disk-fault-coverage.md) review.
+
+- **Thresholds:** warning at 80 %, error at 100 %, for ATA and NVMe alike, matching
+  `WEAR_WARNING_PERCENT` and `WEAR_FAILED_PERCENT`. Fixed, not a setting. 80 % turns the
+  disk amber and alerts.
+- **NVMe comparison:** `percentage_used` is compared with a strict `>` against 100, so
+  exactly 100 passes. Use `>=`. The other fixed-threshold rows are correct as they are.
+- **Wear source for ATA**, in order: device statistics 7:8 `percentageUsed` (the ACS
+  standard figure), then the name-matched attribute in `ataSsdAttributes.wear`.
+- **Spare is in scope.** NVMe `available_spare` keeps error below the drive's
+  threshold and gains a warning at threshold + 10. ATA reserved-space attributes (170,
+  179, 180, 232, matched by name) get the same two tiers against the vendor threshold.
+  Fail and bad-block counts are [097](097-SSD-defect-attributes.md).
+- **Acceptance:** wear only rises, so an accepted warning reopens on reaching error,
+  and through the usual value rule otherwise.
+- **Fault kind:** `smart-attribute`, as the Direction above says, so no new
+  `ssd-endurance-low` kind. NVMe critical warning also decodes its bits in the title
+  (spare, temperature, reliability, read-only, backup).
+- Still open: how evaluation gets disk context (shared with 097), and wear rate, which
+  stays in [019](019-SSD-endurance.md).

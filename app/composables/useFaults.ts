@@ -8,6 +8,7 @@ export interface FaultsQuery {
   severity?: string;
   host?: string;
   subject?: string;
+  namesDisk?: string;
 }
 
 export const OPEN_ERRORS_QUERY: FaultsQuery = {

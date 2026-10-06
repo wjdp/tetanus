@@ -8,6 +8,7 @@ import {
   isNotableContextRate,
   isShownByDefault,
   orderAttributes,
+  substituteSourceLabel,
 } from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
@@ -170,6 +171,13 @@ const rowClass = (row: { original: LatestAttribute }) =>
       <template #name-cell="{ row }">
         <span class="inline-flex items-center gap-1">
           {{ row.original.metadata?.displayName ?? row.original.name }}
+          <span
+            v-if="row.original.source"
+            class="text-muted text-xs"
+            data-testid="substitute-source"
+          >
+            {{ substituteSourceLabel(row.original) }}
+          </span>
           <UTooltip v-if="attributeNote(row.original)" :text="attributeNote(row.original) ?? ''">
             <UIcon
               name="i-lucide-info"
@@ -226,7 +234,9 @@ const rowClass = (row: { original: LatestAttribute }) =>
       </template>
 
       <template #trend-cell="{ row }">
+        <span v-if="row.original.source" class="text-dimmed">—</span>
         <UBadge
+          v-else
           :color="ATTRIBUTE_TREND_COLOUR[row.original.trend]"
           variant="soft"
           size="sm"
@@ -235,7 +245,8 @@ const rowClass = (row: { original: LatestAttribute }) =>
       </template>
 
       <template #history-cell="{ row }">
-        <ChartsSparkline :values="sparklineValues(row.original.attrId)" />
+        <span v-if="row.original.source" class="text-dimmed">—</span>
+        <ChartsSparkline v-else :values="sparklineValues(row.original.attrId)" />
       </template>
 
       <template #actions-cell="{ row }">

@@ -172,6 +172,11 @@ function matchDiskEntry(
 const FAULT_OPENED_RULES = new Set<AlertRule>([
   "temperature-high",
   "smart-counters-reset",
+  "self-test-failed",
+  "helium-tripped",
+  "smart-unavailable",
+  "error-log-growth",
+  "interface-errors",
   "pool-capacity",
   "pool-missing",
   "scrub-overdue",

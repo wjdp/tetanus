@@ -22,11 +22,39 @@ const fault = (id: number, state: string) => ({
 
 const requested: string[] = [];
 
+const poolFault = {
+  ...fault(3, "open"),
+  kind: "leaf-errors",
+  category: "zfs",
+  subject: {
+    type: "pool",
+    id: 4,
+    label: "tank",
+    hostName: "mars",
+    path: "/hosts/mars/pools/tank",
+  },
+  data: {
+    poolName: "tank",
+    name: "/dev/disk/by-vdev/A1",
+    role: "normal",
+    diskId: 7,
+    read: 0,
+    write: 0,
+    checksum: 3,
+    total: { read: 0, write: 0, checksum: 3 },
+  },
+};
+
 mockNuxtImport("useFaults", () => (query: () => Record<string, string>) => {
-  const { state, subject } = query();
-  requested.push(`${subject}|${state}`);
-  const faults =
-    subject === "disk:8"
+  const { state, subject, namesDisk } = query();
+  requested.push(
+    namesDisk ? `names:${namesDisk}|${state}` : `${subject}|${state}`,
+  );
+  const faults = namesDisk
+    ? namesDisk === "7"
+      ? [poolFault]
+      : []
+    : subject === "disk:8"
       ? []
       : state === "resolved"
         ? [fault(2, "resolved")]
@@ -46,10 +74,23 @@ describe("DiskFaults", () => {
     expect(requested).toContain("disk:7|open,acknowledged,accepted");
     expect(requested).toContain("disk:7|resolved");
     const lists = component.findAll('[data-testid="fault-list"]');
-    expect(lists).toHaveLength(2);
+    expect(lists).toHaveLength(3);
     expect(lists[0]?.text()).toContain("SMART counters reset");
-    expect(lists[1]?.text()).toContain("SMART counters reset");
+    expect(lists[2]?.text()).toContain("SMART counters reset");
     expect(lists[0]?.text()).not.toContain("mars");
+  });
+
+  it("lists live pool faults naming the disk, linked to the pool", async () => {
+    const component = await mountSuspended(DiskFaults, {
+      props: { diskId: 7 },
+    });
+    expect(requested).toContain("names:7|open,acknowledged,accepted");
+    const section = component.find('[data-testid="disk-pool-faults"]');
+    expect(section.text()).toContain("Pool faults naming this disk");
+    expect(section.text()).toContain("tank");
+    expect(section.find('a[href="/hosts/mars/pools/tank"]').exists()).toBe(
+      true,
+    );
   });
 
   it("says so when there are no faults", async () => {
@@ -60,5 +101,8 @@ describe("DiskFaults", () => {
       true,
     );
     expect(component.findAll('[data-testid="fault-list"]')).toHaveLength(0);
+    expect(component.find('[data-testid="disk-pool-faults"]').exists()).toBe(
+      false,
+    );
   });
 });

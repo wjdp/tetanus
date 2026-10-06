@@ -4,6 +4,7 @@ import {
   allowedActions,
   FAULT_KINDS,
   type FaultKind,
+  faultHint,
   faultTitle,
   thresholdSeverity,
 } from "#shared/faults";
@@ -44,6 +45,11 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "disposed-disk-seen": null,
   "temperature-high": "temperature-high",
   "smart-counters-reset": "smart-counters-reset",
+  "self-test-failed": "self-test-failed",
+  "helium-tripped": "helium-tripped",
+  "smart-unavailable": "smart-unavailable",
+  "error-log-growth": "error-log-growth",
+  "interface-errors": "interface-errors",
   "collector-incompatible": "collector-incompatible",
 };
 
@@ -92,6 +98,21 @@ describe("faultTitle", () => {
         acceptedValue: 2,
       },
       "Current Pending Sector Count 2 · ack at 2",
+    ],
+    [
+      "smart-attribute",
+      { name: "Reallocated Sectors Count", value: 24, errorLogRise: 3 },
+      "Reallocated Sectors Count 24, error log +3",
+    ],
+    [
+      "smart-attribute",
+      { name: "Reallocated Sectors Count", value: 24, errorLogRise: 0 },
+      "Reallocated Sectors Count 24",
+    ],
+    [
+      "smart-attribute",
+      { name: "Reallocated Sectors Count", value: 8, source: "farm" },
+      "Reallocated Sectors Count (FARM) 8",
     ],
     [
       "pool-degraded",
@@ -289,8 +310,62 @@ describe("faultTitle", () => {
       "special mirror-1 in tank 85 % full",
     ],
     ["pool-capacity", { vdevGuid: "2" }, "Pool nearly full"],
+    [
+      "self-test-failed",
+      {
+        type: "Extended offline",
+        status: "Completed: read failure",
+        lifetimeHours: 1200,
+        lba: 1234,
+      },
+      "Long self-test failed: read failure at LBA 1234",
+    ],
+    [
+      "self-test-failed",
+      {
+        type: "Short offline",
+        status: "Completed: electrical failure",
+        lifetimeHours: 1200,
+        lba: null,
+      },
+      "Short self-test failed: electrical failure",
+    ],
+    ["helium-tripped", {}, "Helium pressure threshold tripped"],
+    ["smart-unavailable", { reason: "unsupported" }, "SMART is not supported"],
+    ["smart-unavailable", { reason: "disabled" }, "SMART is disabled"],
+    [
+      "smart-unavailable",
+      { reason: "unreadable" },
+      "SMART data could not be read",
+    ],
+    [
+      "error-log-growth",
+      { count: 7, rise: 2, previousCount: 5, firstRiseAt: null },
+      "Error log grew by 2 (7 total)",
+    ],
+    [
+      "interface-errors",
+      { count: 40, rise: 12, readings: 3 },
+      "Interface CRC errors rising: +12 in 7 days (cabling, not the drive)",
+    ],
   ] as const)("renders %s", (kind, data, title) => {
     expect(faultTitle({ kind, data }, now)).toBe(title);
+  });
+});
+
+describe("faultHint", () => {
+  it.each([
+    ["unreadable", "Often a USB bridge that needs a smartctl device type."],
+    ["disabled", "Turn it on with smartctl -s on <device>."],
+    ["unsupported", null],
+  ])("gives %s SMART the hint %s", (reason, hint) => {
+    expect(faultHint({ kind: "smart-unavailable", data: { reason } })).toBe(
+      hint,
+    );
+  });
+
+  it("is null for a kind without a hint", () => {
+    expect(faultHint({ kind: "helium-tripped", data: {} })).toBeNull();
   });
 });
 

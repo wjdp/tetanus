@@ -5,6 +5,7 @@ import { describeDisk, isDisposed, isHistoryState } from "#shared/disk";
 import { hostPath } from "#shared/entityPaths";
 import {
   allowedActions,
+  DISK_NAMING_FAULT_KINDS,
   FAULT_KIND_DEFINITIONS,
   FAULT_SEVERITY_RANK,
   FAULT_STATES,
@@ -19,12 +20,18 @@ import {
   type FaultsResponse,
   type FaultView,
   faultTitle,
+  namedDiskIds,
 } from "#shared/faults";
 import { type CadenceOverrides, isHostSilent } from "#shared/hostFreshness";
 import { unsupportedTools } from "#shared/hostTools";
 import { replicationLabel } from "#shared/replications";
 import type { FaultsQuery } from "#shared/schemas/faults";
-import { healthStatus, overlayStatus } from "#shared/smart/status";
+import {
+  type AttributeStatus,
+  healthStatus,
+  overlayStatus,
+} from "#shared/smart/status";
+import type { SubstituteSource } from "#shared/smart/substituteDefects";
 import { db } from "~~/server/database/client";
 import {
   dataset,
@@ -46,15 +53,27 @@ import {
   describeDisks,
   listDisks,
 } from "~~/server/services/disks";
-import { detectSmartCountersReset } from "~~/server/services/farmFaults";
+import {
+  detectErrorLogGrowth,
+  foldErrorLogGrowth,
+} from "~~/server/services/errorLogFaults";
+import {
+  detectHeliumTripped,
+  detectSmartCountersReset,
+} from "~~/server/services/farmFaults";
 import { type HostWithRuns, listHosts } from "~~/server/services/hosts";
+import { detectInterfaceErrors } from "~~/server/services/interfaceFaults";
 import { detectPoolFaults } from "~~/server/services/poolFaults";
 import { detectReplicationFaults } from "~~/server/services/replications/faults";
+import { detectSelfTestFailed } from "~~/server/services/selfTestFaults";
 import {
+  type AttributeTrend,
   attributesOfReading,
   attributeTrend,
   latestReading,
+  substituteAttributes,
 } from "~~/server/services/smart";
+import { detectSmartUnavailable } from "~~/server/services/smartUnavailableFaults";
 import { detectTemperatureHigh } from "~~/server/services/temperatureFaults";
 import { poolPaths } from "~~/server/services/zfs/paths";
 import { useSseEvent } from "~~/server/sse";
@@ -71,6 +90,7 @@ export interface Detection {
   data: FaultData;
   state?: FaultState;
   reopen?: (previous: FaultData) => boolean;
+  carry?: (previous: FaultData) => FaultData;
 }
 
 export interface FaultReference {
@@ -130,14 +150,40 @@ function withdrawDisposedDisks({ disks }: DetectionContext): Withdrawal[] {
   }));
 }
 
+interface FaultingAttribute {
+  attrId: string;
+  name: string;
+  status: AttributeStatus;
+  transformedValue: number;
+  trend?: AttributeTrend;
+  source?: SubstituteSource;
+}
+
+function faultingAttributes(
+  diskId: number,
+  readingId: number,
+): FaultingAttribute[] {
+  const evaluated = attributesOfReading(readingId)
+    .filter((attribute) => attribute.status !== "passed")
+    .map(
+      (attribute): FaultingAttribute => ({
+        ...attribute,
+        trend: attributeTrend(diskId, attribute),
+      }),
+    );
+  const substitutes = substituteAttributes(diskId, readingId).filter(
+    (attribute) => attribute.status !== "passed",
+  );
+  return [...evaluated, ...substitutes];
+}
+
 function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
   return inService(disks).flatMap((row) => {
     const reading = latestReading(row.id);
     if (!reading) return [];
     const active = activeAcceptances(row.id);
-    return attributesOfReading(reading.id)
-      .filter((attribute) => attribute.status !== "passed")
-      .map((attribute): Detection => {
+    return faultingAttributes(row.id, reading.id).map(
+      (attribute): Detection => {
         const acceptance = active.get(attribute.attrId);
         const display = overlayStatus(
           attribute.status,
@@ -155,7 +201,9 @@ function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
             attrId: attribute.attrId,
             name: attribute.name,
             value: attribute.transformedValue,
-            trend: attributeTrend(row.id, attribute),
+            ...(attribute.source
+              ? { source: attribute.source }
+              : { trend: attribute.trend }),
             ...(acceptance && covered
               ? {
                   acceptanceKind: acceptance.kind,
@@ -164,7 +212,8 @@ function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
               : {}),
           },
         };
-      });
+      },
+    );
   });
 }
 
@@ -372,12 +421,17 @@ export function detectFaults(context: DetectionContext): FaultScan {
       .filter((supersession) => supersession.subjectType === "disk")
       .map((supersession) => supersession.subjectId),
   );
-  return {
-    detections: [
+  const folded = foldErrorLogGrowth(
+    [
       ...detectSmartAttributes(context),
       ...detectHealthFailed(context),
       ...detectTemperatureHigh(context),
       ...detectSmartCountersReset(context),
+      ...detectHeliumTripped(context),
+      ...detectSelfTestFailed(context),
+      ...detectSmartUnavailable(context),
+      ...detectErrorLogGrowth(context),
+      ...detectInterfaceErrors(context),
       ...detectMissing(context, suppressedDiskIds),
       ...detectIdentityConflicts(context),
       ...detectCapacityChanges(context),
@@ -387,7 +441,15 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...detectCollectorVersion(context),
       ...detectHostDegraded(context),
     ],
-    superseded: [...pools.superseded, ...replications.superseded],
+    context.now,
+  );
+  return {
+    detections: folded.detections,
+    superseded: [
+      ...pools.superseded,
+      ...replications.superseded,
+      ...folded.superseded,
+    ],
     withdrawn: [...withdrawDisposedDisks(context), ...replications.withdrawn],
   };
 }
@@ -450,7 +512,9 @@ const isQuiet = (state: FaultState) =>
   state === "acknowledged" || state === "accepted";
 
 function nextState(row: FaultRow, detection: Detection): FaultState {
-  if (detection.state) return detection.state;
+  if (detection.state) {
+    return detection.reopen?.(row.data) ? "open" : detection.state;
+  }
   if (!isQuiet(row.state)) return row.state;
   const worsened =
     isSeverityRise(row.severity, detection.severity) ||
@@ -481,10 +545,11 @@ function withoutAcknowledgedLevel({
 }
 
 function refreshedData(row: FaultRow, detection: Detection, state: FaultState) {
+  const data = detection.carry?.(row.data) ?? detection.data;
   if (!isQuiet(state) || row.data.acknowledgedCounts === undefined) {
-    return detection.data;
+    return data;
   }
-  return { ...detection.data, acknowledgedCounts: row.data.acknowledgedCounts };
+  return { ...data, acknowledgedCounts: row.data.acknowledgedCounts };
 }
 
 function openFault(detection: Detection, now: Date): FaultRow {
@@ -956,12 +1021,20 @@ export function listFaults(query: FaultsQuery): FaultsResponse {
         eq(fault.subjectType, query.subject.type),
         eq(fault.subjectId, query.subject.id),
       ),
+    query.namesDisk === undefined
+      ? undefined
+      : inArray(fault.kind, [...DISK_NAMING_FAULT_KINDS]),
   ].filter((condition) => condition !== undefined);
   const matching = db
     .select()
     .from(fault)
     .where(and(...conditions))
     .all()
+    .filter(
+      (row) =>
+        query.namesDisk === undefined ||
+        namedDiskIds(row.data).includes(query.namesDisk),
+    )
     .map((row) => present(row, lookup))
     .filter((view) => !query.host || view.subject.hostName === query.host);
   const counts = Object.fromEntries(

@@ -201,6 +201,26 @@ describe("DiskOverview", () => {
     expect(row(wrapper, "Overall")).toContain("read 2026-09-01");
   });
 
+  it("highlights a link negotiated below the drive's maximum", async () => {
+    const matched = (await mountOverview()).get('[data-testid="link-speed"]');
+    expect(matched.classes()).not.toContain("text-warning");
+    expect(matched.attributes("title")).toBeUndefined();
+
+    const slow = (
+      await mountOverview({
+        hardware: {
+          sataVersion: "SATA 3.1",
+          linkSpeed: { maxBps: 6_000_000_000, currentBps: 3_000_000_000 },
+        },
+      })
+    ).get('[data-testid="link-speed"]');
+    expect(slow.text()).toBe("3.0 Gb/s");
+    expect(slow.classes()).toContain("text-warning");
+    expect(slow.attributes("title")).toBe(
+      "Negotiated 3.0 Gb/s; the drive supports 6.0 Gb/s. A slower port, cable or backplane.",
+    );
+  });
+
   it("hides null rows and shows always-rows as —", async () => {
     const wrapper = await mountOverview({
       model: null,

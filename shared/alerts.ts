@@ -37,6 +37,11 @@ export const ALERT_RULES = {
   "disposed-disk-seen": { label: "Disposed disk seen", severity: "alert" },
   "temperature-high": { label: "Running hot", severity: "alert" },
   "smart-counters-reset": { label: "SMART counters reset", severity: "alert" },
+  "self-test-failed": { label: "Self-test failed", severity: "alert" },
+  "helium-tripped": { label: "Helium pressure tripped", severity: "alert" },
+  "smart-unavailable": { label: "No usable SMART data", severity: "notice" },
+  "error-log-growth": { label: "Error log growth", severity: "alert" },
+  "interface-errors": { label: "Interface errors", severity: "notice" },
   "collector-incompatible": {
     label: "Collector incompatible",
     severity: "alert",

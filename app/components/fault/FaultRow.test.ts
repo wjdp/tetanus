@@ -62,4 +62,22 @@ describe("FaultRow", () => {
     );
     expect(row.find('[data-testid="fault-disk-link"]').exists()).toBe(false);
   });
+
+  it("shows a hint under the title when the kind has one", async () => {
+    const row = await mountRow({
+      ...leafFault({ reason: "unreadable" }),
+      kind: "smart-unavailable",
+      category: "disk",
+    });
+    expect(row.get('[data-testid="fault-hint"]').text()).toBe(
+      "Often a USB bridge that needs a smartctl device type.",
+    );
+  });
+
+  it("shows no hint when the kind has none", async () => {
+    const row = await mountRow(
+      leafFault({ poolName: "tank", name: "/tmp/f1" }),
+    );
+    expect(row.find('[data-testid="fault-hint"]').exists()).toBe(false);
+  });
 });

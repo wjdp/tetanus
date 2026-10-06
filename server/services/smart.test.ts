@@ -15,6 +15,7 @@ import { type DiskRow, observeDisk } from "~~/server/services/disks";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import {
+  attributeRise,
   downsample,
   evaluateMinimalReading,
   evaluateNamedAttributes,
@@ -23,9 +24,12 @@ import {
   insertSmartReading,
   latestAttributes,
   MAX_HISTORY_POINTS,
+  NO_RISE,
+  riseOf,
   sctTemperaturePoints,
   trendDirection,
 } from "~~/server/services/smart";
+import { reapplySmartPolicy } from "~~/server/services/smartPolicy";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
 
@@ -293,6 +297,8 @@ describe("recordSmartReading", () => {
     const serial = JSON.parse(sdo).serial_number as string;
     const expected = {
       wear: "177",
+      reserved: ["179"],
+      defects: ["181", "182", "183"],
       written: { attrId: "241", unitBytes: 512, inferred: true },
     };
     ingestSmart(sdo, t0);
@@ -426,7 +432,9 @@ describe("trend", () => {
     ingestSmart(withAttributeRaw(SDA, 197, 4), t0);
     const diskId = diskBySerial(SDA_SERIAL).id;
 
-    const attributes = latestAttributes(diskId);
+    const attributes = latestAttributes(diskId).filter(
+      (attribute) => attribute.source === null,
+    );
     expect(attributes).toHaveLength(18);
     const pending = attributes.find((a) => a.attrId === "197");
     expect(pending).toMatchObject({
@@ -451,8 +459,144 @@ describe("trend", () => {
     ingestSmart(SDA, t0);
     const diskId = diskBySerial(SDA_SERIAL).id;
     expect(
-      new Set(latestAttributes(diskId).map((attribute) => attribute.trend)),
+      new Set(
+        latestAttributes(diskId)
+          .filter((attribute) => attribute.source === null)
+          .map((attribute) => attribute.trend),
+      ),
     ).toEqual(new Set(["new"]));
+  });
+});
+
+describe("attribute rise", () => {
+  it("needs a baseline and a later reading", () => {
+    expect(riseOf([])).toEqual(NO_RISE);
+    expect(riseOf([7])).toEqual({ ...NO_RISE, latest: 7 });
+  });
+
+  it("measures from the first value", () => {
+    expect(riseOf([2, 2])).toEqual({ ...NO_RISE, latest: 2 });
+    expect(riseOf([2, 3, 3, 5])).toEqual({
+      risen: true,
+      rise: 3,
+      readings: 2,
+      latest: 5,
+    });
+  });
+
+  it("ignores a fall that does not recover", () => {
+    expect(riseOf([5, 4])).toEqual({ ...NO_RISE, latest: 4 });
+  });
+
+  it("re-baselines and recounts at the lowest point after a counter reset", () => {
+    expect(riseOf([9, 10, 0, 0, 2])).toEqual({
+      risen: true,
+      rise: 2,
+      readings: 1,
+      latest: 2,
+    });
+    expect(riseOf([9, 10, 3, 1])).toEqual({ ...NO_RISE, latest: 1 });
+  });
+
+  it("reads the window from stored attribute history", () => {
+    ingestSmart(withAttributeRaw(SDA, 197, 1), at(-20 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 2), at(-10 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 2), at(-3 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 4), at(-DAY_MS));
+    const diskId = diskBySerial(SDA_SERIAL).id;
+
+    expect(attributeRise(diskId, "197", t0)).toEqual({
+      risen: true,
+      rise: 2,
+      readings: 1,
+      latest: 4,
+    });
+    expect(attributeRise(diskId, "197", at(-2 * DAY_MS))).toEqual({
+      ...NO_RISE,
+      latest: 2,
+    });
+    expect(attributeRise(diskId, "197", t0, 30)).toEqual({
+      risen: true,
+      rise: 3,
+      readings: 2,
+      latest: 4,
+    });
+    expect(attributeRise(diskId, "197", at(-15 * DAY_MS), 30).risen).toBe(
+      false,
+    );
+  });
+
+  it("uses the first reading in the window when none precedes it", () => {
+    ingestSmart(withAttributeRaw(SDA, 197, 3), at(-2 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 5), at(-DAY_MS));
+    const diskId = diskBySerial(SDA_SERIAL).id;
+
+    expect(attributeRise(diskId, "197", t0)).toEqual({
+      risen: true,
+      rise: 2,
+      readings: 1,
+      latest: 5,
+    });
+    expect(attributeRise(diskId, "999", t0).risen).toBe(false);
+  });
+});
+
+describe("SSD defect counts", () => {
+  const SSD = readFixture("mars/smartctl/xall-sdo-auto.json");
+  const SSD_SERIAL = JSON.parse(SSD).serial_number as string;
+  const programFailStatus = () =>
+    latestAttributes(diskBySerial(SSD_SERIAL).id).find(
+      (a) => a.attrId === "181",
+    )?.status;
+
+  it("warns while a non-zero count has risen within the week", () => {
+    ingestSmart(withAttributeRaw(SSD, 181, 0), at(-10 * DAY_MS));
+    expect(programFailStatus()).toBe("passed");
+    ingestSmart(withAttributeRaw(SSD, 181, 2), at(-8 * DAY_MS));
+    expect(programFailStatus()).toBe("warning");
+    ingestSmart(withAttributeRaw(SSD, 181, 2), t0);
+    expect(programFailStatus()).toBe("passed");
+    ingestSmart(withAttributeRaw(SSD, 181, 3), at(DAY_MS));
+    expect(programFailStatus()).toBe("warning");
+    reapplySmartPolicy(at(DAY_MS));
+    expect(programFailStatus()).toBe("warning");
+  });
+
+  it("treats a first non-zero reading as a baseline", () => {
+    ingestSmart(withAttributeRaw(SSD, 181, 5), t0);
+    expect(programFailStatus()).toBe("passed");
+  });
+});
+
+describe("substitute defect counts", () => {
+  function withReportedUncorrectable(body: string, value: number) {
+    const json = JSON.parse(body);
+    const page = json.ata_device_statistics.pages.find(
+      (candidate: { number: number }) => candidate.number === 4,
+    );
+    page.table.find((entry: { offset: number }) => entry.offset === 8).value =
+      value;
+    return JSON.stringify(json);
+  }
+
+  it("fails the disk on the first reading carrying the statistic", () => {
+    ingestSmart(withReportedUncorrectable(SDA, 3), t0);
+    expect(diskBySerial(SDA_SERIAL).latestStatus).toBe("failed");
+  });
+
+  it("lists the substitute with its source and counts it in the verdict", async () => {
+    const { getDisk } = await import("~~/server/services/disks");
+    ingestSmart(withReportedUncorrectable(SDA, 3), t0);
+    const { id } = diskBySerial(SDA_SERIAL);
+    expect(
+      latestAttributes(id).find((attribute) => attribute.attrId === "187"),
+    ).toMatchObject({
+      source: "device-statistics",
+      transformedValue: 3,
+      displayStatus: "failed",
+    });
+    const { smartVerdict } = await getDisk(id);
+    expect(smartVerdict?.attributes.failed).toBe(1);
   });
 });
 

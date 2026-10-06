@@ -398,3 +398,53 @@ describe("supersedeIfRisen", () => {
     expect(activeAcceptances(diskId).has("197")).toBe(true);
   });
 });
+
+describe("SSD wear acceptance", () => {
+  function diskOf(body: string) {
+    const serial = JSON.parse(body).serial_number as string;
+    return db.select().from(disk).where(eq(disk.serial, serial)).get()
+      ?.id as number;
+  }
+
+  function withNvme(body: string, field: string, value: number) {
+    const json = JSON.parse(body);
+    json.nvme_smart_health_information_log[field] = value;
+    return JSON.stringify(json);
+  }
+
+  function withNormalised(body: string, attrId: number, value: number) {
+    const json = JSON.parse(body);
+    const row = json.ata_smart_attributes.table.find(
+      (candidate: { id: number }) => candidate.id === attrId,
+    );
+    row.value = value;
+    row.worst = value;
+    return JSON.stringify(json);
+  }
+
+  it("reopens accepted NVMe wear when it reaches failed", () => {
+    const nvme = readFixture("mars/smartctl/xall-nvme0.json");
+    ingestSmart(withNvme(nvme, "percentage_used", 85));
+    const diskId = diskOf(nvme);
+    expect(attribute(diskId, "percentage_used")?.status).toBe("warning");
+    acceptFault({ diskId, attrId: "percentage_used", now: at(HOUR_MS) });
+
+    ingestSmart(withNvme(nvme, "percentage_used", 90), at(2 * HOUR_MS));
+    expect(activeAcceptances(diskId).has("percentage_used")).toBe(false);
+  });
+
+  it("reopens accepted ATA wear counting down when it reaches failed", () => {
+    const ssd = readFixture("mars/smartctl/xall-sdo-auto.json");
+    ingestSmart(withNormalised(ssd, 177, 15));
+    const diskId = diskOf(ssd);
+    expect(attribute(diskId, "177")?.status).toBe("warning");
+    acceptFault({ diskId, attrId: "177", now: at(HOUR_MS) });
+
+    ingestSmart(withNormalised(ssd, 177, 10), at(2 * HOUR_MS));
+    expect(activeAcceptances(diskId).has("177")).toBe(true);
+
+    ingestSmart(withNormalised(ssd, 177, 0), at(3 * HOUR_MS));
+    expect(activeAcceptances(diskId).has("177")).toBe(false);
+    expect(attribute(diskId, "177")?.status).toBe("failed");
+  });
+});

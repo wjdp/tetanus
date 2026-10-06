@@ -323,13 +323,13 @@ describe("seed", () => {
   });
 
   describe("faults", () => {
-    it("counts eight live, one accepted and twelve resolved", () => {
+    it("counts nine live, one accepted and fourteen resolved", () => {
       const { counts } = allFaults();
       expect(counts).toEqual({
-        open: 5,
+        open: 6,
         acknowledged: 3,
         accepted: 1,
-        resolved: 12,
+        resolved: 14,
       });
       const zfsKinds = allFaults()
         .faults.filter((row) => row.category === "zfs")
@@ -355,6 +355,26 @@ describe("seed", () => {
       expect(
         allFaults().faults.filter((row) => row.kind === "collector-silent"),
       ).toEqual([]);
+    });
+
+    it("P1's 87 % wear raises an open warning", () => {
+      expect(faultOf("smart-attribute", "P1")).toMatchObject({
+        state: "open",
+        severity: "warning",
+        data: expect.objectContaining({ attrId: "percentage_used" }),
+      });
+    });
+
+    it("V2's failed self-test was resolved when it left service", () => {
+      expect(faultOf("self-test-failed", "V2")).toMatchObject({
+        state: "resolved",
+      });
+    });
+
+    it("A7's error log growth was folded into its defect fault", () => {
+      expect(faultOf("error-log-growth", "A7")).toMatchObject({
+        state: "resolved",
+      });
     });
 
     it("A7's acknowledgement was superseded, so its fault is open again", () => {

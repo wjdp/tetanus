@@ -37,6 +37,35 @@ registerEndpoint("/api/disks/21/smart", () =>
 registerEndpoint("/api/disks/22/smart", () => smartOverview(null));
 registerEndpoint("/api/disks/23/smart", () => smartOverview(null, "unknown"));
 registerEndpoint("/api/disks/24/smart", () => smartOverview(null, "failed"));
+registerEndpoint("/api/disks/26/smart", () => ({
+  ...smartOverview(null, "failed"),
+  attributes: [
+    {
+      takenAt: at,
+      attrId: "187",
+      name: "Reported_Uncorrect",
+      value: null,
+      worst: null,
+      thresh: null,
+      rawValue: 3,
+      rawString: null,
+      whenFailed: null,
+      transformedValue: 3,
+      status: "failed",
+      failureRate: null,
+      reason: null,
+      trend: "stable",
+      metadata: null,
+      displayStatus: "failed",
+      acceptance: null,
+      statusChanges: [],
+      statusSince: null,
+      valueSince: at,
+      firstNonZeroAt: null,
+      source: "device-statistics",
+    },
+  ],
+}));
 registerEndpoint("/api/disks/25/smart", () => ({
   ...smartOverview(null),
   reading: null,
@@ -106,5 +135,16 @@ describe("DiskSmart", () => {
     expect(component.get('[data-testid="failure-rate-header"]').text()).toBe(
       "Failure rate",
     );
+  });
+
+  it("labels a substitute row with its source and offers acknowledgement", async () => {
+    const component = await mountSuspended(DiskSmart, {
+      global,
+      props: { diskId: 26, protocol: "ata" },
+    });
+    expect(component.get('[data-testid="substitute-source"]').text()).toBe(
+      "device statistics",
+    );
+    expect(component.text()).toContain("Acknowledge");
   });
 });

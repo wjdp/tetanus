@@ -1,4 +1,9 @@
 import { isAtaLifeRemainingAttribute } from "#shared/smart/ataSsdAttributes";
+import {
+  isAtaDefectAttribute,
+  isAtaReservedSpaceAttribute,
+  SPARE_WARNING_MARGIN,
+} from "#shared/smart/ssdPolicy";
 import type { StoredPayload } from "./payloads";
 
 export const EXIT_BITS = {
@@ -145,6 +150,45 @@ function setDeviceStatistic(json: Json, name: string, value: number) {
   }
 }
 
+const SPARE_HEADROOM = SPARE_WARNING_MARGIN / 2;
+
+function ataReservedSpaceAttributes(json: Json): AtaAttribute[] {
+  return ataAttributes(json).filter((attribute) =>
+    isAtaReservedSpaceAttribute(attribute.name),
+  );
+}
+
+export function supportsSpare(json: Json): boolean {
+  return (
+    typeof nvmeHealthLog(json)?.available_spare === "number" ||
+    ataReservedSpaceAttributes(json).length > 0
+  );
+}
+
+/** Leaves spare within the warning margin of its threshold, without crossing it. */
+export function setSpareNearThreshold(json: Json) {
+  const log = nvmeHealthLog(json);
+  if (log) {
+    const threshold = Number(log.available_spare_threshold) || 10;
+    log.available_spare = threshold + SPARE_HEADROOM;
+  }
+  for (const attribute of ataReservedSpaceAttributes(json)) {
+    attribute.value = Math.max(0, attribute.thresh) + SPARE_HEADROOM;
+    attribute.worst = Math.min(attribute.worst, attribute.value);
+  }
+}
+
+/** Intel packs a power-loss capacitor test into 175, so it never stands in for a defect count. */
+const INTEL_POWER_LOSS_TEST_ATTRIBUTE = 175;
+
+export function ataDefectAttribute(json: Json): AtaAttribute | undefined {
+  return ataAttributes(json).find(
+    (attribute) =>
+      isAtaDefectAttribute(attribute.name) &&
+      attribute.id !== INTEL_POWER_LOSS_TEST_ATTRIBUTE,
+  );
+}
+
 export function ataWearAttributes(json: Json): AtaAttribute[] {
   return ataAttributes(json).filter((attribute) =>
     isAtaLifeRemainingAttribute(attribute.name),
@@ -163,7 +207,7 @@ export function setWear(json: Json, percentageUsed: number) {
   if (log) log.percentage_used = percentageUsed;
   const remaining = Math.max(0, 100 - percentageUsed);
   for (const attribute of ataWearAttributes(json)) {
-    attribute.value = Math.max(1, remaining);
+    attribute.value = remaining;
     attribute.worst = Math.min(attribute.worst, attribute.value);
     if (attribute.name === "Percent_Life_Remaining") {
       attribute.raw = { value: remaining, string: String(remaining) };

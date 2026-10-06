@@ -71,13 +71,14 @@ export function linkSpeedDisplay(
   hardware: HardwareJson | null | undefined,
 ): LinkSpeedDisplay | null {
   const speed = hardware?.linkSpeed;
-  if (!speed) return null;
-  const belowMax = speed.currentBps < speed.maxBps;
+  if (!speed || !(speed.currentBps > 0)) return null;
+  const current = gigabitsPerSecond(speed.currentBps);
+  const belowMax = speed.maxBps > 0 && speed.currentBps < speed.maxBps;
   return {
-    text: gigabitsPerSecond(speed.currentBps),
+    text: current,
     belowMax,
     title: belowMax
-      ? `negotiated below ${gigabitsPerSecond(speed.maxBps)} max`
+      ? `Negotiated ${current}; the drive supports ${gigabitsPerSecond(speed.maxBps)}. A slower port, cable or backplane.`
       : undefined,
   };
 }

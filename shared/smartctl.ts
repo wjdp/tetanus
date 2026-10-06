@@ -167,6 +167,7 @@ export interface SmartctlXallResult {
   powerOnHours?: number;
   powerCycles?: number;
   ata?: { attributes: AtaAttribute[] };
+  ataErrorCount?: number;
   nvme?: Record<string, unknown>;
   scsi?: ScsiInfo;
   selfTests?: SelfTestEntry[];

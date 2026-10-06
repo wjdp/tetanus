@@ -48,6 +48,7 @@ export const settingsConfigSchema = z.object({
   smartPolicyVersion: z.number().int().min(0),
   faultsBackfilledAt: z.iso.datetime().optional(),
   ataSsdAttributesBackfilledAt: z.iso.datetime().optional(),
+  ataSsdAttributesVersion: z.number().int().min(0).optional(),
   replicationsBackfilledAt: z.iso.datetime().optional(),
   replicationLateFloorHours: floorHours,
   replicationLateFactor: intervalFactor,

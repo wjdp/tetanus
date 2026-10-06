@@ -32,6 +32,13 @@ complaint (AnalogJ#4, 47 comments).
   missing.
 - Exclusion could live on the server (ignore this disk) rather than in the collector.
 
+## Added from 099 (2026-10-06)
+
+- Post a "tried, got nothing" record for a device with empty smartctl output, so
+  [099](099-No-usable-SMART-data-fault.md)'s `smart-unavailable` fault can cover it.
+- When the override exists, change that fault's "could not be read" hint into a link to
+  it.
+
 ## Questions
 
 1. Server-side or host-side configuration for each half?

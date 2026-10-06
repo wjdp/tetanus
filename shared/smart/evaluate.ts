@@ -225,7 +225,7 @@ function evaluateScsi(scsi: SmartctlXallResult["scsi"]): EvaluatedAttribute[] {
   const rows: FixedThresholdRow[] = [
     ["scsi_grown_defect_list", scsi?.grownDefects, 0],
   ];
-  for (const direction of ["read", "write"] as const) {
+  for (const direction of ["read", "write", "verify"] as const) {
     const counters = scsi?.[direction];
     rows.push(
       [
@@ -241,7 +241,7 @@ function evaluateScsi(scsi: SmartctlXallResult["scsi"]): EvaluatedAttribute[] {
       [
         `${direction}_errors_corrected_by_rereads_rewrites`,
         counters?.errorsCorrectedByRereadsRewrites,
-        0,
+        NO_THRESHOLD,
       ],
       [
         `${direction}_total_errors_corrected`,
@@ -295,4 +295,26 @@ export function evaluateReading(parsed: SmartctlXallResult): Evaluation {
     ...attributes.map((attribute) => attribute.status),
   );
   return { deviceStatus, attributes };
+}
+
+/** Evaluates a raw count standing in for an ATA attribute the drive does not report. */
+export function evaluateAtaRawCount(
+  attrId: string,
+  count: number,
+): Pick<
+  EvaluatedAttribute,
+  "attributeClass" | "status" | "failureRate" | "reason"
+> {
+  const attrClass = attributeClass(attrId);
+  const accumulator = new StatusAccumulator();
+  const metadata = ATA_METADATA[attrId];
+  const failureRate = metadata
+    ? validateObservedThresholds(metadata, attrClass, count, accumulator)
+    : undefined;
+  return {
+    attributeClass: attrClass,
+    status: accumulator.status,
+    ...(failureRate !== undefined ? { failureRate } : {}),
+    ...(accumulator.reason ? { reason: accumulator.reason } : {}),
+  };
 }

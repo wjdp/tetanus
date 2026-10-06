@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { FAULT_KIND_DEFINITIONS } from "#shared/faults";
+import { FAULT_KIND_DEFINITIONS, faultTitle } from "#shared/faults";
+import { faultsQuerySchema } from "#shared/schemas/faults";
 import type { VdevRole } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
@@ -22,6 +23,7 @@ import {
 } from "~~/server/services/faults";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
+import { recomputeLatestStatus } from "~~/server/services/smart";
 import { ServiceError } from "~~/server/utils/serviceError";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
@@ -1429,6 +1431,106 @@ describe("disk-missing", () => {
   });
 });
 
+describe("smart-attribute substitutes", () => {
+  function setSources(
+    diskId: number,
+    fields: Partial<typeof disk.$inferInsert>,
+  ) {
+    db.update(disk).set(fields).where(eq(disk.id, diskId)).run();
+  }
+
+  it("raises a missing defect attribute from device statistics, and reopens when it rises", async () => {
+    ingestSmart(SDB);
+    const diskId = k2Id();
+    setSources(diskId, {
+      latestDeviceStatistics: {
+        reportedUncorrectables: 2,
+        reallocatedSectors: 9,
+        normalised: [],
+      },
+    });
+    await syncFaults(t0);
+    const uncorrectable = liveFault(
+      "smart-attribute",
+      `${diskId}:187`,
+    ) as FaultRow;
+    expect(uncorrectable).toMatchObject({
+      state: "open",
+      severity: "error",
+      data: { attrId: "187", value: 2, source: "device-statistics" },
+    });
+    expect(uncorrectable.data).not.toHaveProperty("trend");
+    expect(faultTitle(uncorrectable)).toBe(
+      "Reported_Uncorrect (device statistics) 2",
+    );
+    expect(liveFault("smart-attribute", `${diskId}:5`)).toBeUndefined();
+
+    acceptFault({ diskId, attrId: "187", now: at(MINUTE_MS) });
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toMatchObject({
+      state: "accepted",
+    });
+
+    setSources(diskId, {
+      latestDeviceStatistics: { reportedUncorrectables: 3, normalised: [] },
+    });
+    await syncFaults(at(2 * MINUTE_MS));
+    expect(liveFault("smart-attribute", `${diskId}:187`)?.state).toBe("open");
+  });
+
+  it("counts substitutes in the disk's status", () => {
+    ingestSmart(withAttributeRaw(withAttributeRaw(SDB, 197, 0), 198, 0));
+    const diskId = k2Id();
+    const status = () =>
+      db
+        .select({ status: disk.latestStatus })
+        .from(disk)
+        .where(eq(disk.id, diskId))
+        .get()?.status;
+    expect(status()).toBe("passed");
+    setSources(diskId, {
+      latestDeviceStatistics: { reportedUncorrectables: 2, normalised: [] },
+    });
+    recomputeLatestStatus(diskId, at(MINUTE_MS), "policy");
+    expect(status()).toBe("failed");
+    acceptFault({ diskId, attrId: "187", now: at(2 * MINUTE_MS) });
+    expect(status()).toBe("passed");
+  });
+
+  it("skips device statistics flagged normalised", async () => {
+    ingestSmart(SDB);
+    const diskId = k2Id();
+    setSources(diskId, {
+      latestDeviceStatistics: {
+        reportedUncorrectables: 2,
+        normalised: ["reportedUncorrectables"],
+      },
+    });
+    await syncFaults(t0);
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toBeUndefined();
+  });
+
+  it("falls back to FARM only from log version 3", async () => {
+    ingestSmart(SDB);
+    const diskId = k2Id();
+    const farm = (logVersion: string) =>
+      ({ logVersion, errors: { unrecoverableReads: 4 } }) as NonNullable<
+        typeof disk.$inferInsert.latestFarm
+      >;
+    setSources(diskId, {
+      latestDeviceStatistics: null,
+      latestFarm: farm("2.0"),
+    });
+    await syncFaults(t0);
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toBeUndefined();
+
+    setSources(diskId, { latestFarm: farm("4.1") });
+    await syncFaults(at(MINUTE_MS));
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toMatchObject({
+      data: { value: 4, source: "farm" },
+    });
+  });
+});
+
 describe("smart-attribute", () => {
   it("opens one fault per failing attribute and mirrors acceptances at once", async () => {
     ingestSmart(withAttributeRaw(SDB, 198, 0));
@@ -1805,5 +1907,116 @@ describe("smart-counters-reset", () => {
     json.seagate_farm_log.page_0_log_header.farm_log_version = [2, 1];
     await read(JSON.stringify(json), 0);
     expect(reset()).toBeUndefined();
+  });
+});
+
+describe("disks named on device faults", () => {
+  function insertDisk(alias: string) {
+    return db.insert(disk).values({ alias, lastSeenAt: t0 }).returning().get()
+      .id;
+  }
+
+  function setUp() {
+    const mars = upsertHostByName("mars", t0);
+    const vault = insertPool(mars.id, "ONLINE", t0);
+    recordRun(mars.id, "zpool-status", t0);
+    return { mars, vault };
+  }
+
+  const namingDisk = (diskId: number) =>
+    listFaults(faultsQuerySchema.parse({ namesDisk: String(diskId) })).faults;
+
+  it("names the leaf's disk on leaf-errors, and none on a group", async () => {
+    const { vault } = setUp();
+    const d1 = insertDisk("D1");
+    insertVdev(vault.id, {
+      guid: "40",
+      name: "raidz1-0",
+      type: "raidz",
+      checksumErrors: 2,
+    });
+    insertVdev(vault.id, {
+      guid: "41",
+      name: "/dev/disk/by-vdev/A1",
+      diskId: d1,
+      checksumErrors: 3,
+    });
+    insertVdev(vault.id, {
+      guid: "42",
+      name: "/dev/disk/by-vdev/A2",
+      readErrors: 1,
+    });
+
+    await syncFaults(t0);
+
+    expect(liveFault("leaf-errors", `${vault.id}:41`)?.data.diskId).toBe(d1);
+    expect(liveFault("leaf-errors", `${vault.id}:42`)?.data.diskId).toBeNull();
+    expect(liveFault("leaf-errors", `${vault.id}:40`)?.data.diskId).toBeNull();
+    expect(namingDisk(d1)).toMatchObject([
+      {
+        kind: "leaf-errors",
+        key: `${vault.id}:41`,
+        subject: { type: "pool", label: "vault" },
+      },
+    ]);
+  });
+
+  it("keeps a leaf fault on the disk it was raised against", async () => {
+    const { mars, vault } = setUp();
+    const d1 = insertDisk("D1");
+    const d2 = insertDisk("D2");
+    insertVdev(vault.id, {
+      guid: "41",
+      name: "/dev/disk/by-vdev/A1",
+      diskId: d1,
+      checksumErrors: 3,
+    });
+    await syncFaults(t0);
+
+    setVdev("41", { diskId: d2 });
+    observePool(vault.id, mars.id, "ONLINE", at(MINUTE_MS));
+    await syncFaults(at(MINUTE_MS));
+
+    expect(liveFault("leaf-errors", `${vault.id}:41`)?.data.diskId).toBe(d1);
+    expect(namingDisk(d1)).toHaveLength(1);
+    expect(namingDisk(d2)).toEqual([]);
+  });
+
+  it("names each listed leaf's disk on pool-degraded and keeps it", async () => {
+    const { mars, vault } = setUp();
+    const d1 = insertDisk("D1");
+    const d2 = insertDisk("D2");
+    observePool(vault.id, mars.id, "DEGRADED", t0);
+    insertVdev(vault.id, {
+      guid: "41",
+      name: "/dev/disk/by-vdev/A1",
+      diskId: d1,
+      state: "FAULTED",
+    });
+    insertVdev(vault.id, {
+      guid: "42",
+      name: "/dev/disk/by-vdev/A2",
+      state: "UNAVAIL",
+    });
+    await syncFaults(t0);
+
+    const leaves = () =>
+      (liveFault("pool-degraded", String(vault.id))?.data.leaves ??
+        []) as Array<{ vdevGuid: string; diskId: number | null }>;
+    expect(leaves().map(({ vdevGuid, diskId }) => [vdevGuid, diskId])).toEqual([
+      ["41", d1],
+      ["42", null],
+    ]);
+    expect(namingDisk(d1)).toMatchObject([{ kind: "pool-degraded" }]);
+
+    setVdev("41", { diskId: d2 });
+    setVdev("42", { diskId: d2 });
+    observePool(vault.id, mars.id, "DEGRADED", at(MINUTE_MS));
+    await syncFaults(at(MINUTE_MS));
+
+    expect(leaves().map(({ vdevGuid, diskId }) => [vdevGuid, diskId])).toEqual([
+      ["41", d1],
+      ["42", d2],
+    ]);
   });
 });

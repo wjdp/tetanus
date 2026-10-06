@@ -8,6 +8,10 @@ const live = useFaults(() => ({
   state: "open,acknowledged,accepted",
   subject: `disk:${props.diskId}`,
 }));
+const poolFaults = useFaults(() => ({
+  state: "open,acknowledged,accepted",
+  namesDisk: String(props.diskId),
+}));
 const resolved = useFaults(() => ({
   state: "resolved",
   subject: `disk:${props.diskId}`,
@@ -21,7 +25,11 @@ const now = ref(Date.now());
 
 const onChanged = async () => {
   now.value = Date.now();
-  await Promise.all([live.refresh(), resolved.refresh()]);
+  await Promise.all([
+    live.refresh(),
+    poolFaults.refresh(),
+    resolved.refresh(),
+  ]);
   emit("changed");
 };
 </script>
@@ -39,6 +47,20 @@ const onChanged = async () => {
     <p v-else class="text-muted text-sm" data-testid="disk-faults-none">
       No live faults on this disk.
     </p>
+
+    <div
+      v-if="poolFaults.faults.value.length"
+      class="flex flex-col gap-2"
+      data-testid="disk-pool-faults"
+    >
+      <h3 class="text-muted text-sm font-medium">Pool faults naming this disk</h3>
+      <FaultList
+        :faults="poolFaults.faults.value"
+        :now="now"
+        :perform="poolFaults.perform"
+        @changed="onChanged"
+      />
+    </div>
 
     <div v-if="recentlyResolved.length" class="flex flex-col gap-2">
       <div class="flex items-baseline justify-between gap-2">

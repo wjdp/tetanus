@@ -18,6 +18,20 @@ const liveFaults = (diskId: number) =>
 const attributeOf = (diskId: number, attrId: string) =>
   latestAttributes(diskId).find((attribute) => attribute.attrId === attrId);
 
+const hasAttributeFault = (diskId: number) =>
+  liveFaults(diskId).some((fault) => fault.kind === "smart-attribute");
+
+async function ssdWith(scenarioId: string, attrId: string, present = true) {
+  for (const row of await listDisks(NOW)) {
+    const offered = subjectScenarios("disk", row.id).scenarios.some(
+      (scenario) => scenario.id === scenarioId,
+    );
+    const has = attributeOf(row.id, attrId) !== undefined;
+    if (offered && has === present && !hasAttributeFault(row.id)) return row;
+  }
+  throw new Error(`No healthy SSD offers ${scenarioId} with ${attrId}`);
+}
+
 async function diskWith(...scenarioIds: string[]) {
   for (const row of await listDisks(NOW)) {
     const { scenarios } = subjectScenarios("disk", row.id);
@@ -147,6 +161,71 @@ describe("Health scenarios", () => {
     if (!target) throw new Error("No SATA SSD with Wear_Leveling_Count");
     await simulate("disk", target.id, "ssd-wear-out", {}, LATER);
     expect(attributeOf(target.id, "177")?.value).toBe(2);
+  }, 60_000);
+});
+
+describe("SSD policy scenarios", () => {
+  it.each([
+    ["NVMe", "percentage_used"],
+    ["SATA", "177"],
+  ])(
+    "wears an %s SSD to warning, then failed",
+    async (_, attrId) => {
+      const target = await ssdWith("ssd-wear-out", attrId);
+      await simulate(
+        "disk",
+        target.id,
+        "ssd-wear-out",
+        { percentageUsed: 85 },
+        LATER,
+      );
+      expect(attributeOf(target.id, attrId)?.status).toBe("warning");
+      expect(hasAttributeFault(target.id)).toBe(true);
+      await simulate(
+        "disk",
+        target.id,
+        "ssd-wear-out",
+        { percentageUsed: 100 },
+        LATER,
+      );
+      expect(attributeOf(target.id, attrId)?.status).toBe("failed");
+    },
+    60_000,
+  );
+
+  it("leaves NVMe spare near its threshold", async () => {
+    const target = await ssdWith("ssd-spare-low", "available_spare");
+    await simulate("disk", target.id, "ssd-spare-low", {}, LATER);
+    expect(attributeOf(target.id, "available_spare")?.status).toBe("warning");
+    expect(hasAttributeFault(target.id)).toBe(true);
+  }, 60_000);
+
+  it("leaves SATA reserved space near its threshold", async () => {
+    const target = await ssdWith("ssd-spare-low", "available_spare", false);
+    await simulate("disk", target.id, "ssd-spare-low", {}, LATER);
+    expect(
+      latestAttributes(target.id).some(
+        (attribute) =>
+          attribute.status === "warning" &&
+          attribute.reason?.startsWith("Spare "),
+      ),
+    ).toBe(true);
+    expect(hasAttributeFault(target.id)).toBe(true);
+  }, 60_000);
+
+  it("warns on a rising SSD defect count", async () => {
+    const target = await ssdWith(
+      "ssd-defects-rising",
+      "available_spare",
+      false,
+    );
+    await simulate("disk", target.id, "ssd-defects-rising", {}, LATER);
+    expect(
+      latestAttributes(target.id).some((attribute) =>
+        attribute.reason?.includes("risen in the last"),
+      ),
+    ).toBe(true);
+    expect(hasAttributeFault(target.id)).toBe(true);
   }, 60_000);
 });
 

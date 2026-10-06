@@ -1,6 +1,7 @@
 import type { Media } from "../hardware";
 import type { SmartctlXallResult } from "../smartctl";
 import type { Vendor } from "../vendor";
+import { isAtaDefectAttribute, isAtaReservedSpaceAttribute } from "./ssdPolicy";
 import { writtenUnit } from "./writtenBytes";
 
 /** Normalised SATA SSD life attributes in preference order, by name since vendors reuse ids (Intel 233 is Total_LBAs_Written on some models). */
@@ -12,7 +13,26 @@ export const ATA_LIFE_REMAINING_ATTRIBUTES = [
   "Percent_Lifetime_Remain",
 ] as const;
 
+/** Bump when `ataSsdAttributesFrom` changes so stored disks are re-derived at boot. */
+export const ATA_SSD_ATTRIBUTES_VERSION = 2;
+
 export const ATA_WRITTEN_ATTRIBUTE_ID = "241";
+
+/** Intel names 175 Program_Fail_Count_Chip on some models, but it is a packed power-loss capacitor test result. */
+const INTEL_POWER_LOSS_TEST_ATTRIBUTE_ID = "175";
+
+function isDefectAttribute(
+  attribute: { id: number; name: string },
+  vendor: Vendor | null,
+): boolean {
+  if (
+    vendor === "intel" &&
+    String(attribute.id) === INTEL_POWER_LOSS_TEST_ATTRIBUTE_ID
+  ) {
+    return false;
+  }
+  return isAtaDefectAttribute(attribute.name);
+}
 
 export interface AtaWrittenAttribute {
   attrId: string;
@@ -23,6 +43,10 @@ export interface AtaWrittenAttribute {
 export interface AtaSsdAttributes {
   wear: string | null;
   written: AtaWrittenAttribute | null;
+  /** Absent on rows stored before reserved-space matching. */
+  reserved?: string[];
+  /** Absent on rows stored before defect matching. */
+  defects?: string[];
 }
 
 export interface AtaSsdDisk {
@@ -58,5 +82,11 @@ export function ataSsdAttributesFrom(
           }),
         }
       : null,
+    reserved: attributes
+      .filter((attribute) => isAtaReservedSpaceAttribute(attribute.name))
+      .map((attribute) => String(attribute.id)),
+    defects: attributes
+      .filter((attribute) => isDefectAttribute(attribute, disk.vendor))
+      .map((attribute) => String(attribute.id)),
   };
 }

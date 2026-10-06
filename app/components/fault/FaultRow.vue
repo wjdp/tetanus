@@ -3,6 +3,7 @@ import {
   FAULT_KIND_DEFINITIONS,
   type FaultAction,
   type FaultView,
+  faultHint,
   faultTitle,
 } from "#shared/faults";
 import {
@@ -40,6 +41,7 @@ const subjectLabel = computed(() =>
 const subjectPath = computed(() => faultSubjectPath(props.fault.subject, props.fault.kind));
 const diskPath = computed(() => faultDiskPath(props.fault));
 const title = computed(() => faultTitle(props.fault, props.now));
+const hint = computed(() => faultHint(props.fault));
 const showsUpgradeCommand = computed(
   () =>
     !isResolved.value &&
@@ -81,6 +83,9 @@ const age = computed(() => {
         >
           {{ title }}
         </NuxtLink>
+        <p v-if="hint" class="text-muted text-xs" data-testid="fault-hint">
+          {{ hint }}
+        </p>
         <NuxtLink
           v-if="diskPath"
           :to="diskPath"

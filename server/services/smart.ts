@@ -3,7 +3,11 @@ import type { DiskProtocol } from "#shared/disk";
 import type { IngestMeta } from "#shared/ingest";
 import { FULL_TEMPERATURE_DAYS } from "#shared/retention";
 import type { SmartHistoryRange } from "#shared/schemas/smart";
-import { ataSsdAttributesFrom } from "#shared/smart/ataSsdAttributes";
+import {
+  type AtaSsdAttributes,
+  ataSsdAttributesFrom,
+} from "#shared/smart/ataSsdAttributes";
+import type { DeviceStatistics } from "#shared/smart/deviceStatistics";
 import {
   type EvaluatedAttribute,
   evaluateReading,
@@ -14,6 +18,13 @@ import {
   type SmartProtocol,
 } from "#shared/smart/metadata";
 import {
+  applySsdPolicy,
+  DEFECT_RISE_WINDOW_DAYS,
+  NO_SSD_CONTEXT,
+  type SsdPolicyContext,
+  usablePercentageUsed,
+} from "#shared/smart/ssdPolicy";
+import {
   ATTRIBUTE_STATUSES,
   type AttributeDisplayStatus,
   type AttributeStatus,
@@ -22,10 +33,16 @@ import {
   healthStatus,
   overlayStatus,
 } from "#shared/smart/status";
+import {
+  type SubstituteAttribute,
+  type SubstituteSource,
+  substituteDefects,
+} from "#shared/smart/substituteDefects";
 import type {
   AtaAttribute,
   ScsiInfo,
   SctTemperatureHistory,
+  SeagateFarm,
   SelfTestEntry,
   SmartctlXallResult,
 } from "#shared/smartctl";
@@ -87,6 +104,7 @@ export interface LatestAttribute
   statusSince: Date | null;
   valueSince: Date;
   firstNonZeroAt: Date | null;
+  source: SubstituteSource | null;
 }
 
 export interface AttributeStatusChange {
@@ -328,16 +346,51 @@ function recordAttributeStatusChanges(
   }
 }
 
+export function ssdPolicyContext(
+  ataSsdAttributes: AtaSsdAttributes | null,
+  deviceStatistics: DeviceStatistics | null | undefined,
+  risenAttrIds: ReadonlySet<string> = new Set(),
+): SsdPolicyContext {
+  return {
+    ataSsdAttributes,
+    percentageUsed: usablePercentageUsed(deviceStatistics),
+    risenAttrIds,
+  };
+}
+
+export function risenDefects(
+  diskId: number,
+  ataSsdAttributes: AtaSsdAttributes | null,
+  at: Date,
+  pending: ReadonlyMap<string, number> = new Map(),
+): Set<string> {
+  return new Set(
+    (ataSsdAttributes?.defects ?? []).filter((attrId) => {
+      const series = attributeSeries(
+        diskId,
+        attrId,
+        at,
+        DEFECT_RISE_WINDOW_DAYS,
+      );
+      const value = pending.get(attrId);
+      return riseOf(value === undefined ? series : [...series, value]).risen;
+    }),
+  );
+}
+
 export function evaluateNamedAttributes(
   parsed: SmartctlXallResult,
+  context: SsdPolicyContext = NO_SSD_CONTEXT,
 ): EvaluatedAttribute[] {
   const protocol = isSmartProtocol(parsed.device.protocol)
     ? parsed.device.protocol
     : undefined;
-  return evaluateReading(parsed).attributes.map((attribute) => ({
-    ...attribute,
-    name: attributeName(protocol, attribute),
-  }));
+  return applySsdPolicy(evaluateReading(parsed).attributes, context).map(
+    (attribute) => ({
+      ...attribute,
+      name: attributeName(protocol, attribute),
+    }),
+  );
 }
 
 export interface MinimalSmartAttribute {
@@ -529,7 +582,24 @@ export function recordSmartReading({
 }: SmartReadingInput): SmartReadingRow | null {
   if (parsed.standby) return null;
 
-  const evaluated = evaluateNamedAttributes(parsed);
+  const ataSsdAttributes = ataSsdAttributesFrom(parsed, {
+    ...row,
+    vendor: effectiveVendor(row),
+  });
+  const pending = new Map(
+    evaluateReading(parsed).attributes.map((attribute) => [
+      attribute.attrId,
+      attribute.transformedValue,
+    ]),
+  );
+  const evaluated = evaluateNamedAttributes(
+    parsed,
+    ssdPolicyContext(
+      ataSsdAttributes,
+      parsed.deviceStatistics,
+      risenDefects(row.id, ataSsdAttributes, receivedAt, pending),
+    ),
+  );
   const temp = presentTemperature(parsed.temperature);
   const smartPassed = parsed.smartStatus?.passed ?? null;
   const exitStatus = parsed.smartctl.exitStatus.raw;
@@ -537,13 +607,21 @@ export function recordSmartReading({
   const isLatest =
     row.latestReadingAt === null || receivedAt >= row.latestReadingAt;
   const previous = isLatest ? latestReading(row.id) : null;
+  const withSubstitutes = [
+    ...evaluated,
+    ...substitutesFor(
+      row.id,
+      evaluated.map(({ attrId }) => attrId),
+      { deviceStatistics: parsed.deviceStatistics, farm: parsed.farm },
+    ),
+  ];
   const superseded = isLatest
-    ? supersedeIfRisen(row.id, evaluated, receivedAt)
+    ? supersedeIfRisen(row.id, withSubstitutes, receivedAt)
     : new Set<string>();
   const active = activeAcceptances(row.id);
   const deviceStatus = effectiveDeviceStatus(
     healthStatus(smartPassed, exitStatus),
-    evaluated,
+    withSubstitutes,
     active,
   );
 
@@ -559,6 +637,7 @@ export function recordSmartReading({
       temp,
       powerOnHours: parsed.powerOnHours ?? null,
       powerCycles: parsed.powerCycles ?? null,
+      errorLogCount: parsed.ataErrorCount ?? null,
       deviceStatus,
     },
     evaluated,
@@ -592,10 +671,7 @@ export function recordSmartReading({
         latestPowerOnHours: reading.powerOnHours,
         latestPowerCycles: reading.powerCycles,
         latestReadingAt: receivedAt,
-        ataSsdAttributes: ataSsdAttributesFrom(parsed, {
-          ...row,
-          vendor: effectiveVendor(row),
-        }),
+        ataSsdAttributes,
         ...(parsed.farm ? { latestFarm: parsed.farm } : {}),
         ...(parsed.deviceStatistics
           ? { latestDeviceStatistics: parsed.deviceStatistics }
@@ -628,7 +704,7 @@ export function recomputeLatestStatus(
   const active = activeAcceptances(diskId);
   const deviceStatus = effectiveDeviceStatus(
     healthStatus(reading.smartPassed, reading.exitStatus),
-    attributes,
+    [...attributes, ...substituteAttributes(diskId, reading.id)],
     active,
   );
   recordStatusChange(row, deviceStatus, attributes, active, now, { cause });
@@ -794,6 +870,83 @@ export function attributeTrend(
   );
 }
 
+export interface AttributeRise {
+  risen: boolean;
+  rise: number;
+  readings: number;
+  latest: number | null;
+}
+
+export const NO_RISE: AttributeRise = {
+  risen: false,
+  rise: 0,
+  readings: 0,
+  latest: null,
+};
+
+export function riseOf(values: readonly number[]): AttributeRise {
+  if (values.length < 2) return { ...NO_RISE, latest: values[0] ?? null };
+  let baseline = values[0] as number;
+  let readings = 0;
+  for (let index = 1; index < values.length; index++) {
+    const value = values[index] as number;
+    const preceding = values[index - 1] as number;
+    if (value > preceding) readings++;
+    if (value < preceding) {
+      baseline = value;
+      readings = 0;
+    }
+  }
+  const latest = values.at(-1) as number;
+  const rise = latest - baseline;
+  return { risen: rise > 0, rise, readings, latest };
+}
+
+export function attributeSeries(
+  diskId: number,
+  attrId: string,
+  at: Date,
+  windowDays = 7,
+): number[] {
+  const windowStart = new Date(at.getTime() - windowDays * DAY_MS);
+  const ofAttribute = and(
+    eq(smartAttribute.diskId, diskId),
+    eq(smartAttribute.attrId, attrId),
+  );
+  const before = db
+    .select({ value: smartAttribute.transformedValue })
+    .from(smartAttribute)
+    .where(and(ofAttribute, lte(smartAttribute.takenAt, windowStart)))
+    .orderBy(desc(smartAttribute.takenAt), desc(smartAttribute.id))
+    .limit(1)
+    .get();
+  const within = db
+    .select({ value: smartAttribute.transformedValue })
+    .from(smartAttribute)
+    .where(
+      and(
+        ofAttribute,
+        gt(smartAttribute.takenAt, windowStart),
+        lte(smartAttribute.takenAt, at),
+      ),
+    )
+    .orderBy(asc(smartAttribute.takenAt), asc(smartAttribute.id))
+    .all();
+  return [
+    ...(before ? [before.value] : []),
+    ...within.map(({ value }) => value),
+  ];
+}
+
+export function attributeRise(
+  diskId: number,
+  attrId: string,
+  at: Date,
+  windowDays = 7,
+): AttributeRise {
+  return riseOf(attributeSeries(diskId, attrId, at, windowDays));
+}
+
 function isAttributeStatus(value: unknown): value is AttributeStatus {
   return ATTRIBUTE_STATUSES.includes(value as AttributeStatus);
 }
@@ -916,53 +1069,130 @@ export function diskProtocol(diskId: number): SmartProtocol | undefined {
   return row?.protocol ? PROTOCOLS[row.protocol] : undefined;
 }
 
+/** Defect counts an ATA reading lacks, taken from the disk's device statistics or FARM; none for a reading without attributes. */
+export function substitutesFor(
+  diskId: number,
+  presentAttrIds: readonly string[],
+  incoming: {
+    deviceStatistics?: DeviceStatistics | null;
+    farm?: SeagateFarm | null;
+  } = {},
+): SubstituteAttribute[] {
+  if (presentAttrIds.length === 0) return [];
+  const row = db
+    .select({
+      protocol: disk.protocol,
+      deviceStatistics: disk.latestDeviceStatistics,
+      farm: disk.latestFarm,
+    })
+    .from(disk)
+    .where(eq(disk.id, diskId))
+    .get();
+  if (!row?.protocol || PROTOCOLS[row.protocol] !== "ATA") return [];
+  return substituteDefects(
+    new Set(presentAttrIds),
+    incoming.deviceStatistics ?? row.deviceStatistics,
+    incoming.farm ?? row.farm,
+  );
+}
+
+export function substituteAttributes(
+  diskId: number,
+  readingId: number,
+): SubstituteAttribute[] {
+  return substitutesFor(
+    diskId,
+    attributesOfReading(readingId).map(({ attrId }) => attrId),
+  );
+}
+
 export function latestAttributes(diskId: number): LatestAttribute[] {
   const reading = latestReading(diskId);
   if (!reading) return [];
   const protocol = diskProtocol(diskId);
   const active = activeAcceptances(diskId);
   const changes = statusChangesByAttribute(diskId);
-  return attributesOfReading(reading.id).map(
-    ({ id: _id, readingId: _readingId, diskId: _diskId, ...attribute }) => {
-      const metadata = summariseMetadata(protocol, attribute.attrId);
-      const acceptance = active.get(attribute.attrId);
-      const attributeChanges = changes.get(attribute.attrId) ?? [];
-      return {
-        ...attribute,
-        trend: trendDirection(
-          metadata?.ideal ?? "",
-          attribute.transformedValue,
-          referenceValues(diskId, attribute.attrId, attribute.takenAt),
-        ),
-        metadata,
-        displayStatus: overlayStatus(
-          attribute.status,
-          attribute.transformedValue,
-          acceptance,
-        ),
-        acceptance: acceptance
-          ? {
-              id: acceptance.id,
-              kind: acceptance.kind,
-              acceptedValue: acceptance.acceptedValue,
-              acceptedAt: acceptance.acceptedAt,
-              note: acceptance.note,
-            }
-          : null,
-        statusChanges: attributeChanges.slice(0, MAX_STATUS_CHANGES),
-        statusSince:
-          attributeChanges.find((change) => change.to === attribute.status)
-            ?.at ?? null,
-        valueSince: valueSince(
-          diskId,
-          attribute.attrId,
-          attribute.transformedValue,
-          attribute.takenAt,
-        ),
-        firstNonZeroAt: firstNonZeroAt(diskId, attribute.attrId),
-      };
-    },
-  );
+  const stored = attributesOfReading(reading.id);
+  const substitutes = substitutesFor(
+    diskId,
+    stored.map(({ attrId }) => attrId),
+  ).map(({ source, attributeClass: _attributeClass, ...substitute }) => ({
+    ...substitute,
+    source,
+    takenAt: reading.takenAt,
+    value: null,
+    worst: null,
+    thresh: null,
+    rawValue: substitute.transformedValue,
+    rawString: null,
+    whenFailed: null,
+    failureRate: substitute.failureRate ?? null,
+    reason: substitute.reason ?? null,
+  }));
+  const overlay = (
+    attribute: Omit<
+      LatestAttribute,
+      | "metadata"
+      | "displayStatus"
+      | "acceptance"
+      | "statusChanges"
+      | "statusSince"
+    >,
+  ): LatestAttribute => {
+    const acceptance = active.get(attribute.attrId);
+    const attributeChanges = changes.get(attribute.attrId) ?? [];
+    return {
+      ...attribute,
+      metadata: summariseMetadata(protocol, attribute.attrId),
+      displayStatus: overlayStatus(
+        attribute.status,
+        attribute.transformedValue,
+        acceptance,
+      ),
+      acceptance: acceptance
+        ? {
+            id: acceptance.id,
+            kind: acceptance.kind,
+            acceptedValue: acceptance.acceptedValue,
+            acceptedAt: acceptance.acceptedAt,
+            note: acceptance.note,
+          }
+        : null,
+      statusChanges: attributeChanges.slice(0, MAX_STATUS_CHANGES),
+      statusSince:
+        attributeChanges.find((change) => change.to === attribute.status)?.at ??
+        null,
+    };
+  };
+  return [
+    ...stored.map(
+      ({ id: _id, readingId: _readingId, diskId: _diskId, ...attribute }) =>
+        overlay({
+          ...attribute,
+          trend: trendDirection(
+            summariseMetadata(protocol, attribute.attrId)?.ideal ?? "",
+            attribute.transformedValue,
+            referenceValues(diskId, attribute.attrId, attribute.takenAt),
+          ),
+          valueSince: valueSince(
+            diskId,
+            attribute.attrId,
+            attribute.transformedValue,
+            attribute.takenAt,
+          ),
+          firstNonZeroAt: firstNonZeroAt(diskId, attribute.attrId),
+          source: null,
+        }),
+    ),
+    ...substitutes.map((substitute) =>
+      overlay({
+        ...substitute,
+        trend: "stable",
+        valueSince: reading.takenAt,
+        firstNonZeroAt: null,
+      }),
+    ),
+  ];
 }
 
 function listSelfTests(diskId: number): SelfTestRow[] {

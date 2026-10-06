@@ -1,10 +1,13 @@
+import type { SeagateFarm } from "#shared/smartctl";
 import type { AtaSsdAttributes } from "./ataSsdAttributes";
+import type { DeviceStatistics } from "./deviceStatistics";
 import {
   type AcceptedLevel,
   type AttributeDisplayStatus,
   type AttributeStatus,
   overlayStatus,
 } from "./status";
+import { substituteDefects } from "./substituteDefects";
 
 export interface CounterAttribute {
   attrId: string;
@@ -65,6 +68,31 @@ export function counterAttributeIds(
   ];
 }
 
+const SUBSTITUTED_COUNTER_IDS: ReadonlySet<string> = new Set([
+  COUNTER_IDS.ataReallocated,
+  COUNTER_IDS.ataPending,
+]);
+
+export function withSubstituteCounters(
+  rows: readonly CounterAttribute[],
+  statistics: DeviceStatistics | null | undefined,
+  farm: SeagateFarm | null | undefined,
+): CounterAttribute[] {
+  const substitutes = substituteDefects(
+    new Set(rows.map((row) => row.attrId)),
+    statistics,
+    farm,
+  )
+    .filter((substitute) => SUBSTITUTED_COUNTER_IDS.has(substitute.attrId))
+    .map(({ attrId, transformedValue, status }) => ({
+      attrId,
+      value: null,
+      transformedValue,
+      status,
+    }));
+  return [...rows, ...substitutes];
+}
+
 const DISPLAY_SEVERITY: Record<AttributeDisplayStatus, number> = {
   passed: 0,
   accepted: 1,
@@ -83,20 +111,11 @@ function worstDisplayStatus(
   );
 }
 
-function wearThresholdStatus(percent: number): AttributeStatus {
-  if (percent >= WEAR_FAILED_PERCENT) return "failed";
-  if (percent >= WEAR_WARNING_PERCENT) return "warning";
-  return "passed";
-}
-
-function isHandled(status: AttributeDisplayStatus) {
-  return status === "accepted" || status === "acknowledged";
-}
-
 export function countersFrom(
   rows: readonly CounterAttribute[],
   ataSsdAttributes: AtaSsdAttributes | null,
   acceptances: ReadonlyMap<string, AcceptedLevel>,
+  percentageUsed: number | null = null,
 ): DiskCounters {
   const byId = new Map(rows.map((row) => [row.attrId, row]));
 
@@ -122,25 +141,15 @@ export function countersFrom(
     };
   };
 
-  const nvmeWear = (): StatusCounter | null => {
-    const counter = overlaid(COUNTER_IDS.nvmeWear);
-    if (!counter || isHandled(counter.status)) return counter;
-    return {
-      value: counter.value,
-      status: worstDisplayStatus(
-        counter.status,
-        wearThresholdStatus(counter.value),
-      ),
-    };
-  };
-
   const ataWear = (): StatusCounter | null => {
-    const value = ataSsdAttributes?.wear
-      ? byId.get(ataSsdAttributes.wear)?.value
-      : null;
-    if (value === null || value === undefined) return null;
-    const percent = Math.max(0, 100 - value);
-    return { value: percent, status: wearThresholdStatus(percent) };
+    const wearId = ataSsdAttributes?.wear;
+    const counter = wearId ? overlaid(wearId) : null;
+    const row = wearId ? byId.get(wearId) : undefined;
+    if (!counter || row?.value == null) return null;
+    return {
+      ...counter,
+      value: percentageUsed ?? Math.max(0, 100 - row.value),
+    };
   };
 
   const written = (): Pick<
@@ -173,7 +182,7 @@ export function countersFrom(
       overlaid(COUNTER_IDS.ataUncorrectable) ??
       overlaid(COUNTER_IDS.nvmeMediaErrors) ??
       summed(COUNTER_IDS.scsiReadUncorrected, COUNTER_IDS.scsiWriteUncorrected),
-    wearPercent: nvmeWear() ?? ataWear(),
+    wearPercent: overlaid(COUNTER_IDS.nvmeWear) ?? ataWear(),
     ...written(),
   };
 }

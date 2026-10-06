@@ -57,3 +57,24 @@ export function detectSmartCountersReset({
     ];
   });
 }
+
+export function detectHeliumTripped({
+  disks,
+}: {
+  disks: DiskSummary[];
+}): Detection[] {
+  return disks
+    .filter(
+      (row) =>
+        row.latestFarm?.heliumPressureTripped === true &&
+        !isHistoryState(row.state) &&
+        !isDisposed(row),
+    )
+    .map((row) => ({
+      kind: "helium-tripped",
+      key: String(row.id),
+      subjectId: row.id,
+      severity: "error",
+      data: {},
+    }));
+}

@@ -7,9 +7,10 @@ import {
   countersFrom,
   NO_COUNTERS,
   NVME_DATA_UNIT_BYTES,
+  withSubstituteCounters,
 } from "./counters";
-import { evaluateReading } from "./evaluate";
-import type { AcceptedLevel } from "./status";
+import { evaluateAtaRawCount, evaluateReading } from "./evaluate";
+import type { AcceptedLevel, AttributeStatus } from "./status";
 
 const MIB = 1024 ** 2;
 const NO_ACCEPTANCES = new Map<string, AcceptedLevel>();
@@ -156,13 +157,14 @@ describe("countersFrom", () => {
     });
   });
 
-  it("raises NVMe wear to warning at 80 % and failed at 100 %", () => {
-    const wear = (percent: number) =>
-      countersFrom([row("percentage_used", percent)], null, NO_ACCEPTANCES)
-        .wearPercent;
-    expect(wear(79)?.status).toBe("passed");
-    expect(wear(80)?.status).toBe("warning");
-    expect(wear(100)?.status).toBe("failed");
+  it("shows NVMe wear with the stored attribute status", () => {
+    expect(
+      countersFrom(
+        [row("percentage_used", 85, "warning")],
+        null,
+        NO_ACCEPTANCES,
+      ).wearPercent,
+    ).toEqual({ value: 85, status: "warning" });
   });
 
   it("keeps an accepted NVMe wear quiet when the attribute itself failed", () => {
@@ -174,16 +176,88 @@ describe("countersFrom", () => {
     expect(counters.wearPercent).toEqual({ value: 101, status: "accepted" });
   });
 
-  it("derives ATA wear from the normalised value with fixed thresholds", () => {
-    const wear = (value: number) =>
+  it("derives ATA wear from the normalised value with the stored status", () => {
+    const wear = (value: number, status: AttributeStatus) =>
       countersFrom(
-        [row("177", 999, "passed", value)],
+        [row("177", 999, status, value)],
         { wear: "177", written: null },
         NO_ACCEPTANCES,
       ).wearPercent;
-    expect(wear(21)).toEqual({ value: 79, status: "passed" });
-    expect(wear(20)).toEqual({ value: 80, status: "warning" });
-    expect(wear(0)).toEqual({ value: 100, status: "failed" });
-    expect(wear(200)).toEqual({ value: 0, status: "passed" });
+    expect(wear(21, "passed")).toEqual({ value: 79, status: "passed" });
+    expect(wear(20, "warning")).toEqual({ value: 80, status: "warning" });
+    expect(wear(200, "passed")).toEqual({ value: 0, status: "passed" });
+  });
+
+  it("shows device statistic percentage used for ATA wear when usable", () => {
+    expect(
+      countersFrom(
+        [row("177", 999, "warning", 90)],
+        { wear: "177", written: null },
+        NO_ACCEPTANCES,
+        83,
+      ).wearPercent,
+    ).toEqual({ value: 83, status: "warning" });
+  });
+});
+
+describe("withSubstituteCounters", () => {
+  const present = (attrId: string, transformedValue: number) => ({
+    attrId,
+    value: 100,
+    transformedValue,
+    status: "passed" as const,
+  });
+
+  it("fills reallocated and pending from device statistics when the attributes are absent", () => {
+    const rows = withSubstituteCounters(
+      [present("198", 0)],
+      { reallocatedSectors: 24, pendingErrors: 3, normalised: [] },
+      null,
+    );
+    const counters = countersFrom(rows, null, NO_ACCEPTANCES);
+    expect(counters.reallocated).toEqual({
+      value: 24,
+      status: evaluateAtaRawCount("5", 24).status,
+    });
+    expect(counters.pending).toEqual({
+      value: 3,
+      status: evaluateAtaRawCount("197", 3).status,
+    });
+    expect(counters.pending?.status).not.toBe("passed");
+    expect(counters.uncorrectable).toEqual({ value: 0, status: "passed" });
+  });
+
+  it("keeps attributes the reading has over substitutes", () => {
+    const rows = withSubstituteCounters(
+      [present("5", 0), present("197", 0)],
+      { reallocatedSectors: 24, pendingErrors: 3, normalised: [] },
+      null,
+    );
+    expect(rows.map((row) => row.attrId)).toEqual(["5", "197"]);
+  });
+
+  it("leaves reported uncorrectables out of the uncorrectable counter", () => {
+    const rows = withSubstituteCounters(
+      [present("5", 0)],
+      { reportedUncorrectables: 9, normalised: [] },
+      null,
+    );
+    expect(rows.map((row) => row.attrId)).toEqual(["5"]);
+  });
+
+  it("overlays an acceptance on a substitute", () => {
+    const rows = withSubstituteCounters(
+      [present("198", 0)],
+      { reallocatedSectors: 24, normalised: [] },
+      null,
+    );
+    const counters = countersFrom(
+      rows,
+      null,
+      new Map<string, AcceptedLevel>([
+        ["5", { kind: "accept", acceptedValue: 24 }],
+      ]),
+    );
+    expect(counters.reallocated).toEqual({ value: 24, status: "accepted" });
   });
 });

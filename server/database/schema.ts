@@ -272,6 +272,7 @@ export const smartReading = sqliteTable(
     temp: integer(),
     powerOnHours: integer(),
     powerCycles: integer(),
+    errorLogCount: integer(),
     deviceStatus: text().$type<DeviceStatus>().notNull(),
     source: text()
       .$type<"collector" | "scrutiny">()

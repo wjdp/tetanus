@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { UNKNOWN_USAGE } from "#shared/usage";
 import { db } from "~~/server/database/client";
@@ -1621,6 +1621,64 @@ describe("health counters and fault counts", () => {
     expect((await summaryOf(id)).counters.reallocated).toEqual({
       value: 400,
       status: "accepted",
+    });
+  });
+
+  describe("substitute defect counts", () => {
+    function withoutAtaAttributes(id: number, attrIds: string[]) {
+      db.delete(smartAttribute)
+        .where(
+          and(
+            eq(smartAttribute.diskId, id),
+            inArray(smartAttribute.attrId, attrIds),
+          ),
+        )
+        .run();
+    }
+
+    function withDeviceStatistics(id: number) {
+      db.update(disk)
+        .set({
+          latestDeviceStatistics: {
+            reallocatedSectors: 24,
+            pendingErrors: 3,
+            reportedUncorrectables: 9,
+            normalised: [],
+          },
+        })
+        .where(eq(disk.id, id))
+        .run();
+    }
+
+    it("counts reallocated and pending from device statistics when the attributes are absent", async () => {
+      ingest("smartctl-xall", SDB, "/dev/sdb");
+      const { id } = diskBySerial(SDB_SERIAL);
+      withoutAtaAttributes(id, ["5", "197"]);
+      withDeviceStatistics(id);
+      const { counters } = await summaryOf(id);
+      expect(counters.reallocated?.value).toBe(24);
+      expect(counters.reallocated?.status).not.toBe("passed");
+      expect(counters.pending?.value).toBe(3);
+      expect(counters.uncorrectable?.value).toBe(18);
+    });
+
+    it("prefers the attributes the reading has", async () => {
+      ingest("smartctl-xall", SDB, "/dev/sdb");
+      const { id } = diskBySerial(SDB_SERIAL);
+      withDeviceStatistics(id);
+      const { counters } = await summaryOf(id);
+      expect(counters.reallocated?.value).toBe(0);
+      expect(counters.pending?.value).toBe(16);
+    });
+
+    it("substitutes nothing when the latest reading has no attributes", async () => {
+      ingest("smartctl-xall", SDB, "/dev/sdb");
+      const { id } = diskBySerial(SDB_SERIAL);
+      db.delete(smartAttribute).where(eq(smartAttribute.diskId, id)).run();
+      withDeviceStatistics(id);
+      const { counters } = await summaryOf(id);
+      expect(counters.reallocated).toBeNull();
+      expect(counters.pending).toBeNull();
     });
   });
 
