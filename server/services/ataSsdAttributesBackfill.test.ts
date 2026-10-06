@@ -45,7 +45,7 @@ describe("backfillAtaSsdAttributesIfStale", () => {
       wear: "245",
       written: { attrId: "241", unitBytes: 32 * 1024 ** 2, inferred: false },
       reserved: ["170", "179", "180"],
-      defects: ["175", "181", "182"],
+      defects: ["181", "182"],
     });
     expect((await getSettings()).config.ataSsdAttributesBackfilledAt).toBe(
       t0.toISOString(),

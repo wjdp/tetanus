@@ -14,9 +14,25 @@ export const ATA_LIFE_REMAINING_ATTRIBUTES = [
 ] as const;
 
 /** Bump when `ataSsdAttributesFrom` changes so stored disks are re-derived at boot. */
-export const ATA_SSD_ATTRIBUTES_VERSION = 1;
+export const ATA_SSD_ATTRIBUTES_VERSION = 2;
 
 export const ATA_WRITTEN_ATTRIBUTE_ID = "241";
+
+/** Intel names 175 Program_Fail_Count_Chip on some models, but it is a packed power-loss capacitor test result. */
+const INTEL_POWER_LOSS_TEST_ATTRIBUTE_ID = "175";
+
+function isDefectAttribute(
+  attribute: { id: number; name: string },
+  vendor: Vendor | null,
+): boolean {
+  if (
+    vendor === "intel" &&
+    String(attribute.id) === INTEL_POWER_LOSS_TEST_ATTRIBUTE_ID
+  ) {
+    return false;
+  }
+  return isAtaDefectAttribute(attribute.name);
+}
 
 export interface AtaWrittenAttribute {
   attrId: string;
@@ -70,7 +86,7 @@ export function ataSsdAttributesFrom(
       .filter((attribute) => isAtaReservedSpaceAttribute(attribute.name))
       .map((attribute) => String(attribute.id)),
     defects: attributes
-      .filter((attribute) => isAtaDefectAttribute(attribute.name))
+      .filter((attribute) => isDefectAttribute(attribute, disk.vendor))
       .map((attribute) => String(attribute.id)),
   };
 }

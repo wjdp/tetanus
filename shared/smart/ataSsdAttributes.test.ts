@@ -21,9 +21,15 @@ describe("ataSsdAttributesFrom", () => {
     ).toEqual({
       wear: "245",
       reserved: ["170", "179", "180"],
-      defects: ["175", "181", "182"],
+      defects: ["181", "182"],
       written: { attrId: "241", unitBytes: 32 * MIB, inferred: false },
     });
+  });
+
+  it("keeps 175 as a defect count when the vendor is not Intel", () => {
+    expect(
+      fromFixture("mars/smartctl/xall-sdn-auto.json", SSD)?.defects,
+    ).toEqual(["175", "181", "182"]);
   });
 
   it("picks Samsung's Wear_Leveling_Count and infers written from LBAs", () => {
