@@ -44,6 +44,11 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
   "disposed-disk-seen": null,
   "temperature-high": "temperature-high",
   "smart-counters-reset": "smart-counters-reset",
+  "self-test-failed": "self-test-failed",
+  "helium-tripped": "helium-tripped",
+  "smart-unavailable": "smart-unavailable",
+  "error-log-growth": "error-log-growth",
+  "interface-errors": "interface-errors",
   "collector-incompatible": "collector-incompatible",
 };
 
@@ -282,6 +287,44 @@ describe("faultTitle", () => {
       "special mirror-1 in tank 85 % full",
     ],
     ["pool-capacity", { vdevGuid: "2" }, "Pool nearly full"],
+    [
+      "self-test-failed",
+      {
+        type: "Extended offline",
+        status: "Completed: read failure",
+        lifetimeHours: 1200,
+        lba: 1234,
+      },
+      "Long self-test failed: read failure at LBA 1234",
+    ],
+    [
+      "self-test-failed",
+      {
+        type: "Short offline",
+        status: "Completed: electrical failure",
+        lifetimeHours: 1200,
+        lba: null,
+      },
+      "Short self-test failed: electrical failure",
+    ],
+    ["helium-tripped", {}, "Helium pressure threshold tripped"],
+    ["smart-unavailable", { reason: "unsupported" }, "SMART is not supported"],
+    ["smart-unavailable", { reason: "disabled" }, "SMART is disabled"],
+    [
+      "smart-unavailable",
+      { reason: "unreadable" },
+      "SMART data could not be read",
+    ],
+    [
+      "error-log-growth",
+      { count: 7, rise: 2, previousCount: 5, firstRiseAt: null },
+      "Error log grew by 2 (7 total)",
+    ],
+    [
+      "interface-errors",
+      { count: 40, rise: 12, readings: 3 },
+      "Interface CRC errors rising: +12 in 7 days (cabling, not the drive)",
+    ],
   ] as const)("renders %s", (kind, data, title) => {
     expect(faultTitle({ kind, data }, now)).toBe(title);
   });

@@ -41,6 +41,11 @@ export const FAULT_KINDS = [
   "identity-conflict",
   "temperature-high",
   "smart-counters-reset",
+  "self-test-failed",
+  "helium-tripped",
+  "smart-unavailable",
+  "error-log-growth",
+  "interface-errors",
   "pool-degraded",
   "pool-missing",
   "leaf-errors",
@@ -232,6 +237,55 @@ function smartCountersResetTitle(data: FaultData) {
   return parts.join(" · ") || "SMART counters reset";
 }
 
+const SELF_TEST_TYPE_LABELS: [RegExp, string][] = [
+  [/extended|long/i, "Long"],
+  [/short/i, "Short"],
+  [/conveyance/i, "Conveyance"],
+  [/selective/i, "Selective"],
+];
+
+function selfTestTypeLabel(type: unknown) {
+  const raw = text(type).trim();
+  const match = SELF_TEST_TYPE_LABELS.find(([pattern]) => pattern.test(raw));
+  return match?.[1] ?? raw;
+}
+
+function selfTestFailure(status: unknown) {
+  const raw = text(status).trim();
+  const detail = raw.includes(":") ? raw.slice(raw.lastIndexOf(":") + 1) : raw;
+  return detail.trim().toLowerCase();
+}
+
+function selfTestFailedTitle(data: FaultData) {
+  const type = selfTestTypeLabel(data.type);
+  const failure = selfTestFailure(data.status);
+  const head = type ? `${type} self-test failed` : "Self-test failed";
+  const location = typeof data.lba === "number" ? ` at LBA ${data.lba}` : "";
+  if (failure) return `${head}: ${failure}${location}`;
+  return `${head}${location}`;
+}
+
+const SMART_UNAVAILABLE_TITLES: Record<string, string> = {
+  unsupported: "SMART is not supported",
+  disabled: "SMART is disabled",
+  unreadable: "SMART data could not be read",
+};
+
+function smartUnavailableTitle(data: FaultData) {
+  return SMART_UNAVAILABLE_TITLES[text(data.reason)] ?? "No usable SMART data";
+}
+
+function errorLogGrowthTitle(data: FaultData) {
+  const rise = typeof data.rise === "number" ? data.rise : "?";
+  const count = typeof data.count === "number" ? data.count : "?";
+  return `Error log grew by ${rise} (${count} total)`;
+}
+
+function interfaceErrorsTitle(data: FaultData) {
+  const rise = typeof data.rise === "number" ? `: +${data.rise} in 7 days` : "";
+  return `Interface CRC errors rising${rise} (cabling, not the drive)`;
+}
+
 function replicationTitle(state: string) {
   return (data: FaultData, now: number) => {
     const age = ageSince(data.lastSyncAt, now);
@@ -326,6 +380,70 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "persistent",
     actions: ["accept", "clear"],
     title: smartCountersResetTitle,
+  },
+  "self-test-failed": {
+    label: "Self-test failed",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["error"],
+    trigger:
+      "The newest failed entry in a disk's self-test log completed with a failure: read failure, electrical, servo, unknown failure or handling damage. Tests aborted by the host, interrupted by a reset or still in progress do not count.",
+    resolves:
+      "A later test of the same or a longer type passes: a passed long test resolves a failed short or long test, a passed short test only a failed short test. An acknowledged or accepted fault reopens when a newer test fails.",
+    lifetime: "persistent",
+    actions: ["acknowledge", "accept", "clear"],
+    title: selfTestFailedTitle,
+  },
+  "helium-tripped": {
+    label: "Helium pressure tripped",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["error"],
+    trigger:
+      "The drive's device statistics report that its helium pressure threshold has tripped.",
+    resolves:
+      "The drive no longer reports the helium pressure threshold as tripped.",
+    lifetime: "persistent",
+    actions: ["acknowledge", "accept", "clear"],
+    title: () => "Helium pressure threshold tripped",
+  },
+  "smart-unavailable": {
+    label: "No usable SMART data",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "The latest reading of an in-service disk, not in standby, reports SMART as unsupported or disabled, or smartctl failed and returned no attributes, NVMe log or SCSI counters.",
+    resolves:
+      "A reading arrives with usable SMART data. An accepted fault reopens if the reason changes.",
+    lifetime: "persistent",
+    actions: ["acknowledge", "accept", "clear"],
+    title: smartUnavailableTitle,
+  },
+  "error-log-growth": {
+    label: "Error log growth",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "The ATA device error count is higher than at the previous reading. The first reading sets the baseline; a falling count is treated as a reset and re-baselined. A rise on a disk with a live defect attribute fault is recorded on that fault instead.",
+    resolves:
+      "Does not clear on its own; acknowledge, accept or resolve it. An acknowledged or accepted fault reopens when the count rises above the count at that time.",
+    lifetime: "until-resolved",
+    actions: ["acknowledge", "accept", "clear", "resolve"],
+    title: errorLogGrowthTitle,
+  },
+  "interface-errors": {
+    label: "Interface errors",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "The interface CRC error count (attribute 199, else device statistics or FARM) has risen across three or more readings in the last 7 days. CRC errors usually point to the cable, backplane or controller rather than the drive.",
+    resolves: "7 days pass without a rise.",
+    lifetime: "transient",
+    actions: ["acknowledge", "accept", "clear"],
+    title: interfaceErrorsTitle,
   },
   "pool-degraded": {
     label: "Pool degraded",

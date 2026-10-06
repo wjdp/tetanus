@@ -30,6 +30,9 @@ const DISK_FAULT_TABS: Partial<Record<FaultKind, string>> = {
   "smart-health-failed": "smart",
   "temperature-high": "smart",
   "smart-counters-reset": "farm",
+  "self-test-failed": "smart",
+  "smart-unavailable": "smart",
+  "error-log-growth": "smart",
 };
 
 export function faultSubjectPath(

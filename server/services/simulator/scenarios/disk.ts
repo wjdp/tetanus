@@ -32,20 +32,20 @@ import {
 import { smartctlPayloadOf } from "../subjects";
 import { defineScenario, type SubjectOf } from "../types";
 
-type Json = ReturnType<typeof parseSmartctl>;
+export type Json = ReturnType<typeof parseSmartctl>;
 
-function requireSmartctl(subject: SubjectOf<"disk">) {
+export function requireSmartctl(subject: SubjectOf<"disk">) {
   const stored = smartctlPayloadOf(subject);
   if (!stored) throw new Error("No smartctl output stored for this disk");
   return stored;
 }
 
-function smartctlJsonOf(subject: SubjectOf<"disk">): Json | undefined {
+export function smartctlJsonOf(subject: SubjectOf<"disk">): Json | undefined {
   const stored = smartctlPayloadOf(subject);
   return stored && parseSmartctl(stored.body);
 }
 
-function smartctlSatisfies(
+export function smartctlSatisfies(
   subject: SubjectOf<"disk">,
   predicate: (json: Json) => boolean,
 ) {
@@ -53,17 +53,20 @@ function smartctlSatisfies(
   return json !== undefined && predicate(json);
 }
 
-function requireSmartctlJson(subject: SubjectOf<"disk">) {
+export function requireSmartctlJson(subject: SubjectOf<"disk">) {
   return parseSmartctl(requireSmartctl(subject).body);
 }
 
-const editPlan = (subject: SubjectOf<"disk">, edit: (json: Json) => void) => ({
+export const editPlan = (
+  subject: SubjectOf<"disk">,
+  edit: (json: Json) => void,
+) => ({
   replays: [editSmartctl(requireSmartctl(subject), edit)],
 });
 
-const replayPlan = (replay: StoredPayload) => ({ replays: [replay] });
+export const replayPlan = (replay: StoredPayload) => ({ replays: [replay] });
 
-function ataRawScenario(options: {
+export function ataRawScenario(options: {
   id: string;
   label: string;
   attrId: number;

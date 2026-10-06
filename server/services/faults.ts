@@ -46,15 +46,22 @@ import {
   describeDisks,
   listDisks,
 } from "~~/server/services/disks";
-import { detectSmartCountersReset } from "~~/server/services/farmFaults";
+import { detectErrorLogGrowth } from "~~/server/services/errorLogFaults";
+import {
+  detectHeliumTripped,
+  detectSmartCountersReset,
+} from "~~/server/services/farmFaults";
 import { type HostWithRuns, listHosts } from "~~/server/services/hosts";
+import { detectInterfaceErrors } from "~~/server/services/interfaceFaults";
 import { detectPoolFaults } from "~~/server/services/poolFaults";
 import { detectReplicationFaults } from "~~/server/services/replications/faults";
+import { detectSelfTestFailed } from "~~/server/services/selfTestFaults";
 import {
   attributesOfReading,
   attributeTrend,
   latestReading,
 } from "~~/server/services/smart";
+import { detectSmartUnavailable } from "~~/server/services/smartUnavailableFaults";
 import { detectTemperatureHigh } from "~~/server/services/temperatureFaults";
 import { poolPaths } from "~~/server/services/zfs/paths";
 import { useSseEvent } from "~~/server/sse";
@@ -343,6 +350,11 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...detectHealthFailed(context),
       ...detectTemperatureHigh(context),
       ...detectSmartCountersReset(context),
+      ...detectHeliumTripped(context),
+      ...detectSelfTestFailed(context),
+      ...detectSmartUnavailable(context),
+      ...detectErrorLogGrowth(context),
+      ...detectInterfaceErrors(context),
       ...detectMissing(context, suppressedDiskIds),
       ...detectIdentityConflicts(context),
       ...pools.detections,

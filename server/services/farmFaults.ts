@@ -57,3 +57,9 @@ export function detectSmartCountersReset({
     ];
   });
 }
+
+export function detectHeliumTripped(_context: {
+  disks: DiskSummary[];
+}): Detection[] {
+  return [];
+}
