@@ -35,7 +35,6 @@ const columns: TableColumn<Row>[] = [
   { id: "slow", header: "Slow IOs" },
   { id: "used", header: "Alloc / size" },
   { id: "frag", header: "Frag" },
-  { id: "disk", header: "Disk" },
 ];
 
 const counterClass = (count: number | null) =>
@@ -58,6 +57,16 @@ const deviceDetails = (node: PoolVdev) =>
   ].filter((line): line is string => Boolean(line));
 
 const leafName = (node: PoolVdev) => node.name.split("/").at(-1);
+
+const isUnlinkedLeaf = (node: PoolVdev) =>
+  !node.disk && node.children.length === 0;
+
+const nameClass = (node: PoolVdev) => {
+  if (node.disk) return "text-dimmed text-xs";
+  return node.children.length
+    ? "text-toned text-sm"
+    : "text-highlighted text-sm";
+};
 
 const { formatZfsBytes } = useZfsByteSystem();
 </script>
@@ -97,40 +106,74 @@ const { formatZfsBytes } = useZfsByteSystem();
         />
         {{ row.original.label }}
       </span>
-      <UTooltip
+      <div
         v-else
-        :disabled="deviceDetails(row.original.node).length === 0"
-        :ui="{ content: 'h-auto' }"
+        class="flex flex-col items-start gap-0.5"
+        :class="{ '-my-2': row.original.node.disk }"
+        :style="{ paddingLeft: `${row.original.depth * 1.25}rem` }"
       >
-        <span
-          class="flex items-center gap-1.5 font-mono text-sm"
-          :class="row.original.node.children.length ? 'text-toned' : 'text-highlighted'"
-          :style="{ paddingLeft: `${row.original.depth * 1.25}rem` }"
-          data-testid="vdev-name"
-        >
-          <VdevTypeIcon
-            v-if="row.original.showsTypeIcon"
-            :type="row.original.node.type"
-          />
-          <span class="max-w-64 truncate">{{ leafName(row.original.node) }}</span>
-          <UBadge
-            v-if="row.original.node.spareState"
-            :color="zfsStateColour(row.original.node.spareState)"
-            variant="subtle"
-            size="sm"
-            data-testid="spare-state"
+        <span v-if="row.original.node.disk" class="flex items-center gap-1.5">
+          <span class="flex size-4 shrink-0 items-center justify-center">
+            <TopologyStatusDot
+              :colour="DEVICE_STATUS_VOCABULARY[row.original.node.disk.latestStatus].colour"
+              :shape="DEVICE_STATUS_VOCABULARY[row.original.node.disk.latestStatus].shape"
+              :title="DEVICE_STATUS_VOCABULARY[row.original.node.disk.latestStatus].label"
+              class="size-1.5!"
+            />
+          </span>
+          <NuxtLink
+            :to="`/disks/${row.original.node.disk.id}`"
+            class="text-highlighted text-sm font-semibold whitespace-nowrap hover:underline"
           >
-            {{ row.original.node.spareState }}
-          </UBadge>
+            {{ describeDisk({ ...row.original.node.disk, model: row.original.node.disk.modelShort }) }}
+          </NuxtLink>
         </span>
-        <template #content>
-          <div class="font-mono" data-testid="vdev-details">
-            <div v-for="line in deviceDetails(row.original.node)" :key="line">
-              {{ line }}
+        <UTooltip
+          :disabled="deviceDetails(row.original.node).length === 0"
+          :ui="{ content: 'h-auto' }"
+        >
+          <span
+            class="flex items-center gap-1.5 font-mono"
+            :class="nameClass(row.original.node)"
+            data-testid="vdev-name"
+          >
+            <VdevTypeIcon
+              v-if="row.original.showsTypeIcon && !row.original.node.disk"
+              :type="row.original.node.type"
+            />
+            <span
+              v-else-if="row.original.node.children.length === 0"
+              class="size-4 shrink-0"
+            />
+            <span class="max-w-64 truncate">{{ leafName(row.original.node) }}</span>
+            <UBadge
+              v-if="row.original.node.spareState"
+              :color="zfsStateColour(row.original.node.spareState)"
+              variant="subtle"
+              size="sm"
+              data-testid="spare-state"
+            >
+              {{ row.original.node.spareState }}
+            </UBadge>
+            <UBadge
+              v-if="isUnlinkedLeaf(row.original.node)"
+              color="neutral"
+              variant="subtle"
+              size="sm"
+              class="font-sans"
+            >
+              unlinked
+            </UBadge>
+          </span>
+          <template #content>
+            <div class="font-mono" data-testid="vdev-details">
+              <div v-for="line in deviceDetails(row.original.node)" :key="line">
+                {{ line }}
+              </div>
             </div>
-          </div>
-        </template>
-      </UTooltip>
+          </template>
+        </UTooltip>
+      </div>
     </template>
     <template #type-cell="{ row }">
       <span v-if="row.original.kind === 'vdev'" class="text-muted">
@@ -195,30 +238,6 @@ const { formatZfsBytes } = useZfsByteSystem();
       >
         {{ row.original.node.frag }} %
       </span>
-    </template>
-    <template #disk-cell="{ row }">
-      <template v-if="row.original.kind === 'vdev'">
-        <span v-if="row.original.node.disk" class="flex items-center gap-1.5">
-          <TopologyStatusDot
-            :colour="DEVICE_STATUS_VOCABULARY[row.original.node.disk.latestStatus].colour"
-            :shape="DEVICE_STATUS_VOCABULARY[row.original.node.disk.latestStatus].shape"
-            :title="DEVICE_STATUS_VOCABULARY[row.original.node.disk.latestStatus].label"
-            class="size-1.5!"
-          />
-          <NuxtLink
-            :to="`/disks/${row.original.node.disk.id}`"
-            class="text-highlighted font-semibold hover:underline"
-          >
-            {{ describeDisk({ ...row.original.node.disk, model: row.original.node.disk.modelShort }) }}
-          </NuxtLink>
-        </span>
-        <span
-          v-else-if="row.original.node.children.length === 0"
-          class="text-dimmed"
-        >
-          unlinked
-        </span>
-      </template>
     </template>
     <template #expanded="{ row }">
       <PoolVdevHistory
