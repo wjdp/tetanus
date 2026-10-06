@@ -24,7 +24,7 @@ function latestCountedReadings(): Map<number, ErrorLogReadings> {
       diskId: smartReading.diskId,
       count: smartReading.errorLogCount,
       takenAt: smartReading.takenAt,
-      rank: sql<number>`row_number() over (partition by ${smartReading.diskId} order by ${smartReading.takenAt} desc)`.as(
+      rank: sql<number>`row_number() over (partition by ${smartReading.diskId} order by ${smartReading.takenAt} desc, ${smartReading.id} desc)`.as(
         "rank",
       ),
     })

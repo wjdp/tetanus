@@ -73,6 +73,12 @@ describe("detectErrorLogGrowth", () => {
     });
   });
 
+  it("ranks readings taken at the same instant by arrival", async () => {
+    await scanAfterReading(12, 0);
+    await scanAfterReading(15, 0);
+    expect(liveFault()?.data).toMatchObject({ count: 15, rise: 3 });
+  });
+
   it("keeps a live fault without a new rise and accumulates later rises", async () => {
     await scanAfterReading(12, 0);
     await scanAfterReading(15, 1);
