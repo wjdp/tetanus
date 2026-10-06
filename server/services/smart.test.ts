@@ -24,6 +24,7 @@ import {
   insertSmartReading,
   latestAttributes,
   MAX_HISTORY_POINTS,
+  NO_RISE,
   riseOf,
   sctTemperaturePoints,
   trendDirection,
@@ -469,30 +470,32 @@ describe("trend", () => {
 
 describe("attribute rise", () => {
   it("needs a baseline and a later reading", () => {
-    expect(riseOf([])).toEqual({ risen: false, rise: 0, readings: 0 });
-    expect(riseOf([7])).toEqual({ risen: false, rise: 0, readings: 0 });
+    expect(riseOf([])).toEqual(NO_RISE);
+    expect(riseOf([7])).toEqual({ ...NO_RISE, latest: 7 });
   });
 
   it("measures from the first value", () => {
-    expect(riseOf([2, 2])).toEqual({ risen: false, rise: 0, readings: 0 });
-    expect(riseOf([2, 3, 3, 5])).toEqual({ risen: true, rise: 3, readings: 2 });
+    expect(riseOf([2, 2])).toEqual({ ...NO_RISE, latest: 2 });
+    expect(riseOf([2, 3, 3, 5])).toEqual({
+      risen: true,
+      rise: 3,
+      readings: 2,
+      latest: 5,
+    });
   });
 
   it("ignores a fall that does not recover", () => {
-    expect(riseOf([5, 4])).toEqual({ risen: false, rise: 0, readings: 0 });
+    expect(riseOf([5, 4])).toEqual({ ...NO_RISE, latest: 4 });
   });
 
-  it("re-baselines at the lowest point after a counter reset", () => {
+  it("re-baselines and recounts at the lowest point after a counter reset", () => {
     expect(riseOf([9, 10, 0, 0, 2])).toEqual({
       risen: true,
       rise: 2,
-      readings: 2,
-    });
-    expect(riseOf([9, 10, 3, 1])).toEqual({
-      risen: false,
-      rise: 0,
       readings: 1,
+      latest: 2,
     });
+    expect(riseOf([9, 10, 3, 1])).toEqual({ ...NO_RISE, latest: 1 });
   });
 
   it("reads the window from stored attribute history", () => {
@@ -506,16 +509,17 @@ describe("attribute rise", () => {
       risen: true,
       rise: 2,
       readings: 1,
+      latest: 4,
     });
     expect(attributeRise(diskId, "197", at(-2 * DAY_MS))).toEqual({
-      risen: false,
-      rise: 0,
-      readings: 0,
+      ...NO_RISE,
+      latest: 2,
     });
     expect(attributeRise(diskId, "197", t0, 30)).toEqual({
       risen: true,
       rise: 3,
       readings: 2,
+      latest: 4,
     });
     expect(attributeRise(diskId, "197", at(-15 * DAY_MS), 30).risen).toBe(
       false,
@@ -531,6 +535,7 @@ describe("attribute rise", () => {
       risen: true,
       rise: 2,
       readings: 1,
+      latest: 5,
     });
     expect(attributeRise(diskId, "999", t0).risen).toBe(false);
   });

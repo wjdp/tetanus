@@ -4,20 +4,13 @@ import { db } from "~~/server/database/client";
 import { smartAttribute } from "~~/server/database/schema";
 import type { DiskSummary } from "~~/server/services/disks";
 import type { Detection } from "~~/server/services/faults";
-import { attributeSeries, riseOf } from "~~/server/services/smart";
+import { attributeRise } from "~~/server/services/smart";
 
 export const CRC_ERROR_ATTRIBUTE = "199";
 export const INTERFACE_ERROR_WINDOW_DAYS = 7;
 export const INTERFACE_ERROR_MIN_RISES = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-function sinceLastReset(series: readonly number[]): number[] {
-  const resetAt = series.findLastIndex(
-    (value, index) => index > 0 && value < (series[index - 1] as number),
-  );
-  return series.slice(Math.max(resetAt, 0));
-}
 
 function disksWithCrcErrorsSince(diskIds: number[], since: Date): Set<number> {
   if (diskIds.length === 0) return new Set();
@@ -55,15 +48,12 @@ export function detectInterfaceErrors({
   );
   return inService.flatMap((row): Detection[] => {
     if (!candidates.has(row.id)) return [];
-    const series = sinceLastReset(
-      attributeSeries(
-        row.id,
-        CRC_ERROR_ATTRIBUTE,
-        now,
-        INTERFACE_ERROR_WINDOW_DAYS,
-      ),
+    const { rise, readings, latest } = attributeRise(
+      row.id,
+      CRC_ERROR_ATTRIBUTE,
+      now,
+      INTERFACE_ERROR_WINDOW_DAYS,
     );
-    const { rise, readings } = riseOf(series);
     if (readings < INTERFACE_ERROR_MIN_RISES) return [];
     return [
       {
@@ -71,7 +61,7 @@ export function detectInterfaceErrors({
         key: String(row.id),
         subjectId: row.id,
         severity: "warning",
-        data: { count: series.at(-1) ?? null, rise, readings },
+        data: { count: latest, rise, readings },
       },
     ];
   });

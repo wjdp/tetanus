@@ -874,22 +874,32 @@ export interface AttributeRise {
   risen: boolean;
   rise: number;
   readings: number;
+  latest: number | null;
 }
 
-export const NO_RISE: AttributeRise = { risen: false, rise: 0, readings: 0 };
+export const NO_RISE: AttributeRise = {
+  risen: false,
+  rise: 0,
+  readings: 0,
+  latest: null,
+};
 
 export function riseOf(values: readonly number[]): AttributeRise {
-  if (values.length < 2) return NO_RISE;
+  if (values.length < 2) return { ...NO_RISE, latest: values[0] ?? null };
   let baseline = values[0] as number;
   let readings = 0;
   for (let index = 1; index < values.length; index++) {
     const value = values[index] as number;
     const preceding = values[index - 1] as number;
     if (value > preceding) readings++;
-    if (value < preceding) baseline = value;
+    if (value < preceding) {
+      baseline = value;
+      readings = 0;
+    }
   }
-  const rise = (values.at(-1) as number) - baseline;
-  return { risen: rise > 0, rise, readings };
+  const latest = values.at(-1) as number;
+  const rise = latest - baseline;
+  return { risen: rise > 0, rise, readings, latest };
 }
 
 export function attributeSeries(
