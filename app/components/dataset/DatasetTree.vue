@@ -8,6 +8,7 @@ import {
   datasetComparator,
   nextSorting,
 } from "./columns";
+import { spaceSplit } from "./spaceHierarchy";
 import {
   lastSegment,
   sortSiblings,
@@ -106,6 +107,40 @@ const { formatZfsBytes } = useZfsByteSystem();
 const formatGrowth = (bytes: number) => {
   if (bytes === 0) return formatZfsBytes(0);
   return `${bytes > 0 ? "+" : "−"}${formatZfsBytes(Math.abs(bytes))}`;
+};
+
+const USED_PARTS = ["data", "snapshots", "children"] as const;
+
+const USED_PART_CLASS: Record<(typeof USED_PARTS)[number], string> = {
+  data: "bg-(--ui-text-toned)",
+  snapshots: "bg-info",
+  children: "bg-(--ui-border-accented)",
+};
+
+const poolUsed = computed(() =>
+  Math.max(
+    0,
+    ...props.datasets
+      .filter((dataset) => dataset.present)
+      .map((dataset) => dataset.used),
+  ),
+);
+
+const usedSegments = (dataset: DatasetTreeRow) => {
+  if (poolUsed.value === 0) return [];
+  const split = spaceSplit(dataset, 0);
+  return USED_PARTS.map((part) => ({
+    part,
+    percent: Math.min(100, (split[part] / poolUsed.value) * 100),
+  })).filter((segment) => segment.percent > 0);
+};
+
+const usedBreakdown = (dataset: DatasetTreeRow) => {
+  const split = spaceSplit(dataset, 0);
+  const parts = `Data ${formatZfsBytes(split.data)} · snapshots ${formatZfsBytes(split.snapshots)} · children ${formatZfsBytes(split.children)}`;
+  return split.reserved > 0
+    ? `${parts} · reserved ${formatZfsBytes(split.reserved)}`
+    : parts;
 };
 
 const limits = (dataset: DatasetTreeRow) =>
@@ -208,9 +243,24 @@ const limits = (dataset: DatasetTreeRow) =>
         </div>
       </template>
       <template #used-cell="{ row }">
-        <span class="tabular whitespace-nowrap">
-          {{ formatZfsBytes(row.original.dataset.used) }}
-        </span>
+        <div
+          class="-my-1 flex w-24 flex-col gap-1"
+          :title="usedBreakdown(row.original.dataset)"
+          data-testid="dataset-used"
+        >
+          <span class="tabular whitespace-nowrap">
+            {{ formatZfsBytes(row.original.dataset.used) }}
+          </span>
+          <span class="bg-elevated flex h-1 overflow-hidden rounded-full">
+            <span
+              v-for="segment in usedSegments(row.original.dataset)"
+              :key="segment.part"
+              :class="USED_PART_CLASS[segment.part]"
+              :style="{ width: `${segment.percent}%` }"
+              :data-part="segment.part"
+            />
+          </span>
+        </div>
       </template>
       <template #growth-cell="{ row }">
         <span

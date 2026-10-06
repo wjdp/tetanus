@@ -45,9 +45,11 @@ const dataset = (
 });
 
 const datasets = [
-  dataset(1, "tank", null),
+  dataset(1, "tank", null, { used: 4e12 }),
   dataset(2, "tank/media", 1, {
     quota: 5e12,
+    usedByDataset: 5e11,
+    usedBySnapshots: 2.5e11,
     reservation: 10 * 2 ** 30,
     encryption: "aes-256-gcm",
     growth: {
@@ -108,6 +110,26 @@ describe("DatasetTree", () => {
     expect(media).toContain("10.0 GiB reserved");
     expect(media).toMatch(/12\s*· 3 h ago/);
     expect(volume).toContain("volume");
+  });
+
+  it("draws used space as data, snapshot and child shares of the pool", async () => {
+    const tree = await mountTree();
+    const used = tree.findAll('[data-testid="dataset-used"]')[1];
+    const widths = Object.fromEntries(
+      used
+        .findAll("[data-part]")
+        .map((part) => [
+          part.attributes("data-part"),
+          part.attributes("style"),
+        ]),
+    );
+
+    expect(used.attributes("title")).toBe(
+      "Data 466 GiB · snapshots 233 GiB · children 931 GiB · reserved 233 GiB",
+    );
+    expect(widths.data).toContain("width: 12.5%");
+    expect(widths.snapshots).toContain("width: 6.25%");
+    expect(widths.children).toContain("width: 25%");
   });
 
   it("marks encrypted datasets with their cipher", async () => {
