@@ -56,7 +56,6 @@ export interface ZpoolStatusVdev {
   slowIos?: number;
   allocSpace?: number;
   totalSpace?: number;
-  fragmentation?: number;
   children: string[];
 }
 
@@ -432,10 +431,6 @@ function parsePool(
       totalSpace: optionalNumber(
         vdevRaw.total_space,
         `${vdevName}.total_space`,
-      ),
-      fragmentation: optionalNumber(
-        vdevRaw.fragmentation,
-        `${vdevName}.fragmentation`,
       ),
       children: [],
     });

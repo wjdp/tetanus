@@ -298,7 +298,6 @@ function vdevFields(observed: ZpoolStatusVdev) {
     diskId: observed.type === "disk" ? resolveLeafDiskId(observed) : null,
     allocBytes: observed.allocSpace ?? null,
     sizeBytes: observed.totalSpace ?? null,
-    frag: observed.fragmentation ?? null,
   };
 }
 
@@ -573,7 +572,7 @@ function textProperty(property: ZpoolListProperty | undefined) {
 }
 
 export function observeZpoolList({ pools }: ZpoolListResult) {
-  for (const { guid, properties } of pools) {
+  for (const { guid, properties, vdevs } of pools) {
     db.update(pool)
       .set({
         sizeBytes: numericProperty(properties.size),
@@ -586,5 +585,12 @@ export function observeZpoolList({ pools }: ZpoolListResult) {
       })
       .where(eq(pool.guid, guid))
       .run();
+    const rootVdev = { guid, properties };
+    for (const listed of [rootVdev, ...vdevs]) {
+      db.update(vdev)
+        .set({ frag: numericProperty(listed.properties.fragmentation) })
+        .where(eq(vdev.guid, listed.guid))
+        .run();
+    }
   }
 }

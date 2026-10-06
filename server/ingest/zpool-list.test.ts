@@ -32,6 +32,27 @@ describe("zpool-list parser", () => {
     expect(tank.properties.checkpoint.value).toBe("-");
   });
 
+  it("flattens -v vdevs, including allocation-class groups, skipping guid-less ones", () => {
+    const { data } = parse(fixture("zpool-list.json"), {});
+    const [tank, zeta] = data.pools;
+
+    expect(tank.vdevs.map((vdev) => vdev.name)).toEqual([
+      "raidz1-0",
+      ...["K1", "K2", "K3", "raidz1-1", "K4", "K5", "K6"],
+      ...["raidz1-2", "L1", "L2", "L4", "raidz1-3", "Q1", "Q4", "Q3"],
+      ...["mirror-4", "M1", "M2", "M3"],
+    ]);
+    expect(tank.vdevs[0]).toMatchObject({
+      guid: "11092505927246116873",
+      properties: { fragmentation: { value: 10 } },
+    });
+    expect(zeta.vdevs.map((vdev) => vdev.name)).toEqual([
+      "mirror-1",
+      "Z3",
+      "Z4",
+    ]);
+  });
+
   it("rejects an empty body", () => {
     expect(() => parse("", {})).toThrow(ParseError);
   });

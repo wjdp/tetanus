@@ -708,6 +708,22 @@ describe("zpool-list", () => {
     expect(latest).toMatchObject({ allocBytes: 111526969077760, cap: 63 });
   });
 
+  it("fills fragmentation onto the root and top-level vdevs, and keeps it across zpool-status", () => {
+    run("zpool-status", marsStatus());
+    run(
+      "zpool-list",
+      parseZpoolList(readFixture("mars/zpool-list.json"), {}).data,
+    );
+    run("zpool-status", marsStatus(), minutesAfter(10));
+
+    const fragOf = (name: string) =>
+      db.select().from(vdev).where(eq(vdev.name, name)).get()?.frag;
+    expect(fragOf("tank")).toBe(9);
+    expect(fragOf("raidz1-1")).toBe(11);
+    expect(fragOf("mirror-4")).toBe(42);
+    expect(fragOf("/dev/disk/by-vdev/K1-part1")).toBeNull();
+  });
+
   it("ignores pools it has not seen in zpool-status", () => {
     run(
       "zpool-list",

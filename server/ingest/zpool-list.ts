@@ -11,10 +11,17 @@ export interface ZpoolListProperty {
   source: ZpoolListPropertySource;
 }
 
+export interface ZpoolListVdev {
+  name: string;
+  guid: string;
+  properties: Record<string, ZpoolListProperty>;
+}
+
 export interface ZpoolListPool {
   name: string;
   guid: string;
   properties: Record<string, ZpoolListProperty>;
+  vdevs: ZpoolListVdev[];
 }
 
 export interface ZpoolListResult {
@@ -64,10 +71,12 @@ function parseProperty(value: unknown, label: string): ZpoolListProperty {
   };
 }
 
-function parsePool(name: string, raw: Record<string, unknown>): ZpoolListPool {
-  const rawProperties = raw.properties;
+function parseProperties(
+  name: string,
+  rawProperties: unknown,
+): Record<string, ZpoolListProperty> {
   if (typeof rawProperties !== "object" || rawProperties === null) {
-    throw new ParseError(`Pool ${name} has no properties`);
+    throw new ParseError(`${name} has no properties`);
   }
   const properties: Record<string, ZpoolListProperty> = {};
   for (const [key, value] of Object.entries(
@@ -75,10 +84,40 @@ function parsePool(name: string, raw: Record<string, unknown>): ZpoolListPool {
   )) {
     properties[key] = parseProperty(value, `${name}.${key}`);
   }
+  return properties;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+/**
+ * Walks `zpool list -v` vdevs: entries with a guid are vdevs; entries
+ * without properties are allocation-class groups (special, logs, ...) whose
+ * values are vdevs; guid-less vdevs such as indirect-N are skipped.
+ */
+function parseVdevs(rawVdevs: unknown): ZpoolListVdev[] {
+  if (!isRecord(rawVdevs)) return [];
+  return Object.entries(rawVdevs).flatMap(([name, raw]) => {
+    if (!isRecord(raw)) return [];
+    if (raw.properties === undefined) return parseVdevs(raw);
+    if (raw.guid === undefined) return [];
+    return [
+      {
+        name,
+        guid: requireString(raw.guid, `${name}.guid`),
+        properties: parseProperties(name, raw.properties),
+      },
+      ...parseVdevs(raw.vdevs),
+    ];
+  });
+}
+
+function parsePool(name: string, raw: Record<string, unknown>): ZpoolListPool {
   return {
     name,
     guid: requireString(raw.pool_guid, `${name}.pool_guid`),
-    properties,
+    properties: parseProperties(`Pool ${name}`, raw.properties),
+    vdevs: parseVdevs(raw.vdevs),
   };
 }
 
