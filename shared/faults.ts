@@ -135,6 +135,9 @@ function smartAttributeName(data: FaultData) {
 function smartAttributeTitle(data: FaultData) {
   const parts = [`${smartAttributeName(data)} ${text(data.value)}`];
   if (data.trend === "worsening") parts[0] += ", worsening";
+  if (typeof data.errorLogRise === "number" && data.errorLogRise > 0) {
+    parts[0] += `, error log +${data.errorLogRise}`;
+  }
   if (typeof data.acceptedValue === "number") {
     const label = data.acceptanceKind === "acknowledge" ? "ack" : "accepted";
     parts.push(`${label} at ${data.acceptedValue}`);

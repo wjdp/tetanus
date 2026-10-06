@@ -53,7 +53,10 @@ import {
   describeDisks,
   listDisks,
 } from "~~/server/services/disks";
-import { detectErrorLogGrowth } from "~~/server/services/errorLogFaults";
+import {
+  detectErrorLogGrowth,
+  foldErrorLogGrowth,
+} from "~~/server/services/errorLogFaults";
 import {
   detectHeliumTripped,
   detectSmartCountersReset,
@@ -384,7 +387,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
       .map((supersession) => supersession.subjectId),
   );
   return {
-    detections: [
+    detections: foldErrorLogGrowth([
       ...detectSmartAttributes(context),
       ...detectHealthFailed(context),
       ...detectTemperatureHigh(context),
@@ -401,7 +404,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...silent,
       ...detectCollectorVersion(context),
       ...detectHostDegraded(context),
-    ],
+    ]),
     superseded: [...pools.superseded, ...replications.superseded],
     withdrawn: [...withdrawDisposedDisks(context), ...replications.withdrawn],
   };

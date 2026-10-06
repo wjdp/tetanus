@@ -9,22 +9,32 @@ import { readFixture } from "~~/test/fixtures";
 
 const t0 = new Date("2026-09-01T10:00:00Z");
 const HOUR_MS = 60 * 60 * 1000;
-const SDB = readFixture("mars/smartctl/xall-sdb-auto.json");
+const SDA = readFixture("mars/smartctl/xall-sda-auto.json");
 
 const at = (hours: number) => new Date(t0.getTime() + hours * HOUR_MS);
 
-function withErrorLogCount(count: number) {
-  const json = JSON.parse(SDB);
+function withErrorLogCount(count: number, reallocated?: number) {
+  const json = JSON.parse(SDA);
+  if (reallocated !== undefined) {
+    const attribute = json.ata_smart_attributes.table.find(
+      (row: { id: number }) => row.id === 5,
+    );
+    attribute.raw = { value: reallocated, string: String(reallocated) };
+  }
   json.ata_smart_error_log = { extended: { revision: 1, sectors: 1, count } };
   return JSON.stringify(json);
 }
 
-async function scanAfterReading(count: number, hours: number) {
+async function scanAfterReading(
+  count: number,
+  hours: number,
+  reallocated?: number,
+) {
   const outcome = recordIngest({
     hostName: "mars",
     source: "smartctl-xall",
-    meta: { device: "/dev/sdb", type: "sat", exitStatus: 0 },
-    body: withErrorLogCount(count),
+    meta: { device: "/dev/sda", type: "sat", exitStatus: 0 },
+    body: withErrorLogCount(count, reallocated),
     receivedAt: at(hours),
   });
   expect(outcome.ok).toBe(true);
@@ -112,5 +122,25 @@ describe("detectErrorLogGrowth", () => {
       rise: 3,
       previousCount: 15,
     });
+  });
+
+  it("folds a rise into the disk's defect fault instead of raising its own", async () => {
+    const reallocatedFault = () =>
+      db
+        .select()
+        .from(fault)
+        .where(eq(fault.kind, "smart-attribute"))
+        .all()
+        .find((row) => row.data.attrId === "5");
+    await scanAfterReading(12, 0, 0);
+    await scanAfterReading(15, 1, 50);
+    expect(errorLogFaults()).toEqual([]);
+    expect(reallocatedFault()?.data).toMatchObject({ errorLogRise: 3 });
+    await scanAfterReading(15, 2, 50);
+    await syncFaults(at(3));
+    expect(reallocatedFault()?.data).toMatchObject({ errorLogRise: 3 });
+    await scanAfterReading(17, 4, 50);
+    expect(reallocatedFault()?.data).toMatchObject({ errorLogRise: 5 });
+    expect(errorLogFaults()).toEqual([]);
   });
 });
