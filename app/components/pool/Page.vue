@@ -57,7 +57,29 @@ const capacityChart = computed(() =>
   capacitySeries(pool.value?.readings ?? [], system.value),
 );
 
-const activeTab = ref("vdevs");
+const TABS = ["vdevs", "datasets", "space", "events", "history", "diary"] as const;
+type Tab = (typeof TABS)[number];
+const DEFAULT_TAB: Tab = "vdevs";
+const TABS_UI = {
+  list: "overflow-x-auto overflow-y-hidden [scrollbar-width:none]",
+  indicator: "bottom-0",
+  trigger: "shrink-0",
+  trailingBadge: "max-sm:hidden",
+};
+
+const route = useRoute();
+const router = useRouter();
+
+const isTab = (value: unknown): value is Tab => TABS.includes(value as Tab);
+
+const activeTab = computed<Tab>({
+  get: () => (isTab(route.query.tab) ? route.query.tab : DEFAULT_TAB),
+  set: (tab) => {
+    router.replace({
+      query: { ...route.query, tab: tab === DEFAULT_TAB ? undefined : tab },
+    });
+  },
+});
 
 const {
   data: datasets,
@@ -68,12 +90,18 @@ const {
   server: false,
 });
 
-watch(activeTab, (tab) => {
-  const needsDatasets = tab === "datasets" || tab === "space";
-  if (needsDatasets && datasetsStatus.value === "idle") loadDatasets();
+onMounted(() => {
+  watch(
+    activeTab,
+    (tab) => {
+      const needsDatasets = tab === "datasets" || tab === "space";
+      if (needsDatasets && datasetsStatus.value === "idle") loadDatasets();
+    },
+    { immediate: true },
+  );
 });
 
-const tabs = computed<TabsItem[]>(() => [
+const tabs = computed<(TabsItem & { value: Tab })[]>(() => [
   { label: "vdevs", slot: "vdevs", value: "vdevs" },
   {
     label: "Datasets",
@@ -298,7 +326,8 @@ const tabs = computed<TabsItem[]>(() => [
         v-model="activeTab"
         :items="tabs"
         variant="link"
-        class="w-full"
+        class="w-full min-w-0"
+        :ui="TABS_UI"
       >
         <template #vdevs>
           <PoolVdevTreeTable

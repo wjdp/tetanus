@@ -259,7 +259,8 @@ registerEndpoint("/api/pools/10/vdevs/101/readings", (event) => {
   };
 });
 
-beforeEach(() => {
+beforeEach(async () => {
+  await useRouter().replace("/");
   FakeEventSource.install();
   clearNuxtData();
   clearNuxtState(ZFS_BYTE_SYSTEM_COOKIE);
@@ -379,6 +380,34 @@ describe("pool page", () => {
       expect(page.find('a[href="/zfs/nas1/tank/media"]').exists()).toBe(true),
     );
     expect(datasetRequests).toHaveLength(1);
+  });
+
+  it("opens the tab named in the query string", async () => {
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+      route: "/zfs/nas1/tank?tab=datasets",
+    });
+
+    expect(page.get('[role="tab"][aria-selected="true"]').text()).toContain(
+      "Datasets",
+    );
+    await vi.waitFor(() =>
+      expect(page.find('a[href="/zfs/nas1/tank/media"]').exists()).toBe(true),
+    );
+  });
+
+  it("writes the selected tab to the query string", async () => {
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+      route: "/zfs/nas1/tank",
+    });
+    const tab = page
+      .findAll('[role="tab"]')
+      .find((element) => element.text() === "History");
+
+    await tab?.trigger("mousedown", { button: 0 });
+
+    await vi.waitFor(() => expect(useRoute().query.tab).toBe("history"));
   });
 
   it("shows the space map on its own tab, with a note for narrow screens", async () => {
@@ -554,7 +583,9 @@ describe("pool page", () => {
       .findAll('[role="tab"]')
       .find((element) => element.text().startsWith("Events"));
     await tab?.trigger("mousedown", { button: 0 });
-    await flushPromises();
+    await vi.waitFor(() =>
+      expect(page.find('[data-testid="pool-event"]').exists()).toBe(true),
+    );
 
     const [checksum, delay] = page.findAll('[data-testid="pool-event"]');
     expect(checksum?.get('[data-testid="pool-event-vdev"]').text()).toBe(
