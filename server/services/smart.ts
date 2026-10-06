@@ -825,6 +825,73 @@ export function attributeTrend(
   );
 }
 
+export interface AttributeRise {
+  risen: boolean;
+  rise: number;
+  readings: number;
+}
+
+export const NO_RISE: AttributeRise = { risen: false, rise: 0, readings: 0 };
+
+export function riseOf(values: readonly number[]): AttributeRise {
+  if (values.length < 2) return NO_RISE;
+  let baseline = values[0] as number;
+  let readings = 0;
+  for (let index = 1; index < values.length; index++) {
+    const value = values[index] as number;
+    const preceding = values[index - 1] as number;
+    if (value > preceding) readings++;
+    if (value < preceding) baseline = value;
+  }
+  const rise = (values.at(-1) as number) - baseline;
+  return { risen: rise > 0, rise, readings };
+}
+
+export function attributeSeries(
+  diskId: number,
+  attrId: string,
+  at: Date,
+  windowDays = 7,
+): number[] {
+  const windowStart = new Date(at.getTime() - windowDays * DAY_MS);
+  const ofAttribute = and(
+    eq(smartAttribute.diskId, diskId),
+    eq(smartAttribute.attrId, attrId),
+  );
+  const before = db
+    .select({ value: smartAttribute.transformedValue })
+    .from(smartAttribute)
+    .where(and(ofAttribute, lte(smartAttribute.takenAt, windowStart)))
+    .orderBy(desc(smartAttribute.takenAt), desc(smartAttribute.id))
+    .limit(1)
+    .get();
+  const within = db
+    .select({ value: smartAttribute.transformedValue })
+    .from(smartAttribute)
+    .where(
+      and(
+        ofAttribute,
+        gt(smartAttribute.takenAt, windowStart),
+        lte(smartAttribute.takenAt, at),
+      ),
+    )
+    .orderBy(asc(smartAttribute.takenAt), asc(smartAttribute.id))
+    .all();
+  return [
+    ...(before ? [before.value] : []),
+    ...within.map(({ value }) => value),
+  ];
+}
+
+export function attributeRise(
+  diskId: number,
+  attrId: string,
+  at: Date,
+  windowDays = 7,
+): AttributeRise {
+  return riseOf(attributeSeries(diskId, attrId, at, windowDays));
+}
+
 function isAttributeStatus(value: unknown): value is AttributeStatus {
   return ATTRIBUTE_STATUSES.includes(value as AttributeStatus);
 }

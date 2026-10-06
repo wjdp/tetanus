@@ -15,6 +15,7 @@ import { type DiskRow, observeDisk } from "~~/server/services/disks";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
 import {
+  attributeRise,
   downsample,
   evaluateMinimalReading,
   evaluateNamedAttributes,
@@ -23,6 +24,7 @@ import {
   insertSmartReading,
   latestAttributes,
   MAX_HISTORY_POINTS,
+  riseOf,
   sctTemperaturePoints,
   trendDirection,
 } from "~~/server/services/smart";
@@ -454,6 +456,75 @@ describe("trend", () => {
     expect(
       new Set(latestAttributes(diskId).map((attribute) => attribute.trend)),
     ).toEqual(new Set(["new"]));
+  });
+});
+
+describe("attribute rise", () => {
+  it("needs a baseline and a later reading", () => {
+    expect(riseOf([])).toEqual({ risen: false, rise: 0, readings: 0 });
+    expect(riseOf([7])).toEqual({ risen: false, rise: 0, readings: 0 });
+  });
+
+  it("measures from the first value", () => {
+    expect(riseOf([2, 2])).toEqual({ risen: false, rise: 0, readings: 0 });
+    expect(riseOf([2, 3, 3, 5])).toEqual({ risen: true, rise: 3, readings: 2 });
+  });
+
+  it("ignores a fall that does not recover", () => {
+    expect(riseOf([5, 4])).toEqual({ risen: false, rise: 0, readings: 0 });
+  });
+
+  it("re-baselines at the lowest point after a counter reset", () => {
+    expect(riseOf([9, 10, 0, 0, 2])).toEqual({
+      risen: true,
+      rise: 2,
+      readings: 2,
+    });
+    expect(riseOf([9, 10, 3, 1])).toEqual({
+      risen: false,
+      rise: 0,
+      readings: 1,
+    });
+  });
+
+  it("reads the window from stored attribute history", () => {
+    ingestSmart(withAttributeRaw(SDA, 197, 1), at(-20 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 2), at(-10 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 2), at(-3 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 4), at(-DAY_MS));
+    const diskId = diskBySerial(SDA_SERIAL).id;
+
+    expect(attributeRise(diskId, "197", t0)).toEqual({
+      risen: true,
+      rise: 2,
+      readings: 1,
+    });
+    expect(attributeRise(diskId, "197", at(-2 * DAY_MS))).toEqual({
+      risen: false,
+      rise: 0,
+      readings: 0,
+    });
+    expect(attributeRise(diskId, "197", t0, 30)).toEqual({
+      risen: true,
+      rise: 3,
+      readings: 2,
+    });
+    expect(attributeRise(diskId, "197", at(-15 * DAY_MS), 30).risen).toBe(
+      false,
+    );
+  });
+
+  it("uses the first reading in the window when none precedes it", () => {
+    ingestSmart(withAttributeRaw(SDA, 197, 3), at(-2 * DAY_MS));
+    ingestSmart(withAttributeRaw(SDA, 197, 5), at(-DAY_MS));
+    const diskId = diskBySerial(SDA_SERIAL).id;
+
+    expect(attributeRise(diskId, "197", t0)).toEqual({
+      risen: true,
+      rise: 2,
+      readings: 1,
+    });
+    expect(attributeRise(diskId, "999", t0).risen).toBe(false);
   });
 });
 
