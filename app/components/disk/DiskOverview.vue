@@ -9,6 +9,7 @@ import { temperatureColour } from "#shared/temperature";
 import { usageDetail } from "#shared/usage";
 import { DEVICE_STATUS_VOCABULARY, STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 import { ATTRIBUTE_STATUS_DOT } from "./attributeRows";
+import { capacityFact } from "./capacityFact";
 import { farmHoursCheck } from "./farmRows";
 import { specFooter, specRows } from "./specRows";
 import type { DiskDetail, ReplacementCandidate } from "./types";
@@ -39,6 +40,10 @@ const model = computed(() => {
 
 const wwn = computed(
   () => props.disk.keys.find((key) => key.kind === "wwn")?.value ?? null,
+);
+
+const capacity = computed(() =>
+  capacityFact(props.disk.capacityBytes, props.disk.specs),
 );
 
 const media = computed(() => {
@@ -402,7 +407,7 @@ const attributeSummary = computed(() => {
     </DiskFactGroup>
 
     <DiskFactGroup title="Hardware" data-testid="group-hardware">
-      <DiskFact label="Capacity" :value="formatBytes(disk.capacityBytes)" />
+      <DiskFact label="Capacity" :value="capacity" />
       <DiskFact label="Media" :value="media" data-testid="fact-media" />
       <DiskEditableField
         field-key="recordingTech"
