@@ -387,24 +387,27 @@ export function detectFaults(context: DetectionContext): FaultScan {
       .map((supersession) => supersession.subjectId),
   );
   return {
-    detections: foldErrorLogGrowth([
-      ...detectSmartAttributes(context),
-      ...detectHealthFailed(context),
-      ...detectTemperatureHigh(context),
-      ...detectSmartCountersReset(context),
-      ...detectHeliumTripped(context),
-      ...detectSelfTestFailed(context),
-      ...detectSmartUnavailable(context),
-      ...detectErrorLogGrowth(context),
-      ...detectInterfaceErrors(context),
-      ...detectMissing(context, suppressedDiskIds),
-      ...detectIdentityConflicts(context),
-      ...pools.detections,
-      ...replications.detections,
-      ...silent,
-      ...detectCollectorVersion(context),
-      ...detectHostDegraded(context),
-    ]),
+    detections: foldErrorLogGrowth(
+      [
+        ...detectSmartAttributes(context),
+        ...detectHealthFailed(context),
+        ...detectTemperatureHigh(context),
+        ...detectSmartCountersReset(context),
+        ...detectHeliumTripped(context),
+        ...detectSelfTestFailed(context),
+        ...detectSmartUnavailable(context),
+        ...detectErrorLogGrowth(context),
+        ...detectInterfaceErrors(context),
+        ...detectMissing(context, suppressedDiskIds),
+        ...detectIdentityConflicts(context),
+        ...pools.detections,
+        ...replications.detections,
+        ...silent,
+        ...detectCollectorVersion(context),
+        ...detectHostDegraded(context),
+      ],
+      context.now,
+    ),
     superseded: [...pools.superseded, ...replications.superseded],
     withdrawn: [...withdrawDisposedDisks(context), ...replications.withdrawn],
   };
@@ -468,7 +471,9 @@ const isQuiet = (state: FaultState) =>
   state === "acknowledged" || state === "accepted";
 
 function nextState(row: FaultRow, detection: Detection): FaultState {
-  if (detection.state) return detection.state;
+  if (detection.state) {
+    return detection.reopen?.(row.data) ? "open" : detection.state;
+  }
   if (!isQuiet(row.state)) return row.state;
   const worsened =
     isSeverityRise(row.severity, detection.severity) ||

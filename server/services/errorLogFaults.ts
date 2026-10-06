@@ -1,9 +1,10 @@
 import { eq, isNotNull, sql } from "drizzle-orm";
 import { isDisposed, isHistoryState } from "#shared/disk";
-import { FAULT_SEVERITY_RANK } from "#shared/faults";
+import { FAULT_SEVERITY_RANK, type FaultData } from "#shared/faults";
 import { attributeClass } from "#shared/smart/classification";
 import { db } from "~~/server/database/client";
 import { fault, smartReading } from "~~/server/database/schema";
+import { supersedeOnErrorLogGrowth } from "~~/server/services/acceptance";
 import type { DiskSummary } from "~~/server/services/disks";
 import type { Detection, FaultRow } from "~~/server/services/faults";
 
@@ -166,7 +167,7 @@ function worstDefectFault(defects: Detection[], diskId: number) {
     );
 }
 
-function keepErrorLogRise(detection: Detection, folded?: Detection) {
+function keepErrorLogRise(detection: Detection, now: Date, folded?: Detection) {
   const count = folded ? Number(folded.data.count) : undefined;
   const newRise = folded ? (newRises.get(folded) ?? 0) : 0;
   if (folded) {
@@ -176,6 +177,22 @@ function keepErrorLogRise(detection: Detection, folded?: Detection) {
       errorLogCount: count,
     };
   }
+  const riseSince = (previous: FaultData) =>
+    count === undefined
+      ? 0
+      : typeof previous.errorLogCount === "number"
+        ? Math.max(0, count - previous.errorLogCount)
+        : newRise;
+  detection.reopen = (previous) => {
+    const rise = riseSince(previous);
+    if (count === undefined || rise === 0) return false;
+    return supersedeOnErrorLogGrowth(
+      detection.subjectId,
+      String(detection.data.attrId),
+      { count, rise },
+      now,
+    );
+  };
   detection.carry = (previous) => {
     const previousRise = Number(previous.errorLogRise) || 0;
     if (count === undefined) {
@@ -186,13 +203,9 @@ function keepErrorLogRise(detection: Detection, folded?: Detection) {
         errorLogCount: previous.errorLogCount,
       };
     }
-    const delta =
-      typeof previous.errorLogCount === "number"
-        ? Math.max(0, count - previous.errorLogCount)
-        : newRise;
     return {
       ...detection.data,
-      errorLogRise: previousRise + delta,
+      errorLogRise: previousRise + riseSince(previous),
       errorLogCount: count,
     };
   };
@@ -200,7 +213,10 @@ function keepErrorLogRise(detection: Detection, folded?: Detection) {
 
 // A rise in the error log on a disk with a defect fault escalates that fault
 // (doc 100): its data carries the rise in place of a separate fault.
-export function foldErrorLogGrowth(detections: Detection[]): Detection[] {
+export function foldErrorLogGrowth(
+  detections: Detection[],
+  now: Date,
+): Detection[] {
   const defects = detections.filter(isDefectFault);
   const folded = new Map<Detection, Detection>();
   const kept = detections.filter((detection) => {
@@ -211,6 +227,7 @@ export function foldErrorLogGrowth(detections: Detection[]): Detection[] {
     folded.set(target, detection);
     return false;
   });
-  for (const defect of defects) keepErrorLogRise(defect, folded.get(defect));
+  for (const defect of defects)
+    keepErrorLogRise(defect, now, folded.get(defect));
   return kept;
 }

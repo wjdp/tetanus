@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "~~/server/database/client";
-import { fault } from "~~/server/database/schema";
+import { diaryEntry, fault } from "~~/server/database/schema";
 import { performFaultAction, syncFaults } from "~~/server/services/faults";
 import { recordIngest } from "~~/server/services/ingest";
 import { flushDb } from "~~/test/db";
@@ -148,5 +148,37 @@ describe("detectErrorLogGrowth", () => {
     await scanAfterReading(17, 4, 50);
     expect(reallocatedFault()?.data).toMatchObject({ errorLogRise: 5 });
     expect(errorLogFaults()).toEqual([]);
+  });
+
+  it("reopens an accepted defect fault when a folded rise arrives", async () => {
+    const reallocatedFault = () =>
+      db
+        .select()
+        .from(fault)
+        .where(eq(fault.kind, "smart-attribute"))
+        .all()
+        .find((row) => row.data.attrId === "5" && !row.resolvedAt);
+    const supersessions = () =>
+      db
+        .select()
+        .from(diaryEntry)
+        .where(eq(diaryEntry.eventType, "acceptance-superseded"))
+        .all();
+    await scanAfterReading(12, 0, 0);
+    await scanAfterReading(15, 1, 50);
+    const id = reallocatedFault()?.id as number;
+    performFaultAction(id, "accept", { now: at(1) });
+    await scanAfterReading(15, 2, 50);
+    expect(reallocatedFault()?.state).toBe("accepted");
+    await scanAfterReading(17, 3, 50);
+    expect(reallocatedFault()?.state).toBe("open");
+    expect(supersessions().map((row) => row.title)).toEqual([
+      "Error log grew by 2 to 17 (accepted at 50)",
+    ]);
+    performFaultAction(id, "accept", { now: at(3) });
+    await scanAfterReading(17, 4, 50);
+    await syncFaults(at(5));
+    expect(reallocatedFault()?.state).toBe("accepted");
+    expect(supersessions()).toHaveLength(1);
   });
 });

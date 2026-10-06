@@ -223,6 +223,35 @@ function hasWorsened(then: AttributeStatus | undefined, now: AttributeStatus) {
   return then !== undefined && then !== now && worstStatus(then, now) === now;
 }
 
+export function supersedeOnErrorLogGrowth(
+  diskId: number,
+  attrId: string,
+  errorLog: { count: number; rise: number },
+  now: Date,
+): boolean {
+  const active = activeAcceptances(diskId).get(attrId);
+  if (!active) return false;
+  const vocabulary = KIND_VOCABULARY[active.kind];
+  db.update(faultAcceptance)
+    .set({ supersededAt: now })
+    .where(eq(faultAcceptance.id, active.id))
+    .run();
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: diskId,
+    eventType: vocabulary.superseded,
+    title: `Error log grew by ${errorLog.rise} to ${errorLog.count} (${vocabulary.verb} at ${active.acceptedValue})`,
+    data: {
+      attrId,
+      acceptedValue: active.acceptedValue,
+      errorLogCount: errorLog.count,
+      errorLogRise: errorLog.rise,
+    },
+    at: now,
+  });
+  return true;
+}
+
 export function supersedeIfRisen(
   diskId: number,
   attributes: NamedAttribute[],
