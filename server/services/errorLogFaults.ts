@@ -6,7 +6,11 @@ import { db } from "~~/server/database/client";
 import { fault, smartReading } from "~~/server/database/schema";
 import { supersedeOnErrorLogGrowth } from "~~/server/services/acceptance";
 import type { DiskSummary } from "~~/server/services/disks";
-import type { Detection, FaultRow } from "~~/server/services/faults";
+import type {
+  Detection,
+  FaultRow,
+  Supersession,
+} from "~~/server/services/faults";
 
 interface CountedReading {
   diskId: number;
@@ -216,18 +220,25 @@ function keepErrorLogRise(detection: Detection, now: Date, folded?: Detection) {
 export function foldErrorLogGrowth(
   detections: Detection[],
   now: Date,
-): Detection[] {
+): { detections: Detection[]; superseded: Supersession[] } {
   const defects = detections.filter(isDefectFault);
   const folded = new Map<Detection, Detection>();
+  const superseded: Supersession[] = [];
   const kept = detections.filter((detection) => {
     if (detection.kind !== "error-log-growth") return true;
-    if (!newRises.get(detection)) return true;
     const target = worstDefectFault(defects, detection.subjectId);
     if (!target) return true;
-    folded.set(target, detection);
+    if (newRises.get(detection)) folded.set(target, detection);
+    superseded.push({
+      subjectType: "disk",
+      subjectId: detection.subjectId,
+      kinds: ["error-log-growth"],
+      by: { kind: target.kind, key: target.key },
+    });
     return false;
   });
-  for (const defect of defects)
+  for (const defect of defects) {
     keepErrorLogRise(defect, now, folded.get(defect));
-  return kept;
+  }
+  return { detections: kept, superseded };
 }

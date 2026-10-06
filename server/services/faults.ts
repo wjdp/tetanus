@@ -386,29 +386,34 @@ export function detectFaults(context: DetectionContext): FaultScan {
       .filter((supersession) => supersession.subjectType === "disk")
       .map((supersession) => supersession.subjectId),
   );
+  const folded = foldErrorLogGrowth(
+    [
+      ...detectSmartAttributes(context),
+      ...detectHealthFailed(context),
+      ...detectTemperatureHigh(context),
+      ...detectSmartCountersReset(context),
+      ...detectHeliumTripped(context),
+      ...detectSelfTestFailed(context),
+      ...detectSmartUnavailable(context),
+      ...detectErrorLogGrowth(context),
+      ...detectInterfaceErrors(context),
+      ...detectMissing(context, suppressedDiskIds),
+      ...detectIdentityConflicts(context),
+      ...pools.detections,
+      ...replications.detections,
+      ...silent,
+      ...detectCollectorVersion(context),
+      ...detectHostDegraded(context),
+    ],
+    context.now,
+  );
   return {
-    detections: foldErrorLogGrowth(
-      [
-        ...detectSmartAttributes(context),
-        ...detectHealthFailed(context),
-        ...detectTemperatureHigh(context),
-        ...detectSmartCountersReset(context),
-        ...detectHeliumTripped(context),
-        ...detectSelfTestFailed(context),
-        ...detectSmartUnavailable(context),
-        ...detectErrorLogGrowth(context),
-        ...detectInterfaceErrors(context),
-        ...detectMissing(context, suppressedDiskIds),
-        ...detectIdentityConflicts(context),
-        ...pools.detections,
-        ...replications.detections,
-        ...silent,
-        ...detectCollectorVersion(context),
-        ...detectHostDegraded(context),
-      ],
-      context.now,
-    ),
-    superseded: [...pools.superseded, ...replications.superseded],
+    detections: folded.detections,
+    superseded: [
+      ...pools.superseded,
+      ...replications.superseded,
+      ...folded.superseded,
+    ],
     withdrawn: [...withdrawDisposedDisks(context), ...replications.withdrawn],
   };
 }

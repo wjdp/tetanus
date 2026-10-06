@@ -181,4 +181,31 @@ describe("detectErrorLogGrowth", () => {
     expect(reallocatedFault()?.state).toBe("accepted");
     expect(supersessions()).toHaveLength(1);
   });
+
+  it("resolves a live fault as superseded once the disk has a defect fault", async () => {
+    await scanAfterReading(12, 0, 0);
+    await scanAfterReading(15, 1, 0);
+    expect(liveFault()).toBeDefined();
+    await scanAfterReading(15, 2, 50);
+    expect(liveFault()).toBeUndefined();
+    const resolution = db
+      .select()
+      .from(diaryEntry)
+      .where(eq(diaryEntry.eventType, "fault-resolved"))
+      .all()
+      .find((entry) => entry.data.kind === "error-log-growth");
+    expect(resolution?.data.supersededBy).toEqual({
+      kind: "smart-attribute",
+      key: expect.stringMatching(/:5$/),
+    });
+    await scanAfterReading(18, 3, 50);
+    expect(liveFault()).toBeUndefined();
+    const defect = db
+      .select()
+      .from(fault)
+      .where(eq(fault.kind, "smart-attribute"))
+      .all()
+      .find((row) => row.data.attrId === "5");
+    expect(defect?.data).toMatchObject({ errorLogRise: 3, errorLogCount: 18 });
+  });
 });
