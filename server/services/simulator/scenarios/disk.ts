@@ -11,6 +11,7 @@ import type { StoredPayload } from "../payloads";
 import {
   ataAttribute,
   ataAttributes,
+  ataDefectAttribute,
   capacityBlocks,
   defaultFailingLba,
   editSmartctl,
@@ -25,8 +26,10 @@ import {
   setAtaRaw,
   setNvmeCriticalWarning,
   setNvmeMediaErrors,
+  setSpareNearThreshold,
   setTemperature,
   setWear,
+  supportsSpare,
   supportsWear,
 } from "../smartctl";
 import { smartctlPayloadOf } from "../subjects";
@@ -264,6 +267,65 @@ export const ssdWearOut = defineScenario({
     editPlan(subject, (json) => setWear(json, Number(params.percentageUsed))),
 });
 
+export const ssdSpareLow = defineScenario({
+  id: "ssd-spare-low",
+  label: "SSD spare low",
+  group: "Health",
+  subjectType: "disk",
+  description:
+    "Spare blocks within the warning margin of the vendor threshold, without crossing it.",
+  applies: (subject) => smartctlSatisfies(subject, supportsSpare),
+  plan: (subject) => editPlan(subject, setSpareNearThreshold),
+});
+
+export const ssdDefectsRising = defineScenario({
+  id: "ssd-defects-rising",
+  label: "SSD defect count rising",
+  group: "Health",
+  subjectType: "disk",
+  description:
+    "A program fail, erase fail or runtime bad block count rises across several readings. A non-zero count that rose within 7 days is a warning.",
+  applies: (subject) =>
+    smartctlSatisfies(
+      subject,
+      (json) => ataDefectAttribute(json) !== undefined,
+    ),
+  params: () => [
+    {
+      key: "readings",
+      label: "Readings",
+      kind: "number",
+      default: 2,
+      min: 1,
+      max: 12,
+    },
+    {
+      key: "step",
+      label: "Count per reading",
+      kind: "number",
+      default: 2,
+      min: 1,
+    },
+  ],
+  plan: (subject, params) => {
+    const stored = requireSmartctl(subject);
+    const attribute = ataDefectAttribute(requireSmartctlJson(subject));
+    if (!attribute) throw new Error("No SSD defect attribute");
+    const step = Number(params.step);
+    return {
+      replays: Array.from({ length: Number(params.readings) }, (_, index) =>
+        editSmartctl(stored, (json) =>
+          setAtaRaw(
+            json,
+            attribute.id,
+            Number(attribute.raw.value) + step * (index + 1),
+          ),
+        ),
+      ),
+    };
+  },
+});
+
 export const selfTestFailed = defineScenario({
   id: "self-test-failed",
   label: "Self-test failed",
@@ -410,6 +472,8 @@ export const DISK_SCENARIOS = [
   nvmeCriticalWarning,
   nvmeMediaErrors,
   ssdWearOut,
+  ssdSpareLow,
+  ssdDefectsRising,
   selfTestFailed,
   runningHot,
   temperatureCritical,
