@@ -266,3 +266,52 @@ describe("evaluateReading on mars", () => {
     );
   });
 });
+
+describe("SCSI error counters", () => {
+  const counters = (uncorrected: number) => ({
+    errorsCorrectedByEccfast: 0,
+    errorsCorrectedByEccdelayed: 0,
+    errorsCorrectedByRereadsRewrites: 12,
+    totalErrorsCorrected: 12,
+    correctionAlgorithmInvocations: 40,
+    totalUncorrectedErrors: uncorrected,
+  });
+  const evaluateScsi = (verifyUncorrected: number) =>
+    evaluateReading({
+      device: { protocol: "SCSI" },
+      smartctl: { exitStatus: { diskFailing: false } },
+      smartStatus: { passed: true },
+      scsi: {
+        grownDefects: 0,
+        read: counters(0),
+        write: counters(0),
+        verify: counters(verifyUncorrected),
+      },
+    } as unknown as Parameters<typeof evaluateReading>[0]);
+
+  it("displays errors corrected by rereads and rewrites without a threshold", () => {
+    const { deviceStatus, attributes } = evaluateScsi(0);
+    expect(deviceStatus).toBe("passed");
+    for (const direction of ["read", "write", "verify"]) {
+      expect(
+        attributes.find(
+          (a) =>
+            a.attrId === `${direction}_errors_corrected_by_rereads_rewrites`,
+        ),
+      ).toMatchObject({ value: 12, status: "passed" });
+    }
+  });
+
+  it("fails on verify uncorrected errors", () => {
+    const { deviceStatus, attributes } = evaluateScsi(2);
+    expect(deviceStatus).toBe("failed");
+    expect(
+      attributes.find((a) => a.attrId === "verify_total_uncorrected_errors"),
+    ).toMatchObject({ value: 2, thresh: 0, status: "failed" });
+    expect(
+      attributes.find(
+        (a) => a.attrId === "verify_correction_algorithm_invocations",
+      )?.status,
+    ).toBe("passed");
+  });
+});

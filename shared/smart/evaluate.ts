@@ -225,7 +225,7 @@ function evaluateScsi(scsi: SmartctlXallResult["scsi"]): EvaluatedAttribute[] {
   const rows: FixedThresholdRow[] = [
     ["scsi_grown_defect_list", scsi?.grownDefects, 0],
   ];
-  for (const direction of ["read", "write"] as const) {
+  for (const direction of ["read", "write", "verify"] as const) {
     const counters = scsi?.[direction];
     rows.push(
       [
@@ -241,7 +241,7 @@ function evaluateScsi(scsi: SmartctlXallResult["scsi"]): EvaluatedAttribute[] {
       [
         `${direction}_errors_corrected_by_rereads_rewrites`,
         counters?.errorsCorrectedByRereadsRewrites,
-        0,
+        NO_THRESHOLD,
       ],
       [
         `${direction}_total_errors_corrected`,

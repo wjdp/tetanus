@@ -14,7 +14,7 @@ export const DEFECT_ATTRIBUTES: ReadonlySet<string> = new Set([
 ]);
 
 // Bump when classification, transforms or bucket rules change so stored statuses are recomputed at boot.
-export const SMART_POLICY_VERSION = 2;
+export const SMART_POLICY_VERSION = 3;
 
 export function attributeClass(attrId: string | number): AttributeClass {
   return DEFECT_ATTRIBUTES.has(String(attrId)) ? "defect" : "context";
