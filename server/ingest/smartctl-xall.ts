@@ -184,6 +184,10 @@ function extractScsi(json: Json): ScsiInfo | undefined {
   return scsi;
 }
 
+const NVME_SELF_TEST_FAILURES = new Set([5, 6, 7]);
+const SCSI_SELF_TEST_FAILURES = new Set([3, 4, 5, 6, 7]);
+const SCSI_SELF_TEST_KEY = /^scsi_self_test_\d+$/;
+
 function extractSelfTests(json: Json): SelfTestEntry[] | undefined {
   const entries: SelfTestEntry[] = [];
 
@@ -199,7 +203,7 @@ function extractSelfTests(json: Json): SelfTestEntry[] | undefined {
       entries.push({
         type: type?.string as string | undefined,
         status: status?.string as string | undefined,
-        passed: Boolean(status?.passed),
+        passed: status?.passed !== false,
         lifetimeHours: row.lifetime_hours as number | undefined,
         ...(row.lba !== undefined ? { lba: row.lba as number } : {}),
       });
@@ -216,11 +220,28 @@ function extractSelfTests(json: Json): SelfTestEntry[] | undefined {
       entries.push({
         type: code?.string as string | undefined,
         status: result?.string as string | undefined,
-        passed: result?.value === 0,
+        passed: !NVME_SELF_TEST_FAILURES.has(result?.value as number),
         lifetimeHours: row.power_on_hours as number | undefined,
         ...(row.lba !== undefined ? { lba: row.lba as number } : {}),
       });
     }
+  }
+
+  for (const [key, value] of Object.entries(json)) {
+    if (!SCSI_SELF_TEST_KEY.test(key)) continue;
+    const row = value as Json;
+    const code = row.code as Json | undefined;
+    const result = row.result as Json | undefined;
+    const powerOnTime = row.power_on_time as Json | undefined;
+    const lba = row.lba_first_failure as Json | number | undefined;
+    const lbaValue = typeof lba === "number" ? lba : lba?.value;
+    entries.push({
+      type: code?.string as string | undefined,
+      status: result?.string as string | undefined,
+      passed: !SCSI_SELF_TEST_FAILURES.has(result?.value as number),
+      lifetimeHours: powerOnTime?.hours as number | undefined,
+      ...(typeof lbaValue === "number" ? { lba: lbaValue } : {}),
+    });
   }
 
   return entries.length > 0 ? entries : undefined;

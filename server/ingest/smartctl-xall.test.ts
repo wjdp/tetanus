@@ -75,10 +75,61 @@ describe("smartctl-xall parser", () => {
       {
         type: "Extended offline",
         status: "Aborted by host",
-        passed: false,
+        passed: true,
         lifetimeHours: 0,
       },
     ]);
+  });
+
+  it("marks only self-tests that completed with a failure as not passed", () => {
+    const body = readFixture("scrutiny/smart-fail2.json");
+    const { data } = parse(body, {});
+    expect(data.selfTests).toContainEqual({
+      type: "Extended offline",
+      status: "Completed: read failure",
+      passed: false,
+      lifetimeHours: 4,
+      lba: 104870168,
+    });
+  });
+
+  it("reads the SCSI self-test log", () => {
+    const body = readFixture("mars/smartctl/xall-sdj.json");
+    const { data } = parse(body, {});
+    expect(data.selfTests?.length).toBeGreaterThan(0);
+    for (const entry of data.selfTests ?? []) {
+      expect(entry).toMatchObject({
+        type: expect.stringMatching(/^Background (short|long)$/),
+        status: "Completed",
+        passed: true,
+        lifetimeHours: expect.any(Number),
+      });
+    }
+  });
+
+  it("does not count aborted NVMe self-tests as failures", () => {
+    const body = JSON.stringify({
+      nvme_self_test_log: {
+        table: [
+          {
+            self_test_code: { value: 2, string: "Extended" },
+            self_test_result: { value: 2, string: "Aborted: Controller Reset" },
+            power_on_hours: 10,
+          },
+          {
+            self_test_code: { value: 1, string: "Short" },
+            self_test_result: {
+              value: 7,
+              string: "Completed: failed segments",
+            },
+            power_on_hours: 9,
+            lba: 4096,
+          },
+        ],
+      },
+    });
+    const { data } = parse(body, {});
+    expect(data.selfTests?.map((entry) => entry.passed)).toEqual([true, false]);
   });
 
   it("parses an NVMe drive", () => {
