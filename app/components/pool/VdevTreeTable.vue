@@ -2,6 +2,7 @@
 import type { TableColumn } from "@nuxt/ui";
 import { describeDisk } from "#shared/disk";
 import {
+  capacityColour,
   DEVICE_STATUS_VOCABULARY,
   STATUS_TEXT_CLASS,
   vdevTypeVocabulary,
@@ -67,6 +68,11 @@ const nameClass = (node: PoolVdev) => {
     ? "text-toned text-sm"
     : "text-highlighted text-sm";
 };
+
+const allocPercent = (node: PoolVdev) =>
+  node.allocBytes !== null && node.sizeBytes
+    ? Math.round((node.allocBytes / node.sizeBytes) * 100)
+    : null;
 
 const { formatZfsBytes } = useZfsByteSystem();
 </script>
@@ -223,21 +229,39 @@ const { formatZfsBytes } = useZfsByteSystem();
       </span>
     </template>
     <template #used-cell="{ row }">
-      <span
+      <div
         v-if="row.original.kind === 'vdev' && row.original.node.sizeBytes !== null"
-        class="text-muted tabular whitespace-nowrap"
+        class="-my-1 flex flex-col gap-1"
       >
-        {{ formatZfsBytes(row.original.node.allocBytes) }} /
-        {{ formatZfsBytes(row.original.node.sizeBytes) }}
-      </span>
+        <span
+          class="text-muted tabular whitespace-nowrap"
+          data-testid="vdev-alloc"
+        >
+          {{ formatZfsBytes(row.original.node.allocBytes) }} /
+          {{ formatZfsBytes(row.original.node.sizeBytes) }}
+        </span>
+        <UProgress
+          v-if="allocPercent(row.original.node) !== null"
+          :model-value="allocPercent(row.original.node)"
+          :color="capacityColour(allocPercent(row.original.node))"
+          size="2xs"
+          data-testid="vdev-alloc-bar"
+        />
+      </div>
     </template>
     <template #frag-cell="{ row }">
-      <span
+      <div
         v-if="row.original.kind === 'vdev' && row.original.node.frag !== null"
-        class="text-muted tabular"
+        class="-my-1 flex min-w-12 flex-col gap-1"
       >
-        {{ row.original.node.frag }} %
-      </span>
+        <span class="text-muted tabular">{{ row.original.node.frag }} %</span>
+        <UProgress
+          :model-value="row.original.node.frag"
+          color="neutral"
+          size="2xs"
+          data-testid="vdev-frag-bar"
+        />
+      </div>
     </template>
     <template #expanded="{ row }">
       <PoolVdevHistory
