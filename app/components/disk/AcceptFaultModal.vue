@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AcceptanceKind } from "#shared/smart/status";
+import { SUBSTITUTE_SOURCE_LABELS } from "#shared/smart/substituteDefects";
 import {
   acceptanceSummary,
   type HistoryPoint,
@@ -62,10 +63,15 @@ watch(
     note.value = "";
     kind.value = props.kind;
     history.value = [];
-    loadHistory(attrId);
+    if (!props.attribute?.source) loadHistory(attrId);
   },
   { immediate: true },
 );
+
+const substituteSource = computed(() => {
+  const source = props.attribute?.source;
+  return source ? SUBSTITUTE_SOURCE_LABELS[source] : null;
+});
 
 const unit = computed(() => props.attribute?.metadata?.transformValueUnit);
 const referenceTime = computed(() =>
@@ -78,7 +84,7 @@ const withUnit = (value: number) => {
 };
 
 const references = computed(() =>
-  REFERENCE_AGES_DAYS.map((days) => {
+  (substituteSource.value ? [] : REFERENCE_AGES_DAYS).map((days) => {
     const value = referenceValue(history.value, days, referenceTime.value);
     return {
       label: `${days} d ago`,
@@ -87,17 +93,19 @@ const references = computed(() =>
   }),
 );
 
-const summary = computed(() =>
-  props.attribute
-    ? acceptanceSummary(
-        history.value,
-        props.attribute.transformedValue,
-        props.attribute.trend,
-        referenceTime.value,
-        unit.value,
-      )
-    : "",
-);
+const summary = computed(() => {
+  if (!props.attribute) return "";
+  if (substituteSource.value) {
+    return `${withUnit(props.attribute.transformedValue)}, read from ${substituteSource.value}; no history is kept`;
+  }
+  return acceptanceSummary(
+    history.value,
+    props.attribute.transformedValue,
+    props.attribute.trend,
+    referenceTime.value,
+    unit.value,
+  );
+});
 
 const failureRate = computed(() => {
   const rate = props.attribute?.failureRate;
@@ -171,6 +179,8 @@ const confirm = async () => {
               {{ withUnit(attribute.transformedValue) }}
             </span>
             <UBadge
+              v-if="!substituteSource"
+              data-testid="acceptance-trend"
               :color="ATTRIBUTE_TREND_COLOUR[attribute.trend]"
               variant="soft"
               size="sm"
