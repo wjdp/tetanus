@@ -93,6 +93,7 @@ interface FaultKindDefinition {
   actions: readonly FaultAction[];
   upgradeCommand?: true;
   title(data: FaultData, now: number): string;
+  hint?(data: FaultData): string | null;
 }
 
 const text = (value: unknown) =>
@@ -111,6 +112,14 @@ function hostDegradedTitle(data: FaultData) {
   const subject = `${requirement?.label ?? text(data.tool)} ${text(data.version)}`;
   const older = `${subject} is older than ${text(data.minVersion)}`;
   return requirement ? `${older}: ${requirement.missing}` : older;
+}
+
+function smartUnavailableHint(data: FaultData) {
+  if (data.reason === "unreadable")
+    return "Often a USB bridge that needs a smartctl device type.";
+  if (data.reason === "disabled")
+    return "Turn it on with smartctl -s on <device>.";
+  return null;
 }
 
 function smartAttributeTitle(data: FaultData) {
@@ -416,9 +425,9 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     subjectType: "disk",
     severities: ["error"],
     trigger:
-      "The drive's device statistics report that its helium pressure threshold has tripped.",
+      "The drive's Seagate FARM log reports that its helium pressure threshold has tripped.",
     resolves:
-      "The drive no longer reports the helium pressure threshold as tripped.",
+      "The drive's FARM log no longer reports the helium pressure threshold as tripped.",
     lifetime: "persistent",
     actions: ["acknowledge", "accept", "clear"],
     title: () => "Helium pressure threshold tripped",
@@ -435,6 +444,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "persistent",
     actions: ["acknowledge", "accept", "clear"],
     title: smartUnavailableTitle,
+    hint: smartUnavailableHint,
   },
   "error-log-growth": {
     label: "Error log growth",
@@ -728,6 +738,13 @@ export function faultTitle(
   now = Date.now(),
 ): string {
   return FAULT_KIND_DEFINITIONS[fault.kind].title(fault.data, now);
+}
+
+export function faultHint(fault: {
+  kind: FaultKind;
+  data: FaultData;
+}): string | null {
+  return FAULT_KIND_DEFINITIONS[fault.kind].hint?.(fault.data) ?? null;
 }
 
 export function allowedActions(fault: {

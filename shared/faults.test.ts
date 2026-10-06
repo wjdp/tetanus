@@ -4,6 +4,7 @@ import {
   allowedActions,
   FAULT_KINDS,
   type FaultKind,
+  faultHint,
   faultTitle,
   thresholdSeverity,
 } from "#shared/faults";
@@ -327,6 +328,22 @@ describe("faultTitle", () => {
     ],
   ] as const)("renders %s", (kind, data, title) => {
     expect(faultTitle({ kind, data }, now)).toBe(title);
+  });
+});
+
+describe("faultHint", () => {
+  it.each([
+    ["unreadable", "Often a USB bridge that needs a smartctl device type."],
+    ["disabled", "Turn it on with smartctl -s on <device>."],
+    ["unsupported", null],
+  ])("gives %s SMART the hint %s", (reason, hint) => {
+    expect(faultHint({ kind: "smart-unavailable", data: { reason } })).toBe(
+      hint,
+    );
+  });
+
+  it("is null for a kind without a hint", () => {
+    expect(faultHint({ kind: "helium-tripped", data: {} })).toBeNull();
   });
 });
 
