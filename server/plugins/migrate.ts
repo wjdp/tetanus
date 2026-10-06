@@ -1,9 +1,12 @@
 import type { TaskName } from "#shared/tasks";
 import { databasePath, db, sqlite } from "~~/server/database/client";
 import { describeMigrations, runMigrations } from "~~/server/database/migrate";
-import { backfillAtaSsdAttributesOnce } from "~~/server/services/ataSsdAttributesBackfill";
+import { backfillAtaSsdAttributesIfStale } from "~~/server/services/ataSsdAttributesBackfill";
 import { ensureSettings } from "~~/server/services/settings";
-import { applySmartPolicyIfStale } from "~~/server/services/smartPolicy";
+import {
+  applySmartPolicyIfStale,
+  reapplySmartPolicy,
+} from "~~/server/services/smartPolicy";
 import { enqueueUnlessPending } from "~~/server/tasks/queueable/alertsTick";
 import { isDemo } from "~~/server/utils/demo";
 
@@ -25,8 +28,10 @@ export default defineNitroPlugin(() => {
       console.log(describeMigrations(report, databasePath()));
     }
     const settings = ensureSettings();
-    applySmartPolicyIfStale();
-    backfillAtaSsdAttributesOnce();
+    const ataSsdAttributesBackfilled = backfillAtaSsdAttributesIfStale();
+    if (!applySmartPolicyIfStale() && ataSsdAttributesBackfilled) {
+      reapplySmartPolicy();
+    }
     if (!isDemo()) {
       const { replicationsBackfilledAt, faultsBackfilledAt } = settings.config;
       void queueBackfills([

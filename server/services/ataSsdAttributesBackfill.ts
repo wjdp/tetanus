@@ -1,5 +1,6 @@
 import { eq, isNotNull } from "drizzle-orm";
 import {
+  ATA_SSD_ATTRIBUTES_VERSION,
   type AtaSsdDisk,
   ataSsdAttributesFrom,
 } from "#shared/smart/ataSsdAttributes";
@@ -8,7 +9,7 @@ import { disk } from "~~/server/database/schema";
 import { parse as parseSmartctl } from "~~/server/ingest/smartctl-xall";
 import {
   ensureSettings,
-  setAtaSsdAttributesBackfilledAt,
+  setAtaSsdAttributesBackfilled,
 } from "~~/server/services/settings";
 
 interface BackfillCandidate extends AtaSsdDisk {
@@ -31,8 +32,9 @@ function backfillDisk({ id, latestRaw, ...hardware }: BackfillCandidate) {
   }
 }
 
-export function backfillAtaSsdAttributesOnce(now = new Date()): boolean {
-  if (ensureSettings().config.ataSsdAttributesBackfilledAt) return false;
+export function backfillAtaSsdAttributesIfStale(now = new Date()): boolean {
+  const storedVersion = ensureSettings().config.ataSsdAttributesVersion ?? 0;
+  if (storedVersion >= ATA_SSD_ATTRIBUTES_VERSION) return false;
   const filled = db.transaction(() => {
     const candidates = db
       .select({
@@ -46,9 +48,11 @@ export function backfillAtaSsdAttributesOnce(now = new Date()): boolean {
       .where(isNotNull(disk.latestRaw))
       .all();
     const count = candidates.filter(backfillDisk).length;
-    setAtaSsdAttributesBackfilledAt(now);
+    setAtaSsdAttributesBackfilled(now, ATA_SSD_ATTRIBUTES_VERSION);
     return count;
   });
-  console.log(`ATA SSD attributes backfilled for ${filled} disks`);
+  console.log(
+    `ATA SSD attributes v${ATA_SSD_ATTRIBUTES_VERSION} backfilled for ${filled} disks`,
+  );
   return true;
 }

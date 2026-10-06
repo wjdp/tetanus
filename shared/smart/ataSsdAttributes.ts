@@ -13,6 +13,9 @@ export const ATA_LIFE_REMAINING_ATTRIBUTES = [
   "Percent_Lifetime_Remain",
 ] as const;
 
+/** Bump when `ataSsdAttributesFrom` changes so stored disks are re-derived at boot. */
+export const ATA_SSD_ATTRIBUTES_VERSION = 1;
+
 export const ATA_WRITTEN_ATTRIBUTE_ID = "241";
 
 export interface AtaWrittenAttribute {
