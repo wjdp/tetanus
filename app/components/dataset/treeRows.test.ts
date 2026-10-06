@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastSegment, visibleTreeRows } from "./treeRows";
+import { lastSegment, sortSiblings, visibleTreeRows } from "./treeRows";
 
 const dataset = (
   id: number,
@@ -66,5 +66,33 @@ describe("lastSegment", () => {
   it("takes the part after the last slash", () => {
     expect(lastSegment("tank/media/photos")).toBe("photos");
     expect(lastSegment("tank")).toBe("tank");
+  });
+});
+
+describe("sortSiblings", () => {
+  const byNameDescending = (a: { name: string }, b: { name: string }) =>
+    b.name.localeCompare(a.name);
+
+  it("reorders siblings and keeps each dataset under its parent", () => {
+    expect(
+      sortSiblings(datasets, byNameDescending).map((row) => row.name),
+    ).toEqual([
+      "tank",
+      "tank/vm",
+      "tank/old",
+      "tank/old/child",
+      "tank/media",
+      "tank/media/photos",
+    ]);
+  });
+
+  it("treats a dataset whose parent is not listed as a root", () => {
+    const orphans = [
+      dataset(3, "tank/media/photos", 2),
+      dataset(4, "tank/vm", 1),
+    ];
+    expect(
+      sortSiblings(orphans, byNameDescending).map((row) => row.name),
+    ).toEqual(["tank/vm", "tank/media/photos"]);
   });
 });

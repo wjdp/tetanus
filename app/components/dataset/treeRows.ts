@@ -54,3 +54,24 @@ export function visibleTreeRows<Dataset extends TreeDataset>(
     ),
   ];
 }
+
+/** Reorders siblings under each parent, keeping every dataset below its parent. */
+export function sortSiblings<Dataset extends TreeDataset>(
+  datasets: Dataset[],
+  compare: (a: Dataset, b: Dataset) => number,
+): Dataset[] {
+  const ids = new Set(datasets.map((dataset) => dataset.id));
+  const childrenOf = new Map<number | null, Dataset[]>();
+  for (const dataset of datasets) {
+    const parentId =
+      dataset.parentId !== null && ids.has(dataset.parentId)
+        ? dataset.parentId
+        : null;
+    childrenOf.set(parentId, [...(childrenOf.get(parentId) ?? []), dataset]);
+  }
+  const subtree = (parentId: number | null): Dataset[] =>
+    [...(childrenOf.get(parentId) ?? [])]
+      .sort(compare)
+      .flatMap((dataset) => [dataset, ...subtree(dataset.id)]);
+  return subtree(null);
+}

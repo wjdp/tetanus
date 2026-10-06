@@ -1,7 +1,19 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 import { datasetPath } from "#shared/entityPaths";
-import { lastSegment, type TreeRow, visibleTreeRows } from "./treeRows";
+import {
+  DATASET_COLUMNS,
+  type DatasetColumn,
+  type DatasetSorting,
+  datasetComparator,
+  nextSorting,
+} from "./columns";
+import {
+  lastSegment,
+  sortSiblings,
+  type TreeRow,
+  visibleTreeRows,
+} from "./treeRows";
 import type { DatasetTreeRow } from "./types";
 
 const props = defineProps<{
@@ -14,8 +26,17 @@ const props = defineProps<{
 type Row = TreeRow<DatasetTreeRow>;
 
 const collapsedIds = ref(new Set<number>());
+const sorting = ref<DatasetSorting | null>(null);
 
-const rows = computed(() => visibleTreeRows(props.datasets, collapsedIds.value));
+const sortedDatasets = computed(() =>
+  sorting.value
+    ? sortSiblings(props.datasets, datasetComparator(sorting.value))
+    : props.datasets,
+);
+
+const rows = computed(() =>
+  visibleTreeRows(sortedDatasets.value, collapsedIds.value),
+);
 
 const toggle = (id: number) => {
   const next = new Set(collapsedIds.value);
@@ -23,125 +44,231 @@ const toggle = (id: number) => {
   collapsedIds.value = next;
 };
 
-const columns: TableColumn<Row>[] = [
-  { id: "name", header: "Name" },
-  { id: "type", header: "Type" },
-  { id: "used", header: "Used" },
-  { id: "referenced", header: "Referenced" },
-  { id: "ratio", header: "Ratio" },
-  { id: "quota", header: "Quota" },
-  { id: "snapshots", header: "Snapshots" },
-  { id: "newest", header: "Newest snapshot" },
-  { id: "replication", header: "Replication" },
-];
+const collapsibleIds = computed(() => {
+  const parentIds = new Set(props.datasets.map((dataset) => dataset.parentId));
+  return props.datasets
+    .filter((dataset) => dataset.parentId !== null && parentIds.has(dataset.id))
+    .map((dataset) => dataset.id);
+});
+
+const expandAll = () => {
+  collapsedIds.value = new Set();
+};
+
+const collapseAll = () => {
+  collapsedIds.value = new Set(collapsibleIds.value);
+};
+
+const UButton = resolveComponent("UButton");
+
+const sortIcon = (column: DatasetColumn) => {
+  if (sorting.value?.id !== column.id) return "i-lucide-arrow-up-down";
+  return sorting.value.desc ? "i-lucide-arrow-down" : "i-lucide-arrow-up";
+};
+
+const sortableHeader = (column: DatasetColumn) => () =>
+  h(UButton, {
+    color: "neutral",
+    variant: "ghost",
+    size: "xs",
+    label: column.label,
+    class: "-mx-2",
+    trailingIcon: sortIcon(column),
+    "aria-label": `Sort by ${column.label}`,
+    "data-testid": `dataset-sort-${column.id}`,
+    onClick: () => {
+      sorting.value = nextSorting(sorting.value, column);
+    },
+  });
+
+const columns = computed<TableColumn<Row>[]>(() =>
+  DATASET_COLUMNS.map((column) => ({
+    id: column.id,
+    header: column.sortValue ? sortableHeader(column) : column.label,
+    meta: { class: { th: column.cellClass, td: column.cellClass } },
+  })),
+);
+
+const isEncrypted = (dataset: DatasetTreeRow) =>
+  dataset.encryption !== null && dataset.encryption !== "off";
 
 const formatRatio = (ratio: number | null) =>
   ratio === null ? "—" : `${ratio.toFixed(2)}×`;
+
+const isCompressing = (dataset: DatasetTreeRow) =>
+  dataset.compressRatio !== null && dataset.compressRatio >= 1.005;
 
 const snapshotAge = (at: string | null) =>
   at ? `${formatDuration(props.now - new Date(at).getTime())} ago` : "—";
 
 const { formatZfsBytes } = useZfsByteSystem();
+
+const formatGrowth = (bytes: number) => {
+  if (bytes === 0) return formatZfsBytes(0);
+  return `${bytes > 0 ? "+" : "−"}${formatZfsBytes(Math.abs(bytes))}`;
+};
+
+const limits = (dataset: DatasetTreeRow) =>
+  [
+    dataset.quota && `${formatZfsBytes(dataset.quota)} quota`,
+    dataset.refQuota && `${formatZfsBytes(dataset.refQuota)} refquota`,
+    dataset.reservation && `${formatZfsBytes(dataset.reservation)} reserved`,
+  ].filter((line): line is string => Boolean(line));
 </script>
 
 <template>
-  <UTable
-    :data="rows"
-    :columns="columns"
-    :loading="loading"
-    empty="No datasets reported."
-    :meta="{
-      class: {
-        tr: (row) => (row.original.dataset.present ? '' : 'opacity-50'),
-      },
-    }"
-    data-testid="dataset-tree"
-  >
-    <template #name-cell="{ row }">
-      <div
-        class="flex items-center gap-1"
-        :style="{ paddingLeft: `${row.original.dataset.depth * 1.25}rem` }"
-        data-testid="dataset-name"
-        :data-depth="row.original.dataset.depth"
-      >
+  <div class="@container flex flex-col gap-2">
+    <div class="flex justify-end gap-2">
+      <UFieldGroup size="sm">
         <UButton
-          v-if="row.original.hasChildren"
           color="neutral"
-          variant="ghost"
-          size="xs"
-          :icon="
-            row.original.collapsed
-              ? 'i-lucide-chevron-right'
-              : 'i-lucide-chevron-down'
-          "
-          :aria-label="`${row.original.collapsed ? 'Expand' : 'Collapse'} ${row.original.dataset.name}`"
-          :aria-expanded="!row.original.collapsed"
-          @click="toggle(row.original.dataset.id)"
+          variant="outline"
+          icon="i-lucide-chevrons-up-down"
+          label="Expand all"
+          :disabled="collapsedIds.size === 0"
+          data-testid="dataset-expand-all"
+          @click="expandAll"
         />
-        <span v-else class="inline-block w-6" />
-        <NuxtLink
-          :to="datasetPath(poolPath, row.original.dataset.name)"
-          :title="row.original.dataset.name"
-          class="text-highlighted font-mono text-sm hover:underline"
-        >
-          {{ lastSegment(row.original.dataset.name) }}
-        </NuxtLink>
-        <UBadge
-          v-if="!row.original.dataset.present"
+        <UButton
           color="neutral"
-          variant="subtle"
-          size="sm"
+          variant="outline"
+          icon="i-lucide-chevrons-down-up"
+          label="Collapse all"
+          :disabled="collapsibleIds.length === 0"
+          data-testid="dataset-collapse-all"
+          @click="collapseAll"
+        />
+      </UFieldGroup>
+    </div>
+    <UTable
+      :data="rows"
+      :columns="columns"
+      :loading="loading"
+      empty="No datasets reported."
+      :meta="{
+        class: {
+          tr: (row) => (row.original.dataset.present ? '' : 'opacity-50'),
+        },
+      }"
+      data-testid="dataset-tree"
+    >
+      <template #name-cell="{ row }">
+        <div
+          class="flex items-center gap-1"
+          :style="{ paddingLeft: `${row.original.dataset.depth * 1.25}rem` }"
+          data-testid="dataset-name"
+          :data-depth="row.original.dataset.depth"
         >
-          destroyed
-        </UBadge>
-      </div>
-    </template>
-    <template #type-cell="{ row }">
-      <UBadge
-        v-if="row.original.dataset.type === 'volume'"
-        color="info"
-        variant="subtle"
-        size="sm"
-      >
-        volume
-      </UBadge>
-      <span v-else class="text-muted">{{ row.original.dataset.type }}</span>
-    </template>
-    <template #used-cell="{ row }">
-      <span class="tabular">{{ formatZfsBytes(row.original.dataset.used) }}</span>
-    </template>
-    <template #referenced-cell="{ row }">
-      <span class="text-muted tabular">
-        {{ formatZfsBytes(row.original.dataset.referenced) }}
-      </span>
-    </template>
-    <template #ratio-cell="{ row }">
-      <span class="text-muted tabular">
-        {{ formatRatio(row.original.dataset.compressRatio) }}
-      </span>
-    </template>
-    <template #quota-cell="{ row }">
-      <span class="text-muted tabular">
-        {{ formatZfsBytes(row.original.dataset.quota) }}
-      </span>
-    </template>
-    <template #snapshots-cell="{ row }">
-      <span
-        class="tabular"
-        :class="row.original.dataset.snapshotCount ? '' : 'text-dimmed'"
-      >
-        {{ row.original.dataset.snapshotCount }}
-      </span>
-    </template>
-    <template #newest-cell="{ row }">
-      <span class="text-muted tabular">
-        {{ snapshotAge(row.original.dataset.latestSnapshotAt) }}
-      </span>
-    </template>
-    <template #replication-cell="{ row }">
-      <ReplicationDatasetLinks
-        :replications="row.original.dataset.replications"
-      />
-    </template>
-  </UTable>
+          <UButton
+            v-if="row.original.hasChildren"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            :icon="
+              row.original.collapsed
+                ? 'i-lucide-chevron-right'
+                : 'i-lucide-chevron-down'
+            "
+            :aria-label="`${row.original.collapsed ? 'Expand' : 'Collapse'} ${row.original.dataset.name}`"
+            :aria-expanded="!row.original.collapsed"
+            @click="toggle(row.original.dataset.id)"
+          />
+          <span v-else class="inline-block w-6 shrink-0" />
+          <NuxtLink
+            :to="datasetPath(poolPath, row.original.dataset.name)"
+            :title="row.original.dataset.name"
+            class="text-highlighted max-w-40 truncate font-mono text-sm hover:underline @3xl:max-w-64"
+          >
+            {{ lastSegment(row.original.dataset.name) }}
+          </NuxtLink>
+          <UIcon
+            v-if="isEncrypted(row.original.dataset)"
+            name="i-lucide-lock"
+            class="text-dimmed size-3.5 shrink-0"
+            :title="`Encrypted · ${row.original.dataset.encryption}`"
+            :aria-label="`Encrypted · ${row.original.dataset.encryption}`"
+            data-testid="dataset-encrypted"
+          />
+          <UBadge
+            v-if="row.original.dataset.type === 'volume'"
+            color="info"
+            variant="subtle"
+            size="sm"
+          >
+            volume
+          </UBadge>
+          <UBadge
+            v-if="!row.original.dataset.present"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+          >
+            destroyed
+          </UBadge>
+        </div>
+      </template>
+      <template #used-cell="{ row }">
+        <span class="tabular whitespace-nowrap">
+          {{ formatZfsBytes(row.original.dataset.used) }}
+        </span>
+      </template>
+      <template #growth-cell="{ row }">
+        <span
+          v-if="row.original.dataset.growth"
+          class="tabular whitespace-nowrap"
+          :class="row.original.dataset.growth.used ? 'text-muted' : 'text-dimmed'"
+          :title="`Since ${formatDate(row.original.dataset.growth.sinceAt)}`"
+          data-testid="dataset-growth"
+        >
+          {{ formatGrowth(row.original.dataset.growth.used) }}
+        </span>
+        <span v-else class="text-dimmed">—</span>
+      </template>
+      <template #compression-cell="{ row }">
+        <span
+          class="tabular whitespace-nowrap"
+          :class="isCompressing(row.original.dataset) ? 'text-muted' : 'text-dimmed'"
+          data-testid="dataset-compression"
+        >
+          {{ formatRatio(row.original.dataset.compressRatio) }}
+          <span v-if="row.original.dataset.compression" class="text-dimmed">
+            {{ row.original.dataset.compression }}
+          </span>
+        </span>
+      </template>
+      <template #limits-cell="{ row }">
+        <span
+          class="text-muted tabular flex flex-col whitespace-nowrap"
+          data-testid="dataset-limits"
+        >
+          <span v-for="line in limits(row.original.dataset)" :key="line">
+            {{ line }}
+          </span>
+          <span
+            v-if="limits(row.original.dataset).length === 0"
+            class="text-dimmed"
+          >
+            —
+          </span>
+        </span>
+      </template>
+      <template #snapshots-cell="{ row }">
+        <span
+          v-if="row.original.dataset.snapshotCount"
+          class="tabular whitespace-nowrap"
+        >
+          {{ row.original.dataset.snapshotCount }}
+          <span class="text-muted">
+            · {{ snapshotAge(row.original.dataset.latestSnapshotAt) }}
+          </span>
+        </span>
+        <span v-else class="text-dimmed">—</span>
+      </template>
+      <template #replication-cell="{ row }">
+        <ReplicationDatasetLinks
+          :replications="row.original.dataset.replications"
+        />
+      </template>
+    </UTable>
+  </div>
 </template>

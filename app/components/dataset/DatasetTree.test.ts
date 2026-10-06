@@ -48,6 +48,14 @@ const datasets = [
   dataset(1, "tank", null),
   dataset(2, "tank/media", 1, {
     quota: 5e12,
+    reservation: 10 * 2 ** 30,
+    encryption: "aes-256-gcm",
+    growth: {
+      used: 2 ** 30,
+      data: 2 ** 30,
+      snapshots: 0,
+      sinceAt: "2026-08-29T12:00:00.000Z",
+    },
     snapshotCount: 12,
     latestSnapshotAt: "2026-09-28T09:00:00.000Z",
   }),
@@ -57,7 +65,11 @@ const datasets = [
       { id: 9, role: "target", status: "ok" },
     ],
   }),
-  dataset(4, "tank/vm-disk", 1, { type: "volume", mountpoint: null }),
+  dataset(4, "tank/vm-disk", 1, {
+    type: "volume",
+    mountpoint: null,
+    used: 3e12,
+  }),
   dataset(5, "tank/old", 1, { present: false }),
 ];
 
@@ -87,14 +99,61 @@ describe("DatasetTree", () => {
     expect(photos.attributes("title")).toBe("tank/media/photos");
   });
 
-  it("shows ratio, quota, snapshot count, age and volume badge", async () => {
+  it("shows compression, limits, snapshots and the volume badge", async () => {
     const [, media, , volume] = rowTexts(await mountTree());
 
     expect(media).toContain("1.01×");
-    expect(media).toContain("4.55 TiB");
-    expect(media).toContain("12");
-    expect(media).toContain("3 h ago");
+    expect(media).toContain("lz4");
+    expect(media).toContain("4.55 TiB quota");
+    expect(media).toContain("10.0 GiB reserved");
+    expect(media).toMatch(/12\s*· 3 h ago/);
     expect(volume).toContain("volume");
+  });
+
+  it("marks encrypted datasets with their cipher", async () => {
+    const tree = await mountTree();
+    const locks = tree.findAll('[data-testid="dataset-encrypted"]');
+
+    expect(locks).toHaveLength(1);
+    expect(locks[0].attributes("title")).toBe("Encrypted · aes-256-gcm");
+  });
+
+  it("shows growth with its sign and baseline date", async () => {
+    const tree = await mountTree();
+    const growth = tree.get('[data-testid="dataset-growth"]');
+
+    expect(growth.text()).toBe("+1.00 GiB");
+    expect(growth.attributes("title")).toContain("Since");
+  });
+
+  it("sorts siblings by a column, then reverses, then restores tree order", async () => {
+    const tree = await mountTree();
+    const order = () =>
+      tree.findAll('[data-testid="dataset-name"] a').map((link) => link.text());
+    const sortByUsed = () =>
+      tree.get('[data-testid="dataset-sort-used"]').trigger("click");
+
+    await sortByUsed();
+    expect(order()).toEqual(["tank", "vm-disk", "media", "photos", "old"]);
+    await sortByUsed();
+    expect(order()).toEqual(["tank", "media", "photos", "vm-disk", "old"]);
+    await sortByUsed();
+    expect(order()).toEqual(["tank", "media", "photos", "vm-disk", "old"]);
+  });
+
+  it("collapses everything below the pool's children, and expands again", async () => {
+    const tree = await mountTree();
+
+    await tree.get('[data-testid="dataset-collapse-all"]').trigger("click");
+    expect(tree.find('a[href="/zfs/nas1/tank/media"]').exists()).toBe(true);
+    expect(tree.find('a[href="/zfs/nas1/tank/media/photos"]').exists()).toBe(
+      false,
+    );
+
+    await tree.get('[data-testid="dataset-expand-all"]').trigger("click");
+    expect(tree.find('a[href="/zfs/nas1/tank/media/photos"]').exists()).toBe(
+      true,
+    );
   });
 
   it("collapses and expands children", async () => {
