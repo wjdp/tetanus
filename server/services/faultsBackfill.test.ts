@@ -399,6 +399,47 @@ describe("backfillFaults", () => {
     ).toEqual([[at(HOUR_MS), at(2 * HOUR_MS)]]);
   });
 
+  it("replays capacity changes, resolving on acknowledgement and on disposal", async () => {
+    const a = insertDisk("C1", "dead");
+    const change = { from: 16_000_000_000_000, to: 15_000_000_000_000 };
+    event("disk", a, "capacity-changed", change, HOUR_MS);
+    faultEvent(
+      { type: "disk", id: a },
+      "fault-resolved",
+      {
+        kind: "capacity-changed",
+        key: String(a),
+        from: "open",
+        to: "resolved",
+        note: "reformatted",
+      },
+      2 * HOUR_MS,
+    );
+    event("disk", a, "capacity-changed", change, 3 * HOUR_MS);
+    const disposal = { kind: "rma", on: "2026-09-01" } as const;
+    db.update(disk).set({ disposal }).where(eq(disk.id, a)).run();
+    event("disk", a, "disposed", { from: null, to: disposal }, 4 * HOUR_MS);
+
+    await backfillFaults(at(5 * HOUR_MS));
+
+    expect(
+      faultRows()
+        .filter((row) => row.kind === "capacity-changed")
+        .map((row) => [row.openedAt, row.resolvedAt, row.data]),
+    ).toEqual([
+      [
+        at(HOUR_MS),
+        at(2 * HOUR_MS),
+        { ...change, changedAt: at(HOUR_MS).toISOString() },
+      ],
+      [
+        at(3 * HOUR_MS),
+        at(4 * HOUR_MS),
+        { ...change, changedAt: at(3 * HOUR_MS).toISOString() },
+      ],
+    ]);
+  });
+
   it("replays leaf states, leaf errors and data errors into the ZFS kinds", async () => {
     const mars = upsertHostByName("mars", t0);
     const vault = db

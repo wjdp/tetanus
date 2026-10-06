@@ -327,6 +327,73 @@ describe("observing mars", () => {
   });
 });
 
+describe("capacity changes", () => {
+  const TB = 1_000_000_000_000;
+  const keys = [{ kind: "wwn" as const, value: "capacity-disk" }];
+  const later = new Date("2026-09-02T10:00:00Z");
+  let hostId: number;
+
+  beforeEach(() => {
+    flushDb();
+    hostId = upsertHostByName("mars", seenAt).id;
+  });
+
+  function observe(
+    receivedAt: Date,
+    capacityBytes: number | undefined,
+    hintBytes?: number,
+  ) {
+    return observeDisk({
+      hostId,
+      receivedAt,
+      keys,
+      identity: capacityBytes === undefined ? {} : { capacityBytes },
+      identityHints:
+        hintBytes === undefined ? undefined : { capacityBytes: hintBytes },
+    }) as DiskRow;
+  }
+
+  it("records a change and stores the new value", () => {
+    observe(seenAt, 16 * TB);
+    const row = observe(later, 15 * TB);
+    expect(row.capacityBytes).toBe(15 * TB);
+    expect(eventsOf(row.id, "capacity-changed")).toEqual([
+      expect.objectContaining({
+        title: "capacity changed from 16.0 TB to 15.0 TB",
+        data: { from: 16 * TB, to: 15 * TB },
+        at: later,
+      }),
+    ]);
+  });
+
+  it("records nothing when the capacity is unchanged", () => {
+    observe(seenAt, 16 * TB);
+    const row = observe(later, 16 * TB);
+    expect(eventsOf(row.id, "capacity-changed")).toEqual([]);
+  });
+
+  it("stores a change under the threshold without recording it", () => {
+    observe(seenAt, 16 * TB);
+    const row = observe(later, 16 * TB - 1_000_000);
+    expect(row.capacityBytes).toBe(16 * TB - 1_000_000);
+    expect(eventsOf(row.id, "capacity-changed")).toEqual([]);
+  });
+
+  it("does not treat the first observation as a change", () => {
+    observe(seenAt, undefined);
+    const row = observe(later, 16 * TB);
+    expect(row.capacityBytes).toBe(16 * TB);
+    expect(eventsOf(row.id, "capacity-changed")).toEqual([]);
+  });
+
+  it("ignores a differing hint", () => {
+    observe(seenAt, 16 * TB);
+    const row = observe(later, undefined, 15 * TB);
+    expect(row.capacityBytes).toBe(16 * TB);
+    expect(eventsOf(row.id, "capacity-changed")).toEqual([]);
+  });
+});
+
 describe("inferState", () => {
   const now = new Date("2026-09-10T10:00:00Z");
   const context = {

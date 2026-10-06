@@ -453,6 +453,18 @@ describe("DiskOverview", () => {
       );
     });
 
+    it("shows the nominal size when the disk is smaller than its spec", async () => {
+      const wrapper = await mountOverview({ capacityBytes: 7.5e12 });
+
+      expect(row(wrapper, "Capacity")).toBe("7.50 TB (nominal 8 TB)");
+    });
+
+    it("shows the plain capacity when it matches the spec", async () => {
+      const wrapper = await mountOverview();
+
+      expect(row(wrapper, "Capacity")).toBe("8.00 TB");
+    });
+
     it("says there is no match, naming the bare model", async () => {
       const wrapper = await mountOverview({ specs: null });
 

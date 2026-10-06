@@ -132,6 +132,24 @@ describe("Health scenarios", () => {
     });
   }, 60_000);
 
+  it("shrinks a disk and raises a capacity-changed fault", async () => {
+    const target = await diskWith("capacity-shrunk");
+    const before = target.capacityBytes as number;
+    await simulate(
+      "disk",
+      target.id,
+      "capacity-shrunk",
+      { percent: 10 },
+      LATER,
+    );
+
+    const after = (await listDisks(LATER)).find((row) => row.id === target.id);
+    expect(after?.capacityBytes).toBeLessThan(before * 0.95);
+    expect(liveFaults(target.id).map((fault) => fault.kind)).toContain(
+      "capacity-changed",
+    );
+  }, 60_000);
+
   it("wears out a SATA SSD", async () => {
     const target = (await listDisks(NOW)).find(
       (row) =>

@@ -254,6 +254,11 @@ function detectMissing(
     }));
 }
 
+const UNTIL_ACKNOWLEDGED_KINDS = new Set<FaultKind>([
+  "identity-conflict",
+  "capacity-changed",
+]);
+
 function wasAcknowledgedSince(kind: FaultKind, key: string, at: Date) {
   return db
     .select({ resolvedAt: fault.resolvedAt })
@@ -301,6 +306,36 @@ function detectIdentityConflicts({ disks }: DetectionContext): Detection[] {
         diskIds: entry.data.diskIds,
         others: describeDisks(otherDiskIds(entry.data.diskIds)),
         conflictAt: iso(entry.at),
+      },
+    });
+  }
+  return [...byKey.values()];
+}
+
+function detectCapacityChanges({ disks }: DetectionContext): Detection[] {
+  const disposedDiskIds = new Set(disks.filter(isDisposed).map(({ id }) => id));
+  const entries = db
+    .select()
+    .from(diaryEntry)
+    .where(eq(diaryEntry.eventType, "capacity-changed"))
+    .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
+    .all();
+  const byKey = new Map<string, Detection>();
+  for (const entry of entries) {
+    if (entry.subjectId === null) continue;
+    if (disposedDiskIds.has(entry.subjectId)) continue;
+    const key = String(entry.subjectId);
+    if (byKey.has(key)) continue;
+    if (wasAcknowledgedSince("capacity-changed", key, entry.at)) continue;
+    byKey.set(key, {
+      kind: "capacity-changed",
+      key,
+      subjectId: entry.subjectId,
+      severity: "warning",
+      data: {
+        from: entry.data.from,
+        to: entry.data.to,
+        changedAt: iso(entry.at),
       },
     });
   }
@@ -399,6 +434,7 @@ export function detectFaults(context: DetectionContext): FaultScan {
       ...detectInterfaceErrors(context),
       ...detectMissing(context, suppressedDiskIds),
       ...detectIdentityConflicts(context),
+      ...detectCapacityChanges(context),
       ...pools.detections,
       ...replications.detections,
       ...silent,
@@ -829,7 +865,9 @@ export function performFaultAction(
       return getFaultRow(id);
     }
     if (action === "clear") return setState(row, "open", "", now);
-    if (row.kind === "identity-conflict") return resolveFault(row, now, note);
+    if (UNTIL_ACKNOWLEDGED_KINDS.has(row.kind)) {
+      return resolveFault(row, now, note);
+    }
     return setState(
       row,
       action === "accept" ? "accepted" : "acknowledged",
