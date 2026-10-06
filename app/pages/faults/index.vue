@@ -139,9 +139,21 @@ const lastIngest = computed(() =>
 
 <template>
   <AppPanel title="Faults" class="flex max-w-5xl flex-col gap-6">
-    <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
-      Faults
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
+        Faults
+      </h1>
+      <UButton
+        to="/faults/reference"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        icon="i-lucide-book-open"
+        label="Reference"
+        class="ms-auto"
+        data-testid="fault-reference-link"
+      />
+    </div>
 
     <div class="flex flex-wrap items-center gap-2">
       <UTabs

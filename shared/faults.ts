@@ -1,4 +1,4 @@
-import { COLLECTOR_VERSION } from "#shared/collector";
+import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { formatDuration } from "#shared/hostFreshness";
 import { HOST_TOOL_REQUIREMENTS, type HostTool } from "#shared/hostTools";
 
@@ -77,8 +77,13 @@ export type FaultLifetime =
 export type FaultData = Record<string, unknown>;
 
 interface FaultKindDefinition {
+  label: string;
   category: FaultCategory;
   subjectType: FaultSubjectType;
+  severities: readonly FaultSeverity[];
+  trigger: string;
+  resolves: string;
+  settings?: readonly string[];
   lifetime: FaultLifetime;
   actions: readonly FaultAction[];
   upgradeCommand?: true;
@@ -237,22 +242,40 @@ function replicationTitle(state: string) {
 
 export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
   "smart-attribute": {
+    label: "SMART attribute",
     category: "disk",
     subjectType: "disk",
+    severities: ["warning", "error"],
+    trigger:
+      "The latest SMART reading of an in-service disk has an attribute that is not passing. Warning for the warning band, error for failed. One fault per attribute.",
+    resolves:
+      "The attribute passes again, or the disk leaves service. Acknowledging or accepting records the current value; the fault reopens if the value exceeds it.",
     lifetime: "persistent",
     actions: ["acknowledge", "accept", "clear"],
     title: smartAttributeTitle,
   },
   "smart-health-failed": {
+    label: "SMART health failed",
     category: "disk",
     subjectType: "disk",
+    severities: ["error"],
+    trigger:
+      "The latest SMART reading reports the drive's health self-assessment as failed.",
+    resolves:
+      "A later reading does not report failed, or the disk leaves service.",
     lifetime: "persistent",
     actions: ["acknowledge", "clear"],
     title: () => "SMART health check failed",
   },
   "disk-missing": {
+    label: "Disk missing",
     category: "disk",
     subjectType: "disk",
+    severities: ["error"],
+    trigger:
+      "An in-service disk is absent from its host's reports and was last seen within the last 7 days.",
+    resolves:
+      "The disk is seen again, or 7 days after it was last seen, when its state becomes removed. Setting a state override on the disk page (spare, removed, dead or retired) or disposing of the disk resolves it. Superseded by pool degraded or pool missing while either covers the disk.",
     lifetime: "transient",
     actions: ["acknowledge", "clear"],
     title: (data, now) => {
@@ -261,8 +284,12 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     },
   },
   "identity-conflict": {
+    label: "Identity conflict",
     category: "disk",
     subjectType: "disk",
+    severities: ["error"],
+    trigger: "Two disks reported the same serial number or WWN.",
+    resolves: "Acknowledgement only. A later conflict opens a new fault.",
     lifetime: "until-acknowledged",
     actions: ["acknowledge"],
     title: (data) => {
@@ -271,29 +298,56 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     },
   },
   "temperature-high": {
+    label: "Temperature high",
     category: "disk",
     subjectType: "disk",
+    severities: ["warning", "error"],
+    trigger:
+      "A disk has been at or above its warning temperature for the hot-for window (default 60 min). Default thresholds: HDD 45 °C warning, 55 °C error; SSD 60 °C warning, 70 °C error. Error at or above the error temperature.",
+    resolves:
+      "The latest reading is more than 3 °C below the warning temperature. Error steps down to warning once more than 3 °C below the error temperature.",
+    settings: [
+      "Host settings › Temperature thresholds (°C)",
+      "Host settings › Hot for (minutes)",
+    ],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: temperatureHighTitle,
   },
   "smart-counters-reset": {
+    label: "SMART counters reset",
     category: "disk",
     subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "A Seagate FARM log reports more power-on hours than SMART, by more than 48 h or 5 % of the FARM figure, whichever is larger; or the FARM serial or WWN differs from the drive's. Either indicates reset SMART counters, as on some resold drives.",
+    resolves:
+      "FARM and SMART agree. An accepted fault reopens if the hours gap grows by more than 48 h or a further identity field differs.",
     lifetime: "persistent",
     actions: ["accept", "clear"],
     title: smartCountersResetTitle,
   },
   "pool-degraded": {
+    label: "Pool degraded",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning", "error"],
+    trigger:
+      "The pool or one of its leaf devices is not ONLINE (a spare in AVAIL counts as healthy). Error for FAULTED, UNAVAIL or SUSPENDED; warning for DEGRADED, OFFLINE, REMOVED or any other state.",
+    resolves:
+      "The pool and every device are ONLINE. An acknowledged or accepted fault reopens if a further device fails or a listed device's error counts rise.",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: poolDegradedTitle,
   },
   "pool-missing": {
+    label: "Pool missing",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning"],
+    trigger: "The host's latest zpool status does not include the pool.",
+    resolves:
+      "The pool is seen again, or is archived. Not raised while the host is silent, or while an intermittent host is offline. If the pool was exported or destroyed on purpose, accept the fault, or archive the pool to retire it.",
     lifetime: "until-seen-again",
     actions: ["acknowledge", "accept", "clear"],
     title: (data, now) => {
@@ -303,30 +357,56 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     },
   },
   "leaf-errors": {
+    label: "Device errors",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning", "error"],
+    trigger:
+      "A device has read, write or checksum errors (warning), or a mirror or raidz group has errors not attributed to one device (error). Devices listed by pool degraded are covered there instead.",
+    resolves:
+      "Manual resolution only: falling counters are indistinguishable from a reboot or zpool clear. Reopens only if the counts rise after resolution.",
     lifetime: "until-resolved",
     actions: ["acknowledge", "accept", "clear", "resolve"],
     title: leafErrorsTitle,
   },
   "leaf-slow": {
+    label: "Slow I/O",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning"],
+    trigger:
+      "A device's slow I/O count rose by at least the pool's slow I/O threshold (default 10) in the last 24 h.",
+    resolves:
+      "The 24 h rise falls below the threshold. A threshold of 0 disables the check.",
+    settings: ["Pool settings › Slow I/O threshold (per 24 h)"],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
       `${leafLabel(data.name)} in ${text(data.poolName)}: ${plural(Number(data.rise24h), "slow I/O")} in 24 h`,
   },
   "pool-data-errors": {
+    label: "Pool data errors",
     category: "zfs",
     subjectType: "pool",
+    severities: ["error"],
+    trigger:
+      "The pool reports permanent data errors, or its latest finished scrub or resilver reported errors.",
+    resolves:
+      "The pool reports no data errors and the latest finished scan found none. An acknowledged fault reopens if the data error count rises or a later scan finds errors.",
     lifetime: "until-no-data-errors",
     actions: ["acknowledge", "clear"],
     title: poolDataErrorsTitle,
   },
   "scrub-overdue": {
+    label: "Scrub overdue",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning"],
+    trigger:
+      "No scrub has finished within the pool's scrub interval (default 35 days). A pool never scrubbed is measured from when it was first seen.",
+    resolves:
+      "A scrub finishes, or the interval is raised past the gap. An interval of 0 disables the check.",
+    settings: ["Pool settings › Scrub interval (days)"],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: (data, now) => {
@@ -338,15 +418,24 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     },
   },
   "pool-status": {
+    label: "Pool status message",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning", "error"],
+    trigger:
+      "zpool status reports a message ID not covered by another fault kind. Error for ZFS-8000-A5 (incompatible version) and ZFS-8000-K4 (intent log read failure); warning for all others.",
+    resolves: "The pool stops reporting the message ID.",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: poolStatusTitle,
   },
   "scrub-paused": {
+    label: "Scrub paused",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning"],
+    trigger: "A scrub has been paused for more than 24 h.",
+    resolves: "The scrub resumes, finishes or is cancelled.",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: (data, now) => {
@@ -356,52 +445,103 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     },
   },
   "scan-stalled": {
+    label: "Scan stalled",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning", "error"],
+    trigger:
+      "A running scrub or resilver has reported no progress for 6 h. Warning for a scrub; error for a resilver, during which the pool is short of redundancy.",
+    resolves: "The scan reports progress or ends.",
     lifetime: "transient",
     actions: ["acknowledge", "clear"],
     title: scanStalledTitle,
   },
   "vdev-unredundant": {
+    label: "Single-device special vdev",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning"],
+    trigger:
+      "A top-level special or dedup vdev is a single device; losing it loses the pool. Single log and cache devices are not flagged.",
+    resolves: "The vdev is mirrored or removed.",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
       `${text(data.role)} ${leafLabel(data.name)} in ${text(data.poolName)} is a single device`,
   },
   "pool-capacity": {
+    label: "Pool capacity",
     category: "zfs",
     subjectType: "pool",
+    severities: ["warning", "error"],
+    trigger:
+      "Allocation of the pool, or of a special or dedup vdev, is at or above the capacity warning (default 80 %) or error (default 90 %) threshold.",
+    resolves:
+      "Allocation falls more than 2 points below the threshold crossed; error steps down to warning on the same margin. A warning threshold of 0 disables the check.",
+    settings: [
+      "Pool settings › Capacity warning (%)",
+      "Pool settings › Capacity error (%)",
+    ],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: poolCapacityTitle,
   },
   "replication-late": {
+    label: "Replication late",
     category: "zfs",
     subjectType: "replication",
+    severities: ["warning"],
+    trigger:
+      "A replication is overdue by more than 3 h or 0.5 × its interval, whichever is larger. The interval is the manual interval if set, otherwise the median gap between the last 10 syncs.",
+    resolves:
+      "A sync lands. Superseded by replication stalled or replication target gone.",
+    settings: [
+      "Settings › Replication › Late after (hours)",
+      "Settings › Replication › Late factor (× interval)",
+    ],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: replicationTitle("late"),
   },
   "replication-stalled": {
+    label: "Replication stalled",
     category: "zfs",
     subjectType: "replication",
+    severities: ["error"],
+    trigger:
+      "A replication is overdue by more than 48 h or 2 × its interval, whichever is larger.",
+    resolves: "A sync lands. Superseded by replication target gone.",
+    settings: [
+      "Settings › Replication › Stalled after (hours)",
+      "Settings › Replication › Stalled factor (× interval)",
+    ],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: replicationTitle("stalled"),
   },
   "replication-target-gone": {
+    label: "Replication target gone",
     category: "zfs",
     subjectType: "replication",
+    severities: ["error"],
+    trigger:
+      "The target dataset no longer exists on a pool that is present and not archived.",
+    resolves: "The dataset reappears, or the replication is archived.",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
       `Replication target ${text(data.targetName)} no longer exists`,
   },
   "collector-silent": {
+    label: "Collector silent",
     category: "host",
     subjectType: "host",
+    severities: ["error"],
+    trigger:
+      "No collector group has reported within twice its cadence (ZFS 10 min; SMART and snapshots 1 h). Supersedes the host's pool faults while open.",
+    resolves:
+      "Any group reports. An intermittent host is shown offline instead and raises no fault.",
+    settings: ["Host settings › Intermittent"],
     lifetime: "transient",
     actions: ["acknowledge", "clear"],
     title: (data, now) => {
@@ -410,8 +550,12 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     },
   },
   "collector-incompatible": {
+    label: "Collector incompatible",
     category: "host",
     subjectType: "host",
+    severities: ["error"],
+    trigger: `The host's collector is older than ${MIN_COLLECTOR_VERSION}, the oldest version the server accepts.`,
+    resolves: "The collector is upgraded. The fault shows the upgrade command.",
     lifetime: "transient",
     actions: ["acknowledge", "clear"],
     upgradeCommand: true,
@@ -419,8 +563,12 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
       `Collector ${text(data.version)} is too old; ${text(data.minVersion)} or later is needed`,
   },
   "collector-outdated": {
+    label: "Collector outdated",
     category: "host",
     subjectType: "host",
+    severities: ["warning"],
+    trigger: `The host's collector is accepted but older than the current version, ${COLLECTOR_VERSION}.`,
+    resolves: "The collector is upgraded. The fault shows the upgrade command.",
     lifetime: "transient",
     actions: ["acknowledge", "clear"],
     upgradeCommand: true,
@@ -428,8 +576,13 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
       `Collector ${text(data.version)} is behind ${text(data.currentVersion) || COLLECTOR_VERSION}`,
   },
   "host-degraded": {
+    label: "Host tools unsupported",
     category: "host",
     subjectType: "host",
+    severities: ["warning"],
+    trigger:
+      "The host runs OpenZFS older than 2.3 (no pool, dataset or snapshot data) or smartmontools older than 7.0 (no SMART data).",
+    resolves: "The tool is upgraded.",
     lifetime: "transient",
     actions: ["accept", "clear"],
     title: hostDegradedTitle,

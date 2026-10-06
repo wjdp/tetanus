@@ -1,4 +1,9 @@
-import type { FaultKind, FaultSubject, FaultView } from "#shared/faults";
+import type {
+  FaultAction,
+  FaultKind,
+  FaultSubject,
+  FaultView,
+} from "#shared/faults";
 import type { StatusColour } from "./colour";
 
 export type FaultGutterColour = Extract<StatusColour, "error" | "warning">;
@@ -46,3 +51,21 @@ export function faultDiskPath(
     ? `/disks/${diskId}`
     : null;
 }
+
+export const FAULT_ACTION_VOCABULARY: Record<
+  FaultAction,
+  {
+    label: string;
+    colour: "primary" | "warning" | "neutral" | "success";
+    icon: string;
+  }
+> = {
+  acknowledge: {
+    label: "Acknowledge",
+    colour: "primary",
+    icon: "i-lucide-eye",
+  },
+  accept: { label: "Accept", colour: "warning", icon: "i-lucide-shield-check" },
+  clear: { label: "Clear", colour: "neutral", icon: "i-lucide-undo-2" },
+  resolve: { label: "Resolve", colour: "success", icon: "i-lucide-check" },
+};

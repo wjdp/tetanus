@@ -49,12 +49,12 @@ const FIELDS = [
     key: "capacityWarningPct",
     label: "Capacity warning (%)",
     description:
-      "The pool, or a special or dedup vdev, this full is a fault. 0 disables.",
+      "Raises a warning when the pool or a special vdev reaches this percentage. 0 disables.",
   },
   {
     key: "capacityErrorPct",
     label: "Capacity error (%)",
-    description: "This full raises the capacity fault to an error.",
+    description: "Raises the capacity fault to an error.",
   },
 ] as const satisfies {
   key: ConfigKey;

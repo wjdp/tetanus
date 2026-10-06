@@ -220,6 +220,19 @@ target, each with its status dot. Cadence reads "hourly", "~daily", "every 6 h"
 
 Nav entry `i-lucide-siren` ([036](036-Faults-page.md)).
 
+Each kind's severities, trigger, what clears it and its settings live in `FAULT_KIND_DEFINITIONS`
+(`shared/faults.ts`) and render at `/faults/reference`. `applyDetections` rejects, in tests,
+a severity a kind does not declare.
+
+Fault actions (`FAULT_ACTION_VOCABULARY`, `FaultActionBadge`), subtle badges:
+
+| action | colour | icon |
+| --- | --- | --- |
+| acknowledge | primary (rust) | `i-lucide-eye` |
+| accept | warning | `i-lucide-shield-check` |
+| clear | neutral | `i-lucide-undo-2` |
+| resolve | success | `i-lucide-check` |
+
 ## Usage (`UsageKind`) and purpose (`Purpose`)
 
 Usage is plain text, not a badge: the Disks Usage column, the card fallback and

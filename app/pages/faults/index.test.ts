@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearNuxtData } from "#app";
 import type { FaultView } from "#shared/faults";
 import { FakeEventSource } from "~~/test/fakeEventSource";
-import FaultsPage from "./faults.vue";
+import FaultsPage from "./index.vue";
 
 const DAY_MS = 24 * 60 * 60_000;
 const daysAgo = (days: number) =>
@@ -395,6 +395,9 @@ describe("faults page", () => {
     expect(href("Reallocated")).toBe("/disks/12?tab=smart");
     expect(href("vault")).toBe("/zfs/styx/vault");
     expect(href("Collector")).toBe("/hosts/bench");
+    expect(
+      page.get('[data-testid="fault-reference-link"]').attributes("href"),
+    ).toBe("/faults/reference");
   });
 
   it("says nothing needs attention when the live view is empty", async () => {

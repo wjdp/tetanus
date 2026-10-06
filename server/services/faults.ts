@@ -605,6 +605,13 @@ function supersessionOf(row: FaultRow, superseded: Supersession[]) {
   )?.by;
 }
 
+function checkDeclaredSeverity({ kind, severity }: Detection) {
+  if (FAULT_KIND_DEFINITIONS[kind].severities.includes(severity)) return;
+  const message = `${kind} raised at ${severity}, which FAULT_KIND_DEFINITIONS does not declare`;
+  if (process.env.VITEST) throw new Error(message);
+  console.warn(message);
+}
+
 export function applyDetections(scan: FaultScan, now: Date): number {
   return db.transaction(() => {
     const live = new Map(
@@ -613,6 +620,7 @@ export function applyDetections(scan: FaultScan, now: Date): number {
     const seen = new Set<string>();
     let changes = 0;
     for (const detection of scan.detections) {
+      checkDeclaredSeverity(detection);
       const id = identity(detection.kind, detection.key);
       if (seen.has(id)) continue;
       seen.add(id);
