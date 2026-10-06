@@ -27,4 +27,6 @@ open request for the same view (#919).
 
 ## Questions
 
-1. Show only, or also a fault when new entries appear?
+1. Show only, or also a fault when new entries appear? Answered 2026-10-06: a warning
+   fault on a rising count, [100](100-Error-log-growth-fault.md). This doc keeps the
+   log view.
