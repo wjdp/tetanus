@@ -42,6 +42,7 @@ import {
   type DiskCounters,
   NO_COUNTERS,
 } from "#shared/smart/counters";
+import { usablePercentageUsed } from "#shared/smart/ssdPolicy";
 import {
   type AcceptedLevel,
   healthStatus,
@@ -847,6 +848,7 @@ function countersOf(rows: DiskRow[]): Map<number, DiskCounters> {
         attributesByDisk.get(row.id) ?? [],
         row.ataSsdAttributes,
         acceptances.get(row.id) ?? new Map(),
+        usablePercentageUsed(row.latestDeviceStatistics),
       ),
     ]),
   );

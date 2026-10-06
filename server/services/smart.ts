@@ -22,6 +22,7 @@ import {
   DEFECT_RISE_WINDOW_DAYS,
   NO_SSD_CONTEXT,
   type SsdPolicyContext,
+  usablePercentageUsed,
 } from "#shared/smart/ssdPolicy";
 import {
   ATTRIBUTE_STATUSES,
@@ -343,14 +344,9 @@ export function ssdPolicyContext(
   deviceStatistics: DeviceStatistics | null | undefined,
   risenAttrIds: ReadonlySet<string> = new Set(),
 ): SsdPolicyContext {
-  const percentageUsed = deviceStatistics?.percentageUsed;
   return {
     ataSsdAttributes,
-    percentageUsed:
-      typeof percentageUsed === "number" &&
-      !deviceStatistics?.normalised.includes("percentageUsed")
-        ? percentageUsed
-        : null,
+    percentageUsed: usablePercentageUsed(deviceStatistics),
     risenAttrIds,
   };
 }

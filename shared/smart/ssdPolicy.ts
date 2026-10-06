@@ -1,5 +1,6 @@
 import type { AtaSsdAttributes } from "./ataSsdAttributes";
 import { WEAR_FAILED_PERCENT, WEAR_WARNING_PERCENT } from "./counters";
+import type { DeviceStatistics } from "./deviceStatistics";
 import type { EvaluatedAttribute } from "./evaluate";
 import { type AttributeStatus, worstStatus } from "./status";
 
@@ -35,6 +36,16 @@ export function isAtaDefectAttribute(name: string): boolean {
 
 export function isAtaReservedSpaceAttribute(name: string): boolean {
   return (ATA_RESERVED_SPACE_ATTRIBUTES as readonly string[]).includes(name);
+}
+
+export function usablePercentageUsed(
+  deviceStatistics: DeviceStatistics | null | undefined,
+): number | null {
+  const percentageUsed = deviceStatistics?.percentageUsed;
+  return typeof percentageUsed === "number" &&
+    !deviceStatistics?.normalised.includes("percentageUsed")
+    ? percentageUsed
+    : null;
 }
 
 export interface SsdPolicyContext {

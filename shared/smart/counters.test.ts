@@ -186,4 +186,15 @@ describe("countersFrom", () => {
     expect(wear(20, "warning")).toEqual({ value: 80, status: "warning" });
     expect(wear(200, "passed")).toEqual({ value: 0, status: "passed" });
   });
+
+  it("shows device statistic percentage used for ATA wear when usable", () => {
+    expect(
+      countersFrom(
+        [row("177", 999, "warning", 90)],
+        { wear: "177", written: null },
+        NO_ACCEPTANCES,
+        83,
+      ).wearPercent,
+    ).toEqual({ value: 83, status: "warning" });
+  });
 });

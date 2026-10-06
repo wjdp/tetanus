@@ -87,6 +87,7 @@ export function countersFrom(
   rows: readonly CounterAttribute[],
   ataSsdAttributes: AtaSsdAttributes | null,
   acceptances: ReadonlyMap<string, AcceptedLevel>,
+  percentageUsed: number | null = null,
 ): DiskCounters {
   const byId = new Map(rows.map((row) => [row.attrId, row]));
 
@@ -117,7 +118,10 @@ export function countersFrom(
     const counter = wearId ? overlaid(wearId) : null;
     const row = wearId ? byId.get(wearId) : undefined;
     if (!counter || row?.value == null) return null;
-    return { ...counter, value: Math.max(0, 100 - row.value) };
+    return {
+      ...counter,
+      value: percentageUsed ?? Math.max(0, 100 - row.value),
+    };
   };
 
   const written = (): Pick<
