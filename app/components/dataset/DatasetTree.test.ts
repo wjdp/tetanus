@@ -1,6 +1,9 @@
 // @vitest-environment nuxt
 import { mountSuspended } from "@nuxt/test-utils/runtime";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { nextTick } from "vue";
+import { DATASET_COLUMNS_COOKIE } from "~/composables/useDatasetColumns";
+import { clearCookie } from "~~/test/cookies";
 import DatasetTree from "./DatasetTree.vue";
 import type { DatasetTreeRow } from "./types";
 
@@ -102,6 +105,10 @@ const mountTree = () =>
 
 const rowTexts = (tree: Awaited<ReturnType<typeof mountTree>>) =>
   tree.findAll("tbody tr").map((row) => row.text());
+
+beforeEach(() => {
+  clearCookie(DATASET_COLUMNS_COOKIE);
+});
 
 describe("DatasetTree", () => {
   it("indents by depth and shows the last name segment", async () => {
@@ -221,6 +228,22 @@ describe("DatasetTree", () => {
     expect(last?.text()).toContain("old");
     expect(last?.text()).toContain("destroyed");
     expect(last?.classes()).toContain("opacity-50");
+  });
+
+  it("adds an optional column picked from the columns menu", async () => {
+    const tree = await mountTree();
+    expect(tree.find('[data-testid="dataset-referenced"]').exists()).toBe(
+      false,
+    );
+
+    tree
+      .getComponent({ name: "DatasetColumnPicker" })
+      .vm.$emit("toggle", "referenced", true);
+    await nextTick();
+
+    expect(tree.get('[data-testid="dataset-referenced"]').text()).toBe(
+      "931 GiB",
+    );
   });
 
   it("links each replication with its role icon and status dot", async () => {

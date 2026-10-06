@@ -86,13 +86,28 @@ const sortableHeader = (column: DatasetColumn) => () =>
 
 const nameColumn = DATASET_COLUMNS.find(({ id }) => id === "name");
 
-const columns = computed<TableColumn<Row>[]>(() =>
-  DATASET_COLUMNS.map((column) => ({
+const { visibleColumns, setColumnVisible, resetColumns, isCustomised } =
+  useDatasetColumns();
+
+const PICKER_CELL = "w-8 ps-0 text-end";
+
+const columns = computed<TableColumn<Row>[]>(() => [
+  ...visibleColumns.value.map((column) => ({
     id: column.id,
     header: column.sortValue ? sortableHeader(column) : column.label,
     meta: { class: { th: column.cellClass, td: column.cellClass } },
   })),
+  { id: "picker", meta: { class: { th: PICKER_CELL, td: PICKER_CELL } } },
+]);
+
+const plainColumns = DATASET_COLUMNS.filter(
+  (column) => column.bytes || column.text,
 );
+
+const plainCell = (column: DatasetColumn, dataset: DatasetTreeRow) =>
+  column.bytes
+    ? formatZfsBytes(column.bytes(dataset))
+    : (column.text?.(dataset) ?? "—");
 
 const isEncrypted = (dataset: DatasetTreeRow) =>
   dataset.encryption !== null && dataset.encryption !== "off";
@@ -324,6 +339,26 @@ const limits = (dataset: DatasetTreeRow) =>
           </span>
         </span>
         <span v-else class="text-dimmed">—</span>
+      </template>
+      <template
+        v-for="column in plainColumns"
+        :key="column.id"
+        #[`${column.id}-cell`]="{ row }"
+      >
+        <span
+          class="text-muted tabular whitespace-nowrap"
+          :data-testid="`dataset-${column.id}`"
+        >
+          {{ plainCell(column, row.original.dataset) }}
+        </span>
+      </template>
+      <template #picker-header>
+        <DatasetColumnPicker
+          :visible-columns="visibleColumns"
+          :customised="isCustomised"
+          @toggle="setColumnVisible"
+          @reset="resetColumns"
+        />
       </template>
       <template #replication-cell="{ row }">
         <ReplicationDatasetLinks
