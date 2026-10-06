@@ -23,9 +23,18 @@ const attribute = (
 const statusOf = (a: EvaluatedAttribute, context = NO_SSD_CONTEXT) =>
   applySsdPolicy([a], context)[0]?.status;
 
-const ata = (percentageUsed: number | null = null): SsdPolicyContext => ({
-  ataSsdAttributes: { wear: "177", written: null, reserved: ["170"] },
+const ata = (
+  percentageUsed: number | null = null,
+  risenAttrIds: string[] = [],
+): SsdPolicyContext => ({
+  ataSsdAttributes: {
+    wear: "177",
+    written: null,
+    reserved: ["170"],
+    defects: ["181"],
+  },
   percentageUsed,
+  risenAttrIds: new Set(risenAttrIds),
 });
 
 describe("applySsdPolicy", () => {
@@ -65,5 +74,17 @@ describe("applySsdPolicy", () => {
     expect(statusOf(attribute("170", 21, 10), ata())).toBe("passed");
     expect(statusOf(attribute("170", 20, 10), ata())).toBe("warning");
     expect(statusOf(attribute("170", 20, 10))).toBe("passed");
+  });
+
+  it("warns on a non-zero SSD defect count that has risen", () => {
+    expect(statusOf(attribute("181", 3), ata())).toBe("passed");
+    expect(statusOf(attribute("181", 0), ata(null, ["181"]))).toBe("passed");
+    expect(statusOf(attribute("181", 3), ata(null, ["181"]))).toBe("warning");
+    expect(statusOf(attribute("182", 3), ata(null, ["182"]))).toBe("passed");
+  });
+
+  it("keeps a vendor failure on a defect attribute", () => {
+    const failed = { ...attribute("181", 3), status: "failed" as const };
+    expect(statusOf(failed, ata(null, ["181"]))).toBe("failed");
   });
 });

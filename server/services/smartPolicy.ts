@@ -17,6 +17,7 @@ import {
   type MinimalSmartAttribute,
   parsedFromMinimal,
   recomputeLatestStatus,
+  risenDefects,
   type SmartAttributeRow,
   type SmartReadingRow,
   ssdPolicyContext,
@@ -126,7 +127,11 @@ export function reapplySmartPolicy(now = new Date()): SmartPolicyOutcome {
         reading,
         protocol,
         stored,
-        ssdPolicyContext(ataSsdAttributes, latestDeviceStatistics),
+        ssdPolicyContext(
+          ataSsdAttributes,
+          latestDeviceStatistics,
+          risenDefects(id, ataSsdAttributes, reading.takenAt),
+        ),
       );
       if (latestReadingAt === null) {
         outcome.disks += 1;

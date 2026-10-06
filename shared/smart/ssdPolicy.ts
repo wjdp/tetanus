@@ -16,6 +16,23 @@ export const ATA_RESERVED_SPACE_ATTRIBUTES = [
   "Reserved_Block_Count",
 ] as const;
 
+/** Program/erase failures and runtime bad blocks, by name since vendors reuse ids. */
+export const ATA_DEFECT_ATTRIBUTES = [
+  "Program_Fail_Cnt_Total",
+  "Program_Fail_Count_Chip",
+  "Program_Fail_Count",
+  "Erase_Fail_Count_Total",
+  "Erase_Fail_Count_Chip",
+  "Erase_Fail_Count",
+  "Runtime_Bad_Block",
+] as const;
+
+export const DEFECT_RISE_WINDOW_DAYS = 7;
+
+export function isAtaDefectAttribute(name: string): boolean {
+  return (ATA_DEFECT_ATTRIBUTES as readonly string[]).includes(name);
+}
+
 export function isAtaReservedSpaceAttribute(name: string): boolean {
   return (ATA_RESERVED_SPACE_ATTRIBUTES as readonly string[]).includes(name);
 }
@@ -24,11 +41,14 @@ export interface SsdPolicyContext {
   ataSsdAttributes: AtaSsdAttributes | null;
   /** Device statistic 7:8, when the drive reports it and does not flag it normalised. */
   percentageUsed: number | null;
+  /** Attributes whose value rose within the defect window, this reading included. */
+  risenAttrIds: ReadonlySet<string>;
 }
 
 export const NO_SSD_CONTEXT: SsdPolicyContext = {
   ataSsdAttributes: null,
   percentageUsed: null,
+  risenAttrIds: new Set(),
 };
 
 const CRITICAL_WARNING_BITS = [
@@ -101,6 +121,17 @@ function adjust(
     );
   }
   if (ssd?.reserved?.includes(attribute.attrId)) return spareStatus(attribute);
+  if (
+    ssd?.defects?.includes(attribute.attrId) &&
+    attribute.transformedValue > 0 &&
+    context.risenAttrIds.has(attribute.attrId)
+  ) {
+    return raise(
+      attribute,
+      "warning",
+      `Count ${attribute.transformedValue}, risen in the last ${DEFECT_RISE_WINDOW_DAYS} days`,
+    );
+  }
   return attribute;
 }
 

@@ -19,6 +19,7 @@ import {
 } from "#shared/smart/metadata";
 import {
   applySsdPolicy,
+  DEFECT_RISE_WINDOW_DAYS,
   NO_SSD_CONTEXT,
   type SsdPolicyContext,
 } from "#shared/smart/ssdPolicy";
@@ -340,6 +341,7 @@ function recordAttributeStatusChanges(
 export function ssdPolicyContext(
   ataSsdAttributes: AtaSsdAttributes | null,
   deviceStatistics: DeviceStatistics | null | undefined,
+  risenAttrIds: ReadonlySet<string> = new Set(),
 ): SsdPolicyContext {
   const percentageUsed = deviceStatistics?.percentageUsed;
   return {
@@ -349,7 +351,28 @@ export function ssdPolicyContext(
       !deviceStatistics?.normalised.includes("percentageUsed")
         ? percentageUsed
         : null,
+    risenAttrIds,
   };
+}
+
+export function risenDefects(
+  diskId: number,
+  ataSsdAttributes: AtaSsdAttributes | null,
+  at: Date,
+  pending: ReadonlyMap<string, number> = new Map(),
+): Set<string> {
+  return new Set(
+    (ataSsdAttributes?.defects ?? []).filter((attrId) => {
+      const series = attributeSeries(
+        diskId,
+        attrId,
+        at,
+        DEFECT_RISE_WINDOW_DAYS,
+      );
+      const value = pending.get(attrId);
+      return riseOf(value === undefined ? series : [...series, value]).risen;
+    }),
+  );
 }
 
 export function evaluateNamedAttributes(
@@ -560,9 +583,19 @@ export function recordSmartReading({
     ...row,
     vendor: effectiveVendor(row),
   });
+  const pending = new Map(
+    evaluateReading(parsed).attributes.map((attribute) => [
+      attribute.attrId,
+      attribute.transformedValue,
+    ]),
+  );
   const evaluated = evaluateNamedAttributes(
     parsed,
-    ssdPolicyContext(ataSsdAttributes, parsed.deviceStatistics),
+    ssdPolicyContext(
+      ataSsdAttributes,
+      parsed.deviceStatistics,
+      risenDefects(row.id, ataSsdAttributes, receivedAt, pending),
+    ),
   );
   const temp = presentTemperature(parsed.temperature);
   const smartPassed = parsed.smartStatus?.passed ?? null;

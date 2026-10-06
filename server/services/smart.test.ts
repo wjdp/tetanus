@@ -28,6 +28,7 @@ import {
   sctTemperaturePoints,
   trendDirection,
 } from "~~/server/services/smart";
+import { reapplySmartPolicy } from "~~/server/services/smartPolicy";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
 
@@ -296,6 +297,7 @@ describe("recordSmartReading", () => {
     const expected = {
       wear: "177",
       reserved: ["179"],
+      defects: ["181", "182", "183"],
       written: { attrId: "241", unitBytes: 512, inferred: true },
     };
     ingestSmart(sdo, t0);
@@ -525,6 +527,33 @@ describe("attribute rise", () => {
       readings: 1,
     });
     expect(attributeRise(diskId, "999", t0).risen).toBe(false);
+  });
+});
+
+describe("SSD defect counts", () => {
+  const SSD = readFixture("mars/smartctl/xall-sdo-auto.json");
+  const SSD_SERIAL = JSON.parse(SSD).serial_number as string;
+  const programFailStatus = () =>
+    latestAttributes(diskBySerial(SSD_SERIAL).id).find(
+      (a) => a.attrId === "181",
+    )?.status;
+
+  it("warns while a non-zero count has risen within the week", () => {
+    ingestSmart(withAttributeRaw(SSD, 181, 0), at(-10 * DAY_MS));
+    expect(programFailStatus()).toBe("passed");
+    ingestSmart(withAttributeRaw(SSD, 181, 2), at(-8 * DAY_MS));
+    expect(programFailStatus()).toBe("warning");
+    ingestSmart(withAttributeRaw(SSD, 181, 2), t0);
+    expect(programFailStatus()).toBe("passed");
+    ingestSmart(withAttributeRaw(SSD, 181, 3), at(DAY_MS));
+    expect(programFailStatus()).toBe("warning");
+    reapplySmartPolicy(at(DAY_MS));
+    expect(programFailStatus()).toBe("warning");
+  });
+
+  it("treats a first non-zero reading as a baseline", () => {
+    ingestSmart(withAttributeRaw(SSD, 181, 5), t0);
+    expect(programFailStatus()).toBe("passed");
   });
 });
 

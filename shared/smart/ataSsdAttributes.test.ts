@@ -21,6 +21,7 @@ describe("ataSsdAttributesFrom", () => {
     ).toEqual({
       wear: "245",
       reserved: ["170", "179", "180"],
+      defects: ["175", "181", "182"],
       written: { attrId: "241", unitBytes: 32 * MIB, inferred: false },
     });
   });
@@ -34,6 +35,7 @@ describe("ataSsdAttributesFrom", () => {
     ).toEqual({
       wear: "177",
       reserved: ["179"],
+      defects: ["181", "182", "183"],
       written: { attrId: "241", unitBytes: 512, inferred: true },
     });
   });
@@ -44,7 +46,12 @@ describe("ataSsdAttributesFrom", () => {
         ...SSD,
         vendor: "intel",
       }),
-    ).toEqual({ wear: "233", written: null, reserved: ["179", "180"] });
+    ).toEqual({
+      wear: "233",
+      written: null,
+      reserved: ["179", "180"],
+      defects: ["181", "182"],
+    });
   });
 
   it("is null for an HDD and for NVMe", () => {
