@@ -302,10 +302,30 @@ describe("replication detail", () => {
     const id = insertReplication(tankA, vaultA, hourly(10));
     const byDataset = datasetReplications([tankA, vaultA], at(11));
     expect(byDataset.get(tankA)).toEqual([
-      { id, role: "source", status: "ok" },
+      {
+        id,
+        role: "source",
+        status: "ok",
+        peer: {
+          host: { name: "vault", displayName: null },
+          pool: "vpool",
+          dataset: "vpool/tank/a",
+          sameHost: false,
+        },
+      },
     ]);
     expect(byDataset.get(vaultA)).toEqual([
-      { id, role: "target", status: "ok" },
+      {
+        id,
+        role: "target",
+        status: "ok",
+        peer: {
+          host: { name: "mars", displayName: null },
+          pool: "tank",
+          dataset: "tank/a",
+          sameHost: false,
+        },
+      },
     ]);
   });
 

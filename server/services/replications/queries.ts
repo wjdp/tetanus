@@ -9,6 +9,7 @@ import {
   type ReplicationHealth,
   type ReplicationLadderRow,
   type ReplicationLadderSnapshot,
+  type ReplicationPeer,
   type ReplicationRow,
   type ReplicationSyncView,
   type ReplicationThresholds,
@@ -424,7 +425,19 @@ export function replicationRecord(
   };
 }
 
-/** Each dataset's replications, as source or target, with their status. */
+function peerView(endpoint: Endpoint, sameHost: boolean): ReplicationPeer {
+  return {
+    host: {
+      name: endpoint.host.name,
+      displayName: endpoint.host.displayName,
+    },
+    pool: endpoint.pool.name,
+    dataset: endpoint.dataset.name,
+    sameHost,
+  };
+}
+
+/** Each dataset's replications, as source or target, with status and peer. */
 export function datasetReplications(
   datasetIds: number[],
   now = new Date(),
@@ -448,9 +461,25 @@ export function datasetReplications(
     byDataset.set(datasetId, [...(byDataset.get(datasetId) ?? []), entry]);
   };
   for (const row of rows) {
-    const { status } = assessReplication(row, context);
-    add(row.sourceDatasetId, { id: row.id, role: "source", status });
-    add(row.targetDatasetId, { id: row.id, role: "target", status });
+    const { status, source, target } = assessReplication(row, context);
+    const sameHost =
+      source !== null &&
+      target !== undefined &&
+      source.host.id === target.host.id;
+    const peer = (endpoint: Endpoint | null | undefined) =>
+      endpoint ? peerView(endpoint, sameHost) : null;
+    add(row.sourceDatasetId, {
+      id: row.id,
+      role: "source",
+      status,
+      peer: peer(target),
+    });
+    add(row.targetDatasetId, {
+      id: row.id,
+      role: "target",
+      status,
+      peer: peer(source),
+    });
   }
   return byDataset;
 }

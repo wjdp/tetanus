@@ -154,8 +154,17 @@ export interface ReplicationLadderRow {
   creation: string;
 }
 
+export interface ReplicationPeer {
+  host: { name: string; displayName: string | null };
+  pool: string;
+  dataset: string;
+  sameHost: boolean;
+}
+
 export interface DatasetReplication {
   id: number;
   role: ReplicationRole;
   status: ReplicationStatus;
+  /** The other end; null when a received replication's source is unknown. */
+  peer: ReplicationPeer | null;
 }

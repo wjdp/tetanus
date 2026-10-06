@@ -63,8 +63,28 @@ const datasets = [
   }),
   dataset(3, "tank/media/photos", 2, {
     replications: [
-      { id: 8, role: "source", status: "late" },
-      { id: 9, role: "target", status: "ok" },
+      {
+        id: 8,
+        role: "source",
+        status: "late",
+        peer: {
+          host: { name: "vault", displayName: "Vault" },
+          pool: "vpool",
+          dataset: "vpool/photos",
+          sameHost: false,
+        },
+      },
+      {
+        id: 9,
+        role: "target",
+        status: "ok",
+        peer: {
+          host: { name: "nas1", displayName: null },
+          pool: "scratch",
+          dataset: "scratch/photos",
+          sameHost: true,
+        },
+      },
     ],
   }),
   dataset(4, "tank/vm-disk", 1, {
@@ -212,10 +232,16 @@ describe("DatasetTree", () => {
       "/replications/9",
     ]);
     expect(links[0].attributes("data-role")).toBe("source");
-    expect(links[0].attributes("title")).toBe("Sends · Late");
+    expect(links[0].attributes("title")).toBe(
+      "Sends to Vault:vpool/photos · Late",
+    );
+    expect(links[0].text()).toBe("Vault");
     expect(links[0].get("[data-colour]").attributes("data-colour")).toBe(
       "warning",
     );
-    expect(links[1].attributes("title")).toBe("Receives · OK");
+    expect(links[1].attributes("title")).toBe(
+      "Receives from nas1:scratch/photos · OK",
+    );
+    expect(links[1].text()).toBe("scratch");
   });
 });
