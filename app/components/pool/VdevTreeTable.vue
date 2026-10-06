@@ -74,6 +74,16 @@ const allocPercent = (node: PoolVdev) =>
     ? Math.round((node.allocBytes / node.sizeBytes) * 100)
     : null;
 
+type AllocUnit = "bytes" | "percent";
+
+const ALLOC_UNIT_OPTIONS: { unit: AllocUnit; label: string; title: string }[] =
+  [
+    { unit: "bytes", label: "Bytes", title: "Allocated and total size" },
+    { unit: "percent", label: "%", title: "Allocated as a share of size" },
+  ];
+
+const allocUnit = ref<AllocUnit>("bytes");
+
 const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
@@ -228,6 +238,24 @@ const { formatZfsBytes } = useZfsByteSystem();
         {{ row.original.node.slowIos ?? "—" }}
       </span>
     </template>
+    <template #used-header>
+      <span class="flex items-center gap-2">
+        Alloc / size
+        <UFieldGroup size="xs" aria-label="Alloc / size units">
+          <UButton
+            v-for="option in ALLOC_UNIT_OPTIONS"
+            :key="option.unit"
+            color="neutral"
+            :variant="allocUnit === option.unit ? 'subtle' : 'outline'"
+            :aria-pressed="allocUnit === option.unit"
+            :label="option.label"
+            :title="option.title"
+            :data-testid="`vdev-alloc-unit-${option.unit}`"
+            @click="allocUnit = option.unit"
+          />
+        </UFieldGroup>
+      </span>
+    </template>
     <template #used-cell="{ row }">
       <div
         v-if="row.original.kind === 'vdev' && row.original.node.sizeBytes !== null"
@@ -237,8 +265,13 @@ const { formatZfsBytes } = useZfsByteSystem();
           class="text-muted tabular whitespace-nowrap"
           data-testid="vdev-alloc"
         >
-          {{ formatZfsBytes(row.original.node.allocBytes) }} /
-          {{ formatZfsBytes(row.original.node.sizeBytes) }}
+          <template v-if="allocUnit === 'percent'">
+            {{ allocPercent(row.original.node) ?? "—" }} %
+          </template>
+          <template v-else>
+            {{ formatZfsBytes(row.original.node.allocBytes) }} /
+            {{ formatZfsBytes(row.original.node.sizeBytes) }}
+          </template>
         </span>
         <UProgress
           v-if="allocPercent(row.original.node) !== null"
