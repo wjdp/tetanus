@@ -1,6 +1,6 @@
 ---
 type: task
-status: in-progress
+status: done
 ---
 
 # Disk capacity changed
@@ -114,3 +114,12 @@ may deserve its own task if it turns up again.
    is enough.
 4. Show actual capacity below nominal on the disk page? Answered 2026-10-06: yes. See
    Design.
+
+## Known limits
+
+- Identity fields are overwritten by any sighting, whatever its order. A bundle that
+  arrives late with an older capacity would flip the stored value back and write an
+  entry, and the next current reading would write another. This is how identity
+  merging already behaved; the entry only makes it visible.
+- The fault has no alert rule, so a capacity change does not send a notification. It
+  shows in fault counts and on the disk.

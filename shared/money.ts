@@ -1,6 +1,6 @@
 export const DEFAULT_CURRENCY = "GBP";
 
-const BYTES_PER_TB = 1e12;
+export const BYTES_PER_TB = 1e12;
 
 const formatters = new Map<string, Intl.NumberFormat>();
 

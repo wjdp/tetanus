@@ -1,7 +1,7 @@
 import type { DriveSpec } from "#shared/drive-spec";
+import { BYTES_PER_TB } from "#shared/money";
 import { formatBytes } from "~/utils/format";
 
-const BYTES_PER_TB = 1e12;
 export const NOMINAL_SHORTFALL_THRESHOLD = 0.02;
 
 const nominalFormat = new Intl.NumberFormat("en-GB", {
