@@ -49,6 +49,7 @@ const FAULT_KIND_OF_ALERT_RULE: Record<AlertingRule, FaultKind | null> = {
 
 const FAULT_KINDS_WITHOUT_ALERT_RULE: FaultKind[] = [
   "smart-health-failed",
+  "capacity-changed",
   "collector-silent",
   "collector-outdated",
   "host-degraded",
@@ -258,6 +259,12 @@ describe("faultTitle", () => {
       { diskIds: [3, 7] },
       "Identity conflict with another disk",
     ],
+    [
+      "capacity-changed",
+      { from: 16_000_900_169_728, to: 15_000_000_000_000 },
+      "Capacity changed from 16.0 TB to 15.0 TB",
+    ],
+    ["capacity-changed", {}, "Capacity changed"],
     [
       "temperature-high",
       { celsius: 58, threshold: 55, hotSince: "2026-09-10T08:00:00Z" },

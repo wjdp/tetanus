@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/sqlite-core";
 import type { Bay } from "#shared/bays";
+import { formatBytes } from "#shared/bytes";
 import {
   type DiskKey,
   type DiskKeyKind,
@@ -391,10 +392,28 @@ function recordDisposedDiskSeen(row: DiskRow, sighting: DiskSighting) {
   });
 }
 
+export const CAPACITY_CHANGE_THRESHOLD = 0.001;
+
+function recordCapacityChange(row: DiskRow, sighting: DiskSighting) {
+  const from = row.capacityBytes;
+  const to = sighting.identity?.capacityBytes;
+  if (from === null || to === undefined || to === null) return;
+  if (Math.abs(to - from) < from * CAPACITY_CHANGE_THRESHOLD) return;
+  addAutoEvent({
+    subjectType: "disk",
+    subjectId: row.id,
+    eventType: "capacity-changed",
+    title: `capacity changed from ${formatBytes(from)} to ${formatBytes(to)}`,
+    data: { from, to },
+    at: sighting.receivedAt,
+  });
+}
+
 function mergeIntoDisk(row: DiskRow, sighting: DiskSighting): DiskRow {
   addKeys(row.id, sighting.keys);
   recordMove(row, sighting);
   recordDisposedDiskSeen(row, sighting);
+  recordCapacityChange(row, sighting);
   return db
     .update(disk)
     .set({

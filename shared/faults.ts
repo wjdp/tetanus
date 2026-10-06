@@ -1,3 +1,4 @@
+import { formatBytes } from "#shared/bytes";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { formatDuration } from "#shared/hostFreshness";
 import { HOST_TOOL_REQUIREMENTS, type HostTool } from "#shared/hostTools";
@@ -39,6 +40,7 @@ export const FAULT_KINDS = [
   "smart-health-failed",
   "disk-missing",
   "identity-conflict",
+  "capacity-changed",
   "temperature-high",
   "smart-counters-reset",
   "pool-degraded",
@@ -295,6 +297,24 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     title: (data) => {
       const others = typeof data.others === "string" ? data.others : "";
       return `Identity conflict with ${others || "another disk"}`;
+    },
+  },
+  "capacity-changed": {
+    label: "Capacity changed",
+    category: "disk",
+    subjectType: "disk",
+    severities: ["warning"],
+    trigger:
+      "A disk reported a capacity that differs from the stored value by 0.1 % or more. Usual causes: a USB bridge or enclosure reporting a different size, an HPA or DCO/AMA limit being set or removed, a reformat to a different sector count, or head depopulation.",
+    resolves: "Acknowledgement only. A later change opens a new fault.",
+    lifetime: "until-acknowledged",
+    actions: ["acknowledge"],
+    title: (data) => {
+      const { from, to } = data;
+      if (typeof from !== "number" || typeof to !== "number") {
+        return "Capacity changed";
+      }
+      return `Capacity changed from ${formatBytes(from)} to ${formatBytes(to)}`;
     },
   },
   "temperature-high": {
