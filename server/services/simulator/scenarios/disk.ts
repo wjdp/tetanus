@@ -396,6 +396,44 @@ export const temperatureCritical = temperatureScenario({
     "Above the host's critical threshold for this kind of disk, for long enough to open a fault.",
 });
 
+const hasCapacity = (json: Json) =>
+  typeof json.nvme_total_capacity === "number" ||
+  typeof (json.user_capacity as Json | undefined)?.bytes === "number";
+
+function shrinkCapacity(json: Json, percent: number) {
+  const scale = (bytes: number) => Math.floor((bytes * (100 - percent)) / 100);
+  if (typeof json.nvme_total_capacity === "number") {
+    json.nvme_total_capacity = scale(json.nvme_total_capacity);
+  }
+  const userCapacity = json.user_capacity as Json | undefined;
+  if (typeof userCapacity?.bytes === "number") {
+    const bytes = scale(userCapacity.bytes);
+    const blockSize = Number(json.logical_block_size) || 512;
+    json.user_capacity = { blocks: Math.floor(bytes / blockSize), bytes };
+  }
+}
+
+export const capacityShrunk = defineScenario({
+  id: "capacity-shrunk",
+  label: "Capacity shrunk",
+  group: "Health",
+  subjectType: "disk",
+  description:
+    "The disk reports a smaller capacity, as after an HPA limit, a bridge change or head depopulation.",
+  applies: (subject) => smartctlSatisfies(subject, hasCapacity),
+  params: () => [
+    {
+      key: "percent",
+      label: "Shrink by (%)",
+      kind: "number",
+      default: 6.25,
+      min: 0,
+    },
+  ],
+  plan: (subject, params) =>
+    editPlan(subject, (json) => shrinkCapacity(json, Number(params.percent))),
+});
+
 export const DISK_SCENARIOS = [
   pendingSectors,
   reallocatedSectors,
@@ -410,4 +448,5 @@ export const DISK_SCENARIOS = [
   selfTestFailed,
   runningHot,
   temperatureCritical,
+  capacityShrunk,
 ];
