@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TimePoint } from "~/components/charts/alignSeries";
-import { ACCEPTANCE_KIND_VOCABULARY } from "./attributeRows";
+import { ACCEPTANCE_KIND_VOCABULARY, substituteSourceLabel } from "./attributeRows";
 import type { LatestAttribute, SmartOverview } from "./types";
 
 type Acceptance = SmartOverview["acceptances"][number];
@@ -32,8 +32,13 @@ const currentStatus = computed(() => {
     : `${status} since first reading`;
 });
 
+const sourceLabel = computed(() => substituteSourceLabel(props.attribute));
+
 const valueMilestones = computed(() => {
   const { transformedValue, valueSince, firstNonZeroAt } = props.attribute;
+  if (sourceLabel.value) {
+    return `${withUnit(transformedValue)} from ${sourceLabel.value} in the latest reading`;
+  }
   const parts = [`${withUnit(transformedValue)} since ${formatDate(valueSince)}`];
   if (firstNonZeroAt && transformedValue > 0) {
     parts.push(`first non-zero ${formatDate(firstNonZeroAt)}`);
@@ -74,6 +79,9 @@ const rawLine = computed(() => {
       :unit="unit"
       :height="160"
     />
+    <p v-else-if="sourceLabel" class="text-dimmed">
+      Taken from {{ sourceLabel }}; no history is kept
+    </p>
     <p v-else class="text-dimmed">No history in this range</p>
 
     <div class="flex flex-col gap-1">

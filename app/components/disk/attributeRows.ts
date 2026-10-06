@@ -3,6 +3,10 @@ import type {
   AcceptanceKind,
   AttributeDisplayStatus,
 } from "#shared/smart/status";
+import {
+  SUBSTITUTE_SOURCE_LABELS,
+  type SubstituteSource,
+} from "#shared/smart/substituteDefects";
 import type { DotShape, StatusColour } from "~/utils/vocabulary";
 
 interface RankedAttribute {
@@ -84,6 +88,12 @@ export function attributeNote(attribute: NotedAttribute): string | null {
   if (attribute.reason) return attribute.reason;
   if (isNotableContextRate(attribute)) return CONTEXT_RATE_NOTE;
   return attribute.acceptance?.note || null;
+}
+
+export function substituteSourceLabel(attribute: {
+  source: SubstituteSource | null;
+}): string | null {
+  return attribute.source ? SUBSTITUTE_SOURCE_LABELS[attribute.source] : null;
 }
 
 export function countByStatus(

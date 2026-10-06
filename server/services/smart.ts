@@ -35,6 +35,7 @@ import {
 } from "#shared/smart/status";
 import {
   type SubstituteAttribute,
+  type SubstituteSource,
   substituteDefects,
 } from "#shared/smart/substituteDefects";
 import type {
@@ -103,6 +104,7 @@ export interface LatestAttribute
   statusSince: Date | null;
   valueSince: Date;
   firstNonZeroAt: Date | null;
+  source: SubstituteSource | null;
 }
 
 export interface AttributeStatusChange {
@@ -1099,47 +1101,87 @@ export function latestAttributes(diskId: number): LatestAttribute[] {
   const protocol = diskProtocol(diskId);
   const active = activeAcceptances(diskId);
   const changes = statusChangesByAttribute(diskId);
-  return attributesOfReading(reading.id).map(
-    ({ id: _id, readingId: _readingId, diskId: _diskId, ...attribute }) => {
-      const metadata = summariseMetadata(protocol, attribute.attrId);
-      const acceptance = active.get(attribute.attrId);
-      const attributeChanges = changes.get(attribute.attrId) ?? [];
-      return {
-        ...attribute,
-        trend: trendDirection(
-          metadata?.ideal ?? "",
-          attribute.transformedValue,
-          referenceValues(diskId, attribute.attrId, attribute.takenAt),
-        ),
-        metadata,
-        displayStatus: overlayStatus(
-          attribute.status,
-          attribute.transformedValue,
-          acceptance,
-        ),
-        acceptance: acceptance
-          ? {
-              id: acceptance.id,
-              kind: acceptance.kind,
-              acceptedValue: acceptance.acceptedValue,
-              acceptedAt: acceptance.acceptedAt,
-              note: acceptance.note,
-            }
-          : null,
-        statusChanges: attributeChanges.slice(0, MAX_STATUS_CHANGES),
-        statusSince:
-          attributeChanges.find((change) => change.to === attribute.status)
-            ?.at ?? null,
-        valueSince: valueSince(
-          diskId,
-          attribute.attrId,
-          attribute.transformedValue,
-          attribute.takenAt,
-        ),
-        firstNonZeroAt: firstNonZeroAt(diskId, attribute.attrId),
-      };
-    },
-  );
+  const stored = attributesOfReading(reading.id);
+  const substitutes = substitutesFor(
+    diskId,
+    stored.map(({ attrId }) => attrId),
+  ).map(({ source, attributeClass: _attributeClass, ...substitute }) => ({
+    ...substitute,
+    source,
+    takenAt: reading.takenAt,
+    value: null,
+    worst: null,
+    thresh: null,
+    rawValue: substitute.transformedValue,
+    rawString: null,
+    whenFailed: null,
+    failureRate: substitute.failureRate ?? null,
+    reason: substitute.reason ?? null,
+  }));
+  const overlay = (
+    attribute: Omit<
+      LatestAttribute,
+      | "metadata"
+      | "displayStatus"
+      | "acceptance"
+      | "statusChanges"
+      | "statusSince"
+    >,
+  ): LatestAttribute => {
+    const acceptance = active.get(attribute.attrId);
+    const attributeChanges = changes.get(attribute.attrId) ?? [];
+    return {
+      ...attribute,
+      metadata: summariseMetadata(protocol, attribute.attrId),
+      displayStatus: overlayStatus(
+        attribute.status,
+        attribute.transformedValue,
+        acceptance,
+      ),
+      acceptance: acceptance
+        ? {
+            id: acceptance.id,
+            kind: acceptance.kind,
+            acceptedValue: acceptance.acceptedValue,
+            acceptedAt: acceptance.acceptedAt,
+            note: acceptance.note,
+          }
+        : null,
+      statusChanges: attributeChanges.slice(0, MAX_STATUS_CHANGES),
+      statusSince:
+        attributeChanges.find((change) => change.to === attribute.status)?.at ??
+        null,
+    };
+  };
+  return [
+    ...stored.map(
+      ({ id: _id, readingId: _readingId, diskId: _diskId, ...attribute }) =>
+        overlay({
+          ...attribute,
+          trend: trendDirection(
+            summariseMetadata(protocol, attribute.attrId)?.ideal ?? "",
+            attribute.transformedValue,
+            referenceValues(diskId, attribute.attrId, attribute.takenAt),
+          ),
+          valueSince: valueSince(
+            diskId,
+            attribute.attrId,
+            attribute.transformedValue,
+            attribute.takenAt,
+          ),
+          firstNonZeroAt: firstNonZeroAt(diskId, attribute.attrId),
+          source: null,
+        }),
+    ),
+    ...substitutes.map((substitute) =>
+      overlay({
+        ...substitute,
+        trend: "stable",
+        valueSince: reading.takenAt,
+        firstNonZeroAt: null,
+      }),
+    ),
+  ];
 }
 
 function listSelfTests(diskId: number): SelfTestRow[] {

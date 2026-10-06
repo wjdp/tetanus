@@ -431,7 +431,9 @@ describe("trend", () => {
     ingestSmart(withAttributeRaw(SDA, 197, 4), t0);
     const diskId = diskBySerial(SDA_SERIAL).id;
 
-    const attributes = latestAttributes(diskId);
+    const attributes = latestAttributes(diskId).filter(
+      (attribute) => attribute.source === null,
+    );
     expect(attributes).toHaveLength(18);
     const pending = attributes.find((a) => a.attrId === "197");
     expect(pending).toMatchObject({
@@ -456,7 +458,11 @@ describe("trend", () => {
     ingestSmart(SDA, t0);
     const diskId = diskBySerial(SDA_SERIAL).id;
     expect(
-      new Set(latestAttributes(diskId).map((attribute) => attribute.trend)),
+      new Set(
+        latestAttributes(diskId)
+          .filter((attribute) => attribute.source === null)
+          .map((attribute) => attribute.trend),
+      ),
     ).toEqual(new Set(["new"]));
   });
 });
@@ -571,6 +577,21 @@ describe("substitute defect counts", () => {
   it("fails the disk on the first reading carrying the statistic", () => {
     ingestSmart(withReportedUncorrectable(SDA, 3), t0);
     expect(diskBySerial(SDA_SERIAL).latestStatus).toBe("failed");
+  });
+
+  it("lists the substitute with its source and counts it in the verdict", async () => {
+    const { getDisk } = await import("~~/server/services/disks");
+    ingestSmart(withReportedUncorrectable(SDA, 3), t0);
+    const { id } = diskBySerial(SDA_SERIAL);
+    expect(
+      latestAttributes(id).find((attribute) => attribute.attrId === "187"),
+    ).toMatchObject({
+      source: "device-statistics",
+      transformedValue: 3,
+      displayStatus: "failed",
+    });
+    const { smartVerdict } = await getDisk(id);
+    expect(smartVerdict?.attributes.failed).toBe(1);
   });
 });
 
