@@ -59,6 +59,8 @@ const deviceDetails = (node: PoolVdev) =>
     .filter(Boolean)
     .join("\n") || undefined;
 
+const leafName = (node: PoolVdev) => node.name.split("/").at(-1);
+
 const { formatZfsBytes } = useZfsByteSystem();
 </script>
 
@@ -109,7 +111,7 @@ const { formatZfsBytes } = useZfsByteSystem();
           v-if="row.original.showsTypeIcon"
           :type="row.original.node.type"
         />
-        {{ row.original.node.name }}
+        <span class="max-w-64 truncate">{{ leafName(row.original.node) }}</span>
         <UBadge
           v-if="row.original.node.spareState"
           :color="zfsStateColour(row.original.node.spareState)"
