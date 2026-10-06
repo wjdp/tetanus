@@ -1,3 +1,4 @@
+import type { InternalApi } from "nitropack/types";
 import type { TopologyVdev } from "../topology/groupDisks";
 
 export interface PoolVdev extends TopologyVdev {
@@ -26,3 +27,5 @@ export interface VdevReading {
   slowIos: number | null;
   state: string;
 }
+
+export type PoolDetail = InternalApi["/api/pools/:id"]["get"];

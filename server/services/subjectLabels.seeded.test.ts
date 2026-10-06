@@ -25,7 +25,12 @@ describe("labelSubjects", () => {
     expect(
       labelSubjects([{ subjectType: "host", subjectId: 999_999 }]),
     ).toEqual([
-      { subjectType: "host", subjectId: 999_999, subjectLabel: "removed host" },
+      {
+        subjectType: "host",
+        subjectId: 999_999,
+        subjectLabel: "removed host",
+        subjectPath: null,
+      },
     ]);
   });
 });

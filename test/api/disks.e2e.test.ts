@@ -222,6 +222,7 @@ describe("/api/disks", () => {
     const membership = {
       poolId: expect.any(Number),
       poolName: "tank",
+      poolPath: "/zfs/mars/tank",
       poolArchived: false,
       vdevName: "/dev/disk/by-vdev/K2-part1",
       groupName: "raidz1-0",

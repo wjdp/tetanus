@@ -33,7 +33,7 @@ const { formatZfsBytes } = useZfsByteSystem();
   >
     <header class="flex flex-wrap items-center gap-x-3 gap-y-1">
       <NuxtLink
-        :to="`/zfs/${pool.id}`"
+        :to="pool.path"
         class="text-highlighted text-lg font-semibold hover:underline"
       >
         {{ pool.name }}

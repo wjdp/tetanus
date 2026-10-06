@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { datasetPath } from "#shared/entityPaths";
 import { lastSegment, type TreeRow, visibleTreeRows } from "./treeRows";
 import type { DatasetTreeRow } from "./types";
 
 const props = defineProps<{
   datasets: DatasetTreeRow[];
+  poolPath: string;
   now: number;
   loading?: boolean;
 }>();
@@ -78,7 +80,7 @@ const { formatZfsBytes } = useZfsByteSystem();
         />
         <span v-else class="inline-block w-6" />
         <NuxtLink
-          :to="`/datasets/${row.original.dataset.id}`"
+          :to="datasetPath(poolPath, row.original.dataset.name)"
           :title="row.original.dataset.name"
           class="text-highlighted font-mono text-sm hover:underline"
         >

@@ -48,7 +48,7 @@ const lastScrub = (pool: Pool) => {
 const percent = (value: number | null) => (value === null ? "—" : `${value} %`);
 
 const onSelectRow = (_event: Event, row: { original: Pool }) =>
-  navigateTo(`/zfs/${row.original.id}`);
+  navigateTo(row.original.path);
 </script>
 
 <template>
@@ -79,7 +79,7 @@ const onSelectRow = (_event: Event, row: { original: Pool }) =>
       <template #name-cell="{ row }">
         <div class="flex items-center gap-2">
           <NuxtLink
-            :to="`/zfs/${row.original.id}`"
+            :to="row.original.path"
             class="font-semibold hover:underline"
             :class="row.original.archivedAt ? 'text-muted' : 'text-highlighted'"
           >

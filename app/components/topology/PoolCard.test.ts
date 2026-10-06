@@ -16,6 +16,7 @@ const TooltipPassthrough = defineComponent({
 const poolOf = (children: TopologyVdev[]): TopologyPool => ({
   id: 7,
   name: "tank",
+  path: "/zfs/nas1/tank",
   state: "ONLINE",
   displayState: "ONLINE",
   sizeBytes: null,

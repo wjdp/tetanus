@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { describeDisk, isDisposed, isHistoryState } from "#shared/disk";
+import { hostPath } from "#shared/entityPaths";
 import {
   allowedActions,
   FAULT_KIND_DEFINITIONS,
@@ -55,6 +56,7 @@ import {
   latestReading,
 } from "~~/server/services/smart";
 import { detectTemperatureHigh } from "~~/server/services/temperatureFaults";
+import { poolPaths } from "~~/server/services/zfs/paths";
 import { useSseEvent } from "~~/server/sse";
 import { collectorCadences } from "~~/server/utils/demo";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
@@ -776,6 +778,7 @@ interface SubjectLookup {
   disks: Map<number, typeof disk.$inferSelect>;
   pools: Map<number, PoolRow>;
   hostNames: Map<number, string>;
+  poolPaths: Map<number, string>;
   replications: Map<number, ReplicationSubject>;
 }
 
@@ -821,6 +824,7 @@ function subjectLookup(): SubjectLookup {
         .all()
         .map((row) => [row.id, row.name]),
     ),
+    poolPaths: poolPaths(),
     replications: replicationSubjects(),
   };
 }
@@ -835,6 +839,7 @@ function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
       ...base,
       label: found ? describeDisk(found) : "removed disk",
       hostName: hostName(found?.lastSeenHostId),
+      path: found ? `/disks/${row.subjectId}` : null,
     };
   }
   if (row.subjectType === "pool") {
@@ -843,6 +848,7 @@ function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
       ...base,
       label: found?.name ?? "removed pool",
       hostName: hostName(found?.hostId),
+      path: lookup.poolPaths.get(row.subjectId) ?? null,
     };
   }
   if (row.subjectType === "replication") {
@@ -851,10 +857,16 @@ function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
       ...base,
       label: found ? replicationLabel(found) : "removed replication",
       hostName: hostName(found?.hostId),
+      path: found ? `/replications/${row.subjectId}` : null,
     };
   }
   const name = hostName(row.subjectId);
-  return { ...base, label: name ?? "removed host", hostName: name };
+  return {
+    ...base,
+    label: name ?? "removed host",
+    hostName: name,
+    path: name === null ? null : hostPath(name),
+  };
 }
 
 function present(row: FaultRow, lookup: SubjectLookup): FaultView {

@@ -19,7 +19,13 @@ const leafFault = (data: FaultView["data"]): FaultView => ({
   lastSeenAt: "2026-10-02T10:00:00.000Z",
   resolvedAt: null,
   stateChangedAt: "2026-10-01T10:00:00.000Z",
-  subject: { type: "pool", id: 3, label: "tank", hostName: "mars" },
+  subject: {
+    type: "pool",
+    id: 3,
+    label: "tank",
+    hostName: "nas1",
+    path: "/zfs/nas1/tank",
+  },
 });
 
 const mountRow = (fault: FaultView) =>
@@ -43,7 +49,7 @@ describe("FaultRow", () => {
 
     expect(
       row.get('[data-testid="fault-subject-link"]').attributes("href"),
-    ).toBe("/zfs/3");
+    ).toBe("/zfs/nas1/tank");
     expect(row.text()).toContain("A7-part1 in tank: R 0 W 0 C 12, +4 in 24 h");
     const disk = row.get('[data-testid="fault-disk-link"]');
     expect(disk.attributes("href")).toBe("/disks/12");

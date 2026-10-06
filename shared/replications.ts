@@ -114,7 +114,7 @@ export function replicationLabel({
 
 export interface ReplicationEndpoint {
   host: { id: number; name: string; displayName: string | null };
-  pool: { id: number; name: string };
+  pool: { id: number; name: string; path: string };
   dataset: { id: number; name: string; present: boolean };
 }
 

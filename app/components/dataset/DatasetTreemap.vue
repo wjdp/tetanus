@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { datasetPath } from "#shared/entityPaths";
 import {
   buildSpaceHierarchy,
   type SpaceBox,
@@ -18,7 +19,10 @@ import type { DatasetTreeRow } from "./types";
 
 type ColourMode = "branch" | "growth";
 
-const props = defineProps<{ datasets: DatasetTreeRow[] }>();
+const props = defineProps<{
+  datasets: DatasetTreeRow[];
+  poolPath: string;
+}>();
 
 const COLOUR_MODE_STORAGE_KEY = "datasetTreemap.colourMode";
 const SHOW_FREE_STORAGE_KEY = "datasetTreemap.showFree";
@@ -185,7 +189,7 @@ function activate(node: LaidOut) {
     zoomId.value = branch.data.dataset.id;
     hoveredKey.value = null;
   } else {
-    navigateTo(`/datasets/${branch.data.dataset.id}`);
+    navigateTo(datasetPath(props.poolPath, branch.data.dataset.name));
   }
 }
 
@@ -400,7 +404,7 @@ const { formatZfsBytes } = useZfsByteSystem();
           class="flex h-5 min-w-0 items-center gap-2 px-1 text-xs"
         >
           <NuxtLink
-            :to="`/datasets/${node.data.dataset.id}`"
+            :to="datasetPath(poolPath, node.data.dataset.name)"
             class="text-highlighted truncate font-mono hover:underline"
             :title="node.data.dataset.name"
           >

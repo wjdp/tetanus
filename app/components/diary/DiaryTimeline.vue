@@ -12,6 +12,7 @@ interface TimelineEntry {
   title: string;
   body: string;
   subjectLabel: string | null;
+  subjectPath: string | null;
 }
 
 const props = withDefaults(
@@ -81,23 +82,6 @@ const days = computed(() => {
 
 const timeOf = (at: string | Date) => isoOf(at).slice(11, 16);
 
-const subjectLink = (entry: TimelineEntry) => {
-  if (entry.subjectId === null) return null;
-  switch (entry.subjectType) {
-    case "disk":
-      return `/disks/${entry.subjectId}`;
-    case "pool":
-      return `/zfs/${entry.subjectId}`;
-    case "dataset":
-      return `/datasets/${entry.subjectId}`;
-    case "replication":
-      return `/replications/${entry.subjectId}`;
-    case "host":
-      return `/hosts/${entry.subjectId}`;
-    default:
-      return null;
-  }
-};
 </script>
 
 <template>
@@ -145,8 +129,8 @@ const subjectLink = (entry: TimelineEntry) => {
             </span>
             <template v-if="showSubject">
               <NuxtLink
-                v-if="entry.subjectId !== null && subjectLink(entry)"
-                :to="subjectLink(entry) ?? undefined"
+                v-if="entry.subjectPath"
+                :to="entry.subjectPath"
                 class="text-muted hover:text-primary inline-flex items-center gap-1"
               >
                 <UIcon

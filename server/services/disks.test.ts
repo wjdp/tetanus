@@ -395,6 +395,7 @@ describe("disk state, overrides and inventory", () => {
     const membership = {
       poolId,
       poolName: "tank",
+      poolPath: "/zfs/mars/tank",
       poolArchived: false,
       vdevName: "K1",
       groupName: "mirror-0",

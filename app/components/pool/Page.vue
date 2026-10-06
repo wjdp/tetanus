@@ -3,19 +3,15 @@ import type { DropdownMenuItem, TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
 import { capacitySeries } from "~/components/pool/capacityChart";
 import { formatTimestamp } from "~/components/pool/timestamp";
+import type { PoolDetail } from "~/components/pool/types";
 import { capacityColour } from "~/utils/vocabulary";
 
-const route = useRoute();
-const { data: pool, error, refresh } = await useFetch(`/api/pools/${route.params.id}`);
+const props = defineProps<{ pool: PoolDetail }>();
+const emit = defineEmits<{ refresh: [] }>();
+const pool = toRef(props, "pool");
+const refresh = () => emit("refresh");
 
-if (error.value) {
-  throw createError({
-    statusCode: error.value.statusCode ?? 500,
-    statusMessage: error.value.statusMessage,
-  });
-}
-
-useSeoMeta({ title: getPageTitle(pool.value?.name ?? "Pool") });
+useSeoMeta({ title: () => getPageTitle(pool.value.name) });
 
 const now = ref(Date.now());
 
@@ -28,7 +24,7 @@ const unarchive = async () => {
   unarchiving.value = true;
   try {
     await $fetch(`/api/pools/${pool.value.id}/archive`, { method: "DELETE" });
-    await refresh();
+    refresh();
   } catch {
     toast.add({ title: `Could not unarchive ${pool.value.name}`, color: "error" });
   } finally {
@@ -67,7 +63,7 @@ const {
   data: datasets,
   status: datasetsStatus,
   execute: loadDatasets,
-} = useLazyFetch(`/api/pools/${route.params.id}/datasets`, {
+} = useLazyFetch(() => `/api/pools/${pool.value.id}/datasets`, {
   immediate: false,
   server: false,
 });
@@ -322,6 +318,7 @@ const tabs = computed<TabsItem[]>(() => [
           <DatasetTree
             v-else
             :datasets="datasets?.datasets ?? []"
+            :pool-path="pool.path"
             :now="now"
             :loading="datasetsStatus === 'pending'"
           />
@@ -346,7 +343,11 @@ const tabs = computed<TabsItem[]>(() => [
               >
                 Loading datasets…
               </p>
-              <DatasetTreemap v-else :datasets="datasets?.datasets ?? []" />
+              <DatasetTreemap
+                v-else
+                :datasets="datasets?.datasets ?? []"
+                :pool-path="pool.path"
+              />
             </div>
           </template>
         </template>

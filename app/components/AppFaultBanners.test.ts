@@ -27,7 +27,7 @@ const fault = (id: number, overrides: Partial<FaultView> = {}): FaultView => ({
   lastSeenAt: new Date().toISOString(),
   resolvedAt: null,
   stateChangedAt: new Date().toISOString(),
-  subject: { type: "host", id, label: "mars", hostName: "mars" },
+  subject: { type: "host", id, label: "mars", hostName: "mars", path: null },
   ...overrides,
 });
 
@@ -57,7 +57,13 @@ describe("AppFaultBanners", () => {
       fault(2, {
         kind: "collector-incompatible",
         data: { version: "0.2.0", minVersion: "0.3.0" },
-        subject: { type: "host", id: 2, label: "pihost", hostName: "pihost" },
+        subject: {
+          type: "host",
+          id: 2,
+          label: "pihost",
+          hostName: "pihost",
+          path: null,
+        },
       }),
     ];
     const component = await mountSuspended(AppFaultBanners);
@@ -80,7 +86,13 @@ describe("AppFaultBanners", () => {
         kind: "disk-missing",
         category: "disk",
         data: {},
-        subject: { type: "disk", id: 9, label: "V5", hostName: "venus" },
+        subject: {
+          type: "disk",
+          id: 9,
+          label: "V5",
+          hostName: "venus",
+          path: null,
+        },
       }),
     ];
     const component = await mountSuspended(AppFaultBanners);

@@ -146,6 +146,7 @@ describe("DiskNameplate", () => {
       membership: {
         poolId: 3,
         poolName: "tank",
+        poolPath: "/zfs/nas1/tank",
         poolArchived: false,
         vdevName: "/dev/disk/by-vdev/K2-part1",
         groupName: "raidz2-0",

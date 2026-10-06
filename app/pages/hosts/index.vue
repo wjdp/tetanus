@@ -4,6 +4,7 @@ import { moveArrayElement, useSortable } from "@vueuse/integrations/useSortable"
 import type { SortableEvent } from "sortablejs";
 import { getPageTitle } from "#shared/app";
 import { upgradeCommand } from "#shared/collector";
+import { hostPath } from "#shared/entityPaths";
 import {
   collectorBadge,
   needsUpgrade,
@@ -90,7 +91,7 @@ const isRowControl = (event: Event) =>
   event.target.closest("[data-drag-handle], [data-row-control]") !== null;
 
 const onSelectRow = (event: Event, row: { original: Host }) => {
-  if (!isRowControl(event)) navigateTo(`/hosts/${row.original.id}`);
+  if (!isRowControl(event)) navigateTo(hostPath(row.original.name));
 };
 
 const requestUrl = useRequestURL();
@@ -133,7 +134,7 @@ const requestUrl = useRequestURL();
         <NuxtLink
           v-for="host in hosts"
           :key="host.id"
-          :to="`/hosts/${host.id}`"
+          :to="hostPath(host.name)"
           class="border-default hover:bg-elevated/50 flex flex-col gap-1.5 border-t py-2.5 text-sm last:border-b"
           data-testid="host-list-item"
         >
@@ -209,7 +210,7 @@ const requestUrl = useRequestURL();
           <template #name-cell="{ row }">
             <div class="flex items-center gap-2">
               <NuxtLink
-                :to="`/hosts/${row.original.id}`"
+                :to="hostPath(row.original.name)"
                 data-row-control
                 class="text-highlighted hover:text-primary"
               >

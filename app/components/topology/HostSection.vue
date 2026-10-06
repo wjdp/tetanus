@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hostPath } from "#shared/entityPaths";
 import type { RunLike } from "~/utils/hostFreshness";
 import { activeScan } from "./activeScan";
 import {
@@ -48,7 +49,7 @@ const summary = computed(() => {
   <section class="flex flex-col gap-4" data-testid="host-section">
     <header class="flex flex-col gap-1">
       <h2 class="text-highlighted text-lg font-semibold">
-        <NuxtLink :to="`/hosts/${host.id}`" class="hover:text-primary">
+        <NuxtLink :to="hostPath(host.name)" class="hover:text-primary">
           {{ host.displayName || host.name }}
         </NuxtLink>
         <span

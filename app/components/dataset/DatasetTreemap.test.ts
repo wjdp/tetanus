@@ -82,7 +82,9 @@ beforeAll(() => {
 afterAll(() => vi.unstubAllGlobals());
 
 const mountMap = async () => {
-  const map = await mountSuspended(DatasetTreemap, { props: { datasets } });
+  const map = await mountSuspended(DatasetTreemap, {
+    props: { datasets, poolPath: "/zfs/nas1/tank" },
+  });
   await nextTick();
   return map;
 };
@@ -102,7 +104,7 @@ describe("DatasetTreemap", () => {
       "tank/media/films, 186 GiB",
     ]);
     expect(map.find('[data-key="4:snapshots"]').exists()).toBe(true);
-    expect(map.find('a[href="/datasets/2"]').exists()).toBe(true);
+    expect(map.find('a[href="/zfs/nas1/tank/media"]').exists()).toBe(true);
   });
 
   it("explains a tile on hover", async () => {

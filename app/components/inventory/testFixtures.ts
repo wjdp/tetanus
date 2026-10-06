@@ -60,6 +60,7 @@ export const mirrorMembership = (
 ): InventoryMembership => ({
   poolId: 1,
   poolName: "tank",
+  poolPath: "/zfs/nas1/tank",
   vdevName: "/dev/disk/by-id/ata-K1",
   groupName: "mirror-0",
   groupType: "mirror",

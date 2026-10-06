@@ -193,6 +193,7 @@ describe("disks inventory page", () => {
     const tank = {
       poolId: 3,
       poolName: "tank",
+      poolPath: "/zfs/nas1/tank",
       vdevName: "/dev/disk/by-vdev/K1-part1",
       groupName: "raidz1-0",
       groupType: "raidz1",
@@ -205,9 +206,9 @@ describe("disks inventory page", () => {
     ];
     const page = await mountPage();
 
-    expect(page.findAll('a[href="/zfs/3"]').map((link) => link.text())).toEqual(
-      ["tank", "tank"],
-    );
+    expect(
+      page.findAll('a[href="/zfs/nas1/tank"]').map((link) => link.text()),
+    ).toEqual(["tank", "tank"]);
     expect(page.findAll("tbody tr")[2].text()).toContain("—");
     expect(page.find('[aria-label="Filter by pool"]').exists()).toBe(true);
   });
@@ -243,7 +244,11 @@ describe("disks inventory page", () => {
           id: 1,
           alias: "K1",
           ...sataHdd,
-          membership: { poolId: 1, poolName: "tank" },
+          membership: {
+            poolId: 1,
+            poolName: "tank",
+            poolPath: "/zfs/nas1/tank",
+          },
         }),
         disk({ id: 2, alias: "K2", ...nvmeSsd }),
       ];

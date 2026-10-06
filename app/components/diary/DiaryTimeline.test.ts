@@ -15,6 +15,7 @@ interface Entry {
   title: string;
   body: string;
   subjectLabel: string | null;
+  subjectPath: string | null;
 }
 
 const entry = (overrides: Partial<Entry>): Entry => ({
@@ -27,6 +28,7 @@ const entry = (overrides: Partial<Entry>): Entry => ({
   title: "spare (was in-use)",
   body: "",
   subjectLabel: "K2",
+  subjectPath: "/disks/4",
   ...overrides,
 });
 
@@ -41,18 +43,25 @@ describe("DiaryTimeline", () => {
             at: "2026-09-28T08:00:00.000Z",
             subjectType: "pool",
             subjectId: 7,
+            subjectPath: "/zfs/nas1/tank",
             kind: "manual",
             eventType: null,
             title: "Scrubbed by hand",
             body: "First paragraph.\n\nSecond paragraph.",
           }),
-          entry({ id: 1, at: "2026-09-27T23:00:00.000Z", subjectType: "host" }),
+          entry({
+            id: 1,
+            at: "2026-09-27T23:00:00.000Z",
+            subjectType: "host",
+            subjectPath: "/hosts/nas1",
+          }),
           entry({
             id: 4,
             at: "2026-09-27T22:00:00.000Z",
             subjectType: "dataset",
             subjectId: 22,
             subjectLabel: "atlas · tank/media",
+            subjectPath: "/zfs/nas1/tank/media",
           }),
         ],
       },
@@ -62,9 +71,9 @@ describe("DiaryTimeline", () => {
     expect(headings).toEqual(["2026-09-28", "2026-09-27"]);
     expect(timeline.find('a[href="/disks/4"]').text()).toBe("K2");
     expect(timeline.find('a[href="/disks/4"]').html()).toContain("hard-drive");
-    expect(timeline.find('a[href="/zfs/7"]').exists()).toBe(true);
-    expect(timeline.find('a[href="/hosts/4"]').exists()).toBe(true);
-    expect(timeline.find('a[href="/datasets/22"]').text()).toBe(
+    expect(timeline.find('a[href="/zfs/nas1/tank"]').exists()).toBe(true);
+    expect(timeline.find('a[href="/hosts/nas1"]').exists()).toBe(true);
+    expect(timeline.find('a[href="/zfs/nas1/tank/media"]').text()).toBe(
       "atlas · tank/media",
     );
 

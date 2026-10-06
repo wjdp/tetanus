@@ -101,6 +101,7 @@ const detail = {
   membership: {
     poolId: 3,
     poolName: "tank",
+    poolPath: "/zfs/nas1/tank",
     vdevName: "/dev/disk/by-vdev/K2-part1",
     groupName: "raidz2-0",
     groupType: "raidz2",
@@ -373,7 +374,7 @@ describe("disk page", () => {
     expect(membershipState.text()).toBe("ONLINE");
     expect(membershipState.classes()).toContain("text-success");
     expect(strip.text()).toContain("K2-part1");
-    expect(strip.get('a[href="/zfs/3"]').text()).toBe("tank");
+    expect(strip.get('a[href="/zfs/nas1/tank"]').text()).toBe("tank");
     expect(
       strip.get('[data-testid="disk-fault-badges"]').attributes("href"),
     ).toBe("/disks/7?tab=faults");

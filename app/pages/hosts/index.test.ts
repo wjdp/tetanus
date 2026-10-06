@@ -125,7 +125,7 @@ describe("hosts page", () => {
   it("links each host to its page and offers to add one", async () => {
     const page = await mountSuspended(HostsPage);
 
-    expect(page.find('tbody a[href="/hosts/2"]').text()).toBe("pihost");
+    expect(page.find('tbody a[href="/hosts/pihost"]').text()).toBe("pihost");
     expect(page.find('[data-testid="add-host"]').attributes("href")).toBe(
       "/hosts/add",
     );
@@ -138,7 +138,7 @@ describe("hosts page", () => {
 
     const items = list.findAll('[data-testid="host-list-item"]');
     expect(items).toHaveLength(5);
-    expect(items[1].attributes("href")).toBe("/hosts/2");
+    expect(items[1].attributes("href")).toBe("/hosts/pihost");
     expect(items[1].text()).toContain("pihost");
     expect(items[1].get('[data-testid="host-list-meta"]').text()).toMatch(
       new RegExp(

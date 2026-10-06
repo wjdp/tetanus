@@ -158,6 +158,7 @@ describe("replication faults", () => {
         id: replicationId,
         label: "tank/a → vpool/tank/a",
         hostName: "vault",
+        path: `/replications/${replicationId}`,
       },
     ]);
   });

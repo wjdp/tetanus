@@ -11,7 +11,10 @@ import { labelSubjects } from "~~/server/services/subjectLabels";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiaryEntryRow = typeof diaryEntry.$inferSelect;
-export type DiaryEntry = DiaryEntryRow & { subjectLabel: string | null };
+export type DiaryEntry = DiaryEntryRow & {
+  subjectLabel: string | null;
+  subjectPath: string | null;
+};
 
 export const DEFAULT_DIARY_LIMIT = 100;
 

@@ -72,6 +72,7 @@ export interface TopologyDisk extends TopologyDiskFacts {
 export interface TopologyPool {
   id: number;
   name: string;
+  path: string;
   state: string;
   displayState: string;
   sizeBytes: number | null;

@@ -36,6 +36,7 @@ import {
   listDiary,
 } from "~~/server/services/diary";
 import { notFound } from "~~/server/utils/serviceError";
+import { poolPaths } from "./paths";
 import type { PoolRow } from "./topology";
 import { recordPoolUsable } from "./usable";
 
@@ -523,7 +524,7 @@ export interface DatasetSnapshot extends SnapshotRow {
 
 export interface DatasetDetail extends DatasetRow {
   depth: number;
-  pool: { id: number; name: string; guid: string };
+  pool: { id: number; name: string; guid: string; path: string };
   host: DatasetHost;
   children: DatasetChild[];
   snapshots: DatasetSnapshot[];
@@ -540,7 +541,7 @@ export interface DatasetCounts {
 export interface DatasetSearchResult {
   id: number;
   name: string;
-  pool: { id: number; name: string };
+  pool: { id: number; name: string; path: string };
   host: DatasetHost;
 }
 
@@ -699,7 +700,7 @@ export function getDataset(id: number, now = new Date()): DatasetDetail {
   return {
     ...row.dataset,
     depth: depthOf(row.dataset.name),
-    pool: row.pool,
+    pool: { ...row.pool, path: poolPaths().get(row.pool.id) ?? "" },
     host: row.host,
     children: datasetChildren(id),
     snapshots: datasetSnapshots(id, now),
@@ -761,27 +762,43 @@ function datasetSummaries() {
     .innerJoin(host, eq(host.id, pool.hostId));
 }
 
+type DatasetSearchRow = Omit<DatasetSearchResult, "pool"> & {
+  pool: { id: number; name: string };
+};
+
+function withPoolPaths(rows: DatasetSearchRow[]): DatasetSearchResult[] {
+  const paths = poolPaths();
+  return rows.map((row) => ({
+    ...row,
+    pool: { ...row.pool, path: paths.get(row.pool.id) ?? "" },
+  }));
+}
+
 export function lookupDatasets(ids: number[]): DatasetSearchResult[] {
   if (ids.length === 0) return [];
-  return datasetSummaries()
-    .where(inArray(dataset.id, ids))
-    .orderBy(asc(dataset.name), asc(host.name))
-    .all();
+  return withPoolPaths(
+    datasetSummaries()
+      .where(inArray(dataset.id, ids))
+      .orderBy(asc(dataset.name), asc(host.name))
+      .all(),
+  );
 }
 
 export function searchDatasets(
   query: string,
   limit = DATASET_SEARCH_LIMIT,
 ): DatasetSearchResult[] {
-  return datasetSummaries()
-    .where(
-      and(
-        eq(dataset.present, true),
-        isNull(pool.archivedAt),
-        sql`${dataset.name} like ${likePattern(query)} escape '\\'`,
-      ),
-    )
-    .orderBy(asc(dataset.name), asc(host.name))
-    .limit(limit)
-    .all();
+  return withPoolPaths(
+    datasetSummaries()
+      .where(
+        and(
+          eq(dataset.present, true),
+          isNull(pool.archivedAt),
+          sql`${dataset.name} like ${likePattern(query)} escape '\\'`,
+        ),
+      )
+      .orderBy(asc(dataset.name), asc(host.name))
+      .limit(limit)
+      .all(),
+  );
 }

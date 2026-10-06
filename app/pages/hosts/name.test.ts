@@ -8,14 +8,14 @@ import { clearNuxtData } from "#app";
 import type { FaultView } from "#shared/faults";
 import { diskFixture } from "~/components/topology/testFixtures";
 import { FakeEventSource } from "~~/test/fakeEventSource";
-import HostPage from "./[id].vue";
+import HostPage from "./[name].vue";
 
 const now = new Date().toISOString();
 
 const HOST = {
   id: 2,
-  name: "mars",
-  displayName: "Mars NAS",
+  name: "nas1",
+  displayName: "NAS One",
   toolVersions: {
     zfs: "zfs-2.2.2-0ubuntu9.1",
     kernel: "7.0.0-34-generic",
@@ -67,19 +67,31 @@ const FAULTS: FaultView[] = [
     category: "host",
     severity: "warning",
     data: { version: "0.3.0", currentVersion: "0.7.0" },
-    subject: { type: "host", id: 2, label: "mars", hostName: "mars" },
+    subject: {
+      type: "host",
+      id: 2,
+      label: "nas1",
+      hostName: "nas1",
+      path: "/hosts/nas1",
+    },
   }),
   fault(2, {
     kind: "smart-attribute",
     data: { attrId: "5", name: "Reallocated Sectors Count", value: 8 },
-    subject: { type: "disk", id: 12, label: "A7", hostName: "mars" },
+    subject: {
+      type: "disk",
+      id: 12,
+      label: "A7",
+      hostName: "nas1",
+      path: "/disks/12",
+    },
   }),
 ];
 
 const patches: unknown[] = [];
 const faultQueries: unknown[] = [];
 
-registerEndpoint("/api/hosts/2", {
+registerEndpoint("/api/hosts/by-name/nas1", {
   method: "GET",
   handler: () => HOST,
 });
@@ -142,7 +154,7 @@ const TooltipPassthrough = defineComponent({
 });
 const mountPage = () =>
   mountSuspended(HostPage, {
-    route: "/hosts/2",
+    route: "/hosts/nas1",
     global: { stubs: { UTooltip: TooltipPassthrough } },
   });
 
@@ -158,8 +170,8 @@ describe("host page", () => {
   it("shows the header with the host's own disks", async () => {
     const page = await mountPage();
 
-    expect(page.get("h1").text()).toBe("Mars NAS");
-    expect(page.text()).toContain("mars");
+    expect(page.get("h1").text()).toBe("NAS One");
+    expect(page.text()).toContain("nas1");
     const summary = page.get('[data-testid="host-summary"]').text();
     expect(summary).toContain("0 pools · 1 disk · 1 HDD");
     expect(page.findAll('[data-testid="host-disk-group"]')).toHaveLength(1);
@@ -171,11 +183,11 @@ describe("host page", () => {
     await vi.waitFor(() =>
       expect(page.find('[data-testid="host-faults"]').exists()).toBe(true),
     );
-    expect(faultQueries[0]).toMatchObject({ host: "mars" });
+    expect(faultQueries[0]).toMatchObject({ host: "nas1" });
     const summary = page.get('[data-testid="subject-fault-summary"]');
     expect(summary.find('a[href="/disks/12"]').text()).toBe("A7");
     expect(summary.text()).toContain("1 error");
-    expect(summary.find('a[href="/faults?host=mars"]').exists()).toBe(true);
+    expect(summary.find('a[href="/faults?host=nas1"]').exists()).toBe(true);
   });
 
   it("shows every tool version and the upgrade command", async () => {
@@ -227,7 +239,7 @@ describe("host page", () => {
     await flushPromises();
     expect(patches).toEqual([
       {
-        displayName: "Mars NAS",
+        displayName: "NAS One",
         intermittent: false,
         healthchecksUrl: "",
         notes: "Under the **stairs**",

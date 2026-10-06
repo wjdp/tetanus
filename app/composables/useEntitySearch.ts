@@ -1,5 +1,6 @@
 import type { BadgeProps } from "@nuxt/ui";
 import { type Disposal, describeDisk, UNIDENTIFIED_DISK } from "#shared/disk";
+import { hostPath } from "#shared/entityPaths";
 import {
   DISPOSAL_VOCABULARY,
   disposalLabel,
@@ -32,6 +33,7 @@ interface SearchableHost {
 interface SearchablePool {
   id: number;
   name: string;
+  path: string;
   host: { name: string; displayName: string | null };
 }
 
@@ -80,7 +82,7 @@ export function hostSearchEntry(host: SearchableHost): EntitySearchEntry {
     id: `host-${host.id}`,
     label: joinLabel([host.displayName, host.name]),
     icon: ENTITY_ICON.host,
-    to: `/hosts/${host.id}`,
+    to: hostPath(host.name),
   };
 }
 
@@ -89,7 +91,7 @@ export function poolSearchEntry(pool: SearchablePool): EntitySearchEntry {
     id: `pool-${pool.id}`,
     label: joinLabel([pool.name, pool.host.displayName || pool.host.name]),
     icon: ENTITY_ICON.pool,
-    to: `/zfs/${pool.id}`,
+    to: pool.path,
   };
 }
 

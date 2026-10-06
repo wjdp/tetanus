@@ -65,7 +65,7 @@ describe("hostSearchEntry", () => {
     const entry = hostSearchEntry({ id: 2, name: "pip", displayName: null });
 
     expect(entry.label).toBe("pip");
-    expect(entry.to).toBe("/hosts/2");
+    expect(entry.to).toBe("/hosts/pip");
     expect(entry.icon).toBe("i-lucide-server");
   });
 });
@@ -75,11 +75,12 @@ describe("poolSearchEntry", () => {
     const entry = poolSearchEntry({
       id: 7,
       name: "tank",
-      host: { name: "mars", displayName: "Mars NAS" },
+      path: "/zfs/nas1/tank",
+      host: { name: "nas1", displayName: "Mars NAS" },
     });
 
     expect(entry.label).toBe("tank · Mars NAS");
-    expect(entry.to).toBe("/zfs/7");
+    expect(entry.to).toBe("/zfs/nas1/tank");
     expect(entry.icon).toBe("i-lucide-database");
   });
 });

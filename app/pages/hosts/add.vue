@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
+import { hostPath } from "#shared/entityPaths";
 import { HOST_TOOL_REQUIREMENTS } from "#shared/hostTools";
 
 useSeoMeta({ title: getPageTitle("Add host") });
@@ -82,7 +83,7 @@ const INSTALLED_FILES = [
         variant="subtle"
         icon="i-lucide-circle-check"
         :title="`${host.name} reported`"
-        :actions="[{ label: 'Open host', to: `/hosts/${host.id}` }]"
+        :actions="[{ label: 'Open host', to: hostPath(host.name) }]"
         data-testid="new-host"
       />
 

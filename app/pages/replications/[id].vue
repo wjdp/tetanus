@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
+import { datasetPath } from "#shared/entityPaths";
 import { replicationLabel } from "#shared/replications";
 import { hostLabel } from "~/components/replication/groups";
 import { patchReplication } from "~/components/replication/patch";
@@ -145,7 +146,7 @@ const tabs = computed<TabsItem[]>(() => [
           <template v-if="replication.source">
             <span>{{ hostLabel(replication.source) }}</span>
             <NuxtLink
-              :to="`/datasets/${replication.source.dataset.id}`"
+              :to="datasetPath(replication.source.pool.path, replication.source.dataset.name)"
               class="text-toned font-mono hover:underline"
             >
               {{ replication.source.dataset.name }}
@@ -155,7 +156,7 @@ const tabs = computed<TabsItem[]>(() => [
           <UIcon name="i-lucide-arrow-right" class="text-dimmed size-4" />
           <span>{{ hostLabel(replication.target) }}</span>
           <NuxtLink
-            :to="`/datasets/${replication.target.dataset.id}`"
+            :to="datasetPath(replication.target.pool.path, replication.target.dataset.name)"
             class="text-toned font-mono hover:underline"
           >
             {{ replication.target.dataset.name }}

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { APP_NAME } from "#shared/app";
+import { hostPath } from "#shared/entityPaths";
 import { interfaceLabel } from "#shared/hardware";
 import { formatDuration } from "#shared/hostFreshness";
 import { bareModel, displayModel } from "#shared/model";
@@ -83,9 +84,7 @@ const unmatchedModel = computed(
 const mismatches = computed(() => props.disk.hardware?.specMismatch ?? []);
 
 const hostLink = computed(() =>
-  props.disk.hostName && props.disk.lastSeenHostId !== null
-    ? `/hosts/${props.disk.lastSeenHostId}`
-    : null,
+  props.disk.hostName ? hostPath(props.disk.hostName) : null,
 );
 
 const usage = computed(() =>

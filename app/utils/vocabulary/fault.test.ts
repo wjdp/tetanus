@@ -25,6 +25,7 @@ const subject = (overrides: Partial<FaultSubject>): FaultSubject => ({
   id: 12,
   label: "A7",
   hostName: "atlas",
+  path: "/disks/12",
   ...overrides,
 });
 
@@ -41,29 +42,42 @@ describe("faultHostLabel", () => {
 describe("faultSubjectPath", () => {
   it.each([
     ["disk", "/disks/12"],
-    ["pool", "/zfs/12"],
-    ["host", "/hosts/12"],
+    ["pool", "/zfs/nas1/tank"],
+    ["host", "/hosts/nas1"],
     ["replication", "/replications/12"],
   ] as const)("links a %s to %s", (type, path) => {
-    expect(faultSubjectPath(subject({ type }))).toBe(path);
+    expect(faultSubjectPath(subject({ type, path }))).toBe(path);
+  });
+
+  it("has no link for a removed subject", () => {
+    expect(faultSubjectPath(subject({ type: "pool", path: null }))).toBeNull();
+    expect(
+      faultSubjectPath(subject({ path: null }), "smart-attribute"),
+    ).toBeNull();
   });
 
   it("opens the SMART tab for a SMART fault on a disk", () => {
-    expect(faultSubjectPath(subject({ id: 3 }), "smart-attribute")).toBe(
-      "/disks/3?tab=smart",
-    );
-    expect(faultSubjectPath(subject({ id: 3 }), "smart-health-failed")).toBe(
-      "/disks/3?tab=smart",
-    );
-    expect(faultSubjectPath(subject({ id: 3 }), "disk-missing")).toBe(
-      "/disks/3",
-    );
+    expect(
+      faultSubjectPath(subject({ id: 3, path: "/disks/3" }), "smart-attribute"),
+    ).toBe("/disks/3?tab=smart");
+    expect(
+      faultSubjectPath(
+        subject({ id: 3, path: "/disks/3" }),
+        "smart-health-failed",
+      ),
+    ).toBe("/disks/3?tab=smart");
+    expect(
+      faultSubjectPath(subject({ id: 3, path: "/disks/3" }), "disk-missing"),
+    ).toBe("/disks/3");
   });
 
   it("opens the FARM tab for a SMART counters reset", () => {
-    expect(faultSubjectPath(subject({ id: 3 }), "smart-counters-reset")).toBe(
-      "/disks/3?tab=farm",
-    );
+    expect(
+      faultSubjectPath(
+        subject({ id: 3, path: "/disks/3" }),
+        "smart-counters-reset",
+      ),
+    ).toBe("/disks/3?tab=farm");
   });
 });
 

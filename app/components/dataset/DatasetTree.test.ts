@@ -62,7 +62,9 @@ const datasets = [
 ];
 
 const mountTree = () =>
-  mountSuspended(DatasetTree, { props: { datasets, now } });
+  mountSuspended(DatasetTree, {
+    props: { datasets, poolPath: "/zfs/nas1/tank", now },
+  });
 
 const rowTexts = (tree: Awaited<ReturnType<typeof mountTree>>) =>
   tree.findAll("tbody tr").map((row) => row.text());
@@ -80,7 +82,7 @@ describe("DatasetTree", () => {
       "1",
     ]);
     expect(names[2].attributes("style")).toContain("padding-left: 2.5rem");
-    const photos = names[2].get('a[href="/datasets/3"]');
+    const photos = names[2].get('a[href="/zfs/nas1/tank/media/photos"]');
     expect(photos.text()).toBe("photos");
     expect(photos.attributes("title")).toBe("tank/media/photos");
   });
@@ -99,11 +101,15 @@ describe("DatasetTree", () => {
     const tree = await mountTree();
 
     await tree.get('button[aria-label="Collapse tank/media"]').trigger("click");
-    expect(tree.find('a[href="/datasets/3"]').exists()).toBe(false);
-    expect(tree.find('a[href="/datasets/4"]').exists()).toBe(true);
+    expect(tree.find('a[href="/zfs/nas1/tank/media/photos"]').exists()).toBe(
+      false,
+    );
+    expect(tree.find('a[href="/zfs/nas1/tank/vm-disk"]').exists()).toBe(true);
 
     await tree.get('button[aria-label="Expand tank/media"]').trigger("click");
-    expect(tree.find('a[href="/datasets/3"]').exists()).toBe(true);
+    expect(tree.find('a[href="/zfs/nas1/tank/media/photos"]').exists()).toBe(
+      true,
+    );
   });
 
   it("puts destroyed datasets last, greyed with a badge", async () => {

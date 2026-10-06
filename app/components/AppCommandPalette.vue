@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CommandPaletteGroup, CommandPaletteItem } from "@nuxt/ui";
+import { datasetPath } from "#shared/entityPaths";
 import { useDatasetSearch } from "~/components/dataset/useDatasetSearch";
 import { ENTITY_ICON } from "~/utils/vocabulary";
 
@@ -50,7 +51,7 @@ const datasetItems = computed(() =>
     toItem({
       label: datasetLabel(dataset),
       icon: ENTITY_ICON.dataset,
-      to: `/datasets/${dataset.id}`,
+      to: datasetPath(dataset.pool.path, dataset.name),
     }),
   ),
 );

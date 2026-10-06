@@ -186,3 +186,43 @@ describe("/api/datasets", () => {
     ]);
   });
 });
+
+describe("name-based paths", () => {
+  it("resolves a pool and its datasets by host and name", async () => {
+    const tank = await tankPool();
+    const pool = await (await fetch("/api/zfs/mars/tank")).json();
+    expect(pool).toMatchObject({
+      kind: "pool",
+      pool: { id: tank.id, path: "/zfs/mars/tank" },
+    });
+
+    const root = await (await fetch("/api/zfs/mars/tank/~root")).json();
+    expect(root).toMatchObject({ kind: "dataset", dataset: { name: "tank" } });
+
+    const utn = await (await fetch(`/api/zfs/mars/${UTN}`)).json();
+    expect(utn).toMatchObject({
+      kind: "dataset",
+      dataset: { id: (await utnDataset()).id, name: UTN },
+    });
+
+    expect((await fetch("/api/zfs/mars/tank/missing")).status).toBe(404);
+  });
+
+  it("finds a host by name", async () => {
+    const host = await (await fetch("/api/hosts/by-name/mars")).json();
+    expect(host).toMatchObject({ name: "mars" });
+    expect((await fetch("/api/hosts/by-name/nowhere")).status).toBe(404);
+  });
+
+  it("redirects old id URLs to the name-based path", async () => {
+    const tank = await tankPool();
+    const pool = await fetch(`/zfs/${tank.id}?tab=x`, { redirect: "manual" });
+    expect(pool.status).toBe(302);
+    expect(pool.headers.get("location")).toBe("/zfs/mars/tank?tab=x");
+
+    const dataset = await fetch(`/datasets/${(await utnDataset()).id}`, {
+      redirect: "manual",
+    });
+    expect(dataset.headers.get("location")).toBe(`/zfs/mars/${UTN}`);
+  });
+});

@@ -9,15 +9,28 @@ import {
 const POLL_MS = 60_000;
 
 const route = useRoute();
-const hostId = Number(route.params.id);
+const hostName = String(route.params.name);
+
+const {
+  data: host,
+  error,
+  refresh: refreshHost,
+} = await useFetch(`/api/hosts/by-name/${encodeURIComponent(hostName)}`);
+
+if (error.value || !host.value) {
+  throw createError({
+    statusCode: error.value?.statusCode ?? 404,
+    statusMessage: error.value?.statusMessage,
+  });
+}
+
+const hostId = host.value.id;
 
 const [
-  { data: host, error, refresh: refreshHost },
   { data: pools, refresh: refreshPools },
   { data: disks, refresh: refreshDisks },
   { data: diary, refresh: refreshDiary },
 ] = await Promise.all([
-  useFetch(`/api/hosts/${hostId}`),
   useFetch("/api/pools"),
   useFetch("/api/disks"),
   useFetch("/api/diary", {
@@ -25,13 +38,6 @@ const [
     default: () => [],
   }),
 ]);
-
-if (error.value) {
-  throw createError({
-    statusCode: error.value.statusCode ?? 500,
-    statusMessage: error.value.statusMessage,
-  });
-}
 
 const label = computed(
   () => host.value?.displayName || host.value?.name || "Host",

@@ -24,7 +24,13 @@ const fault = (
   lastSeenAt: daysAgo(0),
   resolvedAt: null,
   stateChangedAt: daysAgo(6),
-  subject: { type: "disk", id: 12, label: "A7", hostName: "atlas" },
+  subject: {
+    type: "disk",
+    id: 12,
+    label: "A7",
+    hostName: "atlas",
+    path: "/disks/12",
+  },
   id,
   ...overrides,
 });
@@ -45,7 +51,13 @@ const FAULTS: FaultView[] = [
     severity: "warning",
     openedAt: daysAgo(1),
     data: { poolName: "vault", state: "DEGRADED" },
-    subject: { type: "pool", id: 3, label: "vault", hostName: "styx" },
+    subject: {
+      type: "pool",
+      id: 3,
+      label: "vault",
+      hostName: "styx",
+      path: "/zfs/styx/vault",
+    },
   }),
   fault(3, {
     kind: "smart-attribute",
@@ -59,14 +71,26 @@ const FAULTS: FaultView[] = [
       acceptedValue: 2,
       acceptanceKind: "acknowledge",
     },
-    subject: { type: "disk", id: 13, label: "A12", hostName: "atlas" },
+    subject: {
+      type: "disk",
+      id: 13,
+      label: "A12",
+      hostName: "atlas",
+      path: "/disks/13",
+    },
   }),
   fault(4, {
     kind: "collector-outdated",
     category: "host",
     severity: "warning",
     data: { version: "0.3.0", currentVersion: "0.3.1" },
-    subject: { type: "host", id: 4, label: "bench", hostName: "bench" },
+    subject: {
+      type: "host",
+      id: 4,
+      label: "bench",
+      hostName: "bench",
+      path: "/hosts/bench",
+    },
   }),
   fault(5, {
     kind: "pool-degraded",
@@ -75,7 +99,13 @@ const FAULTS: FaultView[] = [
     state: "resolved",
     resolvedAt: daysAgo(3),
     data: { poolName: "tank", state: "DEGRADED" },
-    subject: { type: "pool", id: 4, label: "tank", hostName: "styx" },
+    subject: {
+      type: "pool",
+      id: 4,
+      label: "tank",
+      hostName: "styx",
+      path: "/zfs/styx/tank",
+    },
   }),
 ];
 
@@ -363,8 +393,8 @@ describe("faults page", () => {
         .get('[data-testid="fault-subject-link"]')
         .attributes("href");
     expect(href("Reallocated")).toBe("/disks/12?tab=smart");
-    expect(href("vault")).toBe("/zfs/3");
-    expect(href("Collector")).toBe("/hosts/4");
+    expect(href("vault")).toBe("/zfs/styx/vault");
+    expect(href("Collector")).toBe("/hosts/bench");
   });
 
   it("says nothing needs attention when the live view is empty", async () => {

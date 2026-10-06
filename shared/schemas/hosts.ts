@@ -52,3 +52,5 @@ export const hostOrderSchema = z.strictObject({
 export type HostOrder = z.infer<typeof hostOrderSchema>;
 
 export const hostParamsSchema = z.object({ id: hostIdSchema });
+
+export const hostNameParamsSchema = z.object({ name: z.string().min(1) });

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { datasetPath } from "#shared/entityPaths";
 import { useDatasetSearch } from "../dataset/useDatasetSearch";
 import { hostLabel } from "./groups";
 import { patchReplication } from "./patch";
@@ -55,7 +56,7 @@ const submit = () => {
     <p v-if="replication.source" class="flex flex-wrap items-center gap-2 text-sm">
       <span class="text-muted">{{ hostLabel(replication.source) }}</span>
       <NuxtLink
-        :to="`/datasets/${replication.source.dataset.id}`"
+        :to="datasetPath(replication.source.pool.path, replication.source.dataset.name)"
         class="text-highlighted font-mono hover:underline"
       >
         {{ replication.source.dataset.name }}

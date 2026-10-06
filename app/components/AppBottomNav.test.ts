@@ -71,7 +71,7 @@ describe("AppBottomNav", () => {
     ["/", "/"],
     ["/disks", "/disks"],
     ["/disks/12", "/disks"],
-    ["/datasets/7", "/zfs"],
+    ["/zfs/nas1/tank/media", "/zfs"],
   ])("on %s marks only %s active", async (route, href) => {
     const component = await mountBottomNav(route);
 

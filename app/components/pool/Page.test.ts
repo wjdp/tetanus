@@ -7,129 +7,30 @@ import type { FaultView } from "#shared/faults";
 import { ZFS_BYTE_SYSTEM_COOKIE } from "~/composables/useZfsByteSystem";
 import { clearCookie } from "~~/test/cookies";
 import { FakeEventSource } from "~~/test/fakeEventSource";
-import PoolPage from "./[id].vue";
+import PoolPage from "./Page.vue";
+import { tank, vdev } from "./testFixtures";
+import type { PoolDetail } from "./types";
 
-const vdev = (
-  name: string,
-  type: string,
-  children: object[] = [],
-  extra = {},
-) => ({
-  id: name.length,
-  guid: `guid-${name}`,
-  parentId: null,
-  name,
-  type,
-  role: "normal",
-  state: "ONLINE",
-  spareState: null,
-  readErrors: 0,
-  writeErrors: 0,
-  checksumErrors: 0,
-  slowIos: 0,
-  path: null,
-  devid: null,
-  physPath: null,
-  allocBytes: null,
-  sizeBytes: null,
-  frag: null,
-  present: true,
-  lastSeenAt: "2026-09-28T10:00:00.000Z",
-  disk: null,
-  children,
-  ...extra,
-});
+const asPool = (pool: object) => pool as PoolDetail;
 
-const tank = {
-  id: 7,
-  guid: "4620770592528249368",
-  name: "tank",
-  state: "ONLINE",
-  displayState: "ONLINE",
-  status: "Some supported features are not enabled.",
-  action: null,
-  msgid: null,
-  moreinfo: null,
-  health: "ONLINE",
-  errors: 0,
-  damagedFiles: null,
-  damagedFilesError: null,
-  sizeBytes: 36e12,
-  allocBytes: 18e12,
-  freeBytes: 18e12,
-  frag: 3,
-  cap: 50,
-  dedup: 1,
-  scan: {
-    function: "SCRUB",
-    state: "FINISHED",
-    startTime: 1789255441,
-    endTime: 1789325257,
-    examined: 100,
-    toExamine: 100,
-    errors: 0,
-  },
-  scanProgressAt: null,
-  lastScrub: null,
-  removal: null,
-  config: null,
-  resolvedConfig: { scrubIntervalDays: 35, slowIoThreshold: 10 },
-  firstSeenAt: "2026-09-01T00:00:00.000Z",
-  lastSeenAt: "2026-09-28T10:00:00.000Z",
-  host: { id: 1, name: "mars", displayName: null },
-  vdevs: vdev("tank", "root", [
-    vdev("raidz1-0", "raidz1", [
-      vdev("/dev/disk/by-vdev/K1-part1", "disk", [], {
-        checksumErrors: 2,
-        disk: { id: 3, alias: "K1", state: "in-use", latestStatus: "passed" },
-      }),
-      vdev("/dev/disk/by-vdev/K2-part1", "disk", [], {
-        id: 99,
-        disk: { id: 4, alias: "K2", state: "in-use", latestStatus: "unknown" },
-      }),
-    ]),
-  ]),
-  readings: [],
-  usable: {
-    used: 2 ** 43,
-    available: 3 * 2 ** 43,
-    at: "2026-09-28T10:00:00.000Z",
-  },
-  diary: [],
-  history: [
-    {
-      id: 1,
-      hostId: 1,
-      poolId: null,
-      at: "2026-09-20T02:00:00.000Z",
-      internal: false,
-      text: "zpool scrub tank",
-    },
-  ],
-  historyScope: "host",
-  events: [],
-  datasetCount: 2,
-  snapshotCount: 0,
-};
-
-registerEndpoint("/api/pools/7", () => tank);
-registerEndpoint("/api/pools/8", () => ({
+const full = {
   ...tank,
   id: 8,
+  name: "full",
+  path: "/zfs/nas1/full",
   cap: 92,
   usable: null,
-}));
-registerEndpoint("/api/pools/8/datasets", () => ({ datasets: [] }));
+};
 
 let tfaultArchived = true;
 const tfault = () => ({
   ...tank,
   id: 9,
   name: "tfault",
+  path: "/zfs/nas1/tfault",
   archivedAt: tfaultArchived ? "2026-10-02T09:00:00.000Z" : null,
   archiveNote: tfaultArchived ? "fixture capture" : "",
 });
-registerEndpoint("/api/pools/9", () => tfault());
 registerEndpoint("/api/pools/9/archive", {
   method: "DELETE",
   handler: () => {
@@ -197,7 +98,13 @@ const tankFault: FaultView = {
   lastSeenAt: "2026-09-28T10:00:00.000Z",
   resolvedAt: null,
   stateChangedAt: "2026-09-28T09:00:00.000Z",
-  subject: { type: "pool", id: 7, label: "tank", hostName: "mars" },
+  subject: {
+    type: "pool",
+    id: 7,
+    label: "tank",
+    hostName: "nas1",
+    path: "/zfs/nas1/tank",
+  },
 };
 
 const faultQueries: Record<string, string>[] = [];
@@ -234,6 +141,7 @@ const degraded = () => ({
   ...tank,
   id: 10,
   name: "zeta",
+  path: "/zfs/nas1/zeta",
   state: "DEGRADED",
   displayState: "DEGRADED",
   status: "One or more devices has experienced an error.",
@@ -309,7 +217,6 @@ const degraded = () => ({
     },
   ],
 });
-registerEndpoint("/api/pools/10", () => degraded());
 registerEndpoint("/api/pools/10/config", {
   method: "PATCH",
   handler: async (event) => {
@@ -353,7 +260,9 @@ beforeEach(() => {
 
 describe("pool page", () => {
   it("shows the header, scan and vdev tree", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
 
     expect(page.get("h1").text()).toBe("tank");
     expect(page.text()).toContain("4620770592528249368");
@@ -367,7 +276,9 @@ describe("pool page", () => {
   });
 
   it("colours ONLINE green and marks vdev types and SMART dots", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
     expect(page.get('[data-testid="pool-state"]').classes()).toContain(
       "text-success",
     );
@@ -395,7 +306,9 @@ describe("pool page", () => {
   });
 
   it("shows sizes in binary units like zpool, with a switch to decimal", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
     const capacity = () => page.get('[data-testid="capacity-panel"]').text();
     expect(capacity()).toContain("32.7 TiB");
 
@@ -408,7 +321,9 @@ describe("pool page", () => {
   });
 
   it("leads with usable space and keeps raw figures below, labelled", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
     const usable = page.get('[data-testid="usable-space"]').text();
     expect(usable).toContain("8.00 TiB");
     expect(usable).toContain("24.0 TiB");
@@ -419,7 +334,9 @@ describe("pool page", () => {
   });
 
   it("explains missing usable space and shows only raw figures", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/8" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(full) },
+    });
     expect(page.find('[data-testid="usable-space"]').exists()).toBe(false);
     expect(page.get('[data-testid="usable-missing"]').text()).toContain(
       "raw figures include parity",
@@ -427,17 +344,19 @@ describe("pool page", () => {
   });
 
   it("colours the capacity bar by the capacity thresholds", async () => {
-    const indicator = async (route: string) =>
-      (await mountSuspended(PoolPage, { route }))
+    const indicator = async (pool: object) =>
+      (await mountSuspended(PoolPage, { props: { pool: asPool(pool) } }))
         .get('[data-testid="pool-capacity-bar"] [data-slot="indicator"]')
         .classes();
 
-    expect(await indicator("/zfs/7")).toContain("bg-inverted");
-    expect(await indicator("/zfs/8")).toContain("bg-error");
+    expect(await indicator(tank)).toContain("bg-inverted");
+    expect(await indicator(full)).toContain("bg-error");
   });
 
   it("loads the dataset tree when its tab is first shown", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
     const tab = page
       .findAll('[role="tab"]')
       .find((element) => element.text().startsWith("Datasets"));
@@ -449,13 +368,15 @@ describe("pool page", () => {
     await flushPromises();
 
     await vi.waitFor(() =>
-      expect(page.find('a[href="/datasets/22"]').exists()).toBe(true),
+      expect(page.find('a[href="/zfs/nas1/tank/media"]').exists()).toBe(true),
     );
     expect(datasetRequests).toHaveLength(1);
   });
 
   it("shows the space map on its own tab, with a note for narrow screens", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
     const tab = page
       .findAll('[role="tab"]')
       .find((element) => element.text() === "Space");
@@ -470,7 +391,9 @@ describe("pool page", () => {
   });
 
   it("shows no archive banner for a pool in use", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
     expect(page.find('[data-testid="pool-archived-banner"]').exists()).toBe(
       false,
     );
@@ -478,7 +401,9 @@ describe("pool page", () => {
 
   it("shows an archived pool's date and note in a banner, and unarchives it", async () => {
     tfaultArchived = true;
-    const page = await mountSuspended(PoolPage, { route: "/zfs/9" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tfault()) },
+    });
 
     const banner = page.get('[data-testid="pool-archived-banner"]');
     expect(banner.text()).toContain("Archived 2026-10-02 · fixture capture");
@@ -486,16 +411,14 @@ describe("pool page", () => {
     await banner.get("button").trigger("click");
     await flushPromises();
 
-    await vi.waitFor(() =>
-      expect(page.find('[data-testid="pool-archived-banner"]').exists()).toBe(
-        false,
-      ),
-    );
+    await vi.waitFor(() => expect(page.emitted("refresh")).toHaveLength(1));
   });
 
   it("lists the pool's live faults and acts on them in place", async () => {
     tankFaultState = "open";
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
 
     const list = await vi.waitFor(() =>
       page.get('[data-testid="pool-faults"]'),
@@ -520,7 +443,9 @@ describe("pool page", () => {
   });
 
   it("shows data errors in the header with the damaged files collapsed", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/10" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(degraded()) },
+    });
 
     const errors = page.get('[data-testid="pool-data-errors"]');
     expect(errors.text()).toBe("Data errors 130");
@@ -542,7 +467,9 @@ describe("pool page", () => {
   });
 
   it("shows a muted zero when the pool has no data errors", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/7" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(tank) },
+    });
     const errors = page.get('[data-testid="pool-data-errors"]');
     expect(errors.text()).toBe("Data errors 0");
     expect(errors.classes()).toContain("text-muted");
@@ -551,7 +478,9 @@ describe("pool page", () => {
   });
 
   it("shows scan repairs, red scan errors and the removal panel", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/10" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(degraded()) },
+    });
     const scan = page.get('[data-testid="scan-panel"]');
     expect(scan.get('[data-testid="scan-repaired"]').text()).toBe("4.00 KiB");
     expect(scan.get('[data-testid="scan-errors"]').classes()).toContain(
@@ -564,7 +493,9 @@ describe("pool page", () => {
   });
 
   it("groups log and spare devices, badges spares and flags slow I/Os over the threshold", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/10" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(degraded()) },
+    });
     const tree = page.get('[data-testid="vdev-tree"]');
 
     expect(
@@ -590,7 +521,9 @@ describe("pool page", () => {
   });
 
   it("loads a vdev's history when its row is expanded", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/10" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(degraded()) },
+    });
     const expand = page
       .findAll('[data-testid="vdev-expand"]')
       .find((button) => button.attributes("aria-label")?.includes("Z1-part1"));
@@ -604,7 +537,9 @@ describe("pool page", () => {
   });
 
   it("names each event's vdev with its disk and expands its payload", async () => {
-    const page = await mountSuspended(PoolPage, { route: "/zfs/10" });
+    const page = await mountSuspended(PoolPage, {
+      props: { pool: asPool(degraded()) },
+    });
     const tab = page
       .findAll('[role="tab"]')
       .find((element) => element.text().startsWith("Events"));
@@ -629,7 +564,7 @@ describe("pool page", () => {
 
   it("saves the pool settings from the header popover, one back to its default", async () => {
     const page = await mountSuspended(PoolPage, {
-      route: "/zfs/10",
+      props: { pool: asPool(degraded()) },
       attachTo: document.body,
     });
     await page.get('[data-testid="pool-config"]').trigger("click");
@@ -659,6 +594,7 @@ describe("pool page", () => {
     form.dispatchEvent(new Event("submit"));
     await flushPromises();
 
+    await vi.waitFor(() => expect(page.emitted("refresh")).toBeDefined());
     await vi.waitFor(() =>
       expect(configPatches).toEqual([
         {

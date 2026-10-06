@@ -6,7 +6,7 @@ const subject = (
   type: FaultSubject["type"],
   id: number,
   label: string,
-): FaultSubject => ({ type, id, label, hostName: "mars" });
+): FaultSubject => ({ type, id, label, hostName: "mars", path: null });
 
 const fault = (on: FaultSubject, severity: FaultSeverity) => ({
   subject: on,

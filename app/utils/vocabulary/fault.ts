@@ -30,14 +30,12 @@ const DISK_FAULT_TABS: Partial<Record<FaultKind, string>> = {
 export function faultSubjectPath(
   subject: FaultSubject,
   kind?: FaultKind,
-): string {
-  if (subject.type === "disk") {
+): string | null {
+  if (subject.type === "disk" && subject.path) {
     const tab = kind && DISK_FAULT_TABS[kind];
-    return tab ? `/disks/${subject.id}?tab=${tab}` : `/disks/${subject.id}`;
+    return tab ? `${subject.path}?tab=${tab}` : subject.path;
   }
-  if (subject.type === "pool") return `/zfs/${subject.id}`;
-  if (subject.type === "replication") return `/replications/${subject.id}`;
-  return `/hosts/${subject.id}`;
+  return subject.path;
 }
 
 export function faultDiskPath(

@@ -47,8 +47,8 @@ describe("isNavigationActive", () => {
     ["/faults", "Faults"],
     ["/hosts/add", "Hosts"],
     ["/disks/12", "Disks"],
-    ["/zfs/3", "ZFS"],
-    ["/datasets/7", "ZFS"],
+    ["/zfs/nas1/tank", "ZFS"],
+    ["/zfs/nas1/tank/media", "ZFS"],
     ["/replications/2", "Replications"],
     ["/settings/alerts", "Settings"],
   ])("marks only the section owning %s", (path, label) => {

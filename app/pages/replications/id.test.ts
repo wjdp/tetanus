@@ -175,6 +175,7 @@ const stalledFault: FaultView = {
     id: 3,
     label: "tank/media → vault/replica/tank/media",
     hostName: "styx",
+    path: "/replications/3",
   },
 };
 registerEndpoint("/api/faults", (event) => {
@@ -222,7 +223,9 @@ describe("replication page", () => {
     expect(page.get('[data-testid="direction"]').text()).toBe("Discovered");
     const endpoints = page.get('[data-testid="endpoints"]');
     expect(endpoints.text()).toMatch(/atlas\s*tank\/media\s*styx/);
-    expect(endpoints.find('a[href="/datasets/31"]').exists()).toBe(true);
+    expect(endpoints.find('a[href="/zfs/atlas/tank/media"]').exists()).toBe(
+      true,
+    );
 
     const cadence = page.get('[data-testid="cadence-panel"]').text();
     expect(cadence).toContain("hourly");

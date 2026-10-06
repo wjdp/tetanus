@@ -8,7 +8,6 @@ export interface NavigationEntry {
   to: string;
   badge?: NavigationBadge;
   bottomNav?: true;
-  alsoActiveUnder?: string[];
 }
 
 export const NAVIGATION: NavigationEntry[] = [
@@ -34,7 +33,6 @@ export const NAVIGATION: NavigationEntry[] = [
     to: "/zfs",
     badge: "pools",
     bottomNav: true,
-    alsoActiveUnder: ["/datasets"],
   },
   {
     label: "Replications",
@@ -49,13 +47,8 @@ export const NAVIGATION: NavigationEntry[] = [
 const isAtOrUnder = (path: string, prefix: string) =>
   path === prefix || path.startsWith(`${prefix}/`);
 
-export const isNavigationActive = (
-  { to, alsoActiveUnder = [] }: NavigationEntry,
-  path: string,
-) =>
-  to === "/"
-    ? path === "/"
-    : [to, ...alsoActiveUnder].some((prefix) => isAtOrUnder(path, prefix));
+export const isNavigationActive = ({ to }: NavigationEntry, path: string) =>
+  to === "/" ? path === "/" : isAtOrUnder(path, to);
 
 export const navigationChipColour = ({ error, warning }: StatusCounts) => {
   if (error > 0) return "error" as const;

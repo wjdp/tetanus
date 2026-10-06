@@ -168,7 +168,7 @@ const INFERRED_WRITTEN_TITLE =
 
   <NuxtLink
     v-else-if="column.id === 'pool' && disk.membership && linked"
-    :to="`/zfs/${disk.membership.poolId}`"
+    :to="disk.membership.poolPath"
     class="text-default hover:text-primary"
     @click.stop
   >

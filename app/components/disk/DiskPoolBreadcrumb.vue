@@ -33,7 +33,7 @@ const groupName = computed(() =>
         data-testid="pool-icon"
       />
       <ULink
-        :to="`/zfs/${membership.poolId}`"
+        :to="membership.poolPath"
         class="text-highlighted hover:text-primary font-medium"
       >
         {{ membership.poolName }}

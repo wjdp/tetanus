@@ -101,6 +101,7 @@ import {
 import { getSettings } from "~~/server/services/settings";
 import { latestAttributes, latestReading } from "~~/server/services/smart";
 import { inferUsage, resolvePurpose } from "~~/server/services/usage";
+import { poolPaths } from "~~/server/services/zfs/paths";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiskRow = typeof disk.$inferSelect;
@@ -144,6 +145,7 @@ export type AliasSource = "udev" | "vdev-id-conf";
 export interface DiskMembership {
   poolId: number;
   poolName: string;
+  poolPath: string;
   poolArchived: boolean;
   vdevName: string;
   groupName: string | null;
@@ -742,9 +744,15 @@ function membershipsOf(diskIds: number[]): Map<number, DiskMembership> {
     .where(and(eq(vdev.present, true), inArray(vdev.diskId, diskIds)))
     .orderBy(isNotNull(pool.archivedAt), asc(vdev.id))
     .all();
+  const paths = poolPaths();
   const byDisk = new Map<number, DiskMembership>();
   for (const { diskId, ...membership } of rows) {
-    if (diskId !== null && !byDisk.has(diskId)) byDisk.set(diskId, membership);
+    if (diskId !== null && !byDisk.has(diskId)) {
+      byDisk.set(diskId, {
+        ...membership,
+        poolPath: paths.get(membership.poolId) ?? "",
+      });
+    }
   }
   return byDisk;
 }

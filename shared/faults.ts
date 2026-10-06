@@ -486,6 +486,7 @@ export interface FaultSubject {
   id: number;
   label: string;
   hostName: string | null;
+  path: string | null;
 }
 
 export interface FaultView {

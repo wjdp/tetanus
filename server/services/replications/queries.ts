@@ -33,6 +33,7 @@ import {
   poolPresenceContext,
 } from "~~/server/services/poolPresence";
 import { ensureSettings } from "~~/server/services/settings";
+import { poolPaths } from "~~/server/services/zfs/paths";
 import { notFound } from "~~/server/utils/serviceError";
 
 type ReplicationTableRow = typeof replication.$inferSelect;
@@ -92,6 +93,7 @@ function endpoints(
   presence: PoolPresenceContext,
 ): Map<number, Endpoint> {
   if (datasetIds.length === 0) return new Map();
+  const paths = poolPaths();
   return new Map(
     db
       .select({
@@ -119,7 +121,11 @@ function endpoints(
             name: row.hostName,
             displayName: row.hostDisplayName,
           },
-          pool: { id: row.poolId, name: row.poolName },
+          pool: {
+            id: row.poolId,
+            name: row.poolName,
+            path: paths.get(row.poolId) ?? "",
+          },
           dataset: {
             id: row.datasetId,
             name: row.datasetName,

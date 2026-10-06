@@ -724,7 +724,7 @@ describe("dataset queries", () => {
       expect(results[0]).toEqual({
         id: expect.any(Number),
         name: "tank/anup07rl/t8a/diti/cflkg",
-        pool: { id: tank.id, name: "tank" },
+        pool: { id: tank.id, name: "tank", path: "/zfs/mars/tank" },
         host: { id: hostId, name: "mars", displayName: null },
       });
     });

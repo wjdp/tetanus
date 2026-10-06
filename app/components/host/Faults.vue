@@ -52,7 +52,7 @@ const subjectSummaries = computed(() => summariseSubjectFaults(faults.value));
             class="text-dimmed size-4 shrink-0"
           />
           <NuxtLink
-            :to="faultSubjectPath(summary.subject)"
+            :to="faultSubjectPath(summary.subject) ?? undefined"
             class="text-highlighted hover:text-primary truncate"
           >
             {{ summary.subject.label }}

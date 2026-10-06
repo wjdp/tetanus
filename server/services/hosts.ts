@@ -100,6 +100,12 @@ export function getHost(id: number): HostWithRuns {
   return { ...row, lastRuns: lastRunsByHost(id).get(id) ?? {} };
 }
 
+export function getHostByName(name: string): HostWithRuns {
+  const row = db.select().from(host).where(eq(host.name, name)).get();
+  if (!row) throw notFound(`Host ${name} not found`);
+  return { ...row, lastRuns: lastRunsByHost(row.id).get(row.id) ?? {} };
+}
+
 function withIntermittentRule(current: HostRow, patch: HostPatch): HostPatch {
   if (patch.intermittent === true && !current.intermittent) {
     return { healthchecksUrl: null, ...patch };

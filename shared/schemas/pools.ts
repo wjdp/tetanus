@@ -4,6 +4,11 @@ export const poolParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const zfsPathParamsSchema = z.object({
+  host: z.string().min(1),
+  path: z.string().min(1),
+});
+
 export const vdevParamsSchema = poolParamsSchema.extend({
   vdevId: z.coerce.number().int().positive(),
 });

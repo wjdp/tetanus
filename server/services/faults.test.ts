@@ -1635,6 +1635,7 @@ describe("listFaults", () => {
       id: mars.id,
       label: "mars",
       hostName: "mars",
+      path: "/hosts/mars",
     });
 
     const onVenus = listFaults({ state: ["accepted"], host: "venus" });

@@ -1,23 +1,16 @@
 <script setup lang="ts">
 import { getPageTitle } from "#shared/app";
+import { datasetPath } from "#shared/entityPaths";
 import { lastSegment } from "~/components/dataset/treeRows";
+import type { DatasetDetail } from "~/components/dataset/types";
 import { formatTimestamp } from "~/components/pool/timestamp";
 
-const route = useRoute();
-const {
-  data: dataset,
-  error,
-  refresh,
-} = await useFetch(`/api/datasets/${route.params.id}`);
+const props = defineProps<{ dataset: DatasetDetail }>();
+const emit = defineEmits<{ refresh: [] }>();
+const dataset = toRef(props, "dataset");
+const refresh = () => emit("refresh");
 
-if (error.value) {
-  throw createError({
-    statusCode: error.value.statusCode ?? 500,
-    statusMessage: error.value.statusMessage,
-  });
-}
-
-useSeoMeta({ title: getPageTitle(dataset.value?.name ?? "Dataset") });
+useSeoMeta({ title: () => getPageTitle(dataset.value.name) });
 
 const now = Date.now();
 
@@ -91,7 +84,7 @@ const properties = computed(() => {
             destroyed
           </UBadge>
           <NuxtLink
-            :to="`/zfs/${dataset.pool.id}`"
+            :to="dataset.pool.path"
             class="text-muted hover:text-primary"
           >
             {{ dataset.host.displayName || dataset.host.name }} ·
@@ -125,7 +118,7 @@ const properties = computed(() => {
             <ul class="flex flex-wrap gap-x-3 gap-y-1 text-sm">
               <li v-for="child in dataset.children" :key="child.id">
                 <NuxtLink
-                  :to="`/datasets/${child.id}`"
+                  :to="datasetPath(dataset.pool.path, child.name)"
                   :title="child.name"
                   class="font-mono hover:underline"
                   :class="child.present ? 'text-highlighted' : 'text-dimmed'"

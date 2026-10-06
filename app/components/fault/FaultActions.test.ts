@@ -17,7 +17,13 @@ const poolFault = (overrides: Partial<FaultView>): FaultView => ({
   lastSeenAt: "2026-10-02T10:00:00.000Z",
   resolvedAt: null,
   stateChangedAt: "2026-10-01T10:00:00.000Z",
-  subject: { type: "pool", id: 9, label: "tfault", hostName: "mars" },
+  subject: {
+    type: "pool",
+    id: 9,
+    label: "tfault",
+    hostName: "mars",
+    path: null,
+  },
   ...overrides,
 });
 

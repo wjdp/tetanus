@@ -22,6 +22,7 @@ import { STATUS_TEXT_CLASS } from "~/utils/vocabulary";
 export interface InventoryMembership {
   poolId: number;
   poolName: string;
+  poolPath: string;
   vdevName: string;
   groupName: string | null;
   groupType: string | null;

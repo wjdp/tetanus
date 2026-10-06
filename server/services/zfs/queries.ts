@@ -49,6 +49,7 @@ import { labelSubjects } from "~~/server/services/subjectLabels";
 import { resolvePurpose } from "~~/server/services/usage";
 import { invalidRequest, notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
+import { poolPaths } from "./paths";
 import type { PoolRow, VdevRow } from "./topology";
 import { type PoolUsable, usableByPool } from "./usable";
 
@@ -86,6 +87,7 @@ export interface PoolHost {
 
 export interface PoolSummary extends Omit<PoolRow, "hostId"> {
   host: PoolHost;
+  path: string;
   displayState: string;
   resolvedConfig: ResolvedPoolConfig;
   vdevs: VdevNode | null;
@@ -239,12 +241,14 @@ function summarise(
   const trees = vdevTrees(poolIds);
   const counts = datasetCountsByPool(poolIds);
   const usable = usableByPool(rows.map((row) => row.pool));
+  const paths = poolPaths();
   return rows.map(({ pool: poolRow, host: hostRow }) => {
     const { hostId: _hostId, ...columns } = poolRow;
     const poolCounts = counts.get(poolRow.id);
     return {
       ...columns,
       host: hostRow,
+      path: paths.get(poolRow.id) ?? "",
       displayState: poolDisplayState(poolRow, presence),
       resolvedConfig: resolvePoolConfig(poolRow.config),
       vdevs: trees.get(poolRow.id) ?? null,

@@ -75,7 +75,7 @@ const age = computed(() => {
       </template>
       <div class="flex min-w-0 flex-1 flex-col gap-1">
         <NuxtLink
-          :to="subjectPath"
+          :to="subjectPath ?? undefined"
           data-testid="fault-subject-link"
           class="text-default min-w-0 after:absolute after:inset-0 focus-visible:outline-none"
         >

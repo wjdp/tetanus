@@ -13,7 +13,11 @@ export const endpoint = (
   overrides: { hostId?: number; datasetId?: number; present?: boolean } = {},
 ): ReplicationEndpoint => ({
   host: { id: overrides.hostId ?? 1, name: hostName, displayName: null },
-  pool: { id: 7, name: datasetName.split("/")[0] ?? datasetName },
+  pool: {
+    id: 7,
+    name: datasetName.split("/")[0] ?? datasetName,
+    path: `/zfs/${hostName}/${datasetName.split("/")[0] ?? datasetName}`,
+  },
   dataset: {
     id: overrides.datasetId ?? nextDatasetId++,
     name: datasetName,
