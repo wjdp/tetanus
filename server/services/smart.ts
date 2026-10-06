@@ -33,6 +33,10 @@ import {
   healthStatus,
   overlayStatus,
 } from "#shared/smart/status";
+import {
+  type SubstituteAttribute,
+  substituteDefects,
+} from "#shared/smart/substituteDefects";
 import type {
   AtaAttribute,
   ScsiInfo,
@@ -1041,6 +1045,26 @@ export function diskProtocol(diskId: number): SmartProtocol | undefined {
     .where(eq(disk.id, diskId))
     .get();
   return row?.protocol ? PROTOCOLS[row.protocol] : undefined;
+}
+
+/** Defect counts the latest ATA reading lacks, taken from device statistics or FARM; none for a reading without attributes. */
+export function substituteAttributes(
+  diskId: number,
+  readingId: number,
+): SubstituteAttribute[] {
+  const row = db
+    .select({
+      protocol: disk.protocol,
+      deviceStatistics: disk.latestDeviceStatistics,
+      farm: disk.latestFarm,
+    })
+    .from(disk)
+    .where(eq(disk.id, diskId))
+    .get();
+  if (!row?.protocol || PROTOCOLS[row.protocol] !== "ATA") return [];
+  const present = attributesOfReading(readingId).map(({ attrId }) => attrId);
+  if (present.length === 0) return [];
+  return substituteDefects(new Set(present), row.deviceStatistics, row.farm);
 }
 
 export function latestAttributes(diskId: number): LatestAttribute[] {

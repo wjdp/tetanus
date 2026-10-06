@@ -26,7 +26,12 @@ import { type CadenceOverrides, isHostSilent } from "#shared/hostFreshness";
 import { unsupportedTools } from "#shared/hostTools";
 import { replicationLabel } from "#shared/replications";
 import type { FaultsQuery } from "#shared/schemas/faults";
-import { healthStatus, overlayStatus } from "#shared/smart/status";
+import {
+  type AttributeStatus,
+  healthStatus,
+  overlayStatus,
+} from "#shared/smart/status";
+import type { SubstituteSource } from "#shared/smart/substituteDefects";
 import { db } from "~~/server/database/client";
 import {
   dataset,
@@ -59,9 +64,11 @@ import { detectPoolFaults } from "~~/server/services/poolFaults";
 import { detectReplicationFaults } from "~~/server/services/replications/faults";
 import { detectSelfTestFailed } from "~~/server/services/selfTestFaults";
 import {
+  type AttributeTrend,
   attributesOfReading,
   attributeTrend,
   latestReading,
+  substituteAttributes,
 } from "~~/server/services/smart";
 import { detectSmartUnavailable } from "~~/server/services/smartUnavailableFaults";
 import { detectTemperatureHigh } from "~~/server/services/temperatureFaults";
@@ -140,14 +147,40 @@ function withdrawDisposedDisks({ disks }: DetectionContext): Withdrawal[] {
   }));
 }
 
+interface FaultingAttribute {
+  attrId: string;
+  name: string;
+  status: AttributeStatus;
+  transformedValue: number;
+  trend?: AttributeTrend;
+  source?: SubstituteSource;
+}
+
+function faultingAttributes(
+  diskId: number,
+  readingId: number,
+): FaultingAttribute[] {
+  const evaluated = attributesOfReading(readingId)
+    .filter((attribute) => attribute.status !== "passed")
+    .map(
+      (attribute): FaultingAttribute => ({
+        ...attribute,
+        trend: attributeTrend(diskId, attribute),
+      }),
+    );
+  const substitutes = substituteAttributes(diskId, readingId).filter(
+    (attribute) => attribute.status !== "passed",
+  );
+  return [...evaluated, ...substitutes];
+}
+
 function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
   return inService(disks).flatMap((row) => {
     const reading = latestReading(row.id);
     if (!reading) return [];
     const active = activeAcceptances(row.id);
-    return attributesOfReading(reading.id)
-      .filter((attribute) => attribute.status !== "passed")
-      .map((attribute): Detection => {
+    return faultingAttributes(row.id, reading.id).map(
+      (attribute): Detection => {
         const acceptance = active.get(attribute.attrId);
         const display = overlayStatus(
           attribute.status,
@@ -165,7 +198,9 @@ function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
             attrId: attribute.attrId,
             name: attribute.name,
             value: attribute.transformedValue,
-            trend: attributeTrend(row.id, attribute),
+            ...(attribute.source
+              ? { source: attribute.source }
+              : { trend: attribute.trend }),
             ...(acceptance && covered
               ? {
                   acceptanceKind: acceptance.kind,
@@ -174,7 +209,8 @@ function detectSmartAttributes({ disks }: DetectionContext): Detection[] {
               : {}),
           },
         };
-      });
+      },
+    );
   });
 }
 

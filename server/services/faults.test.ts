@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { FAULT_KIND_DEFINITIONS } from "#shared/faults";
+import { FAULT_KIND_DEFINITIONS, faultTitle } from "#shared/faults";
 import { faultsQuerySchema } from "#shared/schemas/faults";
 import type { VdevRole } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
@@ -1372,6 +1372,87 @@ describe("disk-missing", () => {
         .filter((entry) => entry.eventType === "fault-resolved")
         .map((entry) => entry.data.reason),
     ).toEqual(["disposed"]);
+  });
+});
+
+describe("smart-attribute substitutes", () => {
+  function setSources(
+    diskId: number,
+    fields: Partial<typeof disk.$inferInsert>,
+  ) {
+    db.update(disk).set(fields).where(eq(disk.id, diskId)).run();
+  }
+
+  it("raises a missing defect attribute from device statistics, and reopens when it rises", async () => {
+    ingestSmart(SDB);
+    const diskId = k2Id();
+    setSources(diskId, {
+      latestDeviceStatistics: {
+        reportedUncorrectables: 2,
+        reallocatedSectors: 9,
+        normalised: [],
+      },
+    });
+    await syncFaults(t0);
+    const uncorrectable = liveFault(
+      "smart-attribute",
+      `${diskId}:187`,
+    ) as FaultRow;
+    expect(uncorrectable).toMatchObject({
+      state: "open",
+      severity: "error",
+      data: { attrId: "187", value: 2, source: "device-statistics" },
+    });
+    expect(uncorrectable.data).not.toHaveProperty("trend");
+    expect(faultTitle(uncorrectable)).toBe(
+      "Reported_Uncorrect (device statistics) 2",
+    );
+    expect(liveFault("smart-attribute", `${diskId}:5`)).toBeUndefined();
+
+    acceptFault({ diskId, attrId: "187", now: at(MINUTE_MS) });
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toMatchObject({
+      state: "accepted",
+    });
+
+    setSources(diskId, {
+      latestDeviceStatistics: { reportedUncorrectables: 3, normalised: [] },
+    });
+    await syncFaults(at(2 * MINUTE_MS));
+    expect(liveFault("smart-attribute", `${diskId}:187`)?.state).toBe("open");
+  });
+
+  it("skips device statistics flagged normalised", async () => {
+    ingestSmart(SDB);
+    const diskId = k2Id();
+    setSources(diskId, {
+      latestDeviceStatistics: {
+        reportedUncorrectables: 2,
+        normalised: ["reportedUncorrectables"],
+      },
+    });
+    await syncFaults(t0);
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toBeUndefined();
+  });
+
+  it("falls back to FARM only from log version 3", async () => {
+    ingestSmart(SDB);
+    const diskId = k2Id();
+    const farm = (logVersion: string) =>
+      ({ logVersion, errors: { unrecoverableReads: 4 } }) as NonNullable<
+        typeof disk.$inferInsert.latestFarm
+      >;
+    setSources(diskId, {
+      latestDeviceStatistics: null,
+      latestFarm: farm("2.0"),
+    });
+    await syncFaults(t0);
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toBeUndefined();
+
+    setSources(diskId, { latestFarm: farm("4.1") });
+    await syncFaults(at(MINUTE_MS));
+    expect(liveFault("smart-attribute", `${diskId}:187`)).toMatchObject({
+      data: { value: 4, source: "farm" },
+    });
   });
 });
 

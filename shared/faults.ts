@@ -1,6 +1,10 @@
 import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { formatDuration } from "#shared/hostFreshness";
 import { HOST_TOOL_REQUIREMENTS, type HostTool } from "#shared/hostTools";
+import {
+  SUBSTITUTE_SOURCE_LABELS,
+  type SubstituteSource,
+} from "#shared/smart/substituteDefects";
 
 export const FAULT_STATES = [
   "open",
@@ -122,8 +126,14 @@ function smartUnavailableHint(data: FaultData) {
   return null;
 }
 
+function smartAttributeName(data: FaultData) {
+  const source =
+    SUBSTITUTE_SOURCE_LABELS[data.source as SubstituteSource] ?? null;
+  return source ? `${text(data.name)} (${source})` : text(data.name);
+}
+
 function smartAttributeTitle(data: FaultData) {
-  const parts = [`${text(data.name)} ${text(data.value)}`];
+  const parts = [`${smartAttributeName(data)} ${text(data.value)}`];
   if (data.trend === "worsening") parts[0] += ", worsening";
   if (typeof data.acceptedValue === "number") {
     const label = data.acceptanceKind === "acknowledge" ? "ack" : "accepted";

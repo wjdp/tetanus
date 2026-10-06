@@ -296,3 +296,25 @@ export function evaluateReading(parsed: SmartctlXallResult): Evaluation {
   );
   return { deviceStatus, attributes };
 }
+
+/** Evaluates a raw count standing in for an ATA attribute the drive does not report. */
+export function evaluateAtaRawCount(
+  attrId: string,
+  count: number,
+): Pick<
+  EvaluatedAttribute,
+  "attributeClass" | "status" | "failureRate" | "reason"
+> {
+  const attrClass = attributeClass(attrId);
+  const accumulator = new StatusAccumulator();
+  const metadata = ATA_METADATA[attrId];
+  const failureRate = metadata
+    ? validateObservedThresholds(metadata, attrClass, count, accumulator)
+    : undefined;
+  return {
+    attributeClass: attrClass,
+    status: accumulator.status,
+    ...(failureRate !== undefined ? { failureRate } : {}),
+    ...(accumulator.reason ? { reason: accumulator.reason } : {}),
+  };
+}

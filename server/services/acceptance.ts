@@ -17,7 +17,9 @@ import { addAutoEvent } from "~~/server/services/diary";
 import { setSmartAttributeFaultState } from "~~/server/services/faults";
 import {
   latestAttributes,
+  latestReading,
   recomputeLatestStatus,
+  substituteAttributes,
 } from "~~/server/services/smart";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
@@ -96,6 +98,19 @@ function assertDiskExists(diskId: number) {
   if (!found) throw notFound(`Disk ${diskId} not found`);
 }
 
+function acceptableAttribute(diskId: number, attrId: string) {
+  const evaluated = latestAttributes(diskId).find(
+    (candidate) => candidate.attrId === attrId,
+  );
+  if (evaluated) return evaluated;
+  const reading = latestReading(diskId);
+  return reading
+    ? substituteAttributes(diskId, reading.id).find(
+        (candidate) => candidate.attrId === attrId,
+      )
+    : undefined;
+}
+
 export function acceptFault({
   diskId,
   attrId,
@@ -113,9 +128,7 @@ export function acceptFault({
         `Attribute ${attrId} on disk ${diskId} is already ${vocabulary.verb}`,
       );
     }
-    const attribute = latestAttributes(diskId).find(
-      (candidate) => candidate.attrId === attrId,
-    );
+    const attribute = acceptableAttribute(diskId, attrId);
     if (!attribute) {
       throw notFound(
         `Disk ${diskId} has no attribute ${attrId} in its latest reading`,
@@ -141,7 +154,7 @@ export function acceptFault({
       data: {
         attrId,
         acceptedValue,
-        trend: attribute.trend,
+        ...("trend" in attribute ? { trend: attribute.trend } : {}),
         note,
         ...(active ? { replaces: active.kind } : {}),
       },
