@@ -51,3 +51,11 @@ Two ZFS facts say something about a disk and are missing from the disk's own vie
 3. Disk list verdict input.
 4. SMR note rule in `server/services/diskNotes.ts`.
 5. Tests: leaf with no disk match, disk replaced while the fault is open.
+
+## Progress (2026-10-06)
+
+Built: device faults on the disk. The disk id was already in the fault data; the link is
+now pinned to the disk the leaf first resolved to, `/api/faults` takes `namesDisk`, and
+the disk page lists live pool faults naming the disk. `vdev-unredundant` also carries a
+disk id but is not listed. Still to do: the SMR note (needs 084's notes tier) and the
+disk list verdict input (needs [086](086-Disk-risk-level.md)).

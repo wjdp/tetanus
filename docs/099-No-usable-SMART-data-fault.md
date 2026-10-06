@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # No usable SMART data fault

@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Error log growth fault

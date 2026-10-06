@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # SSD defect attributes

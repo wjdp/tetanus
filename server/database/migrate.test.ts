@@ -38,7 +38,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 35;
+const MIGRATION_COUNT = 36;
 
 const openConnections: Database.Database[] = [];
 
@@ -176,10 +176,11 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 18
+            ORDER BY created_at DESC LIMIT 19
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -212,6 +213,7 @@ describe("0009_host_collector_version", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -279,10 +281,11 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 26
+            ORDER BY created_at DESC LIMIT 27
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -321,6 +324,7 @@ describe("0009_host_collector_version", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     expect(
       sqlite
@@ -362,10 +366,11 @@ describe("0018_vdev_role_backfill", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 17
+            ORDER BY created_at DESC LIMIT 18
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -399,6 +404,7 @@ describe("0018_vdev_role_backfill", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -437,10 +443,11 @@ describe("0022_disk_disposal", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 13
+            ORDER BY created_at DESC LIMIT 14
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -469,6 +476,7 @@ describe("0022_disk_disposal", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
@@ -527,10 +535,11 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 12
+            ORDER BY created_at DESC LIMIT 13
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -559,6 +568,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     expect(
       sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),
@@ -584,10 +594,11 @@ describe("0026_diary_titles_without_ids", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 9
+            ORDER BY created_at DESC LIMIT 10
         );
       INSERT INTO Disk (alias, model, serial, firstSeenAt)
         VALUES ('K1', NULL, NULL, 0), (NULL, 'ST18000NM', 'ZR2', 0);
@@ -607,6 +618,7 @@ describe("0026_diary_titles_without_ids", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     expect(
       sqlite.prepare("SELECT title FROM DiaryEntry ORDER BY id").all(),
@@ -629,10 +641,11 @@ describe("0027_zfs_event_repair", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 8
+            ORDER BY created_at DESC LIMIT 9
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title)
@@ -661,6 +674,7 @@ describe("0027_zfs_event_repair", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     expect(sqlite.prepare("SELECT title FROM DiaryEntry").all()).toEqual([
       { title: "kept" },
@@ -688,10 +702,11 @@ describe("0028_placeholder_wwn_keys", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 7
+            ORDER BY created_at DESC LIMIT 8
         );
       INSERT INTO Disk (firstSeenAt) VALUES (0);
       INSERT INTO DiskKey (diskId, kind, value)
@@ -714,6 +729,7 @@ describe("0028_placeholder_wwn_keys", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     expect(
       sqlite.prepare("SELECT kind, value FROM DiskKey ORDER BY id").all(),
@@ -737,10 +753,11 @@ describe("0029_clear_purpose_other", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE SmartReading DROP COLUMN errorLogCount;
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 6
+            ORDER BY created_at DESC LIMIT 7
         );
       INSERT INTO Disk (firstSeenAt, inventory)
         VALUES
@@ -756,6 +773,7 @@ describe("0029_clear_purpose_other", () => {
       "0032_dataset_reading_space_split",
       "0033_pool_reading_usable",
       "0034_host_zpool_events_oldest_eid",
+      "0035_smart_reading_error_log_count",
     ]);
     expect(
       sqlite.prepare("SELECT inventory FROM Disk ORDER BY id").all(),

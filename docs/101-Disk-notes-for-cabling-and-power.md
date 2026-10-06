@@ -61,3 +61,11 @@ One shared definition for every rule here and in
 ## Questions
 
 1. Window length: 7 days for all, or longer for CRC?
+
+## Progress (2026-10-06)
+
+Built: the "risen" helper (`attributeRise` in `server/services/smart.ts`), the
+`interface-errors` fault and the link-speed highlight on the disk page. The fault reads
+attribute 199 only: device statistics and FARM keep no per-reading history, so they
+can't show a rise. Still to do, once [084](084-Statistics-tab.md) has its notes tier:
+the three notes in the table above.

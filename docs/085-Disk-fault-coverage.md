@@ -105,3 +105,21 @@ history exists, a `faultsBackfill` entry, not only a policy version bump.
 | [100](100-Error-log-growth-fault.md) | gap 4, error log |
 | [101](101-Disk-notes-for-cabling-and-power.md) | gap 4, CRC and the other notes; defines "risen"; needs 084 |
 | [102](102-ZFS-signals-on-the-disk.md) | ZFS device faults on the disk, SMR; feeds 086 |
+
+## Built (2026-10-06)
+
+052 and 095 to 100 are done; 101 and 102 are built except for their notes. Gaps found
+while building, not yet tasks:
+
+- An accepted spare or reserved-space warning stays covered as the value falls further:
+  acceptance assumes higher is worse.
+- `smart-unavailable` misses a bridge that fails with "device open failed", which reads
+  as standby. No fixture shows a failing bridge either way.
+- SSD defect faults clear by themselves a week after the count stops rising.
+- Substitute defect counts (096) have no trend, and a substitute 187 does not feed the
+  disk list's uncorrectable column, which shows 198.
+- When a defect fault supersedes a live `error-log-growth` fault, the rise already
+  accumulated on the old fault is not carried over.
+- Two self-tests of one type in the same power-on hour share a `SelfTest` row, so a
+  failure then a pass within the hour is lost.
+- ATA wear on a drive with device statistic 7:8 but no wear attribute gets no status.

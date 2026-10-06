@@ -58,7 +58,10 @@ describe("/api/disks/:id/smart", () => {
       deviceStatus: "passed",
       temp: 40,
     });
-    expect(smart.attributes).toHaveLength(18);
+    expect(smart.attributes).toHaveLength(19);
+    expect(smart.attributes).toContainEqual(
+      expect.objectContaining({ attrId: "187", source: "device-statistics" }),
+    );
     expect(smart.attributes).toContainEqual(
       expect.objectContaining({
         attrId: "5",

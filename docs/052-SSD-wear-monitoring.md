@@ -1,6 +1,6 @@
 ---
 type: task
-status: planned
+status: done
 ---
 
 # SSD wear monitoring

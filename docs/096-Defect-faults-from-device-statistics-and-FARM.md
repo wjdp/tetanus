@@ -1,6 +1,6 @@
 ---
 type: task
-status: todo
+status: done
 ---
 
 # Defect faults from device statistics and FARM
