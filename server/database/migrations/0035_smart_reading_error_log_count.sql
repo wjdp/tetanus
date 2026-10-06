@@ -1,0 +1,1 @@
+ALTER TABLE `SmartReading` ADD `errorLogCount` integer;

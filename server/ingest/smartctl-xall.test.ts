@@ -93,6 +93,20 @@ describe("smartctl-xall parser", () => {
     });
   });
 
+  it("reads the ATA error count from the extended log, else the summary log", () => {
+    expect(
+      parse(readFixture("mars/smartctl/xall-sdd-auto.json"), {}).data
+        .ataErrorCount,
+    ).toBe(0);
+    expect(
+      parse(readFixture("scrutiny/smart-fail2.json"), {}).data.ataErrorCount,
+    ).toBe(56);
+    expect(
+      parse(readFixture("mars/smartctl/xall-nvme0.json"), {}).data
+        .ataErrorCount,
+    ).toBeUndefined();
+  });
+
   it("reads the SCSI self-test log", () => {
     const body = readFixture("mars/smartctl/xall-sdj.json");
     const { data } = parse(body, {});

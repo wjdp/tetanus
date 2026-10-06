@@ -393,6 +393,8 @@ export const parse: Parser<SmartctlXallResult> = (body, meta) => {
   if (farm) data.farm = farm;
   const deviceStatistics = extractDeviceStatistics(json.ata_device_statistics);
   if (deviceStatistics) data.deviceStatistics = deviceStatistics;
+  const ataErrorCount = extractAtaErrorCount(json.ata_smart_error_log);
+  if (ataErrorCount !== undefined) data.ataErrorCount = ataErrorCount;
 
   return {
     data,
@@ -406,3 +408,13 @@ export const parse: Parser<SmartctlXallResult> = (body, meta) => {
     },
   };
 };
+
+function extractAtaErrorCount(raw: unknown): number | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const log = raw as Json;
+  for (const section of [log.extended, log.summary]) {
+    const count = (section as Json | undefined)?.count;
+    if (typeof count === "number") return count;
+  }
+  return undefined;
+}

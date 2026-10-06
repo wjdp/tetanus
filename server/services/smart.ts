@@ -637,6 +637,7 @@ export function recordSmartReading({
       temp,
       powerOnHours: parsed.powerOnHours ?? null,
       powerCycles: parsed.powerCycles ?? null,
+      errorLogCount: parsed.ataErrorCount ?? null,
       deviceStatus,
     },
     evaluated,
