@@ -478,7 +478,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     subjectType: "disk",
     severities: ["warning"],
     trigger:
-      "The interface CRC error count (attribute 199, else device statistics or FARM) has risen across three or more readings in the last 7 days. CRC errors usually point to the cable, backplane or controller rather than the drive.",
+      "The interface CRC error count (attribute 199) has risen across three or more readings in the last 7 days. CRC errors usually point to the cable, backplane or controller rather than the drive.",
     resolves: "7 days pass without a rise.",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],

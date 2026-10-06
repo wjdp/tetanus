@@ -99,6 +99,21 @@ describe("faultTitle", () => {
       "Current Pending Sector Count 2 · ack at 2",
     ],
     [
+      "smart-attribute",
+      { name: "Reallocated Sectors Count", value: 24, errorLogRise: 3 },
+      "Reallocated Sectors Count 24, error log +3",
+    ],
+    [
+      "smart-attribute",
+      { name: "Reallocated Sectors Count", value: 24, errorLogRise: 0 },
+      "Reallocated Sectors Count 24",
+    ],
+    [
+      "smart-attribute",
+      { name: "Reallocated Sectors Count", value: 8, source: "farm" },
+      "Reallocated Sectors Count (FARM) 8",
+    ],
+    [
       "pool-degraded",
       { poolName: "vault", state: "DEGRADED" },
       "Pool vault DEGRADED",
