@@ -604,13 +604,20 @@ export function recordSmartReading({
   const isLatest =
     row.latestReadingAt === null || receivedAt >= row.latestReadingAt;
   const previous = isLatest ? latestReading(row.id) : null;
+  const withSubstitutes = [
+    ...evaluated,
+    ...substitutesFor(
+      row.id,
+      evaluated.map(({ attrId }) => attrId),
+    ),
+  ];
   const superseded = isLatest
-    ? supersedeIfRisen(row.id, evaluated, receivedAt)
+    ? supersedeIfRisen(row.id, withSubstitutes, receivedAt)
     : new Set<string>();
   const active = activeAcceptances(row.id);
   const deviceStatus = effectiveDeviceStatus(
     healthStatus(smartPassed, exitStatus),
-    evaluated,
+    withSubstitutes,
     active,
   );
 
@@ -692,7 +699,7 @@ export function recomputeLatestStatus(
   const active = activeAcceptances(diskId);
   const deviceStatus = effectiveDeviceStatus(
     healthStatus(reading.smartPassed, reading.exitStatus),
-    attributes,
+    [...attributes, ...substituteAttributes(diskId, reading.id)],
     active,
   );
   recordStatusChange(row, deviceStatus, attributes, active, now, { cause });
@@ -1047,11 +1054,12 @@ export function diskProtocol(diskId: number): SmartProtocol | undefined {
   return row?.protocol ? PROTOCOLS[row.protocol] : undefined;
 }
 
-/** Defect counts the latest ATA reading lacks, taken from device statistics or FARM; none for a reading without attributes. */
-export function substituteAttributes(
+/** Defect counts an ATA reading lacks, taken from the disk's device statistics or FARM; none for a reading without attributes. */
+export function substitutesFor(
   diskId: number,
-  readingId: number,
+  presentAttrIds: readonly string[],
 ): SubstituteAttribute[] {
+  if (presentAttrIds.length === 0) return [];
   const row = db
     .select({
       protocol: disk.protocol,
@@ -1062,9 +1070,21 @@ export function substituteAttributes(
     .where(eq(disk.id, diskId))
     .get();
   if (!row?.protocol || PROTOCOLS[row.protocol] !== "ATA") return [];
-  const present = attributesOfReading(readingId).map(({ attrId }) => attrId);
-  if (present.length === 0) return [];
-  return substituteDefects(new Set(present), row.deviceStatistics, row.farm);
+  return substituteDefects(
+    new Set(presentAttrIds),
+    row.deviceStatistics,
+    row.farm,
+  );
+}
+
+export function substituteAttributes(
+  diskId: number,
+  readingId: number,
+): SubstituteAttribute[] {
+  return substitutesFor(
+    diskId,
+    attributesOfReading(readingId).map(({ attrId }) => attrId),
+  );
 }
 
 export function latestAttributes(diskId: number): LatestAttribute[] {

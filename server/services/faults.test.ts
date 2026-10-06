@@ -23,6 +23,7 @@ import {
 } from "~~/server/services/faults";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
+import { recomputeLatestStatus } from "~~/server/services/smart";
 import { ServiceError } from "~~/server/utils/serviceError";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
@@ -1419,6 +1420,25 @@ describe("smart-attribute substitutes", () => {
     });
     await syncFaults(at(2 * MINUTE_MS));
     expect(liveFault("smart-attribute", `${diskId}:187`)?.state).toBe("open");
+  });
+
+  it("counts substitutes in the disk's status", () => {
+    ingestSmart(withAttributeRaw(withAttributeRaw(SDB, 197, 0), 198, 0));
+    const diskId = k2Id();
+    const status = () =>
+      db
+        .select({ status: disk.latestStatus })
+        .from(disk)
+        .where(eq(disk.id, diskId))
+        .get()?.status;
+    expect(status()).toBe("passed");
+    setSources(diskId, {
+      latestDeviceStatistics: { reportedUncorrectables: 2, normalised: [] },
+    });
+    recomputeLatestStatus(diskId, at(MINUTE_MS), "policy");
+    expect(status()).toBe("failed");
+    acceptFault({ diskId, attrId: "187", now: at(2 * MINUTE_MS) });
+    expect(status()).toBe("passed");
   });
 
   it("skips device statistics flagged normalised", async () => {
