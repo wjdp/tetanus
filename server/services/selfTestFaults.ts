@@ -1,30 +1,16 @@
 import { inArray } from "drizzle-orm";
 import { isDisposed, isHistoryState } from "#shared/disk";
 import type { FaultData } from "#shared/faults";
+import { selfTestOutcome } from "#shared/selfTests";
 import { db } from "~~/server/database/client";
 import { selfTest } from "~~/server/database/schema";
 import type { DiskSummary } from "~~/server/services/disks";
 import type { Detection } from "~~/server/services/faults";
 
 type SelfTestRow = typeof selfTest.$inferSelect;
-type SelfTestOutcome = "passed" | "failed" | "inconclusive";
-
 const ATA_HOURS_WRAP = 65_536;
 
-const INCONCLUSIVE_STATUS = /abort|interrupt|progress/i;
-const PASSED_STATUS = /^completed( without error)?$/i;
-const FAILED_STATUS = /fail|error|damage/i;
 const LONG_TYPE = /long|extended/i;
-
-export function selfTestOutcome(
-  row: Pick<SelfTestRow, "status" | "passed">,
-): SelfTestOutcome {
-  const status = row.status.trim();
-  if (INCONCLUSIVE_STATUS.test(status)) return "inconclusive";
-  if (PASSED_STATUS.test(status)) return "passed";
-  if (FAILED_STATUS.test(status)) return "failed";
-  return row.passed ? "passed" : "failed";
-}
 
 export function selfTestRank(type: string) {
   return LONG_TYPE.test(type) ? 2 : 1;

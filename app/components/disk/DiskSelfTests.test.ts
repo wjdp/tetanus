@@ -43,4 +43,27 @@ describe("DiskSelfTests", () => {
     expect(bodyRows(component)).toHaveLength(10);
     expect(component.find(toggle).exists()).toBe(false);
   });
+
+  it("badges passed, failed and not completed tests", async () => {
+    const [base] = selfTests(1);
+    const component = await mountSuspended(DiskSelfTests, {
+      props: {
+        selfTests: [
+          { ...base, id: 1, status: "Completed without error", passed: true },
+          { ...base, id: 2, status: "Completed: read failure", passed: false },
+          { ...base, id: 3, status: "Aborted by host", passed: true },
+          {
+            ...base,
+            id: 4,
+            status: "Self-test routine in progress",
+            passed: true,
+          },
+        ],
+      },
+    });
+    const badges = component
+      .findAll("tbody tr")
+      .map((row) => row.findAll("td")[2]?.text());
+    expect(badges).toEqual(["passed", "failed", "aborted", "in progress"]);
+  });
 });

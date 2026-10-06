@@ -3,7 +3,7 @@ import { db } from "~~/server/database/client";
 import { disk, selfTest } from "~~/server/database/schema";
 import type { DiskSummary } from "~~/server/services/disks";
 import { flushDb } from "~~/test/db";
-import { detectSelfTestFailed, selfTestOutcome } from "./selfTestFaults";
+import { detectSelfTestFailed } from "./selfTestFaults";
 
 const HOUR_MS = 60 * 60 * 1000;
 const t0 = new Date("2026-01-01T00:00:00Z");
@@ -55,26 +55,6 @@ beforeEach(() => {
     .values({ alias: "D1", lastSeenAt: t0, lastState: "in-use" })
     .returning()
     .get().id;
-});
-
-describe("selfTestOutcome", () => {
-  it.each([
-    ["Completed without error", true, "passed"],
-    ["Completed", true, "passed"],
-    ["Completed: read failure", false, "failed"],
-    ["Completed: electrical failure", false, "failed"],
-    ["Completed: servo/seek failure", false, "failed"],
-    ["Completed: unknown failure", false, "failed"],
-    ["Completed: handling damage??", false, "failed"],
-    ["Completed: failed segments", false, "failed"],
-    ["Fatal or unknown error", false, "failed"],
-    ["Aborted by host", false, "inconclusive"],
-    ["Interrupted (host reset)", false, "inconclusive"],
-    ["Self-test routine in progress", false, "inconclusive"],
-    ["Aborted: Controller Reset", false, "inconclusive"],
-  ])("classifies %s", (status, passed, outcome) => {
-    expect(selfTestOutcome({ status, passed })).toBe(outcome);
-  });
 });
 
 describe("detectSelfTestFailed", () => {

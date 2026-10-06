@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
+import { selfTestOutcome, selfTestResultLabel } from "#shared/selfTests";
 import type { SmartOverview } from "./types";
 
 type SelfTest = SmartOverview["selfTests"][number];
@@ -38,10 +39,10 @@ const columns: TableColumn<SelfTest>[] = [
     <UTable :data="visibleSelfTests" :columns="columns" :ui="{ td: 'whitespace-nowrap' }">
       <template #result-cell="{ row }">
         <UBadge
-          :color="row.original.passed ? 'neutral' : 'error'"
-          variant="subtle"
+          :color="selfTestOutcome(row.original) === 'failed' ? 'error' : 'neutral'"
+          :variant="selfTestOutcome(row.original) === 'inconclusive' ? 'outline' : 'subtle'"
           size="sm"
-          :label="row.original.passed ? 'passed' : 'failed'"
+          :label="selfTestResultLabel(row.original)"
         />
       </template>
       <template #lifetime-cell="{ row }">
