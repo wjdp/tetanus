@@ -73,17 +73,17 @@ const submit = () =>
         />
       </dd>
       <dt class="text-muted">Interval</dt>
-      <dd class="text-highlighted tabular">
-        <template v-if="replication.intervalSec !== null">
-          {{ formatDuration(replication.intervalSec * 1000) }} ·
-        </template>
+      <dd class="text-highlighted tabular flex flex-col">
+        <span v-if="replication.intervalSec !== null">
+          {{ formatDuration(replication.intervalSec * 1000) }}
+        </span>
         <span class="text-muted">{{ intervalNote }}</span>
       </dd>
       <dt class="text-muted">Last sync</dt>
-      <dd class="text-highlighted tabular">
-        {{ formatTimestamp(replication.lastSyncAt) }}
+      <dd class="text-highlighted tabular flex flex-col">
+        <span>{{ formatTimestamp(replication.lastSyncAt) }}</span>
         <span v-if="replication.lastSyncAt" class="text-muted">
-          · {{ lastSyncText(replication, now) }}
+          {{ lastSyncText(replication, now) }}
         </span>
       </dd>
       <dt class="text-muted">Next due</dt>

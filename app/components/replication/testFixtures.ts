@@ -1,4 +1,8 @@
-import type { ReplicationEndpoint, ReplicationRow } from "#shared/replications";
+import type {
+  ReplicationEndpoint,
+  ReplicationEndpointFacts,
+  ReplicationRow,
+} from "#shared/replications";
 
 export const NOW = Date.parse("2026-09-28T12:00:00.000Z");
 const HOUR_MS = 60 * 60_000;
@@ -43,4 +47,28 @@ export const replicationRow = (
   archivedAt: null,
   archivedNote: "",
   ...overrides,
+});
+
+export const endpointFacts = (
+  overrides: Partial<ReplicationEndpointFacts["dataset"]> = {},
+  snapshots: ReplicationEndpointFacts["snapshots"] = {
+    count: 48,
+    newest: { name: "autosnap_120", creation: hoursAgo(1) },
+  },
+): ReplicationEndpointFacts => ({
+  pool: { state: "ONLINE", displayState: "ONLINE" },
+  dataset: {
+    referenced: 4_000_000_000,
+    usedBySnapshots: 250_000_000,
+    available: 900_000_000_000,
+    compression: "zstd",
+    compressRatio: 1.42,
+    encryption: null,
+    keyStatus: "none",
+    recordSize: 131_072,
+    mountpoint: null,
+    creation: hoursAgo(24 * 90),
+    ...overrides,
+  },
+  snapshots,
 });

@@ -294,6 +294,56 @@ describe("replication detail", () => {
     ]);
   });
 
+  it("describes each end's dataset, pool state and newest snapshot", () => {
+    db.update(dataset)
+      .set({
+        referenced: 4096,
+        usedBySnapshots: 512,
+        available: 1_000_000,
+        compression: "zstd",
+        compressRatio: 1.42,
+        encryption: "aes-256-gcm",
+        keyStatus: "unavailable",
+        recordSize: 131_072,
+        mountpoint: "/mnt/vpool/tank/a",
+      })
+      .where(eq(dataset.id, vaultA))
+      .run();
+    insertSnapshot(tankA, "autosnap_1", "11");
+    insertSnapshot(tankA, "autosnap_3", "13");
+    insertSnapshot(vaultA, "autosnap_1", "11");
+    const id = insertReplication(tankA, vaultA, [1]);
+
+    const { ends } = getReplication(id, {}, at(3));
+    expect(ends.source).toMatchObject({
+      pool: { state: "ONLINE" },
+      dataset: { encryption: null },
+      snapshots: {
+        count: 2,
+        newest: { name: "autosnap_3", creation: at(3).toISOString() },
+      },
+    });
+    expect(ends.target).toMatchObject({
+      dataset: {
+        referenced: 4096,
+        usedBySnapshots: 512,
+        compression: "zstd",
+        compressRatio: 1.42,
+        encryption: "aes-256-gcm",
+        keyStatus: "unavailable",
+        recordSize: 131_072,
+        mountpoint: "/mnt/vpool/tank/a",
+        creation: t0.toISOString(),
+      },
+      snapshots: { count: 1, newest: { name: "autosnap_1" } },
+    });
+  });
+
+  it("has no source facts when the source is unknown", () => {
+    const id = insertReplication(null, vaultA, [1]);
+    expect(getReplication(id, {}, at(3)).ends.source).toBeNull();
+  });
+
   it("is a 404 for an unknown replication", () => {
     expect(() => getReplication(999)).toThrow(ServiceError);
   });

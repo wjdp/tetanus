@@ -6,6 +6,7 @@ import {
   REPLICATION_LADDER_LIMIT,
   REPLICATION_SYNCS_PAGE,
   type ReplicationEndpoint,
+  type ReplicationEndpointFacts,
   type ReplicationHealth,
   type ReplicationLadderRow,
   type ReplicationLadderSnapshot,
@@ -30,6 +31,7 @@ import {
 import { type DiaryEntry, listDiary } from "~~/server/services/diary";
 import {
   type PoolPresenceContext,
+  poolDisplayState,
   poolPresence,
   poolPresenceContext,
 } from "~~/server/services/poolPresence";
@@ -404,6 +406,66 @@ export interface ReplicationRecord extends ReplicationRow {
   syncs: ReplicationSyncPage;
   ladder: ReplicationLadderRow[];
   diary: DiaryEntry[];
+  ends: {
+    source: ReplicationEndpointFacts | null;
+    target: ReplicationEndpointFacts;
+  };
+}
+
+function endpointFacts(
+  datasetId: number,
+  presence: PoolPresenceContext,
+): ReplicationEndpointFacts {
+  const row = db
+    .select({
+      referenced: dataset.referenced,
+      usedBySnapshots: dataset.usedBySnapshots,
+      available: dataset.available,
+      compression: dataset.compression,
+      compressRatio: dataset.compressRatio,
+      encryption: dataset.encryption,
+      keyStatus: dataset.keyStatus,
+      recordSize: dataset.recordSize,
+      mountpoint: dataset.mountpoint,
+      creation: dataset.creation,
+      pool: {
+        hostId: pool.hostId,
+        lastSeenAt: pool.lastSeenAt,
+        state: pool.state,
+        archivedAt: pool.archivedAt,
+      },
+    })
+    .from(dataset)
+    .innerJoin(pool, eq(pool.id, dataset.poolId))
+    .where(eq(dataset.id, datasetId))
+    .get();
+  if (!row) throw notFound(`Dataset ${datasetId} not found`);
+  const { pool: poolRow, creation, ...facts } = row;
+  const snapshotCount =
+    db
+      .select({ count: count() })
+      .from(snapshot)
+      .where(eq(snapshot.datasetId, datasetId))
+      .get()?.count ?? 0;
+  const newest = db
+    .select({ name: snapshot.name, creation: snapshot.creation })
+    .from(snapshot)
+    .where(eq(snapshot.datasetId, datasetId))
+    .orderBy(desc(snapshot.creation), desc(snapshot.id))
+    .get();
+  return {
+    pool: {
+      state: poolRow.state,
+      displayState: poolDisplayState(poolRow, presence),
+    },
+    dataset: { ...facts, creation: creation.toISOString() },
+    snapshots: {
+      count: snapshotCount,
+      newest: newest
+        ? { name: newest.name, creation: newest.creation.toISOString() }
+        : null,
+    },
+  };
 }
 
 export function replicationRecord(
@@ -417,11 +479,19 @@ export function replicationRecord(
     assessReplication(row, replicationContext([row], now)),
     total,
   );
+  const presence = poolPresenceContext(now);
   return {
     ...view,
     syncs: syncPage(id, page, total),
     ladder: snapshotLadder(row.sourceDatasetId, row.targetDatasetId),
     diary: listDiary({ subjectType: "replication", subjectId: id }),
+    ends: {
+      source:
+        row.sourceDatasetId === null
+          ? null
+          : endpointFacts(row.sourceDatasetId, presence),
+      target: endpointFacts(row.targetDatasetId, presence),
+    },
   };
 }
 

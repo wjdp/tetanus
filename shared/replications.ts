@@ -118,6 +118,26 @@ export interface ReplicationEndpoint {
   dataset: { id: number; name: string; present: boolean };
 }
 
+export interface ReplicationEndpointFacts {
+  pool: { state: string; displayState: string };
+  dataset: {
+    referenced: number;
+    usedBySnapshots: number | null;
+    available: number;
+    compression: string | null;
+    compressRatio: number | null;
+    encryption: string | null;
+    keyStatus: string | null;
+    recordSize: number | null;
+    mountpoint: string | null;
+    creation: string;
+  };
+  snapshots: {
+    count: number;
+    newest: ReplicationLadderSnapshot | null;
+  };
+}
+
 export interface ReplicationRow {
   id: number;
   source: ReplicationEndpoint | null;

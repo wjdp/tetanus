@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { datasetPath } from "#shared/entityPaths";
+import { REPLICATION_ROLE_VOCABULARY } from "~/utils/vocabulary";
 import { useDatasetSearch } from "../dataset/useDatasetSearch";
 import { hostLabel } from "./groups";
 import { patchReplication } from "./patch";
 import type { ReplicationDetail } from "./types";
 
-const props = defineProps<{ replication: ReplicationDetail }>();
+const props = defineProps<{ replication: ReplicationDetail; now: number }>();
 const emit = defineEmits<{ saved: [] }>();
 
 const toast = useToast();
@@ -52,7 +53,13 @@ const submit = () => {
     class="border-default flex flex-col gap-3 rounded-lg border p-4"
     data-testid="source-panel"
   >
-    <h2 class="text-highlighted font-semibold">Source</h2>
+    <h2 class="text-highlighted flex items-center gap-2 font-semibold">
+      <UIcon
+        :name="REPLICATION_ROLE_VOCABULARY.source.icon"
+        class="text-dimmed size-4"
+      />
+      Source
+    </h2>
     <p v-if="replication.source" class="flex flex-wrap items-center gap-2 text-sm">
       <span class="text-muted">{{ hostLabel(replication.source) }}</span>
       <NuxtLink
@@ -74,6 +81,11 @@ const submit = () => {
       Not monitored: no dataset on a monitored pool shares a snapshot with the
       target.
     </p>
+    <ReplicationEndpointFacts
+      v-if="replication.ends.source"
+      :facts="replication.ends.source"
+      :now="now"
+    />
     <p class="text-muted text-sm">
       {{
         replication.direction === "manual"

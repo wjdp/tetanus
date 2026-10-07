@@ -480,11 +480,19 @@ Done 2026-10-04.
   `host parent/* → host parent/*`, count); groups in API order (target host, then
   dataset). Archived = status `archived` (marked or target pool archived), collapsed
   under a toggle, not remembered. Data refreshes on the 60 s clock tick, no SSE.
-- `/replications/:id`: header, archived banner, open faults (`useFaults` on
-  `replication:<id>`, like the pool page, rather than the detail's `faults`, so
-  actions work), cadence and source panels, then tabs Syncs / Snapshots / Diary as on
-  the pool page. Actions menu holds "No longer replicated…" (modal with note) or
-  "Unarchive".
+- `/replications/:id`: header (host and dataset links either side of an arrow icon),
+  archived banner, open faults (`useFaults` on `replication:<id>`, like the pool
+  page, rather than the detail's `faults`, so actions work), cadence, source and
+  target panels, then tabs Syncs / Snapshots / Diary as on the pool page. Actions
+  menu holds "No longer replicated…" (modal with note) or "Unarchive".
+- Source and target panels share `ReplicationEndpointFacts` over the detail's
+  `ends`: pool state badge, referenced, snapshot count with space used by
+  snapshots, newest snapshot and age, available, compression and ratio,
+  encryption (`off` when unset) with "key loaded" / "key not loaded" from
+  `keystatus` (collector 0.8.0 adds `keystatus,encryptionroot` to zfs list; older
+  collectors leave both null and nothing shows), recordsize, mountpoint when set,
+  created. Read side by side the two answer "is the target caught up, encrypted,
+  and will the next send fit"; a loaded key on an off-site target is worth a look.
 - Interval override is entered in hours (decimals allowed); blank or "Use learnt"
   sends `null`.
 - Source override: dataset search (`useDatasetSearch`, as the diary form) excluding

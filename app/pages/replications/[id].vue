@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
-import { datasetPath } from "#shared/entityPaths";
+import { datasetPath, hostPath } from "#shared/entityPaths";
 import { replicationLabel } from "#shared/replications";
 import { hostLabel } from "~/components/replication/groups";
 import { patchReplication } from "~/components/replication/patch";
@@ -107,9 +107,42 @@ const tabs = computed<TabsItem[]>(() => [
       <header class="flex flex-col gap-2">
         <div class="flex flex-wrap items-center gap-3">
           <h1
-            class="text-highlighted min-w-0 text-2xl font-semibold tracking-tight break-all"
+            class="text-highlighted flex min-w-0 flex-wrap items-baseline gap-x-2 text-2xl font-semibold tracking-tight"
+            data-testid="endpoints"
           >
-            {{ label }}
+            <template v-if="replication.source">
+              <NuxtLink
+                :to="hostPath(replication.source.host.name)"
+                class="text-muted text-base font-normal hover:underline"
+              >
+                {{ hostLabel(replication.source) }}
+              </NuxtLink>
+              <NuxtLink
+                :to="datasetPath(replication.source.pool.path, replication.source.dataset.name)"
+                class="break-all hover:underline"
+              >
+                {{ replication.source.dataset.name }}
+              </NuxtLink>
+            </template>
+            <span v-else class="text-dimmed text-base font-normal">
+              source not monitored
+            </span>
+            <UIcon
+              name="i-lucide-arrow-right"
+              class="text-dimmed size-5 shrink-0 self-center"
+            />
+            <NuxtLink
+              :to="hostPath(replication.target.host.name)"
+              class="text-muted text-base font-normal hover:underline"
+            >
+              {{ hostLabel(replication.target) }}
+            </NuxtLink>
+            <NuxtLink
+              :to="datasetPath(replication.target.pool.path, replication.target.dataset.name)"
+              class="break-all hover:underline"
+            >
+              {{ replication.target.dataset.name }}
+            </NuxtLink>
           </h1>
           <ReplicationStatusLabel :status="replication.status" />
           <UBadge color="neutral" variant="subtle" data-testid="direction">
@@ -139,29 +172,6 @@ const tabs = computed<TabsItem[]>(() => [
             @archived="refresh"
           />
         </div>
-        <p
-          class="text-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
-          data-testid="endpoints"
-        >
-          <template v-if="replication.source">
-            <span>{{ hostLabel(replication.source) }}</span>
-            <NuxtLink
-              :to="datasetPath(replication.source.pool.path, replication.source.dataset.name)"
-              class="text-toned font-mono hover:underline"
-            >
-              {{ replication.source.dataset.name }}
-            </NuxtLink>
-          </template>
-          <span v-else class="text-dimmed">source not monitored</span>
-          <UIcon name="i-lucide-arrow-right" class="text-dimmed size-4" />
-          <span>{{ hostLabel(replication.target) }}</span>
-          <NuxtLink
-            :to="datasetPath(replication.target.pool.path, replication.target.dataset.name)"
-            class="text-toned font-mono hover:underline"
-          >
-            {{ replication.target.dataset.name }}
-          </NuxtLink>
-        </p>
         <div
           v-if="replication.archivedAt"
           data-testid="replication-archived-banner"
@@ -185,13 +195,21 @@ const tabs = computed<TabsItem[]>(() => [
 
       <ReplicationFaults :replication-id="replication.id" :now="now" />
 
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div
+        class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)_minmax(0,6fr)]"
+      >
         <ReplicationCadencePanel
+          :replication="replication"
+          :now="now"
+          class="md:col-span-2 lg:col-span-1"
+          @saved="refresh"
+        />
+        <ReplicationSourcePanel
           :replication="replication"
           :now="now"
           @saved="refresh"
         />
-        <ReplicationSourcePanel :replication="replication" @saved="refresh" />
+        <ReplicationTargetPanel :replication="replication" :now="now" />
       </div>
 
       <UTabs v-model="activeTab" :items="tabs" variant="link" class="w-full">

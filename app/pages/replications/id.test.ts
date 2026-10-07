@@ -17,6 +17,7 @@ import type {
 import type { SubjectScenarios } from "#shared/simulator";
 import {
   endpoint,
+  endpointFacts,
   replicationRow,
 } from "~/components/replication/testFixtures";
 import { FakeEventSource } from "~~/test/fakeEventSource";
@@ -66,6 +67,14 @@ const detail = (page: number) => ({
     pageSize: 100,
   },
   ladder: LADDER,
+  ends: {
+    source: endpointFacts(),
+    target: endpointFacts({
+      encryption: "aes-256-gcm",
+      keyStatus: "unavailable",
+      mountpoint: "/mnt/vault/replica/tank/media",
+    }),
+  },
   diary: [
     {
       id: 9,
@@ -218,13 +227,27 @@ describe("replication page", () => {
   it("shows the header, cadence, source and open faults", async () => {
     const page = await mountPage();
 
-    expect(page.get("h1").text()).toBe("tank/media → vault/replica/tank/media");
+    expect(page.get('[data-testid="endpoints"]').text()).toMatch(
+      /atlas\s*tank\/media\s*styx\s*vault\/replica\/tank\/media/,
+    );
     expect(page.text()).toContain("Stalled");
     expect(page.get('[data-testid="direction"]').text()).toBe("Discovered");
-    const endpoints = page.get('[data-testid="endpoints"]');
-    expect(endpoints.text()).toMatch(/atlas\s*tank\/media\s*styx/);
-    expect(endpoints.find('a[href="/zfs/atlas/tank/media"]').exists()).toBe(
-      true,
+    expect(
+      page
+        .find('[data-testid="endpoints"] a[href="/zfs/atlas/tank/media"]')
+        .exists(),
+    ).toBe(true);
+    expect(
+      page.find('[data-testid="endpoints"] a[href="/hosts/atlas"]').exists(),
+    ).toBe(true);
+
+    const target = page.get('[data-testid="target-panel"]').text();
+    expect(target).toContain("vault/replica/tank/media");
+    expect(target).toContain("aes-256-gcm · key not loaded");
+    expect(target).toContain("/mnt/vault/replica/tank/media");
+    expect(target).toContain("autosnap_120");
+    expect(page.get('[data-testid="source-panel"]').text()).toContain(
+      "Encryptionoff",
     );
 
     const cadence = page.get('[data-testid="cadence-panel"]').text();
