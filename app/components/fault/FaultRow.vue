@@ -34,9 +34,6 @@ const gutterClass = computed(() =>
 );
 const isResolved = computed(() => props.fault.state === "resolved");
 const hostLabel = computed(() => faultHostLabel(props.fault));
-const subjectLabel = computed(() =>
-  props.fault.subject.type === "host" ? "" : props.fault.subject.label,
-);
 const subjectPath = computed(() => faultSubjectPath(props.fault.subject, props.fault.kind));
 const diskPath = computed(() => faultDiskPath(props.fault));
 const title = computed(() => faultTitle(props.fault, props.now));
@@ -66,12 +63,7 @@ const age = computed(() => {
       class="flex min-w-0 flex-1 flex-col gap-x-3 gap-y-1 text-sm sm:flex-row sm:items-baseline"
     >
       <template v-if="!hideSubject">
-        <span class="text-highlighted w-20 shrink-0 truncate font-semibold">
-          {{ hostLabel }}
-        </span>
-        <span class="text-muted w-14 shrink-0 truncate font-mono text-xs">
-          {{ subjectLabel }}
-        </span>
+        <FaultSubjectLabels :fault="fault" columns />
       </template>
       <div class="flex min-w-0 flex-1 flex-col gap-1">
         <NuxtLink

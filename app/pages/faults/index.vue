@@ -139,7 +139,7 @@ const lastIngest = computed(() =>
 </script>
 
 <template>
-  <AppPanel title="Faults" class="flex max-w-5xl flex-col gap-6">
+  <AppPanel title="Faults" class="flex max-w-7xl flex-col gap-6">
     <div class="flex items-center gap-2">
       <h1 class="text-highlighted text-2xl font-semibold tracking-tight">
         Faults

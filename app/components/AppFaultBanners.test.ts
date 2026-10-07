@@ -97,8 +97,62 @@ describe("AppFaultBanners", () => {
     ];
     const component = await mountSuspended(AppFaultBanners);
 
-    expect(component.text()).toContain("venus");
+    expect(component.get('[data-testid="fault-host"]').text()).toBe("venus");
+    expect(component.get('[data-testid="fault-subject"]').text()).toBe("V5");
     expect(component.text()).toContain("Missing");
+  });
+
+  it("names a pool subject and links to it", async () => {
+    faults.value = [
+      fault(1, {
+        kind: "pool-status",
+        category: "zfs",
+        data: {},
+        subject: {
+          type: "pool",
+          id: 3,
+          label: "zeta",
+          hostName: "mars",
+          path: "/hosts/mars/pools/zeta",
+        },
+      }),
+    ];
+    const component = await mountSuspended(AppFaultBanners);
+
+    const subject = component.get('[data-testid="fault-subject"]');
+    expect(subject.text()).toBe("zeta");
+    expect(subject.attributes("href")).toBe("/hosts/mars/pools/zeta");
+  });
+
+  it("names a host subject once", async () => {
+    faults.value = [fault(1)];
+    const component = await mountSuspended(AppFaultBanners);
+
+    expect(component.get('[data-testid="fault-host"]').text()).toBe("mars");
+    expect(component.find('[data-testid="fault-subject"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it("omits the host for a disk with no known host", async () => {
+    faults.value = [
+      fault(1, {
+        kind: "disk-missing",
+        category: "disk",
+        data: {},
+        subject: {
+          type: "disk",
+          id: 9,
+          label: "V5",
+          hostName: null,
+          path: null,
+        },
+      }),
+    ];
+    const component = await mountSuspended(AppFaultBanners);
+
+    expect(component.find('[data-testid="fault-host"]').exists()).toBe(false);
+    expect(component.get('[data-testid="fault-subject"]').text()).toBe("V5");
   });
 
   it("marks each fault with a 3 px error gutter", async () => {
