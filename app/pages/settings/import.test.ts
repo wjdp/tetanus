@@ -90,20 +90,23 @@ function button(
   return found;
 }
 
+const SCRUTINY_URL = "https://scrutiny.example";
 const devices = '[data-testid="scrutiny-devices"]';
 
 async function submitPreview(page: Awaited<ReturnType<typeof mountSuspended>>) {
+  await page.get('input[type="url"]').setValue(SCRUTINY_URL);
   await page.get("form").trigger("submit");
   await vi.waitFor(() => expect(page.find(devices).exists()).toBe(true));
 }
 
 describe("import settings page", () => {
-  it("defaults to mars's scrutiny and the first host, with Import disabled", async () => {
+  it("starts with no URL and the first host, with Preview and Import disabled", async () => {
     const page = await mountSuspended(ImportPage);
 
     expect(
       (page.get('input[type="url"]').element as HTMLInputElement).value,
-    ).toBe("https://scrutiny.wjdp.uk");
+    ).toBe("");
+    expect(button(page, "Preview").attributes("disabled")).toBeDefined();
     expect(page.text()).toContain("mars");
     expect(page.text()).toContain("daily resolution");
     expect(button(page, "Import").attributes("disabled")).toBeDefined();
@@ -114,9 +117,7 @@ describe("import settings page", () => {
 
     await submitPreview(page);
 
-    expect(posted).toEqual([
-      { url: "https://scrutiny.wjdp.uk", hostId: 1, dryRun: true },
-    ]);
+    expect(posted).toEqual([{ url: SCRUTINY_URL, hostId: 1, dryRun: true }]);
     const table = page.get(devices);
     expect(table.text()).toContain("Would import 26 SMART points");
     expect(table.text()).toContain("WDC WD120EMAZ-11BLFA0");
@@ -136,7 +137,7 @@ describe("import settings page", () => {
     await button(page, "Import").trigger("click");
     await vi.waitFor(() =>
       expect(posted.at(-1)).toEqual({
-        url: "https://scrutiny.wjdp.uk",
+        url: SCRUTINY_URL,
         hostId: 1,
         dryRun: false,
       }),

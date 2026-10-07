@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 import { APP_NAME } from "#shared/app";
-import {
-  SCRUTINY_DEFAULT_URL,
-  type ScrutinyDeviceImport,
-  type ScrutinyImportResult,
-  type ScrutinyMatch,
+import type {
+  ScrutinyDeviceImport,
+  ScrutinyImportResult,
+  ScrutinyMatch,
 } from "#shared/schemas/import";
 import type { SseTask } from "#shared/sse";
 
@@ -30,7 +29,7 @@ const hostItems = computed(() =>
   })),
 );
 
-const url = ref(SCRUTINY_DEFAULT_URL);
+const url = ref("");
 const hostId = ref<number | undefined>(hosts.value[0]?.id);
 const result = ref<ImportResult | null>(null);
 const previewing = ref(false);
@@ -189,7 +188,7 @@ const totals = computed(() =>
             icon="i-lucide-eye"
             label="Preview"
             :loading="previewing"
-            :disabled="!hostId || importing"
+            :disabled="!url || !hostId || importing"
           />
           <UButton
             color="primary"
