@@ -15,7 +15,7 @@ const subjectPath = computed(() =>
 );
 
 const LINK_CLASS =
-  "text-highlighted relative z-10 inline-flex min-w-0 items-center gap-1.5 font-semibold hover:underline";
+  "text-highlighted relative z-10 inline-flex min-w-0 items-baseline gap-1.5 font-semibold hover:underline";
 </script>
 
 <template>
@@ -25,8 +25,11 @@ const LINK_CLASS =
     data-testid="fault-host"
     :class="[LINK_CLASS, columns ? 'w-28 shrink-0' : 'shrink-0']"
   >
-    <UIcon :name="ENTITY_ICON.host" class="text-dimmed size-3.5 shrink-0" />
-    <span class="truncate">{{ hostName }}</span>
+    <UIcon
+      :name="ENTITY_ICON.host"
+      class="text-dimmed size-3.5 shrink-0 self-center"
+    />
+    <span class="min-w-0 [overflow-wrap:anywhere]">{{ hostName }}</span>
   </NuxtLink>
   <span v-else-if="columns" class="w-28 shrink-0" />
   <NuxtLink
@@ -37,9 +40,9 @@ const LINK_CLASS =
   >
     <UIcon
       :name="ENTITY_ICON[fault.subject.type]"
-      class="text-dimmed size-3.5 shrink-0"
+      class="text-dimmed size-3.5 shrink-0 self-center"
     />
-    <span class="truncate">{{ fault.subject.label }}</span>
+    <span class="min-w-0 [overflow-wrap:anywhere]">{{ fault.subject.label }}</span>
   </NuxtLink>
   <span v-else-if="columns" class="w-48 shrink-0" />
 </template>

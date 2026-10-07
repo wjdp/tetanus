@@ -463,7 +463,7 @@ describe("pool page", () => {
     expect(faultQueries).toContainEqual(
       expect.objectContaining({ subject: "pool:7" }),
     );
-    expect(list.text()).toContain("K1-part1 in tank: R 0 W 0 C 2");
+    expect(list.text()).toContain("K1-part1: R 0 W 0 C 2");
     expect(list.find('a[href="/disks/3"]').exists()).toBe(true);
 
     const resolve = list

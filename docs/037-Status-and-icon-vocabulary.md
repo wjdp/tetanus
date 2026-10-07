@@ -218,7 +218,9 @@ target, each with its status dot. Cadence reads "hourly", "~daily", "every 6 h"
 | `accepted` | any | none | not counted |
 | `resolved` | any | none, row at 60 % opacity, "resolved 3 d ago" | not counted |
 
-Nav entry `i-lucide-siren` ([036](036-Faults-page.md)).
+Nav entry `i-lucide-siren` ([036](036-Faults-page.md)). Every row and banner also
+shows the kind label with a filled dot in the severity colour (`FaultKindLabel`),
+unchanged by state, so severity stays legible once the gutter goes.
 
 Each kind's severities, trigger, what clears it and its settings live in `FAULT_KIND_DEFINITIONS`
 (`shared/faults.ts`) and render at `/faults/reference`. `applyDetections` rejects, in tests,

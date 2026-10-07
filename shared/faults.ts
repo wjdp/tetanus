@@ -146,19 +146,19 @@ function poolDegradedLeafText(leaf: PoolDegradedLeaf) {
 
 function poolDegradedTitle(data: FaultData) {
   const state = text(data.state);
-  const pool = `Pool ${text(data.poolName)}${state === "ONLINE" ? "" : ` ${state}`}`;
   const leaves = Array.isArray(data.leaves)
     ? (data.leaves as PoolDegradedLeaf[])
     : [];
-  if (leaves.length === 0) return pool;
-  return `${pool}: ${leaves.map(poolDegradedLeafText).join(", ")}`;
+  const devices = leaves.map(poolDegradedLeafText).join(", ");
+  if (state === "ONLINE" || state === "") return devices || "Degraded";
+  return devices ? `${state}: ${devices}` : state;
 }
 
 function leafErrorsTitle(data: FaultData) {
   const counts = `R ${text(data.read)} W ${text(data.write)} C ${text(data.checksum)}`;
   const rise = Number(data.rise24h);
   const recent = rise > 0 ? `, +${rise} in 24 h` : "";
-  return `${leafLabel(data.name)} in ${text(data.poolName)}: ${counts}${recent}`;
+  return `${leafLabel(data.name)}: ${counts}${recent}`;
 }
 
 function poolDataErrorsTitle(data: FaultData) {
@@ -171,8 +171,11 @@ function poolDataErrorsTitle(data: FaultData) {
       `${text(data.function).toLowerCase() || "scan"} found ${plural(scanErrors, "error")}`,
     );
   }
-  return `Pool ${text(data.poolName)}: ${parts.join("; ")}`;
+  return capitalise(parts.join("; "));
 }
+
+const capitalise = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1);
 
 function firstLine(value: unknown) {
   return text(value).trim().split("\n")[0]?.trim() ?? "";
@@ -180,14 +183,13 @@ function firstLine(value: unknown) {
 
 function poolStatusTitle(data: FaultData) {
   const summary = text(data.title) || firstLine(data.status);
-  const message = summary ? `${text(data.msgid)} ${summary}` : text(data.msgid);
-  return `Pool ${text(data.poolName)}: ${message}`;
+  return summary ? `${text(data.msgid)} ${summary}` : text(data.msgid);
 }
 
 function scanStalledTitle(data: FaultData, now: number) {
-  const scan = text(data.function).toLowerCase() || "scan";
+  const scan = capitalise(text(data.function).toLowerCase() || "scan");
   const age = ageSince(data.progressAt, now);
-  const stalled = `Pool ${text(data.poolName)} ${scan} stalled`;
+  const stalled = `${scan} stalled`;
   return age ? `${stalled} for ${age}` : stalled;
 }
 
@@ -195,10 +197,10 @@ function poolCapacityTitle(data: FaultData) {
   if (data.cap === undefined) return "Pool nearly full";
   const subject =
     data.vdevGuid === undefined
-      ? `Pool ${text(data.poolName)}`
-      : `${text(data.role)} ${leafLabel(data.name)} in ${text(data.poolName)}`;
+      ? ""
+      : `${text(data.role)} ${leafLabel(data.name)} `;
   const frag = typeof data.frag === "number" ? ` · frag ${data.frag} %` : "";
-  return `${subject} ${text(data.cap)} % full${frag}`;
+  return `${subject}${text(data.cap)} % full${frag}`;
 }
 
 function temperatureHighTitle(data: FaultData, now: number) {
@@ -236,8 +238,7 @@ function smartCountersResetTitle(data: FaultData) {
 function replicationTitle(state: string) {
   return (data: FaultData, now: number) => {
     const age = ageSince(data.lastSyncAt, now);
-    const target = `Replication into ${text(data.targetName)} ${state}`;
-    return age ? `${target}, last synced ${age} ago` : target;
+    return age ? `${state}, last synced ${age} ago` : state;
   };
 }
 
@@ -371,8 +372,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     actions: ["acknowledge", "accept", "clear"],
     title: (data, now) => {
       const age = ageSince(data.lastSeenAt, now);
-      const missing = `Pool ${text(data.poolName)} missing`;
-      return age ? `${missing}, last seen ${age} ago` : missing;
+      return age ? `Missing, last seen ${age} ago` : "Missing";
     },
   },
   "leaf-errors": {
@@ -401,7 +401,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
-      `${leafLabel(data.name)} in ${text(data.poolName)}: ${plural(Number(data.rise24h), "slow I/O")} in 24 h`,
+      `${leafLabel(data.name)}: ${plural(Number(data.rise24h), "slow I/O")} in 24 h`,
   },
   "pool-data-errors": {
     label: "Pool data errors",
@@ -430,10 +430,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     actions: ["acknowledge", "accept", "clear"],
     title: (data, now) => {
       const age = ageSince(data.lastScrubAt, now);
-      const pool = `Pool ${text(data.poolName)}`;
-      return age
-        ? `${pool} last scrubbed ${age} ago`
-        : `${pool} never scrubbed`;
+      return age ? `Last scrubbed ${age} ago` : "Never scrubbed";
     },
   },
   "pool-status": {
@@ -459,8 +456,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     actions: ["acknowledge", "accept", "clear"],
     title: (data, now) => {
       const age = ageSince(data.pausedAt, now);
-      const paused = `Pool ${text(data.poolName)} scrub paused`;
-      return age ? `${paused} for ${age}` : paused;
+      return age ? `Scrub paused for ${age}` : "Scrub paused";
     },
   },
   "scan-stalled": {
@@ -486,7 +482,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
     title: (data) =>
-      `${text(data.role)} ${leafLabel(data.name)} in ${text(data.poolName)} is a single device`,
+      `${text(data.role)} ${leafLabel(data.name)} is a single device`,
   },
   "pool-capacity": {
     label: "Pool capacity",
@@ -520,7 +516,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     ],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
-    title: replicationTitle("late"),
+    title: replicationTitle("Late"),
   },
   "replication-stalled": {
     label: "Replication stalled",
@@ -536,7 +532,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     ],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
-    title: replicationTitle("stalled"),
+    title: replicationTitle("Stalled"),
   },
   "replication-target-gone": {
     label: "Replication target gone",
@@ -548,8 +544,7 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     resolves: "The dataset reappears, or the replication is archived.",
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],
-    title: (data) =>
-      `Replication target ${text(data.targetName)} no longer exists`,
+    title: () => "Target no longer exists",
   },
   "collector-silent": {
     label: "Collector silent",

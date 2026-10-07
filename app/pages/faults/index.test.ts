@@ -252,7 +252,7 @@ describe("faults page", () => {
     expect(row(page, "Pending").get('[data-testid="fault-note"]').text()).toBe(
       "Watching it",
     );
-    expect(row(page, "Pool vault DEGRADED").text()).toContain("styx");
+    expect(row(page, "DEGRADED").text()).toContain("styx");
   });
 
   it("colours the gutter by state and severity", async () => {

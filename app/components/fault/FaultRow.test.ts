@@ -50,10 +50,19 @@ describe("FaultRow", () => {
     expect(
       row.get('[data-testid="fault-subject-link"]').attributes("href"),
     ).toBe("/zfs/nas1/tank");
-    expect(row.text()).toContain("A7-part1 in tank: R 0 W 0 C 12, +4 in 24 h");
+    expect(row.text()).toContain("A7-part1: R 0 W 0 C 12, +4 in 24 h");
     const disk = row.get('[data-testid="fault-disk-link"]');
     expect(disk.attributes("href")).toBe("/disks/12");
     expect(disk.text()).toBe("Disk");
+  });
+
+  it("names the kind with a dot in its severity colour", async () => {
+    const row = await mountRow(
+      leafFault({ poolName: "tank", name: "/tmp/f1", diskId: null }),
+    );
+    const kind = row.get('[data-testid="fault-kind"]');
+    expect(kind.text()).toBe("Device errors");
+    expect(kind.get("[data-colour]").attributes("data-colour")).toBe("warning");
   });
 
   it("has no disk link for an unlinked leaf", async () => {

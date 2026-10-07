@@ -46,8 +46,9 @@ const performFor =
       <div
         class="flex min-w-0 flex-1 flex-col gap-x-6 gap-y-1.5 sm:flex-row sm:flex-wrap sm:items-baseline"
       >
-        <p class="flex min-w-0 gap-3 text-sm">
+        <p class="flex min-w-0 items-baseline gap-3 text-sm">
           <FaultSubjectLabels :fault="fault" />
+          <FaultKindLabel :fault="fault" />
           <span class="text-default">{{ faultTitle(fault) }}</span>
         </p>
         <button

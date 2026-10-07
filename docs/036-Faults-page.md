@@ -226,6 +226,12 @@ Faults                                    [Live ▾] [All categories ▾] [All h
   string so a view can be linked.
 - Gutter: red open error, amber open warning or acknowledged anything, none for
   accepted and resolved (resolved rows dimmed, "resolved 3 d ago").
+- Each row and banner carries the kind label (`FAULT_KIND_DEFINITIONS[kind].label`,
+  `FaultKindLabel`) with a dot in the severity colour, so kind and severity read
+  without the title and survive acceptance and resolution. Titles therefore never
+  repeat the subject: "DEGRADED: K3 FAULTED", not "Pool tank DEGRADED: K3 FAULTED";
+  the subject column wraps rather than truncates. Diary entries and alerts carry the
+  subject separately.
 - Actions from the kind table. SMART rows open the existing `AcceptFaultModal` (same
   history and reference values); others a small note popover.
 - Row click goes to the subject: disk page, pool page (`/zfs/:id`), `/settings/hosts`.

@@ -128,6 +128,9 @@ describe("AppFaultBanners", () => {
     faults.value = [fault(1)];
     const component = await mountSuspended(AppFaultBanners);
 
+    expect(component.get('[data-testid="fault-kind"]').text()).toBe(
+      "Collector silent",
+    );
     expect(component.get('[data-testid="fault-host"]').text()).toBe("mars");
     expect(component.find('[data-testid="fault-subject"]').exists()).toBe(
       false,

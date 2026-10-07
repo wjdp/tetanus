@@ -93,11 +93,7 @@ describe("faultTitle", () => {
       },
       "Current Pending Sector Count 2 · ack at 2",
     ],
-    [
-      "pool-degraded",
-      { poolName: "vault", state: "DEGRADED" },
-      "Pool vault DEGRADED",
-    ],
+    ["pool-degraded", { poolName: "vault", state: "DEGRADED" }, "DEGRADED"],
     [
       "pool-degraded",
       {
@@ -107,7 +103,7 @@ describe("faultTitle", () => {
           { name: "/dev/disk/by-vdev/K3", role: "normal", state: "FAULTED" },
         ],
       },
-      "Pool tank DEGRADED: K3 FAULTED",
+      "DEGRADED: K3 FAULTED",
     ],
     [
       "pool-degraded",
@@ -116,7 +112,7 @@ describe("faultTitle", () => {
         state: "ONLINE",
         leaves: [{ name: "C1", role: "cache", state: "UNAVAIL" }],
       },
-      "Pool zeta: cache C1 UNAVAIL",
+      "cache C1 UNAVAIL",
     ],
     [
       "pool-degraded",
@@ -127,12 +123,12 @@ describe("faultTitle", () => {
           { name: "K3", role: "normal", state: "REMOVED", diskMissing: true },
         ],
       },
-      "Pool tank DEGRADED: K3 REMOVED (disk missing)",
+      "DEGRADED: K3 REMOVED (disk missing)",
     ],
     [
       "pool-missing",
       { poolName: "tank", lastSeenAt: "2026-09-07T10:00:00Z" },
-      "Pool tank missing, last seen 3 d ago",
+      "Missing, last seen 3 d ago",
     ],
     [
       "leaf-errors",
@@ -144,47 +140,47 @@ describe("faultTitle", () => {
         checksum: 12,
         rise24h: 4,
       },
-      "A7 in tank: R 0 W 0 C 12, +4 in 24 h",
+      "A7: R 0 W 0 C 12, +4 in 24 h",
     ],
     [
       "leaf-slow",
       { poolName: "tank", name: "A7", rise24h: 14 },
-      "A7 in tank: 14 slow I/Os in 24 h",
+      "A7: 14 slow I/Os in 24 h",
     ],
     [
       "pool-data-errors",
       { poolName: "vault", function: "SCRUB", scanErrors: 1, dataErrors: 0 },
-      "Pool vault: scrub found 1 error",
+      "Scrub found 1 error",
     ],
     [
       "pool-data-errors",
       { poolName: "vault", scanErrors: 0, dataErrors: 3 },
-      "Pool vault: 3 data errors",
+      "3 data errors",
     ],
     [
       "scrub-overdue",
       { poolName: "tank", lastScrubAt: "2026-07-20T10:00:00Z" },
-      "Pool tank last scrubbed 52 d ago",
+      "Last scrubbed 52 d ago",
     ],
     [
       "scrub-overdue",
       { poolName: "tank", lastScrubAt: null },
-      "Pool tank never scrubbed",
+      "Never scrubbed",
     ],
     [
       "replication-late",
       { targetName: "vpool/tank/a", lastSyncAt: "2026-09-10T05:00:00Z" },
-      "Replication into vpool/tank/a late, last synced 5 h ago",
+      "Late, last synced 5 h ago",
     ],
     [
       "replication-stalled",
       { targetName: "vpool/tank/a", lastSyncAt: "2026-09-07T10:00:00Z" },
-      "Replication into vpool/tank/a stalled, last synced 3 d ago",
+      "Stalled, last synced 3 d ago",
     ],
     [
       "replication-target-gone",
       { targetName: "vpool/tank/a", lastSyncAt: "2026-09-07T10:00:00Z" },
-      "Replication target vpool/tank/a no longer exists",
+      "Target no longer exists",
     ],
     [
       "pool-status",
@@ -193,7 +189,7 @@ describe("faultTitle", () => {
         msgid: "ZFS-8000-EY",
         title: "ZFS label hostid mismatch",
       },
-      "Pool tank: ZFS-8000-EY ZFS label hostid mismatch",
+      "ZFS-8000-EY ZFS label hostid mismatch",
     ],
     [
       "pool-status",
@@ -203,12 +199,12 @@ describe("faultTitle", () => {
         title: null,
         status: "Something new happened.\n\tMore detail.\n",
       },
-      "Pool tank: ZFS-8000-ZZ Something new happened.",
+      "ZFS-8000-ZZ Something new happened.",
     ],
     [
       "scrub-paused",
       { poolName: "tank", pausedAt: "2026-09-08T10:00:00Z" },
-      "Pool tank scrub paused for 2 d",
+      "Scrub paused for 2 d",
     ],
     [
       "scan-stalled",
@@ -217,12 +213,12 @@ describe("faultTitle", () => {
         function: "RESILVER",
         progressAt: "2026-09-10T03:00:00Z",
       },
-      "Pool vault resilver stalled for 7 h",
+      "Resilver stalled for 7 h",
     ],
     [
       "vdev-unredundant",
       { poolName: "tank", name: "/dev/disk/by-vdev/S1-part1", role: "special" },
-      "special S1-part1 in tank is a single device",
+      "special S1-part1 is a single device",
     ],
     [
       "collector-silent",
@@ -274,7 +270,7 @@ describe("faultTitle", () => {
     [
       "pool-capacity",
       { poolName: "tank", cap: 91, frag: 34 },
-      "Pool tank 91 % full · frag 34 %",
+      "91 % full · frag 34 %",
     ],
     [
       "pool-capacity",
@@ -286,7 +282,7 @@ describe("faultTitle", () => {
         name: "mirror-1",
         role: "special",
       },
-      "special mirror-1 in tank 85 % full",
+      "special mirror-1 85 % full",
     ],
     ["pool-capacity", { vdevGuid: "2" }, "Pool nearly full"],
   ] as const)("renders %s", (kind, data, title) => {

@@ -65,6 +65,7 @@ const age = computed(() => {
       <template v-if="!hideSubject">
         <FaultSubjectLabels :fault="fault" columns />
       </template>
+      <FaultKindLabel :fault="fault" columns />
       <div class="flex min-w-0 flex-1 flex-col gap-1">
         <NuxtLink
           :to="subjectPath ?? undefined"
@@ -100,11 +101,11 @@ const age = computed(() => {
           />
         </button>
       </div>
-      <span class="text-muted shrink-0 text-xs whitespace-nowrap tabular-nums">
-        {{ age }}
-      </span>
     </div>
 
+    <span class="text-muted shrink-0 text-xs whitespace-nowrap tabular-nums">
+      {{ age }}
+    </span>
     <FaultActions
       :fault="fault"
       :perform="perform"
