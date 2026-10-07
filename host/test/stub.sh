@@ -22,7 +22,7 @@ while IFS=$'\t' read -r fixture _ recorded; do
   [[ ${recorded% | tail -n *} == "$argv" ]] && replay "$fixture"
 done <"$STUB_FIXTURES/manifest.txt"
 
-# Until mars is re-captured with collector 0.4.0's commands (docs/015-Replication-health.md).
+# Until mars is re-captured with collector 0.8.0's commands (docs/015-Replication-health.md).
 case $argv in
   "zpool version") replay zfs-version ;;
   "zpool list -H -o name")
@@ -31,6 +31,7 @@ case $argv in
     ;;
   "zpool history -il "*) replay zpool-history ;;
   "zfs list -j -p -t snapshot "*) replay zfs-snapshots ;;
+  "zfs list -j --json-int -p -t filesystem,volume "*) replay zfs-list ;;
   cat*)
     command -p cat "$@"
     exit

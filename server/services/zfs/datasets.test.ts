@@ -131,12 +131,35 @@ describe("observeZfsList", () => {
       recordSize: 131072,
       compression: "lz4",
       encryption: "off",
+      keyStatus: null,
+      encryptionRoot: null,
       creation: new Date(1734889372 * 1000),
       present: true,
       firstSeenAt: T0,
       lastSeenAt: T0,
       snapshotCount: 0,
       latestSnapshotAt: null,
+    });
+  });
+
+  it("stores the key status and encryption root when the collector sends them", () => {
+    const { hostId } = seedTank();
+    const list = marsList();
+    const tank = list.datasets.find((row) => row.name === "tank");
+    if (!tank) throw new Error("tank missing from fixture");
+    tank.properties.keystatus = {
+      value: "unavailable",
+      source: { type: "NONE", data: "-" },
+    };
+    tank.properties.encryptionroot = {
+      value: "tank",
+      source: { type: "NONE", data: "-" },
+    };
+    observeZfsList(hostId, list, T0);
+
+    expect(datasetNamed("tank")).toMatchObject({
+      keyStatus: "unavailable",
+      encryptionRoot: "tank",
     });
   });
 

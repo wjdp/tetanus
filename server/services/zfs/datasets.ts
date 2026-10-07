@@ -119,6 +119,8 @@ function datasetFields({ type, properties }: ZfsDataset) {
     recordSize: numberProperty(properties.recordsize),
     compression: textProperty(properties.compression),
     encryption: textProperty(properties.encryption),
+    keyStatus: textProperty(properties.keystatus),
+    encryptionRoot: textProperty(properties.encryptionroot),
     creation: secondsToDate(creation),
   };
 }
@@ -142,6 +144,8 @@ const DATASET_UPDATE_SET = excludedColumns(dataset, [
   "recordSize",
   "compression",
   "encryption",
+  "keyStatus",
+  "encryptionRoot",
   "creation",
   "present",
   "lastSeenAt",

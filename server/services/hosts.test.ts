@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { COLLECTOR_VERSION, MIN_COLLECTOR_VERSION } from "#shared/collector";
 import { db } from "~~/server/database/client";
 import { collectorRun, host } from "~~/server/database/schema";
 import { listDiary } from "~~/server/services/diary";
@@ -223,13 +224,13 @@ describe("recordCollectorVersion", () => {
   it("records each status change once", () => {
     record("0.2.0");
     record("0.2.0");
-    record("0.7.0");
-    record("0.7.0");
-    record("0.3.0");
+    record(COLLECTOR_VERSION);
+    record(COLLECTOR_VERSION);
+    record(MIN_COLLECTOR_VERSION);
     expect(events().map(({ title }) => title)).toEqual([
-      "Collector 0.3.0 outdated",
-      "Collector 0.7.0 current",
-      "Collector 0.2.0 incompatible (needs 0.3.0)",
+      `Collector ${MIN_COLLECTOR_VERSION} outdated`,
+      `Collector ${COLLECTOR_VERSION} current`,
+      `Collector 0.2.0 incompatible (needs ${MIN_COLLECTOR_VERSION})`,
     ]);
   });
 

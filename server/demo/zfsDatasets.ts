@@ -279,7 +279,7 @@ export function snapshotsAt(
     .sort(byCreation);
 }
 
-// zfs list -j --json-int -p -t filesystem,volume -o name,type,used,…,encryption
+// zfs list -j --json-int -p -t filesystem,volume -o name,type,used,…,encryptionroot
 
 interface Inheritable {
   value: string | number;
@@ -451,6 +451,8 @@ function datasetEntry(
         inherited.compression.source,
       ),
       encryption: property(dataset.encryption, DEFAULT_SOURCE),
+      keystatus: property("none", NO_SOURCE),
+      encryptionroot: property("-", NO_SOURCE),
     },
   };
 }

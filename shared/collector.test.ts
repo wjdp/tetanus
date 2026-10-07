@@ -11,6 +11,10 @@ import {
 const hostFile = (path: string) =>
   readFileSync(join(import.meta.dirname, "../host", path), "utf8");
 
+const [major, minor] = COLLECTOR_VERSION.split(".").map(Number);
+const currentMinor = `${major}.${minor}`;
+const previousMinor = `${major}.${minor - 1}`;
+
 describe("collectorStatus", () => {
   it.each([
     [null, "unknown"],
@@ -24,8 +28,8 @@ describe("collectorStatus", () => {
     [COLLECTOR_VERSION, "current"],
     ["0.4.10", "outdated"],
     ["0.5.10", "outdated"],
-    ["0.6.10", "outdated"],
-    ["0.7.10", "current"],
+    [`${previousMinor}.10`, "outdated"],
+    [`${currentMinor}.10`, "current"],
     ["1.0.0", "current"],
   ] as const)("%s is %s", (version, status) => {
     expect(collectorStatus(version)).toBe(status);

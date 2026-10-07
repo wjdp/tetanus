@@ -491,6 +491,8 @@ export const dataset = sqliteTable(
     recordSize: integer(),
     compression: text(),
     encryption: text(),
+    keyStatus: text(),
+    encryptionRoot: text(),
     creation: datetime().notNull(),
     present: boolean().notNull().default(true),
     firstSeenAt: datetime().notNull(),

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { COLLECTOR_VERSION } from "#shared/collector";
 import { db } from "~~/server/database/client";
 import { collectorRun, host, payload } from "~~/server/database/schema";
 import { HANDLERS, type IngestHandler } from "~~/server/ingest/handlers";
@@ -14,7 +15,7 @@ describe("recordIngest", () => {
   });
 
   it.each([
-    ["tetanus-collect/0.7.0", "0.7.0", "current"],
+    [`tetanus-collect/${COLLECTOR_VERSION}`, COLLECTOR_VERSION, "current"],
     ["tetanus-zed/0.3.1", null, "unknown"],
     [null, null, "unknown"],
   ])("takes the collector version from %s", (producer, version, status) => {

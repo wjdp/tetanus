@@ -38,6 +38,8 @@ export const photos = (): DatasetDetail => ({
   recordSize: 1048576,
   compression: "zstd",
   encryption: "aes-256-gcm",
+  keyStatus: null,
+  encryptionRoot: null,
   creation: "2024-03-01T12:00:00.000Z",
   present: false,
   firstSeenAt: "2026-09-01T00:00:00.000Z",

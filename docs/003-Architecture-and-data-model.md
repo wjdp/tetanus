@@ -281,7 +281,8 @@ PoolReading     poolId, at, alloc, free, frag, cap, state, used, available (root
 VdevReading     vdevId, at, readErrors, writeErrors, cksumErrors, slowIos, state, alloc?, frag?
 Dataset         id, poolId, name, parentId?, type, used, referenced, available, logicalUsed,
                 compressRatio, usedBySnapshots, usedByDataset, usedByChildren, mountpoint,
-                quota, refQuota, reservation, recordSize, compression, encryption, creation,
+                quota, refQuota, reservation, recordSize, compression, encryption, keyStatus?,
+                encryptionRoot?, creation,
                 present, firstSeenAt, lastSeenAt, latestSnapshotAt?, snapshotCount
 DatasetReading  datasetId, at, used, referenced, available, usedBySnapshots, usedByDataset?,
                 usedByChildren?   (daily, plus on a 1 % change in used)

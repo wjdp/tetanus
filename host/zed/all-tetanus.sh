@@ -5,7 +5,7 @@
 # POST so a burst of events reaches the server roughly in order; ZED still runs
 # zedlets in parallel, so the server must not rely on order.
 
-readonly version=0.7.0
+readonly version=0.8.0
 
 config=${TETANUS_CONFIG:-/etc/tetanus/collect.env}
 [[ -r $config ]] || exit 0

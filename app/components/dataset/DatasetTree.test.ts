@@ -35,6 +35,8 @@ const dataset = (
   recordSize: 131072,
   compression: "lz4",
   encryption: "off",
+  keyStatus: null,
+  encryptionRoot: null,
   creation: "2024-01-01T00:00:00.000Z",
   present: true,
   firstSeenAt: "2026-09-01T00:00:00.000Z",
