@@ -470,6 +470,12 @@ describe("pool page", () => {
       .findAll("button")
       .find((button) => button.text() === "Resolve");
     await resolve?.trigger("click");
+    const form = await vi.waitFor(() => {
+      const found = document.body.querySelector('form[aria-label="Resolve"]');
+      if (!found) throw new Error("resolve modal not open");
+      return found;
+    });
+    form.dispatchEvent(new Event("submit"));
     await flushPromises();
 
     await vi.waitFor(() =>
