@@ -1,10 +1,12 @@
 import type {
   FaultAction,
+  FaultCategory,
   FaultKind,
   FaultSubject,
   FaultView,
 } from "#shared/faults";
 import type { StatusColour } from "./colour";
+import { ENTITY_ICON } from "./entity";
 
 export type FaultGutterColour = Extract<StatusColour, "error" | "warning">;
 
@@ -19,6 +21,12 @@ export function faultGutterColour(
 export const FAULT_GUTTER_CLASS: Record<FaultGutterColour, string> = {
   error: "border-s-error",
   warning: "border-s-warning",
+};
+
+export const FAULT_CATEGORY_ICON: Record<FaultCategory, string> = {
+  disk: ENTITY_ICON.disk,
+  zfs: ENTITY_ICON.pool,
+  host: ENTITY_ICON.host,
 };
 
 export function faultHostLabel(fault: Pick<FaultView, "subject">): string {

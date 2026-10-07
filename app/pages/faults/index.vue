@@ -5,10 +5,11 @@ import {
   FAULT_SEVERITIES,
   FAULT_STATES,
   FAULT_SUBJECT_TYPES,
+  type FaultSeverity,
   type FaultState,
   LIVE_FAULT_STATES,
 } from "#shared/faults";
-import { ENTITY_ICON } from "~/utils/vocabulary";
+import { ENTITY_ICON, FAULT_CATEGORY_ICON } from "~/utils/vocabulary";
 
 useSeoMeta({ title: getPageTitle("Faults") });
 
@@ -111,12 +112,23 @@ const viewItems = computed(() =>
 
 const categoryItems = [
   { label: "All categories", value: ALL },
-  ...FAULT_CATEGORIES.map((value) => ({ label: value, value })),
+  ...FAULT_CATEGORIES.map((value) => ({
+    label: value,
+    value,
+    icon: FAULT_CATEGORY_ICON[value],
+  })),
 ];
+const CATEGORY_ICON = "i-lucide-shapes";
+const SEVERITY_ICON = "i-lucide-triangle-alert";
+const categoryIcon = computed(() =>
+  category.value === ALL ? CATEGORY_ICON : FAULT_CATEGORY_ICON[category.value],
+);
 const severityItems = [
   { label: "All severities", value: ALL },
   ...FAULT_SEVERITIES.map((value) => ({ label: value, value })),
 ];
+const isSeverity = (value: string): value is FaultSeverity =>
+  value !== ALL;
 const hostItems = computed(() => [
   { label: "All hosts", value: ALL },
   ...(hosts.value ?? []).map((row) => ({
@@ -181,18 +193,49 @@ const lastIngest = computed(() =>
         <USelect
           v-model="category"
           :items="categoryItems"
+          :icon="categoryIcon"
+          :color="category === ALL ? 'neutral' : 'primary'"
+          :variant="category === ALL ? 'outline' : 'soft'"
+          :highlight="category !== ALL"
           class="w-36"
           aria-label="Filter by category"
         />
         <USelect
           v-model="severity"
           :items="severityItems"
-          class="w-36"
+          :color="isSeverity(severity) ? 'primary' : 'neutral'"
+          :variant="isSeverity(severity) ? 'soft' : 'outline'"
+          :highlight="isSeverity(severity)"
+          class="w-40"
           aria-label="Filter by severity"
-        />
+        >
+          <template #leading="{ ui }">
+            <span
+              v-if="isSeverity(severity)"
+              class="inline-flex items-center justify-center"
+              :class="ui.leadingIcon()"
+            >
+              <TopologyStatusDot :colour="severity" />
+            </span>
+            <UIcon v-else :name="SEVERITY_ICON" :class="ui.leadingIcon()" />
+          </template>
+          <template #item-leading="{ item, ui }">
+            <span
+              v-if="isSeverity(item.value)"
+              class="inline-flex items-center justify-center"
+              :class="ui.itemLeadingIcon()"
+            >
+              <TopologyStatusDot :colour="item.value" />
+            </span>
+          </template>
+        </USelect>
         <USelect
           v-model="hostFilter"
           :items="hostItems"
+          :icon="ENTITY_ICON.host"
+          :color="hostFilter === ALL ? 'neutral' : 'primary'"
+          :variant="hostFilter === ALL ? 'outline' : 'soft'"
+          :highlight="hostFilter !== ALL"
           class="w-36"
           aria-label="Filter by host"
         />
