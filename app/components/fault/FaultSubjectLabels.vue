@@ -14,6 +14,14 @@ const subjectPath = computed(() =>
   faultSubjectPath(props.fault.subject, props.fault.kind),
 );
 
+const REPLICATION_ARROW = " → ";
+const replicationEnds = computed(() =>
+  props.fault.subject.type === "replication" &&
+  props.fault.subject.label.includes(REPLICATION_ARROW)
+    ? props.fault.subject.label.split(REPLICATION_ARROW)
+    : null,
+);
+
 const LINK_CLASS =
   "text-highlighted relative z-10 inline-flex min-w-0 items-baseline gap-1.5 font-semibold hover:underline";
 </script>
@@ -42,7 +50,17 @@ const LINK_CLASS =
       :name="ENTITY_ICON[fault.subject.type]"
       class="text-dimmed size-3.5 shrink-0 self-center"
     />
-    <span class="min-w-0 [overflow-wrap:anywhere]">{{ fault.subject.label }}</span>
+    <span v-if="replicationEnds" class="min-w-0 [overflow-wrap:anywhere]">
+      {{ replicationEnds[0] }}
+      <UIcon
+        name="i-lucide-arrow-right"
+        class="text-dimmed mx-0.5 size-3.5 align-[-2px]"
+      />
+      {{ replicationEnds[1] }}
+    </span>
+    <span v-else class="min-w-0 [overflow-wrap:anywhere]">
+      {{ fault.subject.label }}
+    </span>
   </NuxtLink>
   <span v-else-if="columns" class="w-48 shrink-0" />
 </template>
