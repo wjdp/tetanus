@@ -1201,7 +1201,7 @@ describe("pool-capacity", () => {
 });
 
 describe("identity-conflict", () => {
-  it("resolves on acknowledge and only reopens for a new conflict", async () => {
+  it("resolves manually and only reopens for a new conflict", async () => {
     upsertHostByName("mars", t0);
     const [a, b] = [1, 2].map(
       (n) =>
@@ -1226,7 +1226,7 @@ describe("identity-conflict", () => {
     const open = liveFault("identity-conflict", `${a}:${a},${b}`) as FaultRow;
     expect(open).toMatchObject({ state: "open", subjectId: a });
 
-    performFaultAction(open.id, "acknowledge", { now: at(2 * MINUTE_MS) });
+    performFaultAction(open.id, "resolve", { now: at(2 * MINUTE_MS) });
     await syncFaults(at(3 * MINUTE_MS));
     expect(faultsOf("identity-conflict")).toMatchObject([
       { state: "resolved", resolvedAt: at(2 * MINUTE_MS) },
@@ -1240,7 +1240,7 @@ describe("identity-conflict", () => {
     ]);
   });
 
-  it("stays resolved when acknowledged after the same conflict recurred", async () => {
+  it("stays resolved when resolved after the same conflict recurs", async () => {
     const [a, b, c] = [1, 2, 3].map(
       (n) =>
         db
@@ -1267,7 +1267,7 @@ describe("identity-conflict", () => {
     const pair = liveFault("identity-conflict", `${a}:${a},${b}`) as FaultRow;
     expect(pair.openedAt).toEqual(t0);
 
-    performFaultAction(pair.id, "acknowledge", { now: at(4 * MINUTE_MS) });
+    performFaultAction(pair.id, "resolve", { now: at(4 * MINUTE_MS) });
     await syncFaults(at(5 * MINUTE_MS));
 
     expect(liveFault("identity-conflict", `${a}:${a},${b}`)).toBeUndefined();
@@ -1322,7 +1322,7 @@ describe("capacity-changed", () => {
       at: at(offsetMs),
     });
 
-  it("resolves on acknowledge and only reopens for a new change", async () => {
+  it("resolves manually and only reopens for a new change", async () => {
     const a = db.insert(disk).values({ alias: "K1" }).returning().get().id;
 
     change(a, 0);
@@ -1335,7 +1335,7 @@ describe("capacity-changed", () => {
       data: { from: 16 * TB, to: 15 * TB, changedAt: t0.toISOString() },
     });
 
-    performFaultAction(open.id, "acknowledge", { now: at(2 * MINUTE_MS) });
+    performFaultAction(open.id, "resolve", { now: at(2 * MINUTE_MS) });
     await syncFaults(at(3 * MINUTE_MS));
     expect(faultsOf("capacity-changed")).toMatchObject([
       { state: "resolved", resolvedAt: at(2 * MINUTE_MS) },

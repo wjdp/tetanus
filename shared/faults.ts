@@ -71,7 +71,6 @@ export function isFaultKind(value: unknown): value is FaultKind {
 export type FaultLifetime =
   | "transient"
   | "persistent"
-  | "until-acknowledged"
   | "until-seen-again"
   | "until-resolved"
   | "until-no-data-errors";
@@ -291,9 +290,9 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     subjectType: "disk",
     severities: ["error"],
     trigger: "Two disks reported the same serial number or WWN.",
-    resolves: "Acknowledgement only. A later conflict opens a new fault.",
-    lifetime: "until-acknowledged",
-    actions: ["acknowledge"],
+    resolves: "Manual resolution only. A later conflict opens a new fault.",
+    lifetime: "until-resolved",
+    actions: ["resolve"],
     title: (data) => {
       const others = typeof data.others === "string" ? data.others : "";
       return `Identity conflict with ${others || "another disk"}`;
@@ -306,9 +305,9 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     severities: ["warning"],
     trigger:
       "A disk reported a capacity that differs from the stored value by 0.1 % or more. Usual causes: a USB bridge or enclosure reporting a different size, an HPA or DCO/AMA limit being set or removed, a reformat to a different sector count, or head depopulation.",
-    resolves: "Acknowledgement only. A later change opens a new fault.",
-    lifetime: "until-acknowledged",
-    actions: ["acknowledge"],
+    resolves: "Manual resolution only. A later change opens a new fault.",
+    lifetime: "until-resolved",
+    actions: ["resolve"],
     title: (data) => {
       const { from, to } = data;
       if (typeof from !== "number" || typeof to !== "number") {

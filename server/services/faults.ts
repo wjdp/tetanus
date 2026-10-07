@@ -205,12 +205,7 @@ function detectMissing(
     }));
 }
 
-const UNTIL_ACKNOWLEDGED_KINDS = new Set<FaultKind>([
-  "identity-conflict",
-  "capacity-changed",
-]);
-
-function wasAcknowledgedSince(kind: FaultKind, key: string, at: Date) {
+function wasResolvedSince(kind: FaultKind, key: string, at: Date) {
   return db
     .select({ resolvedAt: fault.resolvedAt })
     .from(fault)
@@ -247,7 +242,7 @@ function detectIdentityConflicts({ disks }: DetectionContext): Detection[] {
     if (disposedDiskIds.has(entry.subjectId)) continue;
     const key = identityConflictKey(entry.subjectId, entry.data.diskIds);
     if (byKey.has(key)) continue;
-    if (wasAcknowledgedSince("identity-conflict", key, entry.at)) continue;
+    if (wasResolvedSince("identity-conflict", key, entry.at)) continue;
     byKey.set(key, {
       kind: "identity-conflict",
       key,
@@ -277,7 +272,7 @@ function detectCapacityChanges({ disks }: DetectionContext): Detection[] {
     if (disposedDiskIds.has(entry.subjectId)) continue;
     const key = String(entry.subjectId);
     if (byKey.has(key)) continue;
-    if (wasAcknowledgedSince("capacity-changed", key, entry.at)) continue;
+    if (wasResolvedSince("capacity-changed", key, entry.at)) continue;
     byKey.set(key, {
       kind: "capacity-changed",
       key,
@@ -800,9 +795,6 @@ export function performFaultAction(
       return getFaultRow(id);
     }
     if (action === "clear") return setState(row, "open", "", now);
-    if (UNTIL_ACKNOWLEDGED_KINDS.has(row.kind)) {
-      return resolveFault(row, now, note);
-    }
     return setState(
       row,
       action === "accept" ? "accepted" : "acknowledged",

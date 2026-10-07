@@ -336,7 +336,7 @@ describe("allowedActions", () => {
     ).toEqual(["acknowledge"]);
     expect(
       allowedActions({ kind: "identity-conflict", state: "open" }),
-    ).toEqual(["acknowledge"]);
+    ).toEqual(["resolve"]);
     expect(
       allowedActions({ kind: "leaf-errors", state: "acknowledged" }),
     ).toEqual(["accept", "clear", "resolve"]);
