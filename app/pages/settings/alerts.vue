@@ -64,8 +64,6 @@ const saveChannel = async (channel: AlertChannel) => {
 
 <template>
   <section class="flex flex-col gap-6">
-    <h2 class="text-highlighted text-lg font-semibold">Alerts</h2>
-
     <UAlert
       v-if="demo"
       color="neutral"
