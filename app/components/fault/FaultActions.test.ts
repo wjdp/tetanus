@@ -46,4 +46,19 @@ describe("FaultActions", () => {
       ),
     ).not.toContain("Archive pool");
   });
+
+  it("asks for confirmation before resolving", async () => {
+    const perform = vi.fn();
+    const actions = await mountSuspended(FaultActions, {
+      props: {
+        fault: poolFault({ kind: "leaf-errors", data: {} }),
+        perform,
+      },
+    });
+    const resolve = actions
+      .findAll("button")
+      .find((button) => button.text() === "Resolve");
+    await resolve?.trigger("click");
+    expect(perform).not.toHaveBeenCalled();
+  });
 });

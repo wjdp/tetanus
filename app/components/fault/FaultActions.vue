@@ -30,6 +30,7 @@ const canArchivePool = computed(
   () => props.fault.kind === "pool-missing" && props.fault.state !== "resolved",
 );
 const archiveOpen = ref(false);
+const resolveOpen = ref(false);
 const isSmartAttribute = computed(
   () => props.fault.kind === "smart-attribute",
 );
@@ -86,14 +87,20 @@ const openDialog = async () => {
       label="Clear"
       @click="perform('clear')"
     />
-    <UButton
-      v-if="canResolve"
-      color="neutral"
-      variant="ghost"
-      size="xs"
-      label="Resolve"
-      @click="perform('resolve')"
-    />
+    <template v-if="canResolve">
+      <UButton
+        color="neutral"
+        variant="soft"
+        size="xs"
+        label="Resolve"
+        @click="resolveOpen = true"
+      />
+      <FaultResolveModal
+        v-model:open="resolveOpen"
+        :fault="fault"
+        :confirm="(note) => perform('resolve', note)"
+      />
+    </template>
     <template v-if="canArchivePool">
       <UButton
         color="neutral"
