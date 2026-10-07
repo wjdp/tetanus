@@ -120,6 +120,15 @@ registerEndpoint("/api/faults", (event) => {
   return {
     faults: faults.filter((row) => states.includes(row.state)),
     counts: { open: 3, acknowledged: 1, accepted: 2, resolved: 31 },
+    ...(query.subject && {
+      subject: {
+        type: "disk",
+        id: 12,
+        label: "A7",
+        hostName: "atlas",
+        path: "/disks/12",
+      },
+    }),
   };
 });
 
@@ -271,6 +280,14 @@ describe("faults page", () => {
       host: "styx",
       subject: "disk:12",
     });
+  });
+
+  it("names the subject filter by its label", async () => {
+    const page = await mountPage("/faults?subject=disk:12");
+
+    await vi.waitFor(() =>
+      expect(page.find('[data-testid="subject-filter"]').text()).toBe("A7"),
+    );
   });
 
   it("ignores unknown filter values", async () => {

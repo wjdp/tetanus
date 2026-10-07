@@ -867,38 +867,41 @@ function subjectLookup(): SubjectLookup {
   };
 }
 
-function describeSubject(row: FaultRow, lookup: SubjectLookup): FaultSubject {
-  const base = { type: row.subjectType, id: row.subjectId };
+function describeSubject(
+  { type, id }: { type: FaultSubjectType; id: number },
+  lookup: SubjectLookup,
+): FaultSubject {
+  const base = { type, id };
   const hostName = (hostId: number | null | undefined) =>
     hostId == null ? null : (lookup.hostNames.get(hostId) ?? null);
-  if (row.subjectType === "disk") {
-    const found = lookup.disks.get(row.subjectId);
+  if (type === "disk") {
+    const found = lookup.disks.get(id);
     return {
       ...base,
       label: found ? describeDisk(found) : "removed disk",
       hostName: hostName(found?.lastSeenHostId),
-      path: found ? `/disks/${row.subjectId}` : null,
+      path: found ? `/disks/${id}` : null,
     };
   }
-  if (row.subjectType === "pool") {
-    const found = lookup.pools.get(row.subjectId);
+  if (type === "pool") {
+    const found = lookup.pools.get(id);
     return {
       ...base,
       label: found?.name ?? "removed pool",
       hostName: hostName(found?.hostId),
-      path: lookup.poolPaths.get(row.subjectId) ?? null,
+      path: lookup.poolPaths.get(id) ?? null,
     };
   }
-  if (row.subjectType === "replication") {
-    const found = lookup.replications.get(row.subjectId);
+  if (type === "replication") {
+    const found = lookup.replications.get(id);
     return {
       ...base,
       label: found ? replicationLabel(found) : "removed replication",
       hostName: hostName(found?.hostId),
-      path: found ? `/replications/${row.subjectId}` : null,
+      path: found ? `/replications/${id}` : null,
     };
   }
-  const name = hostName(row.subjectId);
+  const name = hostName(id);
   return {
     ...base,
     label: name ?? "removed host",
@@ -921,7 +924,10 @@ function present(row: FaultRow, lookup: SubjectLookup): FaultView {
     lastSeenAt: row.lastSeenAt.toISOString(),
     resolvedAt: iso(row.resolvedAt),
     stateChangedAt: row.stateChangedAt.toISOString(),
-    subject: describeSubject(row, lookup),
+    subject: describeSubject(
+      { type: row.subjectType, id: row.subjectId },
+      lookup,
+    ),
   };
 }
 
@@ -964,5 +970,6 @@ export function listFaults(query: FaultsQuery): FaultsResponse {
   return {
     faults: matching.filter((view) => states.has(view.state)).sort(byAttention),
     counts,
+    ...(query.subject && { subject: describeSubject(query.subject, lookup) }),
   };
 }

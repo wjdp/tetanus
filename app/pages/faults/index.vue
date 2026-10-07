@@ -76,7 +76,8 @@ const apiQuery = computed(() => ({
   ...(subjectFilter.value === ALL ? {} : { subject: subjectFilter.value }),
 }));
 
-const { faults, counts, status, perform, refresh } = useFaults(apiQuery);
+const { faults, counts, subject, status, perform, refresh } =
+  useFaults(apiQuery);
 const { data: hosts } = useFetch("/api/hosts", {
   lazy: true,
   default: () => [],
@@ -167,11 +168,12 @@ const lastIngest = computed(() =>
       />
       <div class="flex flex-wrap gap-2 sm:ms-auto">
         <UButton
-          v-if="subjectFilter !== ALL"
+          v-if="subjectFilter !== ALL && subject"
           color="neutral"
           variant="subtle"
+          :icon="ENTITY_ICON[subject.type]"
           trailing-icon="i-lucide-x"
-          :label="subjectFilter.replace(':', ' ')"
+          :label="subject.label"
           aria-label="Clear subject filter"
           data-testid="subject-filter"
           @click="subjectFilter = ALL"

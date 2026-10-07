@@ -55,6 +55,7 @@ export function useFaults(query: MaybeRefOrGetter<FaultsQuery> = {}) {
 
   const faults = computed(() => data.value?.faults ?? []);
   const counts = computed(() => data.value?.counts ?? EMPTY_COUNTS);
+  const subject = computed(() => data.value?.subject);
 
   const perform = async (id: number, action: FaultAction, note?: string) => {
     const { path, method } = ACTION_REQUEST[action];
@@ -68,6 +69,7 @@ export function useFaults(query: MaybeRefOrGetter<FaultsQuery> = {}) {
   return {
     faults,
     counts,
+    subject,
     status,
     refresh,
     perform,

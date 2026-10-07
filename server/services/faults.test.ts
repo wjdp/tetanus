@@ -1709,6 +1709,16 @@ describe("listFaults", () => {
       }).faults,
     ).toMatchObject([{ kind: "pool-degraded" }]);
     expect(
+      listFaults({ state: ["resolved"], subject: { type: "disk", id: 0 } }),
+    ).toMatchObject({ faults: [], subject: { label: "removed disk" } });
+    expect(
+      listFaults({
+        state: ["resolved"],
+        subject: { type: "host", id: venus.id },
+      }).subject,
+    ).toMatchObject({ type: "host", label: "venus" });
+    expect(live.subject).toBeUndefined();
+    expect(
       db
         .select()
         .from(fault)
