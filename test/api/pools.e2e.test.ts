@@ -67,6 +67,23 @@ function withoutPool(statusJson: string, name: string) {
   return before + after;
 }
 
+const HISTORY_TIMESTAMP = /^\d{4}-\d{2}-\d{2}\.\d{2}:\d{2}:\d{2}/gm;
+const fromHistoryTimestamp = (stamp: string) =>
+  Date.parse(`${stamp.replace(".", "T")}Z`);
+const toHistoryTimestamp = (ms: number) =>
+  new Date(ms).toISOString().slice(0, 19).replace("T", ".");
+
+// Routine history lines age out at ingest, so move the capture up to now.
+function recentHistory(history: string) {
+  const newest = Math.max(
+    ...(history.match(HISTORY_TIMESTAMP) ?? []).map(fromHistoryTimestamp),
+  );
+  const shiftMs = Date.now() - 60 * 60 * 1000 - newest;
+  return history.replace(HISTORY_TIMESTAMP, (stamp) =>
+    toHistoryTimestamp(fromHistoryTimestamp(stamp) + shiftMs),
+  );
+}
+
 beforeAll(async () => {
   await ingest("lsblk", readFixture("mars/lsblk.json"));
   for (const file of readdirSync(UDEV_DIR)) {
@@ -85,7 +102,10 @@ beforeAll(async () => {
   await ingest("zpool-list", readFixture("mars/zpool-list.json"));
   await ingest("zfs-list", readFixture("mars/zfs-list.json"));
   await ingest("zpool-events", readFixture("mars/zpool-events.txt"));
-  await ingest("zpool-history", readFixture("mars/zpool-history.txt"));
+  await ingest(
+    "zpool-history",
+    recentHistory(readFixture("mars/zpool-history.txt")),
+  );
 });
 
 describe("/api/pools", () => {
@@ -150,7 +170,9 @@ describe("/api/pools", () => {
       id: pools[0].id,
       name: "tank",
       historyScope: "host",
-      diary: [{ eventType: "scrub-finished" }],
+      diary: expect.arrayContaining([
+        expect.objectContaining({ eventType: "scrub-finished" }),
+      ]),
       resolvedConfig: { scrubIntervalDays: 35, slowIoThreshold: 10 },
     });
     expect(detail.readings).toHaveLength(1);
@@ -251,10 +273,12 @@ describe("/api/pools", () => {
       archivedAt: expect.any(String),
       archiveNote: "test pool",
     });
-    expect(detail.diary[0]).toMatchObject({
-      eventType: "pool-archived",
-      data: { note: "test pool" },
-    });
+    expect(detail.diary).toContainEqual(
+      expect.objectContaining({
+        eventType: "pool-archived",
+        data: { note: "test pool" },
+      }),
+    );
     expect((await archive("POST")).status).toBe(409);
 
     expect(await names()).toEqual(["tank"]);
