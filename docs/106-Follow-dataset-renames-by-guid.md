@@ -23,8 +23,8 @@ deeper, and its child's replication was left as `target-gone`.
 ## Context
 
 - ZFS gives every dataset a `guid` property. It is unique within a pool and does not
-  change across `zfs rename`. Check on a real host whether a received dataset keeps
-  the source's guid. Matching only within one pool makes this safe either way.
+  change across `zfs rename`. Checked on a real host: a received dataset gets its own
+  guid, but its snapshots keep the source's snapshot guids.
 - The collector does not send it: `zfs_list_columns` in `host/tetanus-collect` (0.8.0)
   and the `zfs-list` capture in `bin/capture-fixtures.sh` both lack `guid`. The `Dataset`
   table has no guid column.
