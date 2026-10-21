@@ -52,7 +52,9 @@ deeper, and its child's replication was left as `target-gone`.
   - If found, rename that row and keep its id, `firstSeenAt` and `present = true`. Record a
     `dataset-renamed` diary event with `from` and `to`, instead of destroyed + created.
   - If a row that is not present already holds the new name (for example, renamed away and
-    back), give that row a free name first or merge it. Decide which while implementing.
+    back), merge it into the renamed row: move its readings, snapshots, diary entries and
+    replications onto the renamed row's id, then delete it. Where both rows have a
+    replication, keep the renamed row's replication and archive the other.
   - Handle a swap (a → b and b → a in one ingest) by renaming through a temporary name
     inside the transaction.
 - Backfill guids on existing rows from the first ingest that includes them. Existing
