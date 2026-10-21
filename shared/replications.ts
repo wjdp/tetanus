@@ -16,17 +16,20 @@ export const REPLICATION_ROLES = ["source", "target"] as const;
 export type ReplicationRole = (typeof REPLICATION_ROLES)[number];
 
 export const INTERVAL_SYNCS = 10;
-export const MIN_INTERVAL_SYNCS = 3;
+export const REGULAR_GAPS = 4;
+export const REGULAR_GAP_TOLERANCE = 0.25;
 export const REPLICATION_SYNCS_PAGE = 100;
 export const REPLICATION_LADDER_LIMIT = 200;
 
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 export interface ReplicationThresholds {
   lateFloorHours: number;
   lateFactor: number;
   stalledFloorHours: number;
   stalledFactor: number;
+  maxIntervalDays: number;
 }
 
 export const DEFAULT_REPLICATION_THRESHOLDS: ReplicationThresholds = {
@@ -34,25 +37,40 @@ export const DEFAULT_REPLICATION_THRESHOLDS: ReplicationThresholds = {
   lateFactor: 0.5,
   stalledFloorHours: 48,
   stalledFactor: 2,
+  maxIntervalDays: 60,
 };
 
-/** Median gap between consecutive syncs, newest `INTERVAL_SYNCS` only. */
+function median(sorted: readonly number[]): number {
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? (sorted[middle] ?? 0)
+    : ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2;
+}
+
+function regularMedian(gaps: readonly number[]): number | null {
+  const centre = median([...gaps].sort((a, b) => a - b));
+  if (centre <= 0) return null;
+  const regular = gaps.every(
+    (gap) => Math.abs(gap - centre) <= REGULAR_GAP_TOLERANCE * centre,
+  );
+  return regular ? centre : null;
+}
+
+/**
+ * Median gap of the newest run of regular syncs within the newest
+ * `INTERVAL_SYNCS`; null until the newest `REGULAR_GAPS` gaps agree.
+ */
 export function learntIntervalMs(syncTimes: readonly Date[]): number | null {
   const recent = [...syncTimes]
     .map((at) => at.getTime())
     .sort((a, b) => b - a)
     .slice(0, INTERVAL_SYNCS);
-  if (recent.length < MIN_INTERVAL_SYNCS) return null;
-  const gaps = recent
-    .slice(1)
-    .map((at, index) => (recent[index] ?? at) - at)
-    .sort((a, b) => a - b);
-  const middle = Math.floor(gaps.length / 2);
-  const median =
-    gaps.length % 2 === 1
-      ? (gaps[middle] ?? 0)
-      : ((gaps[middle - 1] ?? 0) + (gaps[middle] ?? 0)) / 2;
-  return median > 0 ? median : null;
+  const gaps = recent.slice(1).map((at, index) => (recent[index] ?? at) - at);
+  for (let length = gaps.length; length >= REGULAR_GAPS; length--) {
+    const interval = regularMedian(gaps.slice(0, length));
+    if (interval !== null) return interval;
+  }
+  return null;
 }
 
 export interface ReplicationHealthInput {
@@ -68,6 +86,24 @@ export interface ReplicationHealth {
   status: ReplicationStatus;
   dueAt: Date | null;
   overdueMs: number | null;
+}
+
+function learningHealth(
+  lastSyncAt: Date | null,
+  referenceAt: Date,
+  thresholds: ReplicationThresholds,
+): ReplicationHealth {
+  const learning = {
+    status: "learning",
+    dueAt: null,
+    overdueMs: null,
+  } as const;
+  if (!lastSyncAt) return learning;
+  const dueAt = new Date(
+    lastSyncAt.getTime() + thresholds.maxIntervalDays * DAY_MS,
+  );
+  const overdueMs = referenceAt.getTime() - dueAt.getTime();
+  return overdueMs > 0 ? { status: "stalled", dueAt, overdueMs } : learning;
 }
 
 export function replicationHealth(
@@ -90,7 +126,9 @@ export function replicationHealth(
   if (archived) return health("archived");
   if (targetGone) return health("target-gone");
   if (sourceGone) return health("source-gone");
-  if (intervalMs === null || overdueMs === null) return health("learning");
+  if (intervalMs === null || overdueMs === null) {
+    return learningHealth(lastSyncAt, referenceAt, thresholds);
+  }
   const past = (floorHours: number, factor: number) =>
     overdueMs > Math.max(floorHours * HOUR_MS, factor * intervalMs);
   if (past(thresholds.stalledFloorHours, thresholds.stalledFactor)) {

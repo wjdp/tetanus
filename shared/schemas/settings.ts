@@ -39,6 +39,7 @@ const floorHours = z
   .positive()
   .max(24 * 365);
 const intervalFactor = z.number().positive().max(100);
+const maxIntervalDays = z.number().int().min(1).max(3650);
 
 export const settingsConfigSchema = z.object({
   missingAfterDays: z.number().int().min(1).max(365),
@@ -53,6 +54,7 @@ export const settingsConfigSchema = z.object({
   replicationLateFactor: intervalFactor,
   replicationStalledFloorHours: floorHours,
   replicationStalledFactor: intervalFactor,
+  replicationMaxIntervalDays: maxIntervalDays,
 });
 
 export type SettingsConfig = z.infer<typeof settingsConfigSchema>;
@@ -68,6 +70,7 @@ export const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
   replicationStalledFloorHours:
     DEFAULT_REPLICATION_THRESHOLDS.stalledFloorHours,
   replicationStalledFactor: DEFAULT_REPLICATION_THRESHOLDS.stalledFactor,
+  replicationMaxIntervalDays: DEFAULT_REPLICATION_THRESHOLDS.maxIntervalDays,
 };
 
 export const settingsPatchSchema = z.strictObject({
@@ -79,6 +82,7 @@ export const settingsPatchSchema = z.strictObject({
     replicationLateFactor: intervalFactor.optional(),
     replicationStalledFloorHours: floorHours.optional(),
     replicationStalledFactor: intervalFactor.optional(),
+    replicationMaxIntervalDays: maxIntervalDays.optional(),
   }),
 });
 

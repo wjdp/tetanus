@@ -29,6 +29,7 @@ const thresholds = computed(() => {
         lateFactor: config.replicationLateFactor,
         stalledFloorHours: config.replicationStalledFloorHours,
         stalledFactor: config.replicationStalledFactor,
+        maxIntervalDays: config.replicationMaxIntervalDays,
       }
     : DEFAULT_REPLICATION_THRESHOLDS;
 });

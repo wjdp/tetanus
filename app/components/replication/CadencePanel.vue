@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatDuration } from "#shared/hostFreshness";
-import { INTERVAL_SYNCS, MIN_INTERVAL_SYNCS } from "#shared/replications";
+import { INTERVAL_SYNCS, REGULAR_GAPS } from "#shared/replications";
 import { formatTimestamp } from "../pool/timestamp";
 import { patchReplication } from "./patch";
 import { dueText, lastSyncText } from "./timing";
@@ -33,9 +33,9 @@ const intervalNote = computed(() => {
   const { intervalManual, intervalSec, syncCount } = props.replication;
   if (intervalManual) return "set by hand";
   if (intervalSec === null) {
-    return `learning: needs ${MIN_INTERVAL_SYNCS} syncs, has ${syncCount}`;
+    return `learning: needs ${REGULAR_GAPS} regular gaps between syncs, has ${syncCount} syncs`;
   }
-  return `median gap of the last ${INTERVAL_SYNCS} syncs`;
+  return `median gap of the newest regular syncs, up to ${INTERVAL_SYNCS}`;
 });
 
 const save = async (manualIntervalSec: number | null) => {

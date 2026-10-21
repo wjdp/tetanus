@@ -50,6 +50,7 @@ export function replicationThresholds(
     | "replicationLateFactor"
     | "replicationStalledFloorHours"
     | "replicationStalledFactor"
+    | "replicationMaxIntervalDays"
   >,
 ): ReplicationThresholds {
   return {
@@ -57,6 +58,7 @@ export function replicationThresholds(
     lateFactor: config.replicationLateFactor,
     stalledFloorHours: config.replicationStalledFloorHours,
     stalledFactor: config.replicationStalledFactor,
+    maxIntervalDays: config.replicationMaxIntervalDays,
   };
 }
 

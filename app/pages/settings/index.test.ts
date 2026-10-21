@@ -13,6 +13,7 @@ const THRESHOLDS = {
   replicationLateFactor: 0.5,
   replicationStalledFloorHours: 48,
   replicationStalledFactor: 2,
+  replicationMaxIntervalDays: 60,
 };
 
 registerEndpoint("/api/settings", () => ({
@@ -72,14 +73,14 @@ describe("settings page currency", () => {
 });
 
 describe("settings page replication thresholds", () => {
-  it("shows the four thresholds and patches them together", async () => {
+  it("shows the thresholds and patches them together", async () => {
     const page = await mountSuspended(SettingsPage);
     const form = page.get('[data-testid="replication-thresholds"]');
     const inputs = form.findAll("input");
 
     expect(
       inputs.map((input) => (input.element as HTMLInputElement).value),
-    ).toEqual(["3", "0.5", "48", "2"]);
+    ).toEqual(["3", "0.5", "48", "2", "60"]);
 
     await inputs[0].setValue("6");
     await form.trigger("submit");

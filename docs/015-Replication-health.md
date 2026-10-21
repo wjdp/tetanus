@@ -164,7 +164,10 @@ Update `Replication.lastSyncAt`, `lastSeenAt`.
 
 ### Interval
 
-Learnt = median gap between the last 10 syncs; needs ≥ 3 syncs, else `learning`.
+Learnt from the gaps between the newest 10 syncs: the median of the longest newest run of
+gaps all within ±25 % of that run's median, the run at least 4 gaps; else `learning`.
+Hand-run pushes before a schedule exists drop out of the run
+([105](105-Learn-replication-cadence-from-regular-syncs-only.md)).
 `manualIntervalSec` overrides.
 
 ### Health
@@ -179,7 +182,7 @@ in `lastRuns`, `server/services/hosts.ts`). `dueAt = lastSyncAt + interval`,
 | `ok` | neutral | filled | not overdue past the late threshold |
 | `late` | warning | filled | overdue > max(late floor, late factor × interval) |
 | `stalled` | error | filled | overdue > max(stalled floor, stalled factor × interval) |
-| `learning` | neutral | hollow | interval unknown |
+| `learning` | neutral | hollow | interval unknown; `stalled` instead once no sync for the maximum interval (60 d) |
 | `target-gone` | error | filled | target dataset no longer present, its pool present and not archived |
 | `source-gone` | neutral | hollow | stored source no longer present (target present) |
 | `archived` | neutral | hollow | marked no longer replicated, or target pool archived |

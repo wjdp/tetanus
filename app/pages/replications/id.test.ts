@@ -202,6 +202,7 @@ registerEndpoint("/api/settings", () => ({
     replicationLateFactor: 0.5,
     replicationStalledFloorHours: 48,
     replicationStalledFactor: 2,
+    replicationMaxIntervalDays: 60,
   },
 }));
 
@@ -252,7 +253,9 @@ describe("replication page", () => {
 
     const cadence = page.get('[data-testid="cadence-panel"]').text();
     expect(cadence).toContain("hourly");
-    expect(cadence).toContain("median gap of the last 10 syncs");
+    expect(cadence).toContain(
+      "median gap of the newest regular syncs, up to 10",
+    );
     expect(cadence).toContain("120");
 
     expect(page.get('[data-testid="source-panel"]').text()).toContain(

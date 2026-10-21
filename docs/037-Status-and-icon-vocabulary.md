@@ -196,7 +196,7 @@ settings: late floor 3 h, late factor 0.5, stalled floor 2 d, stalled factor 2.
 | `ok` | neutral | filled | not overdue past the late threshold |
 | `late` | warning | filled | overdue > max(late floor, late factor × interval); fault `replication-late` |
 | `stalled` | error | filled | overdue > max(stalled floor, stalled factor × interval); fault `replication-stalled`, superseding late |
-| `learning` | neutral | hollow | interval unknown: fewer than 3 syncs and none set by hand |
+| `learning` | neutral | hollow | interval unknown: newest 4 gaps between syncs not regular and none set by hand |
 | `target-gone` | error | filled | target dataset no longer present in its pool (pool present, not archived); fault `replication-target-gone`, superseding late and stalled; wins over `source-gone` |
 | `source-gone` | neutral | hollow | stored source dataset no longer present |
 | `archived` | neutral | hollow | marked no longer replicated, or target pool archived |

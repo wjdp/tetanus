@@ -524,11 +524,12 @@ export const FAULT_KIND_DEFINITIONS: Record<FaultKind, FaultKindDefinition> = {
     subjectType: "replication",
     severities: ["error"],
     trigger:
-      "A replication is overdue by more than 48 h or 2 × its interval, whichever is larger.",
+      "A replication is overdue by more than 48 h or 2 × its interval, whichever is larger, or is still learning its interval with no sync for 60 days.",
     resolves: "A sync lands. Superseded by replication target gone.",
     settings: [
       "Settings › Replication › Stalled after (hours)",
       "Settings › Replication › Stalled factor (× interval)",
+      "Settings › Replication › Stalled while learning after (days)",
     ],
     lifetime: "transient",
     actions: ["acknowledge", "accept", "clear"],

@@ -11,15 +11,41 @@ const at = (hours: number) =>
   new Date(Date.parse("2026-10-01T00:00:00Z") + hours * HOUR_MS);
 
 describe("learntIntervalMs", () => {
-  it("needs three syncs", () => {
-    expect(learntIntervalMs([at(0), at(1)])).toBeNull();
-    expect(learntIntervalMs([at(0), at(1), at(2)])).toBe(HOUR_MS);
+  const series = (from: number, step: number, length: number) =>
+    Array.from({ length }, (_, index) => at(from + index * step));
+
+  it("needs four regular gaps", () => {
+    expect(learntIntervalMs(series(0, 1, 4))).toBeNull();
+    expect(learntIntervalMs(series(0, 1, 5))).toBe(HOUR_MS);
   });
 
-  it("takes the median gap whatever the order", () => {
-    expect(learntIntervalMs([at(5), at(0), at(1), at(2), at(30)])).toBe(
-      2 * HOUR_MS,
+  it("takes the median of gaps within a quarter of it, whatever the order", () => {
+    const jittered = [at(4.25), at(0), at(1), at(2.1), at(3.2)];
+    expect(learntIntervalMs(jittered)).toBe(1.075 * HOUR_MS);
+  });
+
+  it("stays learning through hand-run pushes", () => {
+    const pushes = [at(0), at(18), at(18.2), at(18.5), at(60), at(61)];
+    expect(learntIntervalMs(pushes)).toBeNull();
+  });
+
+  it("learns from the newest regular run after hand-run pushes", () => {
+    const pushes = [at(0), at(0.1), at(40)];
+    expect(learntIntervalMs([...pushes, ...series(100, 24, 5)])).toBe(
+      24 * HOUR_MS,
     );
+  });
+
+  it("learns short and long cadences alike", () => {
+    const fiveMinutes = 5 / 60;
+    expect(learntIntervalMs(series(0, fiveMinutes, 5))).toBeCloseTo(
+      fiveMinutes * HOUR_MS,
+    );
+    expect(learntIntervalMs(series(0, 30 * 24, 5))).toBe(30 * 24 * HOUR_MS);
+  });
+
+  it("goes back to learning after a stray push", () => {
+    expect(learntIntervalMs([...series(0, 1, 10), at(9.3)])).toBeNull();
   });
 
   it("looks at the newest ten syncs only", () => {
@@ -68,6 +94,20 @@ describe("replicationHealth", () => {
   it("is learning without an interval or a sync", () => {
     expect(hourly({ intervalMs: null }).status).toBe("learning");
     expect(hourly({ lastSyncAt: null }).status).toBe("learning");
+  });
+
+  it("stalls while learning once the maximum interval has passed", () => {
+    const learning = { intervalMs: null };
+    expect(hourly({ ...learning, referenceAt: at(60 * 24) })).toEqual({
+      status: "learning",
+      dueAt: null,
+      overdueMs: null,
+    });
+    expect(hourly({ ...learning, referenceAt: at(60 * 24 + 1) })).toEqual({
+      status: "stalled",
+      dueAt: at(60 * 24),
+      overdueMs: HOUR_MS,
+    });
   });
 
   it("puts archived before target gone before source gone before anything measured", () => {

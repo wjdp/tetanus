@@ -88,7 +88,7 @@ const historyTimestamp = (date: Date) =>
 
 const receivesBody = [
   "History for 'vpool':",
-  ...[3, 2, 1].flatMap((hours) => [
+  ...[5, 4, 3, 2, 1].flatMap((hours) => [
     `${historyTimestamp(hoursAgo(hours))} [txg:${hours}] finish receiving vpool/tank/a/%recv (1) snap=syncoid_vault_${hours} [on vault]`,
     `${historyTimestamp(hoursAgo(hours))} zfs receive -s -F vpool/tank/a [user 0 (root) on vault:linux]`,
   ]),
@@ -140,7 +140,7 @@ describe("/api/replications", () => {
       lastSyncAt: hoursAgo(1)
         .toISOString()
         .replace(/\.\d+Z$/, ".000Z"),
-      syncCount: 3,
+      syncCount: 5,
       archivedAt: null,
     });
   });
@@ -148,7 +148,7 @@ describe("/api/replications", () => {
   it("gets one replication with its syncs, ladder and diary", async () => {
     const { id } = await onlyReplication();
     const detail = await (await fetch(`/api/replications/${id}`)).json();
-    expect(detail.syncs).toMatchObject({ total: 3, page: 1, pageSize: 100 });
+    expect(detail.syncs).toMatchObject({ total: 5, page: 1, pageSize: 100 });
     expect(detail.syncs.items[0]).toMatchObject({
       snapshotName: "syncoid_vault_1",
       guid: "9001",

@@ -9,6 +9,10 @@ const FIELDS = [
   { key: "replicationLateFactor", label: "Late factor (× interval)" },
   { key: "replicationStalledFloorHours", label: "Stalled after (hours)" },
   { key: "replicationStalledFactor", label: "Stalled factor (× interval)" },
+  {
+    key: "replicationMaxIntervalDays",
+    label: "Stalled while learning after (days)",
+  },
 ] as const;
 
 type ThresholdKey = (typeof FIELDS)[number]["key"];
@@ -18,6 +22,7 @@ const draft = reactive<Record<ThresholdKey, number | "">>({
   replicationLateFactor: "",
   replicationStalledFloorHours: "",
   replicationStalledFactor: "",
+  replicationMaxIntervalDays: "",
 });
 
 watch(
@@ -65,7 +70,10 @@ const save = async () => {
       A replication is late once it is overdue by more than the larger of the
       hours and the factor times its interval, and stalled likewise. An hourly
       replication with the defaults is late after 3 h overdue and stalled after
-      2 d; a daily one late after 12 h and stalled after 2 d.
+      2 d; a daily one late after 12 h and stalled after 2 d. The interval is
+      learnt once the newest 4 gaps between syncs agree to within 25 %; until
+      then a replication is learning, and stalled if it has not synced for the
+      given days.
     </p>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <UFormField

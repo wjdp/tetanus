@@ -76,7 +76,7 @@ describe("updateReplication", () => {
       })
       .returning()
       .get().id;
-    for (const hour of [8, 9, 10]) {
+    for (const hour of [6, 7, 8, 9, 10]) {
       db.insert(replicationSync)
         .values({ replicationId: id, at: at(hour), snapshots: 1 })
         .run();
