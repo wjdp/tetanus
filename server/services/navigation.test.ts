@@ -217,7 +217,7 @@ describe("navigationCounts", () => {
         })
         .returning()
         .get().id;
-      for (const hour of [0, 1, 2]) {
+      for (const hour of [0, 1, 2, 3, 4]) {
         db.insert(replicationSync)
           .values({
             replicationId: id,
