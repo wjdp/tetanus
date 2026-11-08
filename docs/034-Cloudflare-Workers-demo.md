@@ -24,7 +24,7 @@ Decided 2026-09-29:
   goes amber between ticks.
 - **All in-app edits stay enabled** (inventory, notes, diary, acceptances, host rename,
   `missingAfterDays`). Ingest, scrutiny import, notification channels and healthchecks
-  are off; the enrol token is hidden. **Daily reset** wipes everything.
+  are off; the enrol token is hidden. **Weekly reset** wipes everything.
 - **Lives in this repo** under `deploy/cloudflare/`, deployed by its own workflow on
   every `master` push, to `tetanus-demo.wjdp.uk` on the author's paid Workers account.
 - **The generator is also a supported dev seed** (`pnpm demo:seed` against the local
@@ -57,8 +57,8 @@ cadence override; demo passes `{ zfs: 60 min, smart: 60 min, snapshots: 6 h }` (
 tick refreshes every source hourly, so the real `zfs` cadence of 10 min would warn after
 20 min). Implementer finds the callers in `app/` and `server/services/healthchecks.ts`.
 
-UI, when demo: a persistent banner in the layout ("Demo instance. Fake data, reset daily
-at 04:00 UTC. Edit anything."); settings index hides the token and install one-liner;
+UI, when demo: a persistent banner in the layout ("Demo instance. Fake data, reset every
+Tuesday at 04:15 UTC. Edit anything."); settings index hides the token and install one-liner;
 alerts and import pages show a disabled note instead of forms. No other UI change.
 
 ### Fake data generator (`server/demo/`)
@@ -171,7 +171,7 @@ deploy/cloudflare/
   and `nitro.ignore` for `server/routes/host/**`. Primary build untouched.
 - **Worker.** Static assets from `.output/public` via Workers Static Assets, served
   before the Worker runs. Every other request → `env.DEMO.idFromName("demo")`. Cron
-  triggers `0 * * * *` (tick) and `15 4 * * *` (reset) call internal DO methods via RPC
+  triggers `0 * * * *` (tick) and `15 4 * * 2` (reset) call internal DO methods via RPC
   (`stub.tick()`, `stub.reset()`), never over a public path.
 - **Durable Object.** Constructor, inside `blockConcurrencyWhile`: bind
   `drizzle(ctx.storage, { schema })` into `client.ts`, `prepareSchema`, import the
@@ -236,7 +236,7 @@ Public writes are bounded by the existing zod limits (notes 100 kB, diary bodies
 `markdown-it` must run with `html: false` (verify). Rate limiting is committed in
 `wrangler.jsonc` as a Workers rate-limiting binding (`ratelimits`, keyed on client IP,
 e.g. 60 writes / 60 s) and enforced in `worker.ts` for `PATCH|POST|DELETE /api/*`
-before forwarding to the DO: 429 with a short JSON body. The daily reset is the
+before forwarding to the DO: 429 with a short JSON body. The weekly reset is the
 cleanup. No secrets exist in the demo: channels are off, token hidden, no outbound
 requests.
 
@@ -282,7 +282,9 @@ Left for the author:
 1. Domain `tetanus-demo.wjdp.uk`, author's personal Cloudflare account.
 2. Paid Workers plan: `limits.cpu_ms` raised, 10 MB bundle, no free-tier DO limits.
 3. Fleet and story names as spec'd.
-4. Reset daily 04:00 UTC; edits live up to 24 h.
+4. Reset daily 04:00 UTC; edits live up to 24 h. Changed 2026-11-08 to weekly, Tuesday
+   04:15 UTC (the story anchor moves with it): a reset writes ~2.6M Durable Object rows
+   and the daily reset cost ~$3/day past the free allowance; budget is ~$2/month.
 5. Seed `Notification` rows for the story alerts.
 6. Deploy from every `master` push.
 7. `pnpm demo:seed` is a supported dev seed, documented for primary development.

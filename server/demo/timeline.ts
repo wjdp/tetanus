@@ -1,24 +1,29 @@
 /**
- * Every story instant is a fixed offset from an anchor: the most recent daily reset
- * (04:15 UTC). The replay (`seed(now)`) and every tick of that day share the anchor
- * `resetAnchor(now)`, so a replay from install date to now shows every story, the
- * stories read "a week ago", "last month" on any day the demo runs, and each reset
- * produces the same world shifted by whole days. Fleet dates before 2026 are absolute.
- * `DEMO_EPOCH` is the anchor the spec was written against, used by tests.
+ * Every story instant is a fixed offset from an anchor: the most recent weekly reset
+ * (Tuesday 04:15 UTC). The replay (`seed(now)`) and every tick of that week share the
+ * anchor `resetAnchor(now)`, so a replay from install date to now shows every story,
+ * the stories read "a week ago", "last month" in any week the demo runs, and each
+ * reset produces the same world shifted by whole weeks. Weekly rather than daily
+ * because each reset rewrites the whole database, which Durable Objects bill per row.
+ * Fleet dates before 2026 are absolute. `DEMO_EPOCH` is the anchor the spec was
+ * written against, used by tests.
  */
 
-export const RESET_UTC = { hour: 4, minute: 15 } as const;
+export const RESET_UTC = { weekday: 2, hour: 4, minute: 15 } as const;
 
 export const DEMO_EPOCH = new Date("2026-09-29T04:15:00Z");
 
 const MINUTE_MS = 60_000;
 export const HOUR_MS = 60 * MINUTE_MS;
 export const DAY_MS = 24 * HOUR_MS;
+const WEEK_MS = 7 * DAY_MS;
 
 export function resetAnchor(now: Date): Date {
   const anchor = new Date(now);
   anchor.setUTCHours(RESET_UTC.hour, RESET_UTC.minute, 0, 0);
-  if (anchor > now) anchor.setTime(anchor.getTime() - DAY_MS);
+  const daysSinceWeekday = (now.getUTCDay() - RESET_UTC.weekday + 7) % 7;
+  anchor.setTime(anchor.getTime() - daysSinceWeekday * DAY_MS);
+  if (anchor > now) anchor.setTime(anchor.getTime() - WEEK_MS);
   return anchor;
 }
 

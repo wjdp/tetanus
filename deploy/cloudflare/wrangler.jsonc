@@ -9,7 +9,7 @@
     "bindings": [{ "name": "DEMO", "class_name": "TetanusDemo" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TetanusDemo"] }],
-  "triggers": { "crons": ["0 * * * *", "15 4 * * *"] },
+  "triggers": { "crons": ["0 * * * *", "15 4 * * 2"] },
   "vars": { "NUXT_PUBLIC_DEMO": "true" },
   "limits": { "cpu_ms": 300000 },
   "ratelimits": [

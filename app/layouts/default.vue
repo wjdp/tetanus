@@ -15,7 +15,7 @@ const demo = useRuntimeConfig().public.demo;
           name="i-lucide-flask-conical"
           class="text-info size-4 shrink-0"
         />
-        Demo instance. Fake data, reset daily at 04:00 UTC. Edit anything.
+        Demo instance. Fake data, reset every Tuesday at 04:15 UTC. Edit anything.
       </p>
       <AppSimulationBanner />
       <AppFaultBanners />

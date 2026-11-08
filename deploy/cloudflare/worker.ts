@@ -17,7 +17,7 @@ interface NitroHandler {
 }
 
 const TICK_CRON = "0 * * * *";
-const RESET_CRON = "15 4 * * *";
+const RESET_CRON = "15 4 * * 2";
 const WRITE_METHODS = new Set(["PATCH", "POST", "DELETE"]);
 const SEED_KEY = "seed";
 const SEED_INSTANTS_PER_ALARM = 40;

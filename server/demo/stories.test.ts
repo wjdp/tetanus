@@ -10,10 +10,14 @@ const aliasesPresent = (host: "atlas" | "styx" | "pip", t: Date) =>
   stories.disksPresent(host, t).map((disk) => disk.alias);
 
 describe("resetAnchor", () => {
-  it("floors to the most recent 04:15 UTC", () => {
+  it("floors to the most recent Tuesday 04:15 UTC", () => {
     expect(resetAnchor(new Date("2026-09-29T04:15:00Z"))).toEqual(DEMO_EPOCH);
     expect(resetAnchor(new Date("2026-09-29T23:59:00Z"))).toEqual(DEMO_EPOCH);
-    expect(resetAnchor(new Date("2026-09-30T04:14:00Z"))).toEqual(DEMO_EPOCH);
+    expect(resetAnchor(new Date("2026-10-03T12:00:00Z"))).toEqual(DEMO_EPOCH);
+    expect(resetAnchor(new Date("2026-10-06T04:14:00Z"))).toEqual(DEMO_EPOCH);
+    expect(resetAnchor(new Date("2026-10-06T04:15:00Z"))).toEqual(
+      addMs(DEMO_EPOCH, 7 * DAY_MS),
+    );
   });
 
   it("shifts every story by the anchor", () => {

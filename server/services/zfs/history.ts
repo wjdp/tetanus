@@ -69,7 +69,8 @@ export function observeZpoolHistory(
       })
       .onConflictDoUpdate({
         target: [poolHistory.hostId, poolHistory.at, poolHistory.text],
-        set: { poolId: sql`coalesce(excluded.poolId, ${poolHistory.poolId})` },
+        set: { poolId: sql`excluded.poolId` },
+        setWhere: sql`excluded.poolId is not null and excluded.poolId is not ${poolHistory.poolId}`,
       })
       .run();
   }

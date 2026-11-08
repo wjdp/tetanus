@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, gte, lte, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, lte, ne, sql } from "drizzle-orm";
 import type { DiskProtocol } from "#shared/disk";
 import type { IngestMeta } from "#shared/ingest";
 import { FULL_TEMPERATURE_DAYS } from "#shared/retention";
@@ -226,6 +226,7 @@ function upsertSelfTests(
       .onConflictDoUpdate({
         target: [selfTest.diskId, selfTest.type, selfTest.lifetimeHours],
         set: outcome,
+        setWhere: sql`excluded.status is not ${selfTest.status} or excluded.passed is not ${selfTest.passed} or excluded.lba is not ${selfTest.lba}`,
       })
       .run();
   }
