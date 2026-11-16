@@ -37,7 +37,11 @@ import {
 } from "~~/server/services/poolPresence";
 import { ensureSettings } from "~~/server/services/settings";
 import { poolPaths } from "~~/server/services/zfs/paths";
-import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
+import {
+  type CountedPage,
+  countedPageOf,
+  olderThan,
+} from "~~/server/utils/page";
 import { notFound } from "~~/server/utils/serviceError";
 
 type ReplicationTableRow = typeof replication.$inferSelect;
@@ -356,7 +360,12 @@ export function listReplicationSyncs(
         snapshots: sync.snapshots,
       }),
     );
-  return { ...pageOf(rows, limit), total: syncCounts([id]).get(id) ?? 0 };
+  return countedPageOf(
+    rows,
+    limit,
+    cursor,
+    () => syncCounts([id]).get(id) ?? 0,
+  );
 }
 
 type LadderSide = "source" | "target";

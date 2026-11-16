@@ -89,13 +89,13 @@ describe("DiskDiary", () => {
       diary.findAll('[role="tab"]').find((button) => button.text() === label);
 
     await tab("Manual")?.trigger("mousedown", { button: 0 });
-    await vi.waitFor(() => expect(diary.text()).not.toContain("Auto event 1"));
-    expect(diary.text()).toContain("Manual note 2");
+    await vi.waitFor(() => expect(diary.text()).toContain("Manual note 2"));
+    expect(diary.text()).not.toContain("Auto event 1");
     expect(requests.at(-1)).toMatchObject({ kind: "manual" });
 
     await tab("Auto")?.trigger("mousedown", { button: 0 });
-    await vi.waitFor(() => expect(diary.text()).not.toContain("Manual note 2"));
-    expect(diary.text()).toContain("Auto event 1");
+    await vi.waitFor(() => expect(diary.text()).toContain("Auto event 1"));
+    expect(diary.text()).not.toContain("Manual note 2");
   });
 
   it("toggles the entry form with Add entry and Cancel", async () => {

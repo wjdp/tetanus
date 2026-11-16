@@ -77,6 +77,67 @@ describe("useInfiniteList", () => {
     expect(list.items.value).toEqual([item(2)]);
   });
 
+  it("skips a refresh while a load is in flight, so the load is not dropped", async () => {
+    const { requests, fetchPage } = fakeServer(120);
+    const list = useInfiniteList(fetchPage);
+    await list.reload();
+
+    const loading = list.loadMore();
+    await list.refresh();
+    await loading;
+
+    expect(requests.map((query) => query.beforeId)).toEqual([undefined, 71]);
+    expect(list.items.value).toHaveLength(100);
+    expect(list.status.value).toBe("success");
+  });
+
+  it("keeps the list when a background refresh fails", async () => {
+    let fail = false;
+    const { fetchPage } = fakeServer(10);
+    const list = useInfiniteList(async (query) => {
+      if (fail) throw new Error("offline");
+      return fetchPage(query);
+    });
+    await list.reload();
+
+    fail = true;
+    await list.refresh();
+
+    expect(list.items.value).toHaveLength(10);
+    expect(list.status.value).toBe("success");
+  });
+
+  it("clears the old items on reload, so a retry starts from the newest page", async () => {
+    let fail = false;
+    const { requests, fetchPage } = fakeServer(70);
+    const list = useInfiniteList(async (query) => {
+      if (fail) throw new Error("offline");
+      return fetchPage(query);
+    });
+    await list.reload();
+
+    fail = true;
+    await list.reload();
+    expect(list.items.value).toEqual([]);
+    expect(list.status.value).toBe("error");
+
+    fail = false;
+    await list.retry();
+    expect(requests.at(-1)).toEqual({ limit: 50 });
+    expect(list.items.value[0]).toEqual(item(70));
+  });
+
+  it("keeps the first page's total when later pages leave it out", async () => {
+    const list = useInfiniteList(async (query) =>
+      query.beforeId === undefined
+        ? { items: [item(2)], hasMore: true, total: 2 }
+        : { items: [item(1)], hasMore: false },
+    );
+    await list.reload();
+    await list.loadMore();
+    expect(list.total.value).toBe(2);
+  });
+
   it("reports a failed page and retries it", async () => {
     let fail = true;
     const list = useInfiniteList(async () => {

@@ -12,7 +12,11 @@ import type {
 import { db } from "~~/server/database/client";
 import { diaryEntry } from "~~/server/database/schema";
 import { labelSubjects } from "~~/server/services/subjectLabels";
-import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
+import {
+  type CountedPage,
+  countedPageOf,
+  olderThan,
+} from "~~/server/utils/page";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiaryEntryRow = typeof diaryEntry.$inferSelect;
@@ -114,10 +118,14 @@ export function pageDiary(
     .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
     .limit(limit + 1)
     .all();
-  const total =
-    db.select({ total: count() }).from(diaryEntry).where(where).get()?.total ??
-    0;
-  return { ...pageOf(labelSubjects(rows), limit), total };
+  return countedPageOf(
+    labelSubjects(rows),
+    limit,
+    cursor,
+    () =>
+      db.select({ total: count() }).from(diaryEntry).where(where).get()
+        ?.total ?? 0,
+  );
 }
 
 export function listDiaryPage({

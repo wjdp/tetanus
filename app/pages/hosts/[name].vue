@@ -36,13 +36,7 @@ const diary = useInfiniteList((page) =>
     query: { ...page, subjectType: "host", subjectId: hostId },
   }),
 );
-const {
-  items: diaryEntries,
-  total: diaryTotal,
-  status: diaryStatus,
-  hasMore: diaryHasMore,
-} = diary;
-onMounted(diary.reload);
+const { items: diaryEntries, total: diaryTotal } = diary;
 
 const label = computed(
   () => host.value?.displayName || host.value?.name || "Host",
@@ -203,12 +197,7 @@ const tabs = computed<TabsItem[]>(() => [
                 :show-heading="false"
                 @changed="diary.refresh"
               />
-              <InfiniteListEnd
-                :status="diaryStatus"
-                :has-more="diaryHasMore"
-                @load-more="diary.loadMore"
-                @retry="diary.retry"
-              />
+              <InfiniteListEnd :list="diary" />
             </div>
           </template>
 

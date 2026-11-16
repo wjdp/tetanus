@@ -18,13 +18,7 @@ const { data: settings } = await useSettings();
 const notificationLog = useInfiniteList((page) =>
   $fetch("/api/alerts", { query: page }),
 );
-const {
-  items: notifications,
-  status: notificationsStatus,
-  hasMore: moreNotifications,
-  loadMore: loadMoreNotifications,
-  retry: retryNotifications,
-} = notificationLog;
+const notifications = notificationLog.items;
 
 const storedForms = () =>
   channelFormsFrom(settings.value?.config.notifications ?? UNCONFIGURED);
@@ -38,7 +32,6 @@ const dirty = (channel: AlertChannel) =>
 let pollHandle: ReturnType<typeof setInterval> | undefined;
 
 onMounted(() => {
-  notificationLog.reload();
   pollHandle = setInterval(notificationLog.refresh, POLL_INTERVAL_MS);
 });
 
@@ -181,12 +174,7 @@ const saveChannel = async (channel: AlertChannel) => {
     <section class="flex flex-col gap-3">
       <h3 class="text-highlighted font-semibold">Recent notifications</h3>
       <AlertsNotificationsTable :notifications="notifications" />
-      <InfiniteListEnd
-        :status="notificationsStatus"
-        :has-more="moreNotifications"
-        @load-more="loadMoreNotifications"
-        @retry="retryNotifications"
-      />
+      <InfiniteListEnd :list="notificationLog" />
     </section>
   </section>
 </template>

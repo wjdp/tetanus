@@ -47,7 +47,11 @@ import {
   poolPresenceContext,
 } from "~~/server/services/poolPresence";
 import { resolvePurpose } from "~~/server/services/usage";
-import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
+import {
+  type CountedPage,
+  countedPageOf,
+  olderThan,
+} from "~~/server/utils/page";
 import { invalidRequest, notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
 import { poolPaths } from "./paths";
@@ -363,7 +367,7 @@ export function listPoolEvents(
     .orderBy(desc(zfsEvent.at), desc(zfsEvent.id))
     .limit(limit + 1)
     .all();
-  return { ...pageOf(rows, limit), total: eventCount(guid) };
+  return countedPageOf(rows, limit, cursor, () => eventCount(guid));
 }
 
 export function getPool(id: number, now = new Date()): PoolDetail {

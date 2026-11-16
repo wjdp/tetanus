@@ -8,7 +8,8 @@ export interface Page<T> {
 }
 
 export interface CountedPage<T> extends Page<T> {
-  total: number;
+  /** On the first page only: a count is a scan, and later pages don't change it. */
+  total?: number;
 }
 
 /** Rows strictly after the cursor in newest-first (`at`, `id`) order. */
@@ -25,4 +26,14 @@ export function olderThan(
 /** `rows` were fetched with `limit + 1` so the extra row says whether more remain. */
 export function pageOf<T>(rows: T[], limit: number): Page<T> {
   return { items: rows.slice(0, limit), hasMore: rows.length > limit };
+}
+
+export function countedPageOf<T>(
+  rows: T[],
+  limit: number,
+  cursor: PageCursor,
+  count: () => number,
+): CountedPage<T> {
+  const page = pageOf(rows, limit);
+  return cursor.beforeId === undefined ? { ...page, total: count() } : page;
 }

@@ -128,7 +128,8 @@ describe("diary", () => {
     expect(first.items.map((row) => row.title)).toEqual(["same time", "m3"]);
     expect(first).toMatchObject({ hasMore: true, total: 4 });
     expect(second.items.map((row) => row.title)).toEqual(["m2", "m1"]);
-    expect(second).toMatchObject({ hasMore: false, total: 4 });
+    expect(second.hasMore).toBe(false);
+    expect(second).not.toHaveProperty("total");
   });
 
   it("finds the latest auto event of a type for a subject", () => {

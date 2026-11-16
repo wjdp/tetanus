@@ -28,9 +28,7 @@ const filters = computed(() => ({
 const diary = useInfiniteList((page) =>
   $fetch("/api/diary", { query: { ...page, ...filters.value } }),
 );
-const { items: entries, status, hasMore } = diary;
-
-onMounted(diary.reload);
+const { items: entries, status } = diary;
 watch(filters, diary.reload);
 
 const subjectItems = [
@@ -103,12 +101,7 @@ const onSaved = async () => {
         "
         @changed="diary.refresh"
       />
-      <InfiniteListEnd
-        :status="status"
-        :has-more="hasMore"
-        @load-more="diary.loadMore"
-        @retry="diary.retry"
-      />
+      <InfiniteListEnd :list="diary" />
     </div>
   </AppPanel>
 

@@ -6,9 +6,7 @@ const props = defineProps<{ poolId: number; root: PoolVdev | null }>();
 const events = useInfiniteList((page) =>
   $fetch(`/api/pools/${props.poolId}/events`, { query: page }),
 );
-const { items, status, hasMore } = events;
-
-onMounted(events.reload);
+const { items, status } = events;
 </script>
 
 <template>
@@ -18,11 +16,6 @@ onMounted(events.reload);
       :events="items"
       :root="root"
     />
-    <InfiniteListEnd
-      :status="status"
-      :has-more="hasMore"
-      @load-more="events.loadMore"
-      @retry="events.retry"
-    />
+    <InfiniteListEnd :list="events" />
   </div>
 </template>

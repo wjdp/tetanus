@@ -22,9 +22,7 @@ const diary = useInfiniteList((page) =>
     },
   }),
 );
-const { items: entries, status, hasMore } = diary;
-
-onMounted(diary.reload);
+const { items: entries, status } = diary;
 watch([kindFilter, () => props.diskId], diary.reload);
 
 const formOpen = ref(false);
@@ -89,12 +87,7 @@ const onSaved = async () => {
         :empty="status === 'success' ? 'Nothing recorded yet.' : ''"
         @changed="refreshAfterChange"
       />
-      <InfiniteListEnd
-        :status="status"
-        :has-more="hasMore"
-        @load-more="diary.loadMore"
-        @retry="diary.retry"
-      />
+      <InfiniteListEnd :list="diary" />
     </div>
   </section>
 </template>

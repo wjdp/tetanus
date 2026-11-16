@@ -1,12 +1,12 @@
 <script setup lang="ts">
-const props = defineProps<{ poolId: number }>();
+const props = defineProps<{ poolId: number; revision: number }>();
 
 const diary = useInfiniteList((page) =>
   $fetch(`/api/pools/${props.poolId}/diary`, { query: page }),
 );
-const { items, status, hasMore } = diary;
+const { items, status } = diary;
 
-onMounted(diary.reload);
+watch(() => props.revision, diary.refresh);
 </script>
 
 <template>
@@ -21,11 +21,6 @@ onMounted(diary.reload);
       "
       @changed="diary.refresh"
     />
-    <InfiniteListEnd
-      :status="status"
-      :has-more="hasMore"
-      @load-more="diary.loadMore"
-      @retry="diary.retry"
-    />
+    <InfiniteListEnd :list="diary" />
   </div>
 </template>

@@ -1,11 +1,13 @@
 import { z } from "zod";
 
 export const PAGE_SIZE = 50;
+/** The largest time a JavaScript Date can hold. */
+const MAX_DATE_MS = 8.64e15;
 export const MAX_PAGE_SIZE = 1000;
 
 const pageShape = {
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(PAGE_SIZE),
-  beforeAt: z.coerce.number().int().optional(),
+  beforeAt: z.coerce.number().int().min(0).max(MAX_DATE_MS).optional(),
   beforeId: z.coerce.number().int().positive().optional(),
 };
 

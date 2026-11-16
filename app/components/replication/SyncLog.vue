@@ -13,9 +13,7 @@ const props = defineProps<{
 const syncs = useInfiniteList((page) =>
   $fetch(`/api/replications/${props.replicationId}/syncs`, { query: page }),
 );
-const { items, status, hasMore } = syncs;
-
-onMounted(syncs.reload);
+const { items, status } = syncs;
 
 const { data: settings } = useSettings();
 
@@ -90,11 +88,6 @@ const GAP_CLASS: Record<NonNullable<GapSeverity>, string> = {
         </span>
       </template>
     </UTable>
-    <InfiniteListEnd
-      :status="status"
-      :has-more="hasMore"
-      @load-more="syncs.loadMore"
-      @retry="syncs.retry"
-    />
+    <InfiniteListEnd :list="syncs" />
   </div>
 </template>

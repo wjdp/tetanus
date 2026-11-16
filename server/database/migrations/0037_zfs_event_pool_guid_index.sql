@@ -1,0 +1,1 @@
+CREATE INDEX `ZfsEvent_poolGuid_at_idx` ON `ZfsEvent` (`poolGuid`,`at`);

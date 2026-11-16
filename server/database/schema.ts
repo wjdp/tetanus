@@ -568,6 +568,7 @@ export const zfsEvent = sqliteTable(
   (table) => [
     uniqueIndex("ZfsEvent_hostId_eid_key").on(table.hostId, table.eid),
     index("ZfsEvent_hostId_at_idx").on(table.hostId, table.at),
+    index("ZfsEvent_poolGuid_at_idx").on(table.poolGuid, table.at),
   ],
 );
 

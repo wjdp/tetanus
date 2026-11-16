@@ -8,7 +8,12 @@ import { capacityColour } from "~/utils/vocabulary";
 const props = defineProps<{ pool: PoolDetail }>();
 const emit = defineEmits<{ refresh: [] }>();
 const pool = toRef(props, "pool");
-const refresh = () => emit("refresh");
+/** Archive, unarchive and config changes write diary entries, so the diary follows each refresh. */
+const diaryRevision = ref(0);
+const refresh = () => {
+  diaryRevision.value++;
+  emit("refresh");
+};
 
 useSeoMeta({ title: () => getPageTitle(pool.value.name) });
 
@@ -392,7 +397,7 @@ const tabs = computed<(TabsItem & { value: Tab })[]>(() => [
         </template>
 
         <template #diary>
-          <PoolDiary :pool-id="pool.id" />
+          <PoolDiary :pool-id="pool.id" :revision="diaryRevision" />
         </template>
       </UTabs>
     </div>

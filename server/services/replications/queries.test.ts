@@ -274,7 +274,8 @@ describe("replication detail", () => {
       beforeAt: Date.parse(last?.at ?? ""),
       beforeId: last?.id,
     });
-    expect(second).toMatchObject({ total: 150, hasMore: false });
+    expect(second.hasMore).toBe(false);
+    expect(second).not.toHaveProperty("total");
     expect(second.items).toHaveLength(50);
     expect(second.items[0]?.at).toBe(at(49).toISOString());
   });

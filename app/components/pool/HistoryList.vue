@@ -24,9 +24,7 @@ const history = useInfiniteList(async (page) => {
   scope.value = result.scope;
   return result;
 });
-const { items: lines, status, hasMore } = history;
-
-onMounted(history.reload);
+const { items: lines, status } = history;
 watch(showAll, history.reload);
 </script>
 
@@ -70,11 +68,6 @@ watch(showAll, history.reload);
         >
       </li>
     </ul>
-    <InfiniteListEnd
-      :status="status"
-      :has-more="hasMore"
-      @load-more="history.loadMore"
-      @retry="history.retry"
-    />
+    <InfiniteListEnd :list="history" />
   </div>
 </template>

@@ -37,7 +37,11 @@ import { syncFaults } from "~~/server/services/faults";
 import { getSettings, setAlertCursor } from "~~/server/services/settings";
 import { simulationActive } from "~~/server/services/simulator/capture";
 import { isDemo } from "~~/server/utils/demo";
-import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
+import {
+  type CountedPage,
+  countedPageOf,
+  olderThan,
+} from "~~/server/utils/page";
 
 export type NotificationRow = typeof notification.$inferSelect;
 
@@ -310,9 +314,12 @@ export function listNotificationsPage({
     .orderBy(desc(notification.at), desc(notification.id))
     .limit(limit + 1)
     .all();
-  const total =
-    db.select({ total: count() }).from(notification).get()?.total ?? 0;
-  return { ...pageOf(rows, limit), total };
+  return countedPageOf(
+    rows,
+    limit,
+    cursor,
+    () => db.select({ total: count() }).from(notification).get()?.total ?? 0,
+  );
 }
 
 export function listNotifications(
