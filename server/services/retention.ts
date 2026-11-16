@@ -7,6 +7,7 @@ import {
   HISTORY_EVENT_DAYS,
   HOURLY_TEMPERATURE_DAYS,
 } from "#shared/retention";
+import { HISTORY_EVENT_CLASS } from "#shared/zfsState";
 import { sqlite } from "~~/server/database/client";
 import { optimiseDatabase } from "~~/server/services/database";
 import { routineHistoryCutoff } from "~~/server/services/zfs/history";
@@ -77,7 +78,7 @@ function collapse(
 function pruneHistoryEvents(now: Date) {
   return deleteInBatches(
     `SELECT e.id FROM ZfsEvent e JOIN Host h ON h.id = e.hostId
-      WHERE e.class = 'sysevent.fs.zfs.history_event'
+      WHERE e.class = '${HISTORY_EVENT_CLASS}'
         AND e.at < :cutoff
         AND (e.eid IS NULL OR e.eid < h.zpoolEventsOldestEid - 1)`,
     "ZfsEvent",

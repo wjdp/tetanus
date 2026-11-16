@@ -197,8 +197,14 @@ describe("/api/pools", () => {
     expect(diary.items).toContainEqual(
       expect.objectContaining({ eventType: "scrub-finished" }),
     );
-    expect(events).toMatchObject({ total: detail.eventCount, hasMore: true });
-    expect(events.items).toHaveLength(50);
+    // The captured events are all history events: hidden unless asked for.
+    expect(events).toEqual({ items: [], hasMore: false, total: 0 });
+    expect(detail.eventCount).toBe(0);
+    const all = await (
+      await fetch(`/api/pools/${pools[0].id}/events?all=true`)
+    ).json();
+    expect(all).toMatchObject({ hasMore: true });
+    expect(all.items).toHaveLength(50);
     expect((await fetch("/api/pools/999999/events")).status).toBe(404);
   });
 

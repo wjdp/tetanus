@@ -9,6 +9,7 @@ import {
   isNotNull,
   isNull,
   lt,
+  ne,
   or,
 } from "drizzle-orm";
 import type { Bay } from "#shared/bays";
@@ -19,6 +20,7 @@ import {
   type PoolArchivedFilter,
   type PoolConfig,
   type PoolConfigPatch,
+  type PoolEventsQuery,
   type ResolvedPoolConfig,
   resolvePoolConfig,
 } from "#shared/schemas/pools";
@@ -29,6 +31,7 @@ import {
   type TemperatureThresholds,
 } from "#shared/temperature";
 import type { Purpose } from "#shared/usage";
+import { HISTORY_EVENT_CLASS } from "#shared/zfsState";
 import { db } from "~~/server/database/client";
 import {
   diaryEntry,
@@ -340,19 +343,30 @@ export function listPoolDiary(
   return pageDiary(poolDiaryScope(id), page);
 }
 
-function eventCount(poolGuid: string) {
+/**
+ * A pool's events. History events repeat pool history and outnumber everything else
+ * on a pool with frequent snapshots, so they are left out unless `all` is set.
+ */
+function poolEventScope(poolGuid: string, all: boolean) {
+  return and(
+    eq(zfsEvent.poolGuid, poolGuid),
+    all ? undefined : ne(zfsEvent.class, HISTORY_EVENT_CLASS),
+  );
+}
+
+function eventCount(poolGuid: string, all = false) {
   return (
     db
       .select({ total: count() })
       .from(zfsEvent)
-      .where(eq(zfsEvent.poolGuid, poolGuid))
+      .where(poolEventScope(poolGuid, all))
       .get()?.total ?? 0
   );
 }
 
 export function listPoolEvents(
   id: number,
-  { limit, ...cursor }: PageQuery,
+  { all, limit, ...cursor }: PoolEventsQuery,
 ): CountedPage<ZfsEventRow> {
   const { guid } = poolRowOf(id);
   const rows = db
@@ -360,14 +374,14 @@ export function listPoolEvents(
     .from(zfsEvent)
     .where(
       and(
-        eq(zfsEvent.poolGuid, guid),
+        poolEventScope(guid, all),
         olderThan(zfsEvent.at, zfsEvent.id, cursor),
       ),
     )
     .orderBy(desc(zfsEvent.at), desc(zfsEvent.id))
     .limit(limit + 1)
     .all();
-  return countedPageOf(rows, limit, cursor, () => eventCount(guid));
+  return countedPageOf(rows, limit, cursor, () => eventCount(guid, all));
 }
 
 export function getPool(id: number, now = new Date()): PoolDetail {

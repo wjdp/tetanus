@@ -1234,18 +1234,26 @@ describe("pool queries", () => {
       "scrub-finished",
     ]);
 
-    const events = listPoolEvents(id, { limit: 50 });
-    expect(events.total).toBe(detail.eventCount);
+    // The captured events are all history events, which the default view leaves out.
+    expect(listPoolEvents(id, { all: false, limit: 50 })).toEqual({
+      items: [],
+      hasMore: false,
+      total: 0,
+    });
+    expect(detail.eventCount).toBe(0);
+
+    const events = listPoolEvents(id, { all: true, limit: 50 });
     expect(events).toMatchObject({ hasMore: true });
     expect(events.items).toHaveLength(50);
     expect(events.items.every((row) => row.poolGuid === TANK_GUID)).toBe(true);
     const last = events.items.at(-1);
     const older = listPoolEvents(id, {
+      all: true,
       limit: 50,
       beforeAt: last?.at.getTime(),
       beforeId: last?.id,
     });
-    expect(older.items.length).toBe(Math.min(50, detail.eventCount - 50));
+    expect(older.items.length).toBe(Math.min(50, (events.total ?? 0) - 50));
     expect(older.items.map((row) => row.id)).not.toContain(last?.id);
   });
 
@@ -1401,5 +1409,39 @@ describe("pool history page", () => {
       { text: "zfs create tank/a", routine: false },
     ]);
     expect(reclassifyRoutineHistoryIfStale()).toBe(false);
+  });
+});
+
+describe("pool events page", () => {
+  const event = (eid: number, eventClass: string) => ({
+    hostId: db.select().from(host).get()?.id ?? 0,
+    eid,
+    at: new Date(Date.UTC(2026, 8, 28, 16, eid)),
+    class: eventClass,
+    poolGuid: TANK_GUID,
+    payload: {},
+  });
+
+  it("leaves out history events unless asked, and counts what it shows", () => {
+    run("zpool-status", marsStatus());
+    db.insert(zfsEvent)
+      .values([
+        event(1, "sysevent.fs.zfs.scrub_start"),
+        event(2, "sysevent.fs.zfs.history_event"),
+        event(3, "ereport.fs.zfs.checksum"),
+        event(4, "sysevent.fs.zfs.history_event"),
+      ])
+      .run();
+    const id =
+      db.select().from(pool).where(eq(pool.guid, TANK_GUID)).get()?.id ?? 0;
+
+    const record = listPoolEvents(id, { all: false, limit: 50 });
+    expect(record.items.map((row) => row.class)).toEqual([
+      "ereport.fs.zfs.checksum",
+      "sysevent.fs.zfs.scrub_start",
+    ]);
+    expect(record.total).toBe(2);
+    expect(getPool(id).eventCount).toBe(2);
+    expect(listPoolEvents(id, { all: true, limit: 50 }).total).toBe(4);
   });
 });

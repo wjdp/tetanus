@@ -35,8 +35,12 @@ From a prod snapshot (2026-11-16, retention running, windows full):
   `RETENTION_RULES`.
 - History events are kept for one purpose: `checkContinuity`
   (`server/services/zfs/events.ts`) needs the eid just below the dump's oldest
-  (`maxStoredEidBelow`), plus the eids still in the buffer for dedupe. Nothing else
-  reads them ([063](063-Retention-and-downsampling.md) Context). The reset bug in
+  (`maxStoredEidBelow`), plus the eids still in the buffer for dedupe.
+  [063](063-Retention-and-downsampling.md) also said nothing else reads them because
+  they carry no pool GUID. That is no longer true: since 2026-11-01 they do, so the
+  pool page's Events tab lists them. [114](114-Pool-events-list-shows-only-history-events.md)
+  hides them there by default, behind a toggle. They duplicate `PoolHistory`, so
+  pruning them loses nothing the Events tab needs. The reset bug in
   [107](107-False-ZFS-event-resets-after-a-reboot.md) depends on stored eids too;
   settle it first, or at least check that this change doesn't make it worse.
 - Collector run readers:

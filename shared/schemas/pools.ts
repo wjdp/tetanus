@@ -18,6 +18,12 @@ export const poolHistoryQuerySchema = pageQuerySchema({
   all: z.stringbool().default(false),
 });
 
+export const poolEventsQuerySchema = pageQuerySchema({
+  all: z.stringbool().default(false),
+});
+
+export type PoolEventsQuery = z.infer<typeof poolEventsQuerySchema>;
+
 export type PoolHistoryQuery = z.infer<typeof poolHistoryQuerySchema>;
 
 export const POOL_ARCHIVED_FILTERS = ["exclude", "include", "only"] as const;

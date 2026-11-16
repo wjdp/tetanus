@@ -13,7 +13,10 @@ interface PoolEvent {
   payload: Record<string, unknown>;
 }
 
-const props = defineProps<{ events: PoolEvent[]; root: PoolVdev | null }>();
+const props = withDefaults(
+  defineProps<{ events: PoolEvent[]; root: PoolVdev | null; empty?: string }>(),
+  { empty: "No events recorded for this pool." },
+);
 
 const vdevsByGuid = computed(() => {
   const byGuid = new Map<string, PoolVdev>();
@@ -50,7 +53,7 @@ const payloadText = (value: unknown) =>
 
 <template>
   <p v-if="events.length === 0" class="text-dimmed py-4 text-sm">
-    No events recorded for this pool.
+    {{ empty }}
   </p>
   <ul v-else class="divide-default flex flex-col divide-y">
     <li

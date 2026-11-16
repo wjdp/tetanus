@@ -54,7 +54,7 @@ import type { SeagateFarm } from "../../shared/smartctl";
 import type { HostTemperatureThresholds } from "../../shared/temperature";
 import type { DiskUsage } from "../../shared/usage";
 import type { Vendor } from "../../shared/vendor";
-import type { VdevRole } from "../../shared/zfsState";
+import { HISTORY_EVENT_CLASS, type VdevRole } from "../../shared/zfsState";
 import type { ZfsDatasetType } from "../ingest/zfs-list";
 import type {
   ZpoolStatusRemoval,
@@ -569,6 +569,9 @@ export const zfsEvent = sqliteTable(
     uniqueIndex("ZfsEvent_hostId_eid_key").on(table.hostId, table.eid),
     index("ZfsEvent_hostId_at_idx").on(table.hostId, table.at),
     index("ZfsEvent_poolGuid_at_idx").on(table.poolGuid, table.at),
+    index("ZfsEvent_record_poolGuid_at_idx")
+      .on(table.poolGuid, table.at)
+      .where(sql`${table.class} <> ${sql.raw(`'${HISTORY_EVENT_CLASS}'`)}`),
   ],
 );
 

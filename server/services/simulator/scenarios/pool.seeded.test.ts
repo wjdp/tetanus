@@ -297,7 +297,7 @@ describe("pool scenarios", () => {
   it("adds an error burst to the events", async () => {
     const id = poolId("atlas", "tank");
     await simulate("pool", id, "error-burst", { count: 10 }, LATER);
-    const { items: events } = listPoolEvents(id, { limit: 1000 });
+    const { items: events } = listPoolEvents(id, { all: false, limit: 1000 });
     const burst = events.filter(
       (event) =>
         event.class === "ereport.fs.zfs.checksum" &&

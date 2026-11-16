@@ -2,6 +2,9 @@ export type ZfsStateColour = "success" | "warning" | "error";
 
 export const MISSING_POOL_STATE = "MISSING";
 
+/** ZED's copy of a `zpool history -i` record; the same record is in pool history. */
+export const HISTORY_EVENT_CLASS = "sysevent.fs.zfs.history_event";
+
 export const ZFS_STATE_COLOUR: Record<string, ZfsStateColour> = {
   ONLINE: "success",
   AVAIL: "success",

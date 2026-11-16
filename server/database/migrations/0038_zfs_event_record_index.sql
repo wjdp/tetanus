@@ -1,0 +1,1 @@
+CREATE INDEX `ZfsEvent_record_poolGuid_at_idx` ON `ZfsEvent` (`poolGuid`,`at`) WHERE "ZfsEvent"."class" <> 'sysevent.fs.zfs.history_event';

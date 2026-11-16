@@ -267,6 +267,13 @@
       "when": 1794799182158,
       "tag": "0037_zfs_event_pool_guid_index",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1794800071884,
+      "tag": "0038_zfs_event_record_index",
+      "breakpoints": true
     }
   ]
 }
