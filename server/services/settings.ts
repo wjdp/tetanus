@@ -107,3 +107,11 @@ export function setAtaSsdAttributesBackfilledAt(at: Date) {
     .where(eq(setting.id, SETTING_ROW_ID))
     .run();
 }
+
+export function setRoutineHistoryVersion(version: number) {
+  const row = ensureSettings();
+  db.update(setting)
+    .set({ config: { ...row.config, routineHistoryVersion: version } })
+    .where(eq(setting.id, SETTING_ROW_ID))
+    .run();
+}

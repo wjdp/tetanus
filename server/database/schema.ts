@@ -582,6 +582,7 @@ export const poolHistory = sqliteTable(
     at: datetime().notNull(),
     internal: boolean().notNull(),
     text: text().notNull(),
+    routine: boolean().notNull().default(false),
   },
   (table) => [
     uniqueIndex("PoolHistory_hostId_at_text_key").on(
@@ -590,6 +591,9 @@ export const poolHistory = sqliteTable(
       table.text,
     ),
     index("PoolHistory_poolId_at_idx").on(table.poolId, table.at),
+    index("PoolHistory_record_poolId_at_idx")
+      .on(table.poolId, table.at)
+      .where(sql`${table.routine} = 0`),
   ],
 );
 

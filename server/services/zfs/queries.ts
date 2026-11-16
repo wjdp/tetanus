@@ -33,7 +33,6 @@ import {
   disk,
   host,
   pool,
-  poolHistory,
   poolReading,
   vdev,
   vdevReading,
@@ -97,14 +96,11 @@ export interface PoolSummary extends Omit<PoolRow, "hostId"> {
 }
 
 export type PoolReadingRow = typeof poolReading.$inferSelect;
-export type PoolHistoryRow = typeof poolHistory.$inferSelect;
 export type ZfsEventRow = typeof zfsEvent.$inferSelect;
 
 export interface PoolDetail extends PoolSummary {
   readings: PoolReadingRow[];
   diary: DiaryEntry[];
-  history: PoolHistoryRow[];
-  historyScope: "pool" | "host";
   events: ZfsEventRow[];
 }
 
@@ -334,26 +330,6 @@ function poolDiary(poolId: number) {
   );
 }
 
-function historyFor(poolRow: PoolRow) {
-  const recent = (scope: ReturnType<typeof and>) =>
-    db
-      .select()
-      .from(poolHistory)
-      .where(scope)
-      .orderBy(desc(poolHistory.at), desc(poolHistory.id))
-      .limit(POOL_DETAIL_LIMIT)
-      .all();
-  const ofPool = recent(eq(poolHistory.poolId, poolRow.id));
-  if (ofPool.length > 0)
-    return { history: ofPool, historyScope: "pool" as const };
-  return {
-    history: recent(
-      and(eq(poolHistory.hostId, poolRow.hostId), isNull(poolHistory.poolId)),
-    ),
-    historyScope: "host" as const,
-  };
-}
-
 function recentEvents(poolGuid: string) {
   return db
     .select()
@@ -373,7 +349,6 @@ export function getPool(id: number, now = new Date()): PoolDetail {
     ...summary,
     readings: recentReadings(id, now),
     diary: poolDiary(id),
-    ...historyFor(row.pool),
     events: recentEvents(row.pool.guid),
   };
 }

@@ -123,14 +123,25 @@ describe("collector runs", () => {
 });
 
 describe("pool history", () => {
-  const line = (text: string, at: number, internal = 0) =>
-    insert("PoolHistory", { hostId, poolId, at, internal, text });
+  const line = (text: string, at: number, routine: boolean) =>
+    insert("PoolHistory", {
+      hostId,
+      poolId,
+      at,
+      internal: 0,
+      text,
+      routine: Number(routine),
+    });
 
   it("prunes routine lines past 14 days and keeps the rest forever", async () => {
-    line("zfs snapshot tank/a@autosnap_hourly", daysAgo(20));
-    line("destroy tank/a@autosnap_hourly (12)", daysAgo(20), 1);
-    const create = line("zfs create tank/a", daysAgo(20));
-    const recent = line("zfs snapshot tank/a@autosnap_hourly", daysAgo(3));
+    line("zfs snapshot tank/a@autosnap_hourly", daysAgo(20), true);
+    line("destroy tank/a@autosnap_hourly (12)", daysAgo(20), true);
+    const create = line("zfs create tank/a", daysAgo(20), false);
+    const recent = line(
+      "zfs snapshot tank/a@autosnap_hourly",
+      daysAgo(3),
+      true,
+    );
 
     await pruneDatabase(NOW);
 

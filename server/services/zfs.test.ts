@@ -11,6 +11,7 @@ import {
   pool,
   poolHistory,
   poolReading,
+  setting,
   vdev,
   vdevReading,
   zfsEvent,
@@ -28,13 +29,17 @@ import {
 } from "~~/server/ingest/zpool-status";
 import { upsertHostByName } from "~~/server/services/hosts";
 import { recordIngest } from "~~/server/services/ingest";
+import { ensureSettings } from "~~/server/services/settings";
 import {
   getPool,
   getVdevReadings,
+  listPoolHistory,
   listPools,
+  type PoolHistoryPage,
   type VdevNode,
   ZFS_HANDLERS,
 } from "~~/server/services/zfs";
+import { reclassifyRoutineHistoryIfStale } from "~~/server/services/zfs/history";
 import { flushDb } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
 
@@ -1197,7 +1202,7 @@ describe("pool queries", () => {
     expect(nodes.some((node) => node.guid === K1_GUID)).toBe(false);
   });
 
-  it("returns pool detail with readings, diary, history and events", () => {
+  it("returns pool detail with readings, diary and events", () => {
     run("zpool-status", marsStatus());
     const without = marsStatus();
     tank(without).vdevs = tank(without).vdevs.filter(
@@ -1222,40 +1227,12 @@ describe("pool queries", () => {
       "scrub-finished",
     ]);
     expect(detail.resolvedConfig).toEqual(POOL_CONFIG_DEFAULTS);
-    expect(detail.historyScope).toBe("host");
-    expect(detail.history).toHaveLength(50);
     expect(detail.events).toHaveLength(50);
     expect(detail.events.every((row) => row.poolGuid === TANK_GUID)).toBe(true);
     expect(
       (detail.events[0]?.at.getTime() ?? 0) >=
         (detail.events[49]?.at.getTime() ?? 0),
     ).toBe(true);
-  });
-
-  it("scopes history to the pool when it has its own", () => {
-    run("zpool-status", marsStatus());
-    run("zpool-history", {
-      entries: [
-        {
-          pool: "tank",
-          at: "2026-09-28T16:00:09.000Z",
-          timestamp: "2026-09-28.16:00:09",
-          internal: false,
-          txg: null,
-          text: "zpool scrub tank",
-          user: null,
-          host: null,
-        },
-      ],
-    });
-    const tankRow = db
-      .select()
-      .from(pool)
-      .where(eq(pool.guid, TANK_GUID))
-      .get();
-    const detail = getPool(tankRow?.id ?? 0);
-    expect(detail.historyScope).toBe("pool");
-    expect(detail.history).toHaveLength(1);
   });
 
   it("gives a vdev's readings over the window, opening with the one in force and closing with the current counters", () => {
@@ -1292,5 +1269,120 @@ describe("pool queries", () => {
     expect(() => getPool(999)).toThrow(
       expect.objectContaining({ statusCode: 404 }),
     );
+  });
+});
+
+describe("pool history page", () => {
+  const entry = (
+    text: string,
+    minute: number,
+    {
+      pool = "tank",
+      internal = false,
+    }: { pool?: string | null; internal?: boolean } = {},
+  ) => ({
+    pool,
+    at: new Date(Date.UTC(2026, 8, 28, 16, minute)).toISOString(),
+    timestamp: "",
+    internal,
+    txg: null,
+    text,
+    user: null,
+    host: null,
+  });
+  const tankId = () =>
+    db.select().from(pool).where(eq(pool.guid, TANK_GUID)).get()?.id ?? 0;
+  const texts = (page: PoolHistoryPage) => page.lines.map((line) => line.text);
+
+  beforeEach(() => {
+    run("zpool-status", marsStatus());
+  });
+
+  it("shows the pool's record and leaves out routine churn and ioctl copies", () => {
+    run("zpool-history", {
+      entries: [
+        entry("zfs create tank/a", 1),
+        entry("(3ms) ioctl create\n    input:", 1),
+        entry("zfs snapshot tank/a@autosnap_hourly", 2),
+        entry("snapshot tank/a@autosnap_hourly (12)", 2, { internal: true }),
+        entry("zfs rollback -R tank/a@syncoid_host_2026-09-28:16:03:00", 3),
+        entry("zfs rollback -R tank/a@autosnap_hourly", 4),
+        entry("set tank (54) compression=4", 5, { internal: true }),
+      ],
+    });
+
+    const page = listPoolHistory(tankId(), { all: false });
+
+    expect(page).toMatchObject({ scope: "pool", hasMore: false });
+    expect(texts(page)).toEqual([
+      "set tank (54) compression=4",
+      "zfs rollback -R tank/a@autosnap_hourly",
+      "zfs create tank/a",
+    ]);
+    expect(listPoolHistory(tankId(), { all: true }).lines).toHaveLength(7);
+  });
+
+  it("falls back to the host's lines when none name a pool", () => {
+    run("zpool-history", {
+      entries: [entry("zpool scrub tank", 1, { pool: null })],
+    });
+    expect(listPoolHistory(tankId(), { all: false })).toMatchObject({
+      scope: "host",
+      lines: [{ text: "zpool scrub tank" }],
+    });
+  });
+
+  it("pages newest first from a cursor", () => {
+    run("zpool-history", {
+      entries: Array.from({ length: 55 }, (_, minute) =>
+        entry(`zfs set quota=${minute}G tank/a`, minute),
+      ),
+    });
+
+    const first = listPoolHistory(tankId(), { all: false });
+    const last = first.lines.at(-1);
+    const second = listPoolHistory(tankId(), {
+      all: false,
+      beforeAt: last?.at.getTime(),
+      beforeId: last?.id,
+    });
+
+    expect(first).toMatchObject({ hasMore: true });
+    expect(first.lines).toHaveLength(50);
+    expect(texts(first)[0]).toBe("zfs set quota=54G tank/a");
+    expect(second).toMatchObject({ hasMore: false });
+    expect(texts(second)).toEqual([
+      "zfs set quota=4G tank/a",
+      "zfs set quota=3G tank/a",
+      "zfs set quota=2G tank/a",
+      "zfs set quota=1G tank/a",
+      "zfs set quota=0G tank/a",
+    ]);
+  });
+
+  it("reclassifies stored lines when the routine rules change", () => {
+    run("zpool-history", {
+      entries: [
+        entry("zfs snapshot tank/a@autosnap_hourly", 1),
+        entry("zfs create tank/a", 2),
+      ],
+    });
+    db.update(poolHistory).set({ routine: false }).run();
+    db.update(setting)
+      .set({ config: { ...ensureSettings().config, routineHistoryVersion: 0 } })
+      .run();
+
+    expect(reclassifyRoutineHistoryIfStale()).toBe(true);
+    expect(
+      db
+        .select({ text: poolHistory.text, routine: poolHistory.routine })
+        .from(poolHistory)
+        .orderBy(poolHistory.at)
+        .all(),
+    ).toEqual([
+      { text: "zfs snapshot tank/a@autosnap_hourly", routine: true },
+      { text: "zfs create tank/a", routine: false },
+    ]);
+    expect(reclassifyRoutineHistoryIfStale()).toBe(false);
   });
 });

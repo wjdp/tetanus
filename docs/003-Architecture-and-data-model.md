@@ -288,7 +288,7 @@ DatasetReading  datasetId, at, used, referenced, available, usedBySnapshots, use
                 usedByChildren?   (daily, plus on a 1 % change in used)
 Snapshot        id, datasetId, name, guid?, used, referenced, written, creation, lastSeenAt
 ZfsEvent        hostId, eid, at, class, poolGuid?, vdevGuid?, payload (json)   unique(hostId, eid)
-PoolHistory     poolId, at, internal, text                                unique(poolId, at, text)
+PoolHistory     hostId, poolId?, at, internal, text, routine             unique(hostId, at, text)
 DiaryEntry      id, subjectType (disk|pool|vdev|host|system), subjectId, at, kind (manual|auto),
                 eventType?, title, body (md), data (json)
 Notification    id, at, channel, dedupeKey, subject, ok, error?
@@ -330,7 +330,7 @@ history that is the product is kept, at lower resolution once it is old.
 | `ZfsEvent` `history_event` | 2 days, and while still in the kernel buffer (`Host.zpoolEventsOldestEid`) |
 | `ZfsEvent` other classes, `VdevReading`, `ReplicationSync` | forever |
 | `CollectorRun` | 30 days, plus the newest per (host, source, device); `zed-event` keeps only its latest run |
-| `PoolHistory` | routine lines (snapshot, destroy of snapshots, hold, release, receive) 14 days, and skipped at ingest once older; the rest forever |
+| `PoolHistory` | routine lines (snapshot, destroy of snapshots, hold, release, receive, rollback to a syncoid snapshot; stored as `routine`, [109](109-Pool-history-list-shows-only-routine-churn.md)) 14 days, and skipped at ingest once older; the rest forever |
 | `DatasetReading` | full for 90 days, then the last per day |
 | `PoolReading` | full for 30 days, then the last per day |
 | `SmartReading` + `SmartAttribute` | full for 30 days, then the last reading per disk per day |

@@ -65,9 +65,9 @@ about 23 MB steady.
 - Unique key: replace `text` in the index with a hash column (for example a 64-bit
   hash of the text), or a shorter natural key? A hash needs a migration that rebuilds
   the table and a collision policy.
-- Class syncoid rollbacks as routine: all `rollback` lines, or only those whose target
-  snapshot matches `@syncoid_`? A manual rollback is a notable event and should
-  probably stay.
+- ~~Class syncoid rollbacks as routine~~: decided and done in
+  [109](109-Pool-history-list-shows-only-routine-churn.md) (only rollbacks to
+  `@syncoid_` snapshots).
 - `load-key` lines: strip the `input:` block at ingest, class them as routine, or
   leave them alone?
 - After the change, does 063's "Forever cost" table in

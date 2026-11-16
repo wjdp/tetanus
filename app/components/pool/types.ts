@@ -29,3 +29,6 @@ export interface VdevReading {
 }
 
 export type PoolDetail = InternalApi["/api/pools/:id"]["get"];
+
+export type PoolHistoryPage = InternalApi["/api/pools/:id/history"]["get"];
+export type PoolHistoryLine = PoolHistoryPage["lines"][number];

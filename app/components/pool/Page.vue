@@ -2,7 +2,6 @@
 import type { DropdownMenuItem, TabsItem } from "@nuxt/ui";
 import { getPageTitle } from "#shared/app";
 import { capacitySeries } from "~/components/pool/capacityChart";
-import { formatTimestamp } from "~/components/pool/timestamp";
 import type { PoolDetail } from "~/components/pool/types";
 import { capacityColour } from "~/utils/vocabulary";
 
@@ -386,36 +385,10 @@ const tabs = computed<(TabsItem & { value: Tab })[]>(() => [
         </template>
 
         <template #history>
-          <p
-            v-if="pool.historyScope === 'host'"
-            class="text-muted py-2 text-sm"
-          >
-            Showing every pool on {{ pool.host.displayName || pool.host.name }}:
-            the collected history has no pool headers to attribute lines.
-          </p>
-          <p v-if="pool.history.length === 0" class="text-dimmed py-4 text-sm">
-            No history recorded.
-          </p>
-          <ul v-else class="divide-default flex flex-col divide-y">
-            <li
-              v-for="line in pool.history"
-              :key="line.id"
-              class="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2 text-sm"
-            >
-              <span class="text-muted tabular">
-                {{ formatTimestamp(line.at) }}
-              </span>
-              <span v-if="line.internal" class="text-dimmed text-xs">
-                internal
-              </span>
-              <span
-                class="min-w-0 font-mono break-all"
-                :class="line.internal ? 'text-muted' : 'text-highlighted'"
-              >
-                {{ line.text }}
-              </span>
-            </li>
-          </ul>
+          <PoolHistoryList
+            :pool-id="pool.id"
+            :host-name="pool.host.displayName || pool.host.name"
+          />
         </template>
 
         <template #diary>

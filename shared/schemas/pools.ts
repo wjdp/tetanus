@@ -13,6 +13,20 @@ export const vdevParamsSchema = poolParamsSchema.extend({
   vdevId: z.coerce.number().int().positive(),
 });
 
+export const poolHistoryQuerySchema = z
+  .object({
+    all: z.stringbool().default(false),
+    beforeAt: z.coerce.number().int().optional(),
+    beforeId: z.coerce.number().int().positive().optional(),
+  })
+  .refine(
+    (query) =>
+      (query.beforeAt === undefined) === (query.beforeId === undefined),
+    { message: "beforeAt and beforeId go together" },
+  );
+
+export type PoolHistoryQuery = z.infer<typeof poolHistoryQuerySchema>;
+
 export const POOL_ARCHIVED_FILTERS = ["exclude", "include", "only"] as const;
 export type PoolArchivedFilter = (typeof POOL_ARCHIVED_FILTERS)[number];
 

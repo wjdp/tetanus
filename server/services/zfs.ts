@@ -44,7 +44,12 @@ export {
   searchDatasets,
 } from "./zfs/datasets";
 export { observeZedEvent, observeZpoolEvents } from "./zfs/events";
-export { observeZpoolHistory } from "./zfs/history";
+export {
+  listPoolHistory,
+  observeZpoolHistory,
+  type PoolHistoryPage,
+  type PoolHistoryRow,
+} from "./zfs/history";
 export * from "./zfs/queries";
 export {
   observeZpoolList,

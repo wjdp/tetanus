@@ -1,6 +1,6 @@
 ---
 type: bug
-status: todo
+status: done
 ---
 
 # Pool history list shows only routine churn
@@ -34,13 +34,22 @@ tank/a@x (txg)`), the multi-line `(NNms) ioctl snapshot …` record and the
   classed as routine; see [111](111-Pool-history-storage-volume.md).
 - UI: `app/components/pool/Page.vue`.
 
-## Decisions to make
+## Decisions
 
-- Hide routine lines by default with a toggle to show them, or never show them on the
-  pool page?
-- Store a `routine` boolean on `PoolHistory` at ingest (needs a migration and a
-  backfill) or filter in the query by text pattern?
-- Show one line per operation (for example only the `zfs …` command line, or only the
-  internal record) instead of all three? This overlaps
-  [111](111-Pool-history-storage-volume.md), which may stop storing some forms.
-- Does the limit of 50 still fit once churn is hidden, or should the list page by date?
+Agreed 2026-11-16.
+
+- **Hide routine lines by default**, with a toggle that shows the full stream. The
+  toggle state goes in the URL query, like the tab.
+- **Store `PoolHistory.routine`**, set by `isRoutineHistory` at ingest. Existing rows are
+  reclassified at boot whenever the classifier version changes (the
+  `smartPolicyVersion` pattern), so a new routine rule applies to old rows too. The
+  retention prune selects on the column instead of re-running the regexes.
+- **Hide `(NNms) ioctl …` records by default**, behind the same toggle. Internal records
+  and `zfs` command lines stay. Stopping storing some forms is left to
+  [111](111-Pool-history-storage-volume.md).
+- **Page the list:** 50 lines at a time, with "Load older" (cursor on `at`, `id`).
+  History loads lazily when its tab opens, like datasets, rather than with the pool.
+- **syncoid rollbacks are routine**, pulled in from 111. syncoid rolls the target back
+  to the newest common snapshot on every run (unless `--no-rollback`), so `zfs rollback
+  … <target>@syncoid_…` and its `ioctl rollback` record are replication churn. A
+  rollback to any other snapshot stays non-routine: it is a deliberate act.

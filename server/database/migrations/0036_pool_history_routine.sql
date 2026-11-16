@@ -1,0 +1,2 @@
+ALTER TABLE `PoolHistory` ADD `routine` integer DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE INDEX `PoolHistory_record_poolId_at_idx` ON `PoolHistory` (`poolId`,`at`) WHERE "PoolHistory"."routine" = 0;

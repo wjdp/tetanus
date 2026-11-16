@@ -1,5 +1,18 @@
-import { eq, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  isNull,
+  lt,
+  notLike,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { ROUTINE_HISTORY_DAYS } from "#shared/retention";
+import type { PoolHistoryQuery } from "#shared/schemas/pools";
 import { db } from "~~/server/database/client";
 import { pool, poolHistory } from "~~/server/database/schema";
 import type {
@@ -7,23 +20,40 @@ import type {
   ZpoolHistoryResult,
 } from "~~/server/ingest/zpool-history";
 import { RECEIVE_WINDOW_MS } from "~~/server/services/replications/population";
+import {
+  ensureSettings,
+  setRoutineHistoryVersion,
+} from "~~/server/services/settings";
+import { notFound } from "~~/server/utils/serviceError";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const RECLASSIFY_BATCH_SIZE = 5000;
+export const POOL_HISTORY_PAGE_SIZE = 50;
+const IOCTL_RECORD_LIKE = "(%ms) ioctl %";
 
-const ROUTINE_COMMAND_RE =
-  /^zfs (?:(?:snapshot|receive|recv|send|hold|release) |destroy (?:-\S+ )*\S*@)/;
-const ROUTINE_IOCTL_RE =
-  /^\(\d+ms\) ioctl (?:snapshot|destroy_snaps|receive|recv|send\w*|hold|release)\b/;
+const ROUTINE_COMMAND_RES = [
+  /^zfs (?:(?:snapshot|receive|recv|send|hold|release) |destroy (?:-\S+ )*\S*@)/,
+  /^\(\d+ms\) ioctl (?:snapshot|destroy_snaps|receive|recv|send\w*|hold|release)\b/,
+  /^zfs rollback (?:-\S+ )*\S+@syncoid_/,
+  /^\(\d+ms\) ioctl rollback\n\s+input:\n\s+target: '[^'@]+@syncoid_/,
+];
 const ROUTINE_INTERNAL_RE =
   /^(?:(?:snapshot|hold|release|receive|finish receiving|clone swap) |destroy \S*(?:@|\/%recv |\/%rollback ))/;
 
-/** Snapshot, replication and hold churn: kept for a while, not forever. */
+/** Bump when {@link isRoutineHistory} changes, so stored rows are reclassified. */
+export const ROUTINE_HISTORY_VERSION = 1;
+
+/**
+ * Snapshot, replication and hold churn: kept for a while, not forever. syncoid rolls
+ * its target back to the newest common snapshot on every run, so those rollbacks are
+ * churn too; any other rollback is a deliberate act.
+ */
 export function isRoutineHistory({
   internal,
   text,
 }: Pick<ZpoolHistoryEntry, "internal" | "text">) {
   if (internal) return ROUTINE_INTERNAL_RE.test(text);
-  return ROUTINE_COMMAND_RE.test(text) || ROUTINE_IOCTL_RE.test(text);
+  return ROUTINE_COMMAND_RES.some((pattern) => pattern.test(text));
 }
 
 export function routineHistoryCutoff(now: Date) {
@@ -66,6 +96,7 @@ export function observeZpoolHistory(
         at: new Date(entry.at),
         internal: entry.internal,
         text: entry.text,
+        routine: isRoutineHistory(entry),
       })
       .onConflictDoUpdate({
         target: [poolHistory.hostId, poolHistory.at, poolHistory.text],
@@ -74,4 +105,124 @@ export function observeZpoolHistory(
       })
       .run();
   }
+}
+
+function reclassifyBatch(after: number) {
+  const rows = db
+    .select({
+      id: poolHistory.id,
+      internal: poolHistory.internal,
+      text: poolHistory.text,
+      routine: poolHistory.routine,
+    })
+    .from(poolHistory)
+    .where(gt(poolHistory.id, after))
+    .orderBy(asc(poolHistory.id))
+    .limit(RECLASSIFY_BATCH_SIZE)
+    .all();
+  let changed = 0;
+  for (const row of rows) {
+    const routine = isRoutineHistory(row);
+    if (routine === row.routine) continue;
+    db.update(poolHistory)
+      .set({ routine })
+      .where(eq(poolHistory.id, row.id))
+      .run();
+    changed++;
+  }
+  return {
+    changed,
+    lastId: rows.at(-1)?.id,
+    done: rows.length < RECLASSIFY_BATCH_SIZE,
+  };
+}
+
+/** Applies the current routine rules to stored lines once per classifier version. */
+export function reclassifyRoutineHistoryIfStale(): boolean {
+  if (ensureSettings().config.routineHistoryVersion === ROUTINE_HISTORY_VERSION)
+    return false;
+  const changed = db.transaction(() => {
+    let total = 0;
+    let after = 0;
+    for (;;) {
+      const batch = reclassifyBatch(after);
+      total += batch.changed;
+      if (batch.done || batch.lastId === undefined) break;
+      after = batch.lastId;
+    }
+    setRoutineHistoryVersion(ROUTINE_HISTORY_VERSION);
+    return total;
+  });
+  console.log(
+    `Pool history routine rules v${ROUTINE_HISTORY_VERSION} applied: ${changed} lines reclassified`,
+  );
+  return true;
+}
+
+export type PoolHistoryRow = typeof poolHistory.$inferSelect;
+
+export interface PoolHistoryPage {
+  lines: PoolHistoryRow[];
+  /** "host" when the collected history has no pool headers to attribute lines. */
+  scope: "pool" | "host";
+  hasMore: boolean;
+}
+
+function hasPoolScopedHistory(poolId: number) {
+  return (
+    db
+      .select({ id: poolHistory.id })
+      .from(poolHistory)
+      .where(eq(poolHistory.poolId, poolId))
+      .limit(1)
+      .get() !== undefined
+  );
+}
+
+/**
+ * Newest first, a page at a time. By default only the pool's record: routine churn
+ * and the `ioctl` copies of each command are left out unless `all` is set.
+ */
+export function listPoolHistory(
+  poolId: number,
+  { all, beforeAt, beforeId }: PoolHistoryQuery,
+): PoolHistoryPage {
+  const row = db
+    .select({ hostId: pool.hostId })
+    .from(pool)
+    .where(eq(pool.id, poolId))
+    .get();
+  if (!row) throw notFound(`Pool ${poolId} not found`);
+  const scope = hasPoolScopedHistory(poolId) ? "pool" : "host";
+  const conditions: (SQL | undefined)[] = [
+    scope === "pool"
+      ? eq(poolHistory.poolId, poolId)
+      : and(eq(poolHistory.hostId, row.hostId), isNull(poolHistory.poolId)),
+  ];
+  if (!all)
+    conditions.push(
+      eq(poolHistory.routine, false),
+      notLike(poolHistory.text, IOCTL_RECORD_LIKE),
+    );
+  if (beforeAt !== undefined && beforeId !== undefined) {
+    const before = new Date(beforeAt);
+    conditions.push(
+      or(
+        lt(poolHistory.at, before),
+        and(eq(poolHistory.at, before), lt(poolHistory.id, beforeId)),
+      ),
+    );
+  }
+  const lines = db
+    .select()
+    .from(poolHistory)
+    .where(and(...conditions))
+    .orderBy(desc(poolHistory.at), desc(poolHistory.id))
+    .limit(POOL_HISTORY_PAGE_SIZE + 1)
+    .all();
+  return {
+    lines: lines.slice(0, POOL_HISTORY_PAGE_SIZE),
+    scope,
+    hasMore: lines.length > POOL_HISTORY_PAGE_SIZE,
+  };
 }

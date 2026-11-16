@@ -4,6 +4,7 @@ import { describeMigrations, runMigrations } from "~~/server/database/migrate";
 import { backfillAtaSsdAttributesOnce } from "~~/server/services/ataSsdAttributesBackfill";
 import { ensureSettings } from "~~/server/services/settings";
 import { applySmartPolicyIfStale } from "~~/server/services/smartPolicy";
+import { reclassifyRoutineHistoryIfStale } from "~~/server/services/zfs/history";
 import { enqueueUnlessPending } from "~~/server/tasks/queueable/alertsTick";
 import { isDemo } from "~~/server/utils/demo";
 
@@ -27,6 +28,7 @@ export default defineNitroPlugin(() => {
     const settings = ensureSettings();
     applySmartPolicyIfStale();
     backfillAtaSsdAttributesOnce();
+    reclassifyRoutineHistoryIfStale();
     if (!isDemo()) {
       const { replicationsBackfilledAt, faultsBackfilledAt } = settings.config;
       void queueBackfills([

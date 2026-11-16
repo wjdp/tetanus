@@ -9,10 +9,7 @@ import {
 } from "#shared/retention";
 import { sqlite } from "~~/server/database/client";
 import { optimiseDatabase } from "~~/server/services/database";
-import {
-  isRoutineHistory,
-  routineHistoryCutoff,
-} from "~~/server/services/zfs/history";
+import { routineHistoryCutoff } from "~~/server/services/zfs/history";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -101,34 +98,12 @@ function pruneCollectorRuns(now: Date) {
   );
 }
 
-async function pruneRoutineHistory(now: Date) {
-  const page = sqlite.prepare(
-    `SELECT id, internal, text FROM PoolHistory
-      WHERE at < :cutoff AND id > :after
-      ORDER BY id LIMIT ${BATCH_SIZE}`,
+function pruneRoutineHistory(now: Date) {
+  return deleteInBatches(
+    "SELECT id FROM PoolHistory WHERE routine = 1 AND at < :cutoff",
+    "PoolHistory",
+    { cutoff: routineHistoryCutoff(now).getTime() },
   );
-  const remove = sqlite.prepare("DELETE FROM PoolHistory WHERE id = ?");
-  const removeAll = sqlite.transaction((ids: number[]) => {
-    for (const id of ids) remove.run(id);
-  });
-  const cutoff = routineHistoryCutoff(now).getTime();
-  let after = 0;
-  let total = 0;
-  for (;;) {
-    const rows = page.all({ cutoff, after }) as {
-      id: number;
-      internal: number;
-      text: string;
-    }[];
-    const routine = rows
-      .filter((row) => isRoutineHistory({ ...row, internal: !!row.internal }))
-      .map((row) => row.id);
-    removeAll(routine);
-    total += routine.length;
-    if (rows.length < BATCH_SIZE) return total;
-    after = rows.at(-1)?.id ?? after;
-    await yieldToEventLoop();
-  }
 }
 
 /** Hourly maximum from 30 days; past a year, each day's minimum and maximum. */

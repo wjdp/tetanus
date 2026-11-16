@@ -163,13 +163,12 @@ describe("/api/pools", () => {
     });
   });
 
-  it("gets one pool with readings, history and events", async () => {
+  it("gets one pool with readings and events", async () => {
     const pools = await (await fetch("/api/pools")).json();
     const detail = await (await fetch(`/api/pools/${pools[0].id}`)).json();
     expect(detail).toMatchObject({
       id: pools[0].id,
       name: "tank",
-      historyScope: "host",
       diary: expect.arrayContaining([
         expect.objectContaining({ eventType: "scrub-finished" }),
       ]),
@@ -185,8 +184,39 @@ describe("/api/pools", () => {
       usedBytes: detail.usable.used,
       availableBytes: detail.usable.available,
     });
-    expect(detail.history).toHaveLength(50);
     expect(detail.events).toHaveLength(50);
+  });
+
+  it("pages a pool's history, leaving out routine lines unless asked", async () => {
+    const pools = await (await fetch("/api/pools")).json();
+    const history = (
+      query = "",
+    ): Promise<{
+      lines: { id: number; at: string; routine: boolean }[];
+      scope: string;
+      hasMore: boolean;
+    }> =>
+      fetch(`/api/pools/${pools[0].id}/history${query}`).then((response) =>
+        response.json(),
+      );
+
+    const record = await history();
+    const all = await history("?all=true");
+    const last = all.lines.at(-1);
+    if (!last) throw new Error("no history lines");
+    const older = await history(
+      `?all=true&beforeAt=${Date.parse(last.at)}&beforeId=${last.id}`,
+    );
+
+    expect(record.scope).toBe("host");
+    expect(record.lines.every((line) => !line.routine)).toBe(true);
+    expect(all).toMatchObject({ scope: "host", hasMore: true });
+    expect(all.lines).toHaveLength(50);
+    expect(all.lines.some((line) => line.routine)).toBe(true);
+    expect(older.lines[0].id).not.toBe(last.id);
+    expect(Date.parse(older.lines[0].at)).toBeLessThanOrEqual(
+      Date.parse(last.at),
+    );
   });
 
   it("gets a vdev's error and slow I/O readings", async () => {

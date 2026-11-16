@@ -47,6 +47,7 @@ export const settingsConfigSchema = z.object({
   notifications: notificationsConfigSchema,
   alertCursor: z.number().int().min(0),
   smartPolicyVersion: z.number().int().min(0),
+  routineHistoryVersion: z.number().int().min(0),
   faultsBackfilledAt: z.iso.datetime().optional(),
   ataSsdAttributesBackfilledAt: z.iso.datetime().optional(),
   replicationsBackfilledAt: z.iso.datetime().optional(),
@@ -65,6 +66,7 @@ export const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
   notifications: { pushover: null, webhook: null },
   alertCursor: 0,
   smartPolicyVersion: 0,
+  routineHistoryVersion: 0,
   replicationLateFloorHours: DEFAULT_REPLICATION_THRESHOLDS.lateFloorHours,
   replicationLateFactor: DEFAULT_REPLICATION_THRESHOLDS.lateFactor,
   replicationStalledFloorHours:

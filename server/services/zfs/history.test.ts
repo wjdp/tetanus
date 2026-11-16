@@ -18,6 +18,10 @@ describe("isRoutineHistory", () => {
       "(56ms) ioctl snapshot\n    input:\n        snaps:\n            tank/photos@autosnap",
     ),
     command("(12ms) ioctl hold\n    input:"),
+    command("zfs rollback -R zeta/q@syncoid_host_2026-10-30:01:00:37-GMT00:00"),
+    command(
+      "(43ms) ioctl rollback\n    input:\n        target: 'zeta/q@syncoid_host_2026-10-29:23:00:28-GMT00:00'\n    output:\n        target: 'zeta/q@syncoid_host_2026-10-29:23:00:28-GMT00:00'",
+    ),
     internal("snapshot tank/home@autosnap_2026-10-03_21:00:07_hourly (159266)"),
     internal("destroy tank/home@autosnap_2026-10-02_21:00:04_hourly (135393)"),
     internal("destroy tank/zeta/var/%recv (31274)"),
@@ -44,6 +48,9 @@ describe("isRoutineHistory", () => {
     command("zfs rename tank/a tank/b"),
     command("zfs set compression=lz4 tank"),
     command("zfs rollback -R tank/home@autosnap"),
+    command(
+      "(40ms) ioctl rollback\n    input:\n        target: 'tank/a@autosnap_2026-10-29_23:00:28_hourly'",
+    ),
     command("(3ms) ioctl reopen\n    input:"),
     internal("create tank/media (1234)"),
     internal("destroy tank/old (1235)"),

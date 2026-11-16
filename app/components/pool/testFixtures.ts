@@ -88,17 +88,6 @@ export const tank = {
     at: "2026-09-28T10:00:00.000Z",
   },
   diary: [],
-  history: [
-    {
-      id: 1,
-      hostId: 1,
-      poolId: null,
-      at: "2026-09-20T02:00:00.000Z",
-      internal: false,
-      text: "zpool scrub tank",
-    },
-  ],
-  historyScope: "host",
   events: [],
   datasetCount: 2,
   snapshotCount: 0,
