@@ -2,7 +2,7 @@
 import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { flushPromises } from "@vue/test-utils";
 import { getQuery } from "h3";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import HistoryList from "./HistoryList.vue";
 
 const line = (id: number, text: string, routine = false) => ({
@@ -16,6 +16,27 @@ const line = (id: number, text: string, routine = false) => ({
 });
 
 const requests: Record<string, unknown>[] = [];
+
+type ObserverCallback = (entries: Partial<IntersectionObserverEntry>[]) => void;
+const observed = new Map<Element, ObserverCallback>();
+
+class FakeIntersectionObserver {
+  constructor(private readonly callback: ObserverCallback) {}
+  observe(target: Element) {
+    observed.set(target, this.callback);
+  }
+  unobserve(target: Element) {
+    observed.delete(target);
+  }
+  disconnect() {
+    observed.clear();
+  }
+}
+
+function scrollIntoView(target: Element | undefined) {
+  if (!target) throw new Error("nothing to scroll to");
+  observed.get(target)?.([{ isIntersecting: true, time: Date.now(), target }]);
+}
 
 registerEndpoint("/api/pools/7/history", (event) => {
   const query = getQuery(event);
@@ -46,15 +67,21 @@ const texts = (page: Awaited<ReturnType<typeof mount>>) =>
 
 beforeEach(() => {
   requests.length = 0;
+  vi.stubGlobal("IntersectionObserver", FakeIntersectionObserver);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("pool history list", () => {
-  it("shows the pool's record and loads older lines on request", async () => {
+  it("shows the pool's record and loads older lines when scrolled to the end", async () => {
     const page = await mount();
     await vi.waitFor(() => expect(texts(page)).toHaveLength(1));
     expect(texts(page)[0]).toContain("zpool scrub tank");
+    expect(requests).toHaveLength(1);
 
-    await page.find('[data-testid="history-load-older"]').trigger("click");
+    scrollIntoView(page.find('[data-testid="history-end"]').element);
 
     await vi.waitFor(() => expect(texts(page)).toHaveLength(2));
     expect(texts(page)[1]).toContain("zfs create tank/a");

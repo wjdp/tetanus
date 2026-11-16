@@ -28,7 +28,7 @@ export default defineNuxtConfig({
     sharedTsConfig: relaxedIndexAccess(),
   },
   devtools: { enabled: true },
-  modules: ["@nuxt/test-utils/module", "@nuxt/ui"],
+  modules: ["@nuxt/test-utils/module", "@nuxt/ui", "@vueuse/nuxt"],
   css: ["~/assets/css/main.css"],
   // Helper modules live beside their components; only .vue files are components.
   components: [{ path: "~/components", extensions: ["vue"] }],

@@ -44,8 +44,14 @@ async function load(before?: PoolHistoryLine) {
 
 const loadOlder = () => load(lines.value.at(-1));
 
+const sentinel = useTemplateRef<HTMLElement>("sentinel");
+const nearEnd = useElementVisibility(sentinel, { rootMargin: "400px" });
+
 onMounted(() => load());
 watch(showAll, () => load());
+watch([nearEnd, status], ([visible, current]) => {
+  if (visible && current === "success" && hasMore.value) loadOlder();
+});
 </script>
 
 <template>
@@ -63,11 +69,8 @@ watch(showAll, () => load());
         data-testid="history-show-all"
       />
     </div>
-    <p v-if="status === 'error'" class="text-error py-4 text-sm">
-      Could not load history.
-    </p>
     <p
-      v-else-if="status === 'success' && lines.length === 0"
+      v-if="status === 'success' && lines.length === 0"
       class="text-dimmed py-4 text-sm"
     >
       {{ showAll ? "No history recorded." : "No history beyond snapshot and replication lines." }}
@@ -91,16 +94,23 @@ watch(showAll, () => load());
         >
       </li>
     </ul>
-    <UButton
-      v-if="hasMore"
-      label="Load older"
-      color="neutral"
-      variant="outline"
-      size="sm"
-      class="self-start"
-      :loading="status === 'pending'"
-      data-testid="history-load-older"
-      @click="loadOlder"
-    />
+    <div
+      v-if="hasMore || status !== 'success'"
+      ref="sentinel"
+      class="text-dimmed flex items-center gap-2 py-4 text-sm"
+      data-testid="history-end"
+    >
+      <template v-if="status === 'error'">
+        <span class="text-error">Could not load history.</span>
+        <UButton
+          label="Retry"
+          color="neutral"
+          variant="link"
+          size="sm"
+          @click="lines.length > 0 ? loadOlder() : load()"
+        />
+      </template>
+      <template v-else>Loading…</template>
+    </div>
   </div>
 </template>
