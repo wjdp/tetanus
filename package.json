@@ -41,7 +41,7 @@
     "pnpm": ">=12"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
+    "@biomejs/biome": "2.6.7",
     "@cloudflare/workers-types": "^5.20260926.1",
     "@nuxt/test-utils": "4.2.0",
     "@nuxt/ui": "^4.11.2",

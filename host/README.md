@@ -32,13 +32,13 @@ The installer is idempotent; re-running it updates the script and units and leav
 existing config alone. To upgrade a host, the Hosts page flags outdated
 collectors and shows `curl -fsSL https://tetanus.example/host/install.sh | sudo bash`. It installs:
 
-| file | purpose |
-| --- | --- |
-| `/usr/local/bin/tetanus-collect` | the collector |
-| `/etc/systemd/system/tetanus-collect@.service` | one oneshot run of a group |
-| `/etc/systemd/system/tetanus-collect-{zfs,smart,snapshots}.timer` | the schedule |
-| `/usr/local/libexec/tetanus/all-tetanus.sh`, symlinked from `/etc/zfs/zed.d/` | ZED hook |
-| `/etc/tetanus/collect.env` (mode 600) | `TETANUS_URL`, `TETANUS_TOKEN`, optional `TETANUS_HOST` |
+| file                                                                          | purpose                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `/usr/local/bin/tetanus-collect`                                              | the collector                                           |
+| `/etc/systemd/system/tetanus-collect@.service`                                | one oneshot run of a group                              |
+| `/etc/systemd/system/tetanus-collect-{zfs,smart,snapshots}.timer`             | the schedule                                            |
+| `/usr/local/libexec/tetanus/all-tetanus.sh`, symlinked from `/etc/zfs/zed.d/` | ZED hook                                                |
+| `/etc/tetanus/collect.env` (mode 600)                                         | `TETANUS_URL`, `TETANUS_TOKEN`, optional `TETANUS_HOST` |
 
 It then enables the timers, restarts ZED, runs a `--dry-run` as a smoke check and
 starts one collection of every group in the background so the host reports straight
@@ -46,12 +46,12 @@ away (`--no-collect` to skip it).
 
 ## What runs when
 
-| timer | when | sources |
-| --- | --- | --- |
-| `tetanus-collect-zfs` | every 10 min | `versions`, `zpool-status`, `zpool-list`, `zfs-list`, `zpool-history`, `zfs-receives`, `zpool-events`, `vdev-id-conf` |
-| `tetanus-collect-smart` | hourly | `lsblk`, `udev` (per disk), `enclosure`, `smartctl-scan`, `smartctl-xall` (per scanned device) |
-| `tetanus-collect-snapshots` | hourly | `zfs-snapshots` |
-| ZED hook | every ZFS event | `zed-event` |
+| timer                       | when            | sources                                                                                                               |
+| --------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `tetanus-collect-zfs`       | every 10 min    | `versions`, `zpool-status`, `zpool-list`, `zfs-list`, `zpool-history`, `zfs-receives`, `zpool-events`, `vdev-id-conf` |
+| `tetanus-collect-smart`     | hourly          | `lsblk`, `udev` (per disk), `enclosure`, `smartctl-scan`, `smartctl-xall` (per scanned device)                        |
+| `tetanus-collect-snapshots` | hourly          | `zfs-snapshots`                                                                                                       |
+| ZED hook                    | every ZFS event | `zed-event`                                                                                                           |
 
 Each source is one command whose stdout is POSTed to `/api/ingest/<source>`:
 

@@ -26,7 +26,7 @@ const count = computed(() => simulations.value.length);
   <div
     v-if="count"
     data-testid="simulation-banner"
-    class="bg-elevated border-default border-s-warning text-muted flex items-center gap-3 border-b border-s-[3px] py-1.5 ps-4 pe-2 text-sm"
+    class="bg-elevated border-default border-s-warning text-muted flex items-center gap-3 border-s-[3px] border-b py-1.5 ps-4 pe-2 text-sm"
   >
     <UIcon name="i-lucide-flask-conical" class="text-warning size-4 shrink-0" />
     <span class="flex-1">

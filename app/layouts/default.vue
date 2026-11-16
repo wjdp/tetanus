@@ -9,7 +9,7 @@ const demo = useRuntimeConfig().public.demo;
       <p
         v-if="demo"
         data-testid="demo-banner"
-        class="bg-elevated border-default border-s-info text-muted flex items-center gap-3 border-b border-s-[3px] py-2.5 ps-4 pe-2 text-sm"
+        class="bg-elevated border-default border-s-info text-muted flex items-center gap-3 border-s-[3px] border-b py-2.5 ps-4 pe-2 text-sm"
       >
         <UIcon
           name="i-lucide-flask-conical"

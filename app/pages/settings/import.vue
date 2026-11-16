@@ -241,7 +241,7 @@ const totals = computed(() =>
             </template>
 
             <template #cutoff-cell="{ row }">
-              <span class="whitespace-nowrap font-mono text-xs">
+              <span class="font-mono text-xs whitespace-nowrap">
                 {{ row.original.cutoff ? formatDate(row.original.cutoff) : "all" }}
               </span>
             </template>

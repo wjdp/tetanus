@@ -54,7 +54,7 @@ const performFor =
         <button
           v-if="hasUpgradeCommand(fault)"
           type="button"
-          class="bg-muted border-default text-toned hover:text-highlighted hover:border-accented focus-visible:ring-primary group inline-flex min-w-0 max-w-full items-center gap-2 rounded-md border px-2 py-0.5 text-start font-mono text-xs focus-visible:ring-2 focus-visible:outline-none"
+          class="bg-muted border-default text-toned hover:text-highlighted hover:border-accented focus-visible:ring-primary group inline-flex max-w-full min-w-0 items-center gap-2 rounded-md border px-2 py-0.5 text-start font-mono text-xs focus-visible:ring-2 focus-visible:outline-none"
           :aria-label="`Copy upgrade command for ${faultHostLabel(fault)}`"
           @click="copyToClipboard(command, 'Upgrade command')"
         >

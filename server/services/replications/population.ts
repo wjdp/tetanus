@@ -238,6 +238,7 @@ export function fillSyncGuids(now: Date) {
 }
 
 function earliest(lines: ReceiveLine[], fallback: Date) {
+  // biome-ignore lint/complexity/useMathMinMax: Math.min would turn the Dates into numbers
   return lines.reduce((min, line) => (line.at < min ? line.at : min), fallback);
 }
 

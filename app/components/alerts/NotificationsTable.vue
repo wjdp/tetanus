@@ -39,7 +39,7 @@ const columns: TableColumn<NotificationRow>[] = [
     data-testid="notifications"
   >
     <template #at-cell="{ row }">
-      <span class="text-muted whitespace-nowrap font-mono text-xs">
+      <span class="text-muted font-mono text-xs whitespace-nowrap">
         {{ formatTimestamp(row.original.at) }}
       </span>
     </template>

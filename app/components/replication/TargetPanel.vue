@@ -14,7 +14,7 @@ defineProps<{ replication: ReplicationDetail; now: number }>();
   >
     <span
       aria-hidden="true"
-      class="bg-default border-default text-dimmed absolute start-1/2 -top-5 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border md:top-1/2 md:-start-5 md:translate-x-0 md:-translate-y-1/2"
+      class="bg-default border-default text-dimmed absolute start-1/2 -top-5 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border md:-start-5 md:top-1/2 md:translate-x-0 md:-translate-y-1/2"
     >
       <UIcon name="i-lucide-arrow-down" class="size-3.5 md:hidden" />
       <UIcon name="i-lucide-arrow-right" class="hidden size-3.5 md:block" />

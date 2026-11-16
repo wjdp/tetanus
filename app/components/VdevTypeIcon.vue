@@ -10,7 +10,7 @@ const vocabulary = computed(() => vdevTypeVocabulary(props.type));
   <UIcon
     v-if="vocabulary"
     :name="vocabulary.icon"
-    class="size-4 shrink-0 text-muted"
+    class="text-muted size-4 shrink-0"
     :data-vdev-type="type"
   />
 </template>

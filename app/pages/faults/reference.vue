@@ -95,7 +95,7 @@ const sections = FAULT_CATEGORIES.map((category) => ({
         v-for="entry in section.kinds"
         :id="entry.kind"
         :key="entry.kind"
-        class="border-default flex scroll-mt-4 flex-col gap-2 rounded-lg border p-4 target:ring-2 target:ring-primary"
+        class="border-default target:ring-primary flex scroll-mt-4 flex-col gap-2 rounded-lg border p-4 target:ring-2"
         data-testid="fault-kind"
       >
         <header class="flex flex-wrap items-baseline gap-2">

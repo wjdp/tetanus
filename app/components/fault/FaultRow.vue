@@ -90,7 +90,7 @@ const age = computed(() => {
         <button
           v-if="showsUpgradeCommand"
           type="button"
-          class="bg-muted border-default text-toned hover:text-highlighted hover:border-accented focus-visible:ring-primary group relative z-10 inline-flex min-w-0 max-w-full items-center gap-2 self-start rounded-md border px-2 py-0.5 text-start font-mono text-xs focus-visible:ring-2 focus-visible:outline-none"
+          class="bg-muted border-default text-toned hover:text-highlighted hover:border-accented focus-visible:ring-primary group relative z-10 inline-flex max-w-full min-w-0 items-center gap-2 self-start rounded-md border px-2 py-0.5 text-start font-mono text-xs focus-visible:ring-2 focus-visible:outline-none"
           :aria-label="`Copy upgrade command for ${hostLabel}`"
           @click="copyToClipboard(upgradeCommand, 'Upgrade command')"
         >

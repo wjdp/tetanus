@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [unit, seeded, app, e2e]
+        project: [ unit, seeded, app, e2e ]
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
