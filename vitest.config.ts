@@ -47,6 +47,7 @@ export default defineConfig({
       await defineVitestProject({
         test: {
           name: "app",
+          maxWorkers: 4,
           include: ["app/**/*.test.ts"],
           setupFiles: ["test/appSetup.ts"],
         },
