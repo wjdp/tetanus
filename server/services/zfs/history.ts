@@ -1,16 +1,4 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gt,
-  isNull,
-  lt,
-  notLike,
-  or,
-  type SQL,
-  sql,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, notLike, sql } from "drizzle-orm";
 import { ROUTINE_HISTORY_DAYS } from "#shared/retention";
 import type { PoolHistoryQuery } from "#shared/schemas/pools";
 import { db } from "~~/server/database/client";
@@ -24,11 +12,11 @@ import {
   ensureSettings,
   setRoutineHistoryVersion,
 } from "~~/server/services/settings";
+import { olderThan, type Page, pageOf } from "~~/server/utils/page";
 import { notFound } from "~~/server/utils/serviceError";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RECLASSIFY_BATCH_SIZE = 5000;
-export const POOL_HISTORY_PAGE_SIZE = 50;
 const IOCTL_RECORD_LIKE = "(%ms) ioctl %";
 
 const ROUTINE_COMMAND_RES = [
@@ -161,11 +149,9 @@ export function reclassifyRoutineHistoryIfStale(): boolean {
 
 export type PoolHistoryRow = typeof poolHistory.$inferSelect;
 
-export interface PoolHistoryPage {
-  lines: PoolHistoryRow[];
+export interface PoolHistoryPage extends Page<PoolHistoryRow> {
   /** "host" when the collected history has no pool headers to attribute lines. */
   scope: "pool" | "host";
-  hasMore: boolean;
 }
 
 function hasPoolScopedHistory(poolId: number) {
@@ -185,7 +171,7 @@ function hasPoolScopedHistory(poolId: number) {
  */
 export function listPoolHistory(
   poolId: number,
-  { all, beforeAt, beforeId }: PoolHistoryQuery,
+  { all, limit, ...cursor }: PoolHistoryQuery,
 ): PoolHistoryPage {
   const row = db
     .select({ hostId: pool.hostId })
@@ -194,35 +180,21 @@ export function listPoolHistory(
     .get();
   if (!row) throw notFound(`Pool ${poolId} not found`);
   const scope = hasPoolScopedHistory(poolId) ? "pool" : "host";
-  const conditions: (SQL | undefined)[] = [
-    scope === "pool"
-      ? eq(poolHistory.poolId, poolId)
-      : and(eq(poolHistory.hostId, row.hostId), isNull(poolHistory.poolId)),
-  ];
-  if (!all)
-    conditions.push(
-      eq(poolHistory.routine, false),
-      notLike(poolHistory.text, IOCTL_RECORD_LIKE),
-    );
-  if (beforeAt !== undefined && beforeId !== undefined) {
-    const before = new Date(beforeAt);
-    conditions.push(
-      or(
-        lt(poolHistory.at, before),
-        and(eq(poolHistory.at, before), lt(poolHistory.id, beforeId)),
-      ),
-    );
-  }
   const lines = db
     .select()
     .from(poolHistory)
-    .where(and(...conditions))
+    .where(
+      and(
+        scope === "pool"
+          ? eq(poolHistory.poolId, poolId)
+          : and(eq(poolHistory.hostId, row.hostId), isNull(poolHistory.poolId)),
+        all ? undefined : eq(poolHistory.routine, false),
+        all ? undefined : notLike(poolHistory.text, IOCTL_RECORD_LIKE),
+        olderThan(poolHistory.at, poolHistory.id, cursor),
+      ),
+    )
     .orderBy(desc(poolHistory.at), desc(poolHistory.id))
-    .limit(POOL_HISTORY_PAGE_SIZE + 1)
+    .limit(limit + 1)
     .all();
-  return {
-    lines: lines.slice(0, POOL_HISTORY_PAGE_SIZE),
-    scope,
-    hasMore: lines.length > POOL_HISTORY_PAGE_SIZE,
-  };
+  return { ...pageOf(lines, limit), scope };
 }

@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { ALERT_CHANNELS } from "../alerts";
+import { pageQuerySchema } from "./page";
 
-export const alertsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(500).default(50),
-});
+export const alertsQuerySchema = pageQuerySchema({});
 
 export const alertTestBodySchema = z.strictObject({
   channel: z.enum(ALERT_CHANNELS),

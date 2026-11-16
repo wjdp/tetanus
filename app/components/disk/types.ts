@@ -7,7 +7,7 @@ export type SmartOverview = InternalApi["/api/disks/:id/smart"]["get"];
 export type DiskStatisticsView =
   InternalApi["/api/disks/:id/statistics"]["get"];
 export type LatestAttribute = SmartOverview["attributes"][number];
-export type DiaryEntry = InternalApi["/api/diary"]["get"][number];
+export type DiaryEntry = InternalApi["/api/diary"]["get"]["items"][number];
 
 export interface ReplacementCandidate {
   id: number;

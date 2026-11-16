@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatTimestamp } from "~/components/pool/timestamp";
-import type { PoolHistoryLine, PoolHistoryPage } from "~/components/pool/types";
+import type { PoolHistoryPage } from "~/components/pool/types";
 
 const props = defineProps<{ poolId: number; hostName: string }>();
 
@@ -15,43 +15,19 @@ const showAll = computed({
     }),
 });
 
-const lines = ref<PoolHistoryLine[]>([]);
 const scope = ref<PoolHistoryPage["scope"]>("pool");
-const hasMore = ref(false);
-const status = ref<"pending" | "success" | "error">("pending");
-let latestRequest = 0;
 
-async function load(before?: PoolHistoryLine) {
-  const request = ++latestRequest;
-  status.value = "pending";
-  try {
-    const page = await $fetch(`/api/pools/${props.poolId}/history`, {
-      query: {
-        all: showAll.value ? "true" : undefined,
-        beforeAt: before ? Date.parse(before.at) : undefined,
-        beforeId: before?.id,
-      },
-    });
-    if (request !== latestRequest) return;
-    lines.value = before ? [...lines.value, ...page.lines] : page.lines;
-    scope.value = page.scope;
-    hasMore.value = page.hasMore;
-    status.value = "success";
-  } catch {
-    if (request === latestRequest) status.value = "error";
-  }
-}
-
-const loadOlder = () => load(lines.value.at(-1));
-
-const sentinel = useTemplateRef<HTMLElement>("sentinel");
-const nearEnd = useElementVisibility(sentinel, { rootMargin: "400px" });
-
-onMounted(() => load());
-watch(showAll, () => load());
-watch([nearEnd, status], ([visible, current]) => {
-  if (visible && current === "success" && hasMore.value) loadOlder();
+const history = useInfiniteList(async (page) => {
+  const result = await $fetch(`/api/pools/${props.poolId}/history`, {
+    query: { ...page, all: showAll.value ? "true" : undefined },
+  });
+  scope.value = result.scope;
+  return result;
 });
+const { items: lines, status, hasMore } = history;
+
+onMounted(history.reload);
+watch(showAll, history.reload);
 </script>
 
 <template>
@@ -94,23 +70,11 @@ watch([nearEnd, status], ([visible, current]) => {
         >
       </li>
     </ul>
-    <div
-      v-if="hasMore || status !== 'success'"
-      ref="sentinel"
-      class="text-dimmed flex items-center gap-2 py-4 text-sm"
-      data-testid="history-end"
-    >
-      <template v-if="status === 'error'">
-        <span class="text-error">Could not load history.</span>
-        <UButton
-          label="Retry"
-          color="neutral"
-          variant="link"
-          size="sm"
-          @click="lines.length > 0 ? loadOlder() : load()"
-        />
-      </template>
-      <template v-else>Loading…</template>
-    </div>
+    <InfiniteListEnd
+      :status="status"
+      :has-more="hasMore"
+      @load-more="history.loadMore"
+      @retry="history.retry"
+    />
   </div>
 </template>

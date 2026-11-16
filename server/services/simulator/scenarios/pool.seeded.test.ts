@@ -4,10 +4,20 @@ import type { SimulationParams } from "#shared/simulator";
 import { runAlertsPass } from "~~/server/services/alerts/dispatch";
 import { listFaults } from "~~/server/services/faults";
 import { recordIngest } from "~~/server/services/ingest";
-import { getPool, listPools, type PoolDetail } from "~~/server/services/zfs";
+import {
+  getPool,
+  listPoolDiary,
+  listPoolEvents,
+  listPools,
+  type PoolDetail,
+} from "~~/server/services/zfs";
 import { dumpDatabase } from "~~/test/db";
 import { readFixture } from "~~/test/fixtures";
 import { loadSeededDatabase, SEEDED_AT } from "~~/test/seeded";
+
+const diaryOf = (poolId: number) =>
+  listPoolDiary(poolId, { limit: 1000 }).items;
+
 import { restore, simulate, subjectScenarios } from "../run";
 
 const NOW = SEEDED_AT;
@@ -97,7 +107,7 @@ describe("pool scenarios", () => {
     );
     const failed = vdevs.filter((vdev) => vdev.state === "FAULTED");
     expect(failed).toHaveLength(1);
-    expect(pool.diary.map((entry) => entry.eventType)).toContain(
+    expect(diaryOf(id).map((entry) => entry.eventType)).toContain(
       "pool-state-changed",
     );
     expect(kindsOf(faults)).toEqual([["pool-degraded", "pool", "error"]]);
@@ -164,7 +174,7 @@ describe("pool scenarios", () => {
     expect(pool.scan).toMatchObject({ state: "FINISHED", errors: 3 });
     expect(pool.errors).toBe(3);
     expect(
-      pool.diary.find((entry) => entry.eventType === "scrub-finished"),
+      diaryOf(id).find((entry) => entry.eventType === "scrub-finished"),
     ).toMatchObject({ at: LATER, data: { errors: 3 } });
     expect(kindsOf(faults)).toEqual([["pool-data-errors", "pool", "error"]]);
   }, 60_000);
@@ -287,7 +297,7 @@ describe("pool scenarios", () => {
   it("adds an error burst to the events", async () => {
     const id = poolId("atlas", "tank");
     await simulate("pool", id, "error-burst", { count: 10 }, LATER);
-    const { events } = getPool(id, LATER);
+    const { items: events } = listPoolEvents(id, { limit: 1000 });
     const burst = events.filter(
       (event) =>
         event.class === "ereport.fs.zfs.checksum" &&

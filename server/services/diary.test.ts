@@ -5,6 +5,7 @@ import {
   deleteManualEntry,
   latestAutoEvent,
   listDiary,
+  listDiaryPage,
   updateManualEntry,
 } from "~~/server/services/diary";
 import { flushDb } from "~~/test/db";
@@ -85,6 +86,49 @@ describe("diary", () => {
       "a",
     ]);
     expect(listDiary({ limit: 1 })).toHaveLength(1);
+  });
+
+  it("pages newest first by kind, with a cursor and the matching total", () => {
+    const at = (minute: number) => new Date(Date.UTC(2026, 8, 1, 10, minute));
+    for (const minute of [1, 2, 3])
+      addManualEntry({
+        subjectType: "disk",
+        subjectId: 1,
+        title: `m${minute}`,
+        at: at(minute),
+      });
+    addAutoEvent({
+      subjectType: "disk",
+      subjectId: 1,
+      eventType: "moved-host",
+      title: "auto",
+      at: at(4),
+    });
+    addManualEntry({
+      subjectType: "disk",
+      subjectId: 1,
+      title: "same time",
+      at: at(3),
+    });
+
+    const query = {
+      subjectType: "disk",
+      subjectId: 1,
+      kind: "manual",
+    } as const;
+    const first = listDiaryPage({ ...query, limit: 2 });
+    const last = first.items.at(-1);
+    const second = listDiaryPage({
+      ...query,
+      limit: 2,
+      beforeAt: last?.at.getTime(),
+      beforeId: last?.id,
+    });
+
+    expect(first.items.map((row) => row.title)).toEqual(["same time", "m3"]);
+    expect(first).toMatchObject({ hasMore: true, total: 4 });
+    expect(second.items.map((row) => row.title)).toEqual(["m2", "m1"]);
+    expect(second).toMatchObject({ hasMore: false, total: 4 });
   });
 
   it("finds the latest auto event of a type for a subject", () => {

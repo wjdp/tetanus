@@ -115,21 +115,23 @@ registerEndpoint("/api/disks", () => [
 ]);
 registerEndpoint("/api/diary", (event) => {
   const query = getQuery(event);
-  return query.subjectType === "host" && query.subjectId === "2"
-    ? [
-        {
-          id: 9,
-          subjectType: "host",
-          subjectId: 2,
-          at: now,
-          kind: "manual",
-          eventType: null,
-          title: "Moved to the loft",
-          body: "",
-          data: null,
-        },
-      ]
-    : [];
+  const items =
+    query.subjectType === "host" && query.subjectId === "2"
+      ? [
+          {
+            id: 9,
+            subjectType: "host",
+            subjectId: 2,
+            at: now,
+            kind: "manual",
+            eventType: null,
+            title: "Moved to the loft",
+            body: "",
+            data: null,
+          },
+        ]
+      : [];
+  return { items, hasMore: false, total: items.length };
 });
 registerEndpoint("/api/faults", (event) => {
   faultQueries.push(getQuery(event));
@@ -223,7 +225,7 @@ describe("host page", () => {
       "<strong>stairs</strong>",
     );
     await openTab(page, "Diary");
-    expect(page.text()).toContain("Moved to the loft");
+    await vi.waitFor(() => expect(page.text()).toContain("Moved to the loft"));
   });
 
   it("saves the settings", async () => {

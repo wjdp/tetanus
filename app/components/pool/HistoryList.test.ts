@@ -3,6 +3,10 @@ import { mountSuspended, registerEndpoint } from "@nuxt/test-utils/runtime";
 import { flushPromises } from "@vue/test-utils";
 import { getQuery } from "h3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  scrollIntoView,
+  stubIntersectionObserver,
+} from "~~/test/intersectionObserver";
 import HistoryList from "./HistoryList.vue";
 
 const line = (id: number, text: string, routine = false) => ({
@@ -17,43 +21,22 @@ const line = (id: number, text: string, routine = false) => ({
 
 const requests: Record<string, unknown>[] = [];
 
-type ObserverCallback = (entries: Partial<IntersectionObserverEntry>[]) => void;
-const observed = new Map<Element, ObserverCallback>();
-
-class FakeIntersectionObserver {
-  constructor(private readonly callback: ObserverCallback) {}
-  observe(target: Element) {
-    observed.set(target, this.callback);
-  }
-  unobserve(target: Element) {
-    observed.delete(target);
-  }
-  disconnect() {
-    observed.clear();
-  }
-}
-
-function scrollIntoView(target: Element | undefined) {
-  if (!target) throw new Error("nothing to scroll to");
-  observed.get(target)?.([{ isIntersecting: true, time: Date.now(), target }]);
-}
-
 registerEndpoint("/api/pools/7/history", (event) => {
   const query = getQuery(event);
   requests.push(query);
   if (query.beforeId === "2")
     return {
-      lines: [line(1, "zfs create tank/a")],
+      items: [line(1, "zfs create tank/a")],
       scope: "pool",
       hasMore: false,
     };
   if (query.all === "true")
     return {
-      lines: [line(3, "zfs snapshot tank/a@autosnap", true)],
+      items: [line(3, "zfs snapshot tank/a@autosnap", true)],
       scope: "pool",
       hasMore: false,
     };
-  return { lines: [line(2, "zpool scrub tank")], scope: "pool", hasMore: true };
+  return { items: [line(2, "zpool scrub tank")], scope: "pool", hasMore: true };
 });
 
 const mount = (route = "/zfs/nas1/tank?tab=history") =>
@@ -67,7 +50,7 @@ const texts = (page: Awaited<ReturnType<typeof mount>>) =>
 
 beforeEach(() => {
   requests.length = 0;
-  vi.stubGlobal("IntersectionObserver", FakeIntersectionObserver);
+  stubIntersectionObserver();
 });
 
 afterEach(() => {
@@ -81,7 +64,7 @@ describe("pool history list", () => {
     expect(texts(page)[0]).toContain("zpool scrub tank");
     expect(requests).toHaveLength(1);
 
-    scrollIntoView(page.find('[data-testid="history-end"]').element);
+    scrollIntoView(page.find('[data-testid="infinite-list-end"]').element);
 
     await vi.waitFor(() => expect(texts(page)).toHaveLength(2));
     expect(texts(page)[1]).toContain("zfs create tank/a");
@@ -103,7 +86,7 @@ describe("pool history list", () => {
 
   it("says when the host's history has no pool headers", async () => {
     registerEndpoint("/api/pools/8/history", () => ({
-      lines: [],
+      items: [],
       scope: "host",
       hasMore: false,
     }));

@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, gt, isNotNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, isNotNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { type AlertChannel, TEST_RULE } from "#shared/alerts";
 import { APP_NAME } from "#shared/app";
 import { replicationLabel } from "#shared/replications";
+import type { PageQuery } from "#shared/schemas/page";
 import type { NotificationsConfig } from "#shared/schemas/settings";
 import { db } from "~~/server/database/client";
 import {
@@ -36,6 +37,7 @@ import { syncFaults } from "~~/server/services/faults";
 import { getSettings, setAlertCursor } from "~~/server/services/settings";
 import { simulationActive } from "~~/server/services/simulator/capture";
 import { isDemo } from "~~/server/utils/demo";
+import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
 
 export type NotificationRow = typeof notification.$inferSelect;
 
@@ -295,6 +297,22 @@ export async function sendTestNotification(
     },
     fetchImpl,
   );
+}
+
+export function listNotificationsPage({
+  limit,
+  ...cursor
+}: PageQuery): CountedPage<NotificationRow> {
+  const rows = db
+    .select()
+    .from(notification)
+    .where(olderThan(notification.at, notification.id, cursor))
+    .orderBy(desc(notification.at), desc(notification.id))
+    .limit(limit + 1)
+    .all();
+  const total =
+    db.select({ total: count() }).from(notification).get()?.total ?? 0;
+  return { ...pageOf(rows, limit), total };
 }
 
 export function listNotifications(

@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { DIARY_SUBJECT_TYPES } from "../diary";
+import { DIARY_ENTRY_KINDS, DIARY_SUBJECT_TYPES } from "../diary";
+import { pageQuerySchema } from "./page";
 
 const subjectId = z.coerce.number().int().positive();
 
-export const diaryQuerySchema = z.object({
+export const diaryQuerySchema = pageQuerySchema({
   subjectType: z.enum(DIARY_SUBJECT_TYPES).optional(),
   subjectId: subjectId.optional(),
-  limit: z.coerce.number().int().min(1).max(1000).default(100),
+  kind: z.enum(DIARY_ENTRY_KINDS).optional(),
 });
 
 export type DiaryQuery = z.infer<typeof diaryQuerySchema>;

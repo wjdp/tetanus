@@ -33,6 +33,8 @@ import { ensureSettings } from "~~/server/services/settings";
 import {
   getPool,
   getVdevReadings,
+  listPoolDiary,
+  listPoolEvents,
   listPoolHistory,
   listPools,
   type PoolHistoryPage,
@@ -1202,7 +1204,7 @@ describe("pool queries", () => {
     expect(nodes.some((node) => node.guid === K1_GUID)).toBe(false);
   });
 
-  it("returns pool detail with readings, diary and events", () => {
+  it("returns pool detail, and pages its diary and events", () => {
     run("zpool-status", marsStatus());
     const without = marsStatus();
     tank(without).vdevs = tank(without).vdevs.filter(
@@ -1220,19 +1222,31 @@ describe("pool queries", () => {
       .where(eq(pool.guid, TANK_GUID))
       .get();
 
-    const detail = getPool(tankRow?.id ?? 0, minutesAfter(20));
+    const id = tankRow?.id ?? 0;
+    const detail = getPool(id, minutesAfter(20));
     expect(detail.readings).toHaveLength(2);
-    expect(detail.diary.map((entry) => entry.eventType)).toEqual([
+    expect(detail.resolvedConfig).toEqual(POOL_CONFIG_DEFAULTS);
+
+    const diary = listPoolDiary(id, { limit: 50 });
+    expect(diary).toMatchObject({ total: 2, hasMore: false });
+    expect(diary.items.map((entry) => entry.eventType)).toEqual([
       "vdev-left",
       "scrub-finished",
     ]);
-    expect(detail.resolvedConfig).toEqual(POOL_CONFIG_DEFAULTS);
-    expect(detail.events).toHaveLength(50);
-    expect(detail.events.every((row) => row.poolGuid === TANK_GUID)).toBe(true);
-    expect(
-      (detail.events[0]?.at.getTime() ?? 0) >=
-        (detail.events[49]?.at.getTime() ?? 0),
-    ).toBe(true);
+
+    const events = listPoolEvents(id, { limit: 50 });
+    expect(events.total).toBe(detail.eventCount);
+    expect(events).toMatchObject({ hasMore: true });
+    expect(events.items).toHaveLength(50);
+    expect(events.items.every((row) => row.poolGuid === TANK_GUID)).toBe(true);
+    const last = events.items.at(-1);
+    const older = listPoolEvents(id, {
+      limit: 50,
+      beforeAt: last?.at.getTime(),
+      beforeId: last?.id,
+    });
+    expect(older.items.length).toBe(Math.min(50, detail.eventCount - 50));
+    expect(older.items.map((row) => row.id)).not.toContain(last?.id);
   });
 
   it("gives a vdev's readings over the window, opening with the one in force and closing with the current counters", () => {
@@ -1292,7 +1306,7 @@ describe("pool history page", () => {
   });
   const tankId = () =>
     db.select().from(pool).where(eq(pool.guid, TANK_GUID)).get()?.id ?? 0;
-  const texts = (page: PoolHistoryPage) => page.lines.map((line) => line.text);
+  const texts = (page: PoolHistoryPage) => page.items.map((line) => line.text);
 
   beforeEach(() => {
     run("zpool-status", marsStatus());
@@ -1311,7 +1325,7 @@ describe("pool history page", () => {
       ],
     });
 
-    const page = listPoolHistory(tankId(), { all: false });
+    const page = listPoolHistory(tankId(), { all: false, limit: 50 });
 
     expect(page).toMatchObject({ scope: "pool", hasMore: false });
     expect(texts(page)).toEqual([
@@ -1319,16 +1333,18 @@ describe("pool history page", () => {
       "zfs rollback -R tank/a@autosnap_hourly",
       "zfs create tank/a",
     ]);
-    expect(listPoolHistory(tankId(), { all: true }).lines).toHaveLength(7);
+    expect(
+      listPoolHistory(tankId(), { all: true, limit: 50 }).items,
+    ).toHaveLength(7);
   });
 
   it("falls back to the host's lines when none name a pool", () => {
     run("zpool-history", {
       entries: [entry("zpool scrub tank", 1, { pool: null })],
     });
-    expect(listPoolHistory(tankId(), { all: false })).toMatchObject({
+    expect(listPoolHistory(tankId(), { all: false, limit: 50 })).toMatchObject({
       scope: "host",
-      lines: [{ text: "zpool scrub tank" }],
+      items: [{ text: "zpool scrub tank" }],
     });
   });
 
@@ -1339,16 +1355,17 @@ describe("pool history page", () => {
       ),
     });
 
-    const first = listPoolHistory(tankId(), { all: false });
-    const last = first.lines.at(-1);
+    const first = listPoolHistory(tankId(), { all: false, limit: 50 });
+    const last = first.items.at(-1);
     const second = listPoolHistory(tankId(), {
       all: false,
+      limit: 50,
       beforeAt: last?.at.getTime(),
       beforeId: last?.id,
     });
 
     expect(first).toMatchObject({ hasMore: true });
-    expect(first.lines).toHaveLength(50);
+    expect(first.items).toHaveLength(50);
     expect(texts(first)[0]).toBe("zfs set quota=54G tank/a");
     expect(second).toMatchObject({ hasMore: false });
     expect(texts(second)).toEqual([

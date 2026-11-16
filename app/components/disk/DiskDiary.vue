@@ -4,22 +4,6 @@ import type { DiaryEntryKind } from "#shared/diary";
 const props = defineProps<{ diskId: number }>();
 const emit = defineEmits<{ changed: [] }>();
 
-const FIRST_PAGE = 20;
-const PAGE_GROWTH = 50;
-
-const limit = ref(FIRST_PAGE);
-const query = computed(() => ({
-  subjectType: "disk",
-  subjectId: props.diskId,
-  limit: limit.value,
-}));
-
-const {
-  data: entries,
-  status,
-  refresh,
-} = useFetch("/api/diary", { query, server: false, lazy: true });
-
 type KindFilter = "all" | DiaryEntryKind;
 const kindFilter = ref<KindFilter>("all");
 const kindItems: { label: string; value: KindFilter }[] = [
@@ -28,24 +12,25 @@ const kindItems: { label: string; value: KindFilter }[] = [
   { label: "Auto", value: "auto" },
 ];
 
-const visibleEntries = computed(() =>
-  (entries.value ?? []).filter(
-    (entry) => kindFilter.value === "all" || entry.kind === kindFilter.value,
-  ),
+const diary = useInfiniteList((page) =>
+  $fetch("/api/diary", {
+    query: {
+      ...page,
+      subjectType: "disk",
+      subjectId: props.diskId,
+      kind: kindFilter.value === "all" ? undefined : kindFilter.value,
+    },
+  }),
 );
+const { items: entries, status, hasMore } = diary;
 
-const hasOlder = computed(
-  () => (entries.value?.length ?? 0) === limit.value,
-);
-
-const showOlder = () => {
-  limit.value += PAGE_GROWTH;
-};
+onMounted(diary.reload);
+watch([kindFilter, () => props.diskId], diary.reload);
 
 const formOpen = ref(false);
 
 const refreshAfterChange = async () => {
-  await refresh();
+  await diary.refresh();
   emit("changed");
 };
 
@@ -97,25 +82,19 @@ const onSaved = async () => {
       />
     </div>
 
-    <DiaryTimeline
-      :entries="visibleEntries"
-      :show-subject="false"
-      :empty="
-        status === 'pending' && !entries ? 'Loading…' : 'Nothing recorded yet.'
-      "
-      @changed="refreshAfterChange"
-    />
-
-    <UButton
-      v-if="hasOlder"
-      color="neutral"
-      variant="ghost"
-      icon="i-lucide-chevron-down"
-      label="Show older"
-      :loading="status === 'pending'"
-      class="self-start"
-      data-testid="show-older"
-      @click="showOlder"
-    />
+    <div class="flex flex-col">
+      <DiaryTimeline
+        :entries="entries"
+        :show-subject="false"
+        :empty="status === 'success' ? 'Nothing recorded yet.' : ''"
+        @changed="refreshAfterChange"
+      />
+      <InfiniteListEnd
+        :status="status"
+        :has-more="hasMore"
+        @load-more="diary.loadMore"
+        @retry="diary.retry"
+      />
+    </div>
   </section>
 </template>

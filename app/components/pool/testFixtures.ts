@@ -87,8 +87,7 @@ export const tank = {
     available: 3 * 2 ** 43,
     at: "2026-09-28T10:00:00.000Z",
   },
-  diary: [],
-  events: [],
+  eventCount: 0,
   datasetCount: 2,
   snapshotCount: 0,
 };

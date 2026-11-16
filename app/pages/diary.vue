@@ -3,31 +3,35 @@ import { getPageTitle } from "#shared/app";
 import {
   DIARY_ENTRY_KINDS,
   DIARY_SUBJECT_TYPES,
+  type DiaryEntryKind,
   type DiarySubjectType,
 } from "#shared/diary";
 
 useSeoMeta({ title: getPageTitle("Diary") });
 
 const ALL = "all";
-const DIARY_LIMIT = 200;
 
 const route = useRoute();
 
 const subjectFilter = ref<string>(ALL);
 const kindFilter = ref<string>(ALL);
 
-const query = computed(() => ({
-  limit: DIARY_LIMIT,
-  ...(subjectFilter.value === ALL ? {} : { subjectType: subjectFilter.value }),
+const filters = computed(() => ({
+  subjectType:
+    subjectFilter.value === ALL
+      ? undefined
+      : (subjectFilter.value as DiarySubjectType),
+  kind:
+    kindFilter.value === ALL ? undefined : (kindFilter.value as DiaryEntryKind),
 }));
 
-const { data: entries, refresh } = await useFetch("/api/diary", { query });
-
-const visibleEntries = computed(() =>
-  (entries.value ?? []).filter(
-    (entry) => kindFilter.value === ALL || entry.kind === kindFilter.value,
-  ),
+const diary = useInfiniteList((page) =>
+  $fetch("/api/diary", { query: { ...page, ...filters.value } }),
 );
+const { items: entries, status, hasMore } = diary;
+
+onMounted(diary.reload);
+watch(filters, diary.reload);
 
 const subjectItems = [
   { label: "All subjects", value: ALL },
@@ -58,7 +62,7 @@ const editorOpen = ref(prefillType !== undefined && prefillId !== undefined);
 
 const onSaved = async () => {
   editorOpen.value = false;
-  await refresh();
+  await diary.refresh();
 };
 </script>
 
@@ -91,11 +95,21 @@ const onSaved = async () => {
       />
     </div>
 
-    <DiaryTimeline
-      :entries="visibleEntries"
-      empty="Nothing in the diary matches these filters."
-      @changed="refresh"
-    />
+    <div class="flex flex-col">
+      <DiaryTimeline
+        :entries="entries"
+        :empty="
+          status === 'success' ? 'Nothing in the diary matches these filters.' : ''
+        "
+        @changed="diary.refresh"
+      />
+      <InfiniteListEnd
+        :status="status"
+        :has-more="hasMore"
+        @load-more="diary.loadMore"
+        @retry="diary.retry"
+      />
+    </div>
   </AppPanel>
 
   <USlideover v-model:open="editorOpen" title="New diary entry">

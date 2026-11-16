@@ -202,7 +202,10 @@ const degraded = () => ({
       spareState: "AVAIL",
     }),
   ]),
-  events: [
+  eventCount: 2,
+});
+registerEndpoint("/api/pools/10/events", () => ({
+  items: [
     {
       id: 1,
       hostId: 1,
@@ -224,7 +227,9 @@ const degraded = () => ({
       payload: {},
     },
   ],
-});
+  hasMore: false,
+  total: 2,
+}));
 registerEndpoint("/api/pools/10/config", {
   method: "PATCH",
   handler: async (event) => {

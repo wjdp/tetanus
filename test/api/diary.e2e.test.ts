@@ -24,7 +24,13 @@ function postEntry(body: unknown) {
   });
 }
 
-type DiaryListing = { title: string; kind: string; subjectId: number | null };
+type DiaryListing = {
+  id: number;
+  at: string;
+  title: string;
+  kind: string;
+  subjectId: number | null;
+};
 
 describe("/api/diary", () => {
   it("adds manual entries and lists them newest first", async () => {
@@ -45,14 +51,32 @@ describe("/api/diary", () => {
     });
     await postEntry({ subjectType: "system", title: "New HBA" });
 
-    const all: DiaryListing[] = await (await fetch("/api/diary")).json();
+    const all: DiaryListing[] = (await (await fetch("/api/diary")).json())
+      .items;
     expect(all.map((entry) => entry.title)).toEqual(["New HBA", "Taped pin 3"]);
 
-    const forDisk: DiaryListing[] = await (
+    const forDisk = await (
       await fetch("/api/diary?subjectType=disk&subjectId=7&limit=10")
     ).json();
-    expect(forDisk).toEqual([
-      expect.objectContaining({ title: "Taped pin 3", kind: "manual" }),
+    expect(forDisk).toEqual({
+      items: [
+        expect.objectContaining({ title: "Taped pin 3", kind: "manual" }),
+      ],
+      hasMore: false,
+      total: 1,
+    });
+
+    const auto = await (await fetch("/api/diary?kind=auto")).json();
+    expect(auto).toMatchObject({ items: [], total: 0 });
+
+    const [newest] = all;
+    const older = await (
+      await fetch(
+        `/api/diary?limit=1&beforeAt=${Date.parse(newest?.at ?? "")}&beforeId=${newest?.id}`,
+      )
+    ).json();
+    expect(older.items.map((entry: DiaryListing) => entry.title)).toEqual([
+      "Taped pin 3",
     ]);
   });
 
@@ -62,6 +86,7 @@ describe("/api/diary", () => {
       400,
     );
     expect((await fetch("/api/diary?limit=0")).status).toBe(400);
+    expect((await fetch("/api/diary?beforeAt=1")).status).toBe(400);
   });
 });
 

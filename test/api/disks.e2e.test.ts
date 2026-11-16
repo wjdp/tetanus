@@ -101,7 +101,7 @@ describe("/api/disks", () => {
     expect(detail).toMatchObject({ id, alias: "K2", diaryCount: 2 });
     expect(detail).not.toHaveProperty("diary");
     expect(detail.keys.length).toBeGreaterThan(2);
-    const diary = await (
+    const { items: diary } = await (
       await fetch(`/api/diary?subjectType=disk&subjectId=${id}&limit=1`)
     ).json();
     expect(
@@ -308,7 +308,7 @@ describe("disk disposal", () => {
       on: "2024-04-02",
       salePrice: 120,
     });
-    const diary = await (
+    const { items: diary } = await (
       await fetch(`/api/diary?subjectType=disk&subjectId=${id}`)
     ).json();
     expect(

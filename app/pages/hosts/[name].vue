@@ -29,15 +29,20 @@ const hostId = host.value.id;
 const [
   { data: pools, refresh: refreshPools },
   { data: disks, refresh: refreshDisks },
-  { data: diary, refresh: refreshDiary },
-] = await Promise.all([
-  useFetch("/api/pools"),
-  useFetch("/api/disks"),
-  useFetch("/api/diary", {
-    query: { subjectType: "host", subjectId: hostId },
-    default: () => [],
+] = await Promise.all([useFetch("/api/pools"), useFetch("/api/disks")]);
+
+const diary = useInfiniteList((page) =>
+  $fetch("/api/diary", {
+    query: { ...page, subjectType: "host", subjectId: hostId },
   }),
-]);
+);
+const {
+  items: diaryEntries,
+  total: diaryTotal,
+  status: diaryStatus,
+  hasMore: diaryHasMore,
+} = diary;
+onMounted(diary.reload);
 
 const label = computed(
   () => host.value?.displayName || host.value?.name || "Host",
@@ -98,7 +103,7 @@ const tabs = computed<TabsItem[]>(() => [
     label: "Diary",
     slot: "diary",
     value: "diary",
-    badge: diary.value?.length || undefined,
+    badge: diaryTotal.value || undefined,
   },
   { label: "Settings", slot: "settings", value: "settings" },
 ]);
@@ -194,9 +199,15 @@ const tabs = computed<TabsItem[]>(() => [
               <DiaryPanel
                 subject-type="host"
                 :subject-id="host.id"
-                :entries="diary ?? []"
+                :entries="diaryEntries"
                 :show-heading="false"
-                @changed="refreshDiary"
+                @changed="diary.refresh"
+              />
+              <InfiniteListEnd
+                :status="diaryStatus"
+                :has-more="diaryHasMore"
+                @load-more="diary.loadMore"
+                @retry="diary.retry"
               />
             </div>
           </template>

@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gte,
@@ -13,6 +14,7 @@ import {
 import type { Bay } from "#shared/bays";
 import type { Media } from "#shared/hardware";
 import { resolveModelShort } from "#shared/model";
+import type { PageQuery } from "#shared/schemas/page";
 import {
   type PoolArchivedFilter,
   type PoolConfig,
@@ -39,13 +41,13 @@ import {
   zfsEvent,
 } from "~~/server/database/schema";
 import { baysOf } from "~~/server/services/bays";
-import type { DiaryEntry } from "~~/server/services/diary";
+import { type DiaryEntry, pageDiary } from "~~/server/services/diary";
 import {
   poolDisplayState,
   poolPresenceContext,
 } from "~~/server/services/poolPresence";
-import { labelSubjects } from "~~/server/services/subjectLabels";
 import { resolvePurpose } from "~~/server/services/usage";
+import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
 import { invalidRequest, notFound } from "~~/server/utils/serviceError";
 import { datasetCountsByPool } from "./datasets";
 import { poolPaths } from "./paths";
@@ -54,8 +56,6 @@ import { type PoolUsable, usableByPool } from "./usable";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const POOL_READING_DAYS = 30;
-export const POOL_DETAIL_LIMIT = 50;
-export const POOL_DIARY_LIMIT = 100;
 export const VDEV_READING_DAYS = 30;
 
 export interface VdevDisk {
@@ -100,8 +100,7 @@ export type ZfsEventRow = typeof zfsEvent.$inferSelect;
 
 export interface PoolDetail extends PoolSummary {
   readings: PoolReadingRow[];
-  diary: DiaryEntry[];
-  events: ZfsEventRow[];
+  eventCount: number;
 }
 
 const byName = new Intl.Collator("en-GB", { numeric: true }).compare;
@@ -301,7 +300,7 @@ function recentReadings(poolId: number, now: Date) {
     .all();
 }
 
-function poolDiary(poolId: number) {
+function poolDiaryScope(poolId: number) {
   const vdevIds = db
     .select({ id: vdev.id })
     .from(vdev)
@@ -312,32 +311,59 @@ function poolDiary(poolId: number) {
     eq(diaryEntry.subjectType, "pool"),
     eq(diaryEntry.subjectId, poolId),
   );
-  const vdevEntries =
-    vdevIds.length === 0
-      ? undefined
-      : and(
-          eq(diaryEntry.subjectType, "vdev"),
-          inArray(diaryEntry.subjectId, vdevIds),
-        );
-  return labelSubjects(
-    db
-      .select()
-      .from(diaryEntry)
-      .where(vdevEntries ? or(poolEntries, vdevEntries) : poolEntries)
-      .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
-      .limit(POOL_DIARY_LIMIT)
-      .all(),
+  if (vdevIds.length === 0) return poolEntries;
+  return or(
+    poolEntries,
+    and(
+      eq(diaryEntry.subjectType, "vdev"),
+      inArray(diaryEntry.subjectId, vdevIds),
+    ),
   );
 }
 
-function recentEvents(poolGuid: string) {
-  return db
+function poolRowOf(id: number): PoolRow {
+  const row = db.select().from(pool).where(eq(pool.id, id)).get();
+  if (!row) throw notFound(`Pool ${id} not found`);
+  return row;
+}
+
+/** The pool's own entries and its vdevs'. */
+export function listPoolDiary(
+  id: number,
+  page: PageQuery,
+): CountedPage<DiaryEntry> {
+  poolRowOf(id);
+  return pageDiary(poolDiaryScope(id), page);
+}
+
+function eventCount(poolGuid: string) {
+  return (
+    db
+      .select({ total: count() })
+      .from(zfsEvent)
+      .where(eq(zfsEvent.poolGuid, poolGuid))
+      .get()?.total ?? 0
+  );
+}
+
+export function listPoolEvents(
+  id: number,
+  { limit, ...cursor }: PageQuery,
+): CountedPage<ZfsEventRow> {
+  const { guid } = poolRowOf(id);
+  const rows = db
     .select()
     .from(zfsEvent)
-    .where(eq(zfsEvent.poolGuid, poolGuid))
+    .where(
+      and(
+        eq(zfsEvent.poolGuid, guid),
+        olderThan(zfsEvent.at, zfsEvent.id, cursor),
+      ),
+    )
     .orderBy(desc(zfsEvent.at), desc(zfsEvent.id))
-    .limit(POOL_DETAIL_LIMIT)
+    .limit(limit + 1)
     .all();
+  return { ...pageOf(rows, limit), total: eventCount(guid) };
 }
 
 export function getPool(id: number, now = new Date()): PoolDetail {
@@ -348,8 +374,7 @@ export function getPool(id: number, now = new Date()): PoolDetail {
   return {
     ...summary,
     readings: recentReadings(id, now),
-    diary: poolDiary(id),
-    events: recentEvents(row.pool.guid),
+    eventCount: eventCount(row.pool.guid),
   };
 }
 

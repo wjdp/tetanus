@@ -1,5 +1,9 @@
 import { and, count, desc, eq, type SQL } from "drizzle-orm";
-import type { DiaryEventType, DiarySubjectType } from "#shared/diary";
+import type {
+  DiaryEntryKind,
+  DiaryEventType,
+  DiarySubjectType,
+} from "#shared/diary";
 import type {
   DiaryEntryInput,
   DiaryEntryPatch,
@@ -8,6 +12,7 @@ import type {
 import { db } from "~~/server/database/client";
 import { diaryEntry } from "~~/server/database/schema";
 import { labelSubjects } from "~~/server/services/subjectLabels";
+import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
 import { notFound, ServiceError } from "~~/server/utils/serviceError";
 
 export type DiaryEntryRow = typeof diaryEntry.$inferSelect;
@@ -67,24 +72,61 @@ export function addManualEntry({
     .get();
 }
 
-export function listDiary({
-  subjectType,
-  subjectId,
-  limit = DEFAULT_DIARY_LIMIT,
-}: Partial<DiaryQuery> = {}): DiaryEntry[] {
+interface DiaryFilter {
+  subjectType?: DiarySubjectType;
+  subjectId?: number;
+  kind?: DiaryEntryKind;
+}
+
+function diaryFilter({ subjectType, subjectId, kind }: DiaryFilter) {
   const filters: SQL[] = [];
   if (subjectType) filters.push(eq(diaryEntry.subjectType, subjectType));
   if (subjectId !== undefined)
     filters.push(eq(diaryEntry.subjectId, subjectId));
+  if (kind) filters.push(eq(diaryEntry.kind, kind));
+  return and(...filters);
+}
+
+export function listDiary({
+  limit = DEFAULT_DIARY_LIMIT,
+  ...filter
+}: DiaryFilter & { limit?: number } = {}): DiaryEntry[] {
   return labelSubjects(
     db
       .select()
       .from(diaryEntry)
-      .where(and(...filters))
+      .where(diaryFilter(filter))
       .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
       .limit(limit)
       .all(),
   );
+}
+
+/** Newest first, a page at a time; `where` scopes both the page and the total. */
+export function pageDiary(
+  where: SQL | undefined,
+  { limit, ...cursor }: Pick<DiaryQuery, "limit" | "beforeAt" | "beforeId">,
+): CountedPage<DiaryEntry> {
+  const rows = db
+    .select()
+    .from(diaryEntry)
+    .where(and(where, olderThan(diaryEntry.at, diaryEntry.id, cursor)))
+    .orderBy(desc(diaryEntry.at), desc(diaryEntry.id))
+    .limit(limit + 1)
+    .all();
+  const total =
+    db.select({ total: count() }).from(diaryEntry).where(where).get()?.total ??
+    0;
+  return { ...pageOf(labelSubjects(rows), limit), total };
+}
+
+export function listDiaryPage({
+  subjectType,
+  subjectId,
+  kind,
+  ...page
+}: DiaryQuery): CountedPage<DiaryEntry> {
+  return pageDiary(diaryFilter({ subjectType, subjectId, kind }), page);
 }
 
 export function countDiary(

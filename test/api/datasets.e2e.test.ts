@@ -171,7 +171,7 @@ describe("/api/datasets", () => {
     });
     expect(created.status).toBe(201);
 
-    const listed = await (
+    const { items: listed } = await (
       await fetch(`/api/diary?subjectType=dataset&subjectId=${utn.id}`)
     ).json();
     expect(listed).toEqual([

@@ -76,8 +76,9 @@ describe("GET /api/alerts", () => {
       .run();
 
     const all = await $fetch("/api/alerts");
-    expect(all.map((row) => row.dedupeKey)).toEqual(["newer", "older"]);
-    expect(all[0]).toMatchObject({
+    expect(all).toMatchObject({ total: 2, hasMore: false });
+    expect(all.items.map((row) => row.dedupeKey)).toEqual(["newer", "older"]);
+    expect(all.items[0]).toMatchObject({
       ...base,
       at: "2026-09-02T10:00:00.000Z",
       ok: false,
@@ -86,7 +87,8 @@ describe("GET /api/alerts", () => {
     });
 
     const limited = await $fetch("/api/alerts", { query: { limit: 1 } });
-    expect(limited.map((row) => row.dedupeKey)).toEqual(["newer"]);
+    expect(limited).toMatchObject({ hasMore: true, total: 2 });
+    expect(limited.items.map((row) => row.dedupeKey)).toEqual(["newer"]);
   });
 
   it("400s for an invalid limit", async () => {
@@ -170,7 +172,9 @@ describe("alerts:tick", () => {
 
     await vi.waitFor(
       async () => {
-        const [latest] = await $fetch("/api/alerts");
+        const {
+          items: [latest],
+        } = await $fetch("/api/alerts");
         expect(latest).toMatchObject({
           channel: "webhook",
           rule: "disk-failed",

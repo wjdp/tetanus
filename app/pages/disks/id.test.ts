@@ -145,19 +145,23 @@ registerEndpoint("/api/diary", (event) => {
   diaryQueries.push(
     Object.fromEntries(new URL(event.path, "http://x").searchParams),
   );
-  return [
-    {
-      id: 1,
-      subjectType: "disk",
-      subjectId: 7,
-      at,
-      kind: "auto",
-      eventType: "smart-status-changed",
-      title: "warning (was passed)",
-      body: "",
-      data: {},
-    },
-  ];
+  return {
+    items: [
+      {
+        id: 1,
+        subjectType: "disk",
+        subjectId: 7,
+        at,
+        kind: "auto",
+        eventType: "smart-status-changed",
+        title: "warning (was passed)",
+        body: "",
+        data: {},
+      },
+    ],
+    hasMore: false,
+    total: 1,
+  };
 });
 
 const smartQueries: string[] = [];
@@ -406,7 +410,7 @@ describe("disk page", () => {
     expect(diaryQueries.at(-1)).toMatchObject({
       subjectType: "disk",
       subjectId: "7",
-      limit: "20",
+      limit: "50",
     });
   });
 

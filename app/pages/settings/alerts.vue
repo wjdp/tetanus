@@ -11,15 +11,20 @@ import {
 
 const demo = useRuntimeConfig().public.demo;
 
-const NOTIFICATIONS_LIMIT = 100;
 const POLL_INTERVAL_MS = 60_000;
 const UNCONFIGURED: NotificationsConfig = { pushover: null, webhook: null };
 
 const { data: settings } = await useSettings();
-const { data: notifications, refresh: refreshNotifications } = await useFetch(
-  "/api/alerts",
-  { query: { limit: NOTIFICATIONS_LIMIT }, default: () => [] },
+const notificationLog = useInfiniteList((page) =>
+  $fetch("/api/alerts", { query: page }),
 );
+const {
+  items: notifications,
+  status: notificationsStatus,
+  hasMore: moreNotifications,
+  loadMore: loadMoreNotifications,
+  retry: retryNotifications,
+} = notificationLog;
 
 const storedForms = () =>
   channelFormsFrom(settings.value?.config.notifications ?? UNCONFIGURED);
@@ -33,7 +38,8 @@ const dirty = (channel: AlertChannel) =>
 let pollHandle: ReturnType<typeof setInterval> | undefined;
 
 onMounted(() => {
-  pollHandle = setInterval(refreshNotifications, POLL_INTERVAL_MS);
+  notificationLog.reload();
+  pollHandle = setInterval(notificationLog.refresh, POLL_INTERVAL_MS);
 });
 
 onUnmounted(() => {
@@ -175,6 +181,12 @@ const saveChannel = async (channel: AlertChannel) => {
     <section class="flex flex-col gap-3">
       <h3 class="text-highlighted font-semibold">Recent notifications</h3>
       <AlertsNotificationsTable :notifications="notifications" />
+      <InfiniteListEnd
+        :status="notificationsStatus"
+        :has-more="moreNotifications"
+        @load-more="loadMoreNotifications"
+        @retry="retryNotifications"
+      />
     </section>
   </section>
 </template>

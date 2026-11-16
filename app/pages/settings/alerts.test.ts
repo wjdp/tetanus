@@ -37,34 +37,38 @@ registerEndpoint("/api/settings", {
   },
 });
 
-registerEndpoint("/api/alerts", () => [
-  {
-    id: 2,
-    at: "2026-09-28T17:05:00.000Z",
-    channel: "pushover",
-    rule: "pool-degraded",
-    dedupeKey: "pool-degraded:pool:1:DEGRADED:9",
-    subject: "mars · tank",
-    title: "Pool degraded",
-    message: "mars · tank: DEGRADED",
-    ok: false,
-    error: "HTTP 500",
-    diaryEntryId: 9,
-  },
-  {
-    id: 1,
-    at: "2026-09-28T17:00:00.000Z",
-    channel: "webhook",
-    rule: "disk-failed",
-    dedupeKey: "disk-failed:disk:4:failed:8",
-    subject: "mars · K2",
-    title: "Disk failed",
-    message: "mars · K2: SMART failed",
-    ok: true,
-    error: null,
-    diaryEntryId: 8,
-  },
-]);
+registerEndpoint("/api/alerts", () => ({
+  items: [
+    {
+      id: 2,
+      at: "2026-09-28T17:05:00.000Z",
+      channel: "pushover",
+      rule: "pool-degraded",
+      dedupeKey: "pool-degraded:pool:1:DEGRADED:9",
+      subject: "mars · tank",
+      title: "Pool degraded",
+      message: "mars · tank: DEGRADED",
+      ok: false,
+      error: "HTTP 500",
+      diaryEntryId: 9,
+    },
+    {
+      id: 1,
+      at: "2026-09-28T17:00:00.000Z",
+      channel: "webhook",
+      rule: "disk-failed",
+      dedupeKey: "disk-failed:disk:4:failed:8",
+      subject: "mars · K2",
+      title: "Disk failed",
+      message: "mars · K2: SMART failed",
+      ok: true,
+      error: null,
+      diaryEntryId: 8,
+    },
+  ],
+  hasMore: false,
+  total: 2,
+}));
 
 registerEndpoint("/api/alerts/test", {
   method: "POST",
@@ -110,7 +114,7 @@ describe("alerts settings page", () => {
     const page = await mountSuspended(AlertsPage);
     const table = page.get('[data-testid="notifications"]');
 
-    expect(table.text()).toContain("Pool degraded");
+    await vi.waitFor(() => expect(table.text()).toContain("Pool degraded"));
     expect(table.text()).toContain("mars · tank: DEGRADED");
     expect(table.text()).toContain("HTTP 500");
     expect(table.text()).toContain("Disk failed");

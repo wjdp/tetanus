@@ -168,9 +168,11 @@ describe("/api/disks/:id/accept", () => {
     });
     expect(await diskStatus(diskId)).toBe("failed");
 
-    const diary: { eventType: string | null }[] = await (
-      await fetch(`/api/diary?subjectType=disk&subjectId=${diskId}`)
-    ).json();
+    const diary: { eventType: string | null }[] = (
+      await (
+        await fetch(`/api/diary?subjectType=disk&subjectId=${diskId}`)
+      ).json()
+    ).items;
     expect(diary.map((entry) => entry.eventType)).toEqual(
       expect.arrayContaining([
         "fault-accepted",

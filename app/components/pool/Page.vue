@@ -113,7 +113,7 @@ const tabs = computed<(TabsItem & { value: Tab })[]>(() => [
     label: "Events",
     slot: "events",
     value: "events",
-    badge: pool.value?.events.length || undefined,
+    badge: pool.value?.eventCount || undefined,
   },
   { label: "History", slot: "history", value: "history" },
   { label: "Diary", slot: "diary", value: "diary" },
@@ -381,7 +381,7 @@ const tabs = computed<(TabsItem & { value: Tab })[]>(() => [
         </template>
 
         <template #events>
-          <PoolEventList :events="pool.events" :root="pool.vdevs" />
+          <PoolEvents :pool-id="pool.id" :root="pool.vdevs" />
         </template>
 
         <template #history>
@@ -392,14 +392,7 @@ const tabs = computed<(TabsItem & { value: Tab })[]>(() => [
         </template>
 
         <template #diary>
-          <div class="py-4">
-            <DiaryTimeline
-              :entries="pool.diary"
-              :show-subject="false"
-              empty="Nothing in the diary for this pool yet."
-              @changed="refresh"
-            />
-          </div>
+          <PoolDiary :pool-id="pool.id" />
         </template>
       </UTabs>
     </div>

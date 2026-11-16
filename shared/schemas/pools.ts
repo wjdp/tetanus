@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pageQuerySchema } from "./page";
 
 export const poolParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
@@ -13,17 +14,9 @@ export const vdevParamsSchema = poolParamsSchema.extend({
   vdevId: z.coerce.number().int().positive(),
 });
 
-export const poolHistoryQuerySchema = z
-  .object({
-    all: z.stringbool().default(false),
-    beforeAt: z.coerce.number().int().optional(),
-    beforeId: z.coerce.number().int().positive().optional(),
-  })
-  .refine(
-    (query) =>
-      (query.beforeAt === undefined) === (query.beforeId === undefined),
-    { message: "beforeAt and beforeId go together" },
-  );
+export const poolHistoryQuerySchema = pageQuerySchema({
+  all: z.stringbool().default(false),
+});
 
 export type PoolHistoryQuery = z.infer<typeof poolHistoryQuerySchema>;
 

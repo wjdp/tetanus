@@ -163,17 +163,17 @@ describe("/api/pools", () => {
     });
   });
 
-  it("gets one pool with readings and events", async () => {
+  it("gets one pool with readings and an event count", async () => {
     const pools = await (await fetch("/api/pools")).json();
     const detail = await (await fetch(`/api/pools/${pools[0].id}`)).json();
     expect(detail).toMatchObject({
       id: pools[0].id,
       name: "tank",
-      diary: expect.arrayContaining([
-        expect.objectContaining({ eventType: "scrub-finished" }),
-      ]),
+      eventCount: expect.any(Number),
       resolvedConfig: { scrubIntervalDays: 35, slowIoThreshold: 10 },
     });
+    expect(detail).not.toHaveProperty("diary");
+    expect(detail).not.toHaveProperty("events");
     expect(detail.readings).toHaveLength(1);
     expect(detail.usable).toEqual({
       used: expect.any(Number),
@@ -184,7 +184,22 @@ describe("/api/pools", () => {
       usedBytes: detail.usable.used,
       availableBytes: detail.usable.available,
     });
-    expect(detail.events).toHaveLength(50);
+  });
+
+  it("pages a pool's diary and events", async () => {
+    const pools = await (await fetch("/api/pools")).json();
+    const detail = await (await fetch(`/api/pools/${pools[0].id}`)).json();
+    const diary = await (await fetch(`/api/pools/${pools[0].id}/diary`)).json();
+    const events = await (
+      await fetch(`/api/pools/${pools[0].id}/events`)
+    ).json();
+
+    expect(diary.items).toContainEqual(
+      expect.objectContaining({ eventType: "scrub-finished" }),
+    );
+    expect(events).toMatchObject({ total: detail.eventCount, hasMore: true });
+    expect(events.items).toHaveLength(50);
+    expect((await fetch("/api/pools/999999/events")).status).toBe(404);
   });
 
   it("pages a pool's history, leaving out routine lines unless asked", async () => {
@@ -192,7 +207,7 @@ describe("/api/pools", () => {
     const history = (
       query = "",
     ): Promise<{
-      lines: { id: number; at: string; routine: boolean }[];
+      items: { id: number; at: string; routine: boolean }[];
       scope: string;
       hasMore: boolean;
     }> =>
@@ -202,19 +217,19 @@ describe("/api/pools", () => {
 
     const record = await history();
     const all = await history("?all=true");
-    const last = all.lines.at(-1);
+    const last = all.items.at(-1);
     if (!last) throw new Error("no history lines");
     const older = await history(
       `?all=true&beforeAt=${Date.parse(last.at)}&beforeId=${last.id}`,
     );
 
     expect(record.scope).toBe("host");
-    expect(record.lines.every((line) => !line.routine)).toBe(true);
+    expect(record.items.every((line) => !line.routine)).toBe(true);
     expect(all).toMatchObject({ scope: "host", hasMore: true });
-    expect(all.lines).toHaveLength(50);
-    expect(all.lines.some((line) => line.routine)).toBe(true);
-    expect(older.lines[0].id).not.toBe(last.id);
-    expect(Date.parse(older.lines[0].at)).toBeLessThanOrEqual(
+    expect(all.items).toHaveLength(50);
+    expect(all.items.some((line) => line.routine)).toBe(true);
+    expect(older.items[0]?.id).not.toBe(last.id);
+    expect(Date.parse(older.items[0]?.at ?? "")).toBeLessThanOrEqual(
       Date.parse(last.at),
     );
   });
@@ -303,7 +318,10 @@ describe("/api/pools", () => {
       archivedAt: expect.any(String),
       archiveNote: "test pool",
     });
-    expect(detail.diary).toContainEqual(
+    const { items: diary } = await (
+      await fetch(`/api/pools/${zeta.id}/diary`)
+    ).json();
+    expect(diary).toContainEqual(
       expect.objectContaining({
         eventType: "pool-archived",
         data: { note: "test pool" },
