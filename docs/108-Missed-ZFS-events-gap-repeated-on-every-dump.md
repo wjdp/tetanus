@@ -1,6 +1,6 @@
 ---
 type: bug
-status: todo
+status: done
 ---
 
 # Missed ZFS events gap repeated on every dump
@@ -40,3 +40,31 @@ In a prod snapshot (2026-11-16), mars has six identical "Missed ZFS events
   is)?
 - If a later dump shows a wider gap that overlaps the reported one, should that be a
   new entry or an update to the existing one?
+
+## Findings
+
+From `dev.db`, a copy of prod on 2026-11-16:
+
+- mars's `zpool-events` dumps were about 303 KB from 2026-10-17 until 2026-10-27, then
+  grew to about 627 KB over the morning of 2026-10-27 and have stayed there. The current
+  dump holds 1,024 events, so the kernel buffer cap (`zfs_zevent_len_max`) went from about
+  512 to 1,024 around 06:00 that day. The author didn't change it on purpose.
+- At 512 events, mars's buffer held about 50 minutes (roughly 600 events an hour, with
+  bursts of about 140 at :00). The missed event left the buffer before a dump saw it, and
+  its ZED post never arrived. As far as the data shows, the gap is real.
+- The oldest eid stayed put for an hour because the buffer was filling to its new cap,
+  not rotating. Each dump re-checked the same gap.
+- All 1,024 events in mars's current dump are stored.
+- Related: `storeEvent` dropped an incoming numbered event if any stored row matched its
+  time, class and payload, including a row with another eid.
+
+## Fix
+
+- The gap check is skipped when the dump's oldest eid equals the previous dump's
+  (`Host.zpoolEventsOldestEid`): the previous dump already checked the same gap. Late
+  ZED posts can only fill gaps, and retention keeps the anchor, so nothing new can
+  appear below an oldest eid that hasn't moved. A wider overlapping gap would need the
+  previous dump's events to be missing, so it isn't handled separately.
+- A numbered event now matches only an unnumbered copy.
+- Migration `0040_zfs_event_diary_repair` deletes repeated `events-gap` entries, keeping
+  the earliest per host and `from`/`to`.

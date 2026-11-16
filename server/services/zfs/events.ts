@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, lt, max } from "drizzle-orm";
+import { and, between, eq, isNotNull, lt, max } from "drizzle-orm";
 import { db } from "~~/server/database/client";
 import { host, zfsEvent } from "~~/server/database/schema";
 import type { ZfsEvent } from "~~/server/ingest/zfsEvent";
@@ -77,20 +77,7 @@ function isStoredEid(hostId: number, eid: number) {
   );
 }
 
-function storeEvent(hostId: number, event: ZfsEvent) {
-  if (event.eid !== null && isStoredEid(hostId, event.eid)) return;
-  const copies = storedCopies(hostId, event);
-  if (event.eid !== null) {
-    const unnumbered = copies.find((row) => row.eid === null);
-    if (unnumbered) {
-      db.update(zfsEvent)
-        .set({ eid: event.eid })
-        .where(eq(zfsEvent.id, unnumbered.id))
-        .run();
-      return;
-    }
-  }
-  if (copies.length > 0) return;
+function insertEvent(hostId: number, event: ZfsEvent) {
   db.insert(zfsEvent)
     .values({
       hostId,
@@ -104,53 +91,101 @@ function storeEvent(hostId: number, event: ZfsEvent) {
     .run();
 }
 
-/** Concurrent posts can stamp neighbouring events slightly out of eid order. */
-const CLOCK_TOLERANCE_MS = 5_000;
-
 /**
- * Eids and event times both rise within one boot, so a stored event with the same eid
- * at a different time, or a higher eid than the dump's newest at a clearly earlier
- * time, predates a reset of the host's event counter.
+ * A numbered event only matches an unnumbered copy: a copy holding another eid is a
+ * different event that happens to look the same.
  */
-function eidsReset(hostId: number, dump: NumberedEvent[]) {
-  const lowest = Math.min(...dump.map((event) => event.eid));
+function storeEvent(hostId: number, event: ZfsEvent) {
+  const copies = storedCopies(hostId, event);
+  if (event.eid === null) {
+    if (copies.length === 0) insertEvent(hostId, event);
+    return;
+  }
+  if (isStoredEid(hostId, event.eid)) return;
+  const unnumbered = copies.find((row) => row.eid === null);
+  if (!unnumbered) {
+    insertEvent(hostId, event);
+    return;
+  }
+  db.update(zfsEvent)
+    .set({ eid: event.eid })
+    .where(eq(zfsEvent.id, unnumbered.id))
+    .run();
+}
+
+interface EidSpan {
+  oldest: number;
+  newest: number;
+}
+
+function spanOf(dump: NumberedEvent[]): EidSpan {
+  const eids = dump.map((event) => event.eid);
+  return { oldest: Math.min(...eids), newest: Math.max(...eids) };
+}
+
+function previousSpan(hostId: number) {
+  return db
+    .select({
+      oldest: host.zpoolEventsOldestEid,
+      newest: host.zpoolEventsNewestEid,
+    })
+    .from(host)
+    .where(eq(host.id, hostId))
+    .get();
+}
+
+type PreviousSpan = ReturnType<typeof previousSpan>;
+
+function isRenumbered(hostId: number, dump: NumberedEvent[], span: EidSpan) {
   const stored = db
     .select({ eid: zfsEvent.eid, at: zfsEvent.at })
     .from(zfsEvent)
-    .where(and(eq(zfsEvent.hostId, hostId), gte(zfsEvent.eid, lowest)))
-    .all();
-  const atByEid = new Map(stored.map((row) => [row.eid, row.at.getTime()]));
-  const renumbered = dump.some((event) => {
-    const storedAt = atByEid.get(event.eid);
-    return storedAt !== undefined && storedAt !== timeOf(event);
-  });
-  if (renumbered) return true;
-  const newest = dump.reduce((a, b) => (b.eid > a.eid ? b : a));
-  return stored.some(
-    (row) =>
-      (row.eid as number) > newest.eid &&
-      row.at.getTime() < timeOf(newest) - CLOCK_TOLERANCE_MS,
-  );
-}
-
-function archiveEidsBefore(hostId: number, before: Date) {
-  const previousMaxEid =
-    db
-      .select({ value: max(zfsEvent.eid) })
-      .from(zfsEvent)
-      .where(and(eq(zfsEvent.hostId, hostId), lt(zfsEvent.at, before)))
-      .get()?.value ?? null;
-  db.update(zfsEvent)
-    .set({ eid: null })
     .where(
       and(
         eq(zfsEvent.hostId, hostId),
-        isNotNull(zfsEvent.eid),
-        lt(zfsEvent.at, before),
+        between(zfsEvent.eid, span.oldest, span.newest),
       ),
     )
+    .all();
+  const atByEid = new Map(stored.map((row) => [row.eid, row.at.getTime()]));
+  return dump.some((event) => {
+    const storedAt = atByEid.get(event.eid);
+    return storedAt !== undefined && storedAt !== timeOf(event);
+  });
+}
+
+/**
+ * While the ZFS module stays loaded, the kernel buffer only drops events from its
+ * front, so neither end of a dump's eid range can move backwards. Hosts without a
+ * working RTC stamp boot-time events days in the past, so event times are only
+ * compared for equality, never order.
+ */
+function eidsReset(
+  hostId: number,
+  dump: NumberedEvent[],
+  span: EidSpan,
+  previous: PreviousSpan,
+) {
+  return (
+    (previous?.oldest != null && span.oldest < previous.oldest) ||
+    (previous?.newest != null && span.newest < previous.newest) ||
+    isRenumbered(hostId, dump, span)
+  );
+}
+
+/** Frees every stored eid for reuse by the new counter. */
+function archiveEids(hostId: number) {
+  const storedMaxEid =
+    db
+      .select({ value: max(zfsEvent.eid) })
+      .from(zfsEvent)
+      .where(eq(zfsEvent.hostId, hostId))
+      .get()?.value ?? null;
+  db.update(zfsEvent)
+    .set({ eid: null })
+    .where(and(eq(zfsEvent.hostId, hostId), isNotNull(zfsEvent.eid)))
     .run();
-  return previousMaxEid;
+  return storedMaxEid;
 }
 
 function maxStoredEidBelow(hostId: number, eid: number): number | null {
@@ -160,16 +195,6 @@ function maxStoredEidBelow(hostId: number, eid: number): number | null {
       .from(zfsEvent)
       .where(and(eq(zfsEvent.hostId, hostId), lt(zfsEvent.eid, eid)))
       .get()?.value ?? null
-  );
-}
-
-function hasStoredEids(hostId: number) {
-  return (
-    db
-      .select({ id: zfsEvent.id })
-      .from(zfsEvent)
-      .where(and(eq(zfsEvent.hostId, hostId), isNotNull(zfsEvent.eid)))
-      .get() !== undefined
   );
 }
 
@@ -183,10 +208,12 @@ function checkContinuity(
   dump: NumberedEvent[],
   receivedAt: Date,
 ) {
-  if (dump.length === 0 || !hasStoredEids(hostId)) return;
-  if (eidsReset(hostId, dump)) {
-    const earliest = new Date(Math.min(...dump.map(timeOf)));
-    const previousMaxEid = archiveEidsBefore(hostId, earliest);
+  if (dump.length === 0) return;
+  const span = spanOf(dump);
+  const previous = previousSpan(hostId);
+  if (eidsReset(hostId, dump, span, previous)) {
+    const storedMaxEid = archiveEids(hostId);
+    const previousMaxEid = previous?.newest ?? storedMaxEid;
     addAutoEvent({
       subjectType: "host",
       subjectId: hostId,
@@ -198,15 +225,15 @@ function checkContinuity(
     });
     return;
   }
-  const oldest = Math.min(...dump.map((event) => event.eid));
-  const before = maxStoredEidBelow(hostId, oldest);
-  if (before !== null && oldest > before + 1) {
+  if (previous?.oldest === span.oldest) return;
+  const before = maxStoredEidBelow(hostId, span.oldest);
+  if (before !== null && span.oldest > before + 1) {
     addAutoEvent({
       subjectType: "host",
       subjectId: hostId,
       eventType: "events-gap",
-      title: `Missed ZFS events ${before + 1}–${oldest - 1}`,
-      data: { from: before, to: oldest },
+      title: `Missed ZFS events ${before + 1}–${span.oldest - 1}`,
+      data: { from: before, to: span.oldest },
       at: receivedAt,
     });
   }
@@ -220,13 +247,19 @@ export function observeZpoolEvents(
   const numbered = events.filter(isNumbered);
   checkContinuity(hostId, numbered, receivedAt);
   for (const event of events) storeEvent(hostId, event);
-  if (numbered.length > 0) recordOldestDumpedEid(hostId, numbered);
+  if (numbered.length > 0) recordDumpedSpan(hostId, spanOf(numbered));
 }
 
-/** Events at or above this eid are still in the kernel buffer and would be re-sent. */
-function recordOldestDumpedEid(hostId: number, dump: NumberedEvent[]) {
+/**
+ * Events at or above the oldest eid are still in the kernel buffer and would be
+ * re-sent; the span is also the baseline the next dump's reset check compares with.
+ */
+function recordDumpedSpan(hostId: number, span: EidSpan) {
   db.update(host)
-    .set({ zpoolEventsOldestEid: Math.min(...dump.map((event) => event.eid)) })
+    .set({
+      zpoolEventsOldestEid: span.oldest,
+      zpoolEventsNewestEid: span.newest,
+    })
     .where(eq(host.id, hostId))
     .run();
 }

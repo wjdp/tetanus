@@ -891,6 +891,36 @@ describe("zfs events", () => {
     ]);
   });
 
+  it("records a gap once while the buffer's oldest eid stays put", () => {
+    run("zed-event", { event: event(100, "2026-09-28T10:00:00Z") });
+    const dump = {
+      events: [
+        event(102, "2026-09-28T10:02:00Z"),
+        event(103, "2026-09-28T10:03:00Z"),
+      ],
+    };
+    run("zpool-events", dump, minutesAfter(10));
+    run("zpool-events", dump, minutesAfter(20));
+    run(
+      "zpool-events",
+      { events: [...dump.events, event(104, "2026-09-28T10:24:00Z")] },
+      minutesAfter(30),
+    );
+    run(
+      "zpool-events",
+      {
+        events: [
+          event(103, "2026-09-28T10:03:00Z"),
+          event(104, "2026-09-28T10:24:00Z"),
+        ],
+      },
+      minutesAfter(40),
+    );
+    expect(diary("events-gap")).toMatchObject([
+      { data: { from: 100, to: 102 } },
+    ]);
+  });
+
   it("records the oldest eid of the latest dump", () => {
     const hostId = run("zpool-events", {
       events: [
@@ -942,8 +972,72 @@ describe("zfs events", () => {
     expect(rows.map((row) => row.eid)).toEqual([null, null, null, 1, 2]);
   });
 
-  it("records a reset when all new ids are below the stored ones", () => {
-    run("zed-event", { event: event(500, "2026-09-01T10:00:00Z") });
+  it("records one reset when boot-time events carry a stale clock", () => {
+    run("zpool-events", {
+      events: [
+        event(1000, "2026-09-27T10:00:00Z"),
+        event(1001, "2026-09-28T09:00:00Z"),
+        event(1002, "2026-09-28T09:30:00Z"),
+      ],
+    });
+    const rebooted = {
+      events: [
+        event(1, "2026-09-15T07:36:19Z"),
+        event(2, "2026-09-15T07:36:20Z"),
+        event(3, "2026-09-28T10:05:00Z"),
+      ],
+    };
+    run("zpool-events", rebooted, minutesAfter(10));
+    run("zpool-events", rebooted, minutesAfter(20));
+    run(
+      "zpool-events",
+      { events: [...rebooted.events, event(4, "2026-09-28T10:25:00Z")] },
+      minutesAfter(30),
+    );
+
+    expect(diary("events-reset")).toMatchObject([
+      { data: { previousMaxEid: 1002 } },
+    ]);
+    expect(diary("events-gap")).toHaveLength(0);
+  });
+
+  it("records a reset when a quiet host comes back to the same ids", () => {
+    run("zpool-events", {
+      events: [
+        event(1, "2026-09-01T10:00:00Z"),
+        event(2, "2026-09-01T10:01:00Z"),
+      ],
+    });
+    run(
+      "zpool-events",
+      {
+        events: [
+          event(1, "2026-09-28T10:00:00Z"),
+          event(2, "2026-09-28T10:01:00Z"),
+        ],
+      },
+      minutesAfter(10),
+    );
+    expect(diary("events-reset")).toHaveLength(1);
+  });
+
+  it("records no reset when the buffer's oldest eid jumps forward", () => {
+    run("zpool-events", {
+      events: [
+        event(1, "2026-09-28T10:00:00Z"),
+        event(2, "2026-09-28T10:01:00Z"),
+      ],
+    });
+    run(
+      "zpool-events",
+      { events: [event(3, "2026-09-28T10:02:00Z")] },
+      minutesAfter(10),
+    );
+    expect(diary()).toEqual([]);
+  });
+
+  it("records a reset when all new ids are below the previous dump's", () => {
+    run("zpool-events", { events: [event(500, "2026-09-01T10:00:00Z")] });
     run("zpool-events", { events: [event(3, "2026-09-28T10:00:00Z")] });
     expect(diary("events-reset")).toHaveLength(1);
   });
@@ -995,6 +1089,23 @@ describe("zfs events", () => {
     run("zpool-events", { events: [hold("tank/a@1"), hold("tank/a@2")] });
     run("zpool-events", { events: [hold("tank/a@1"), hold("tank/a@2")] });
     expect(db.select().from(zfsEvent).all()).toHaveLength(2);
+  });
+
+  it("keeps numbered events that look the same", () => {
+    const fields = { history_internal_name: "snapshot" };
+    run("zpool-events", {
+      events: [
+        event(7, "2026-09-28T10:00:00Z", { fields }),
+        event(8, "2026-09-28T10:00:00Z", { fields }),
+      ],
+    });
+    expect(
+      db
+        .select({ eid: zfsEvent.eid })
+        .from(zfsEvent)
+        .orderBy(zfsEvent.eid)
+        .all(),
+    ).toEqual([{ eid: 7 }, { eid: 8 }]);
   });
 
   it("dedupes a zed event against a dump copy with fewer fields", () => {

@@ -38,7 +38,7 @@ const TABLES = [
   "ZfsEvent",
 ];
 
-const MIGRATION_COUNT = 39;
+const MIGRATION_COUNT = 41;
 
 const openConnections: Database.Database[] = [];
 
@@ -176,6 +176,7 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -185,7 +186,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 22
+            ORDER BY created_at DESC LIMIT 24
         );
       INSERT INTO Fault (kind, category, subjectType, subjectId, key, severity,
                          data, openedAt, lastSeenAt, state, stateChangedAt)
@@ -222,6 +223,8 @@ describe("0009_host_collector_version", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     const row = sqlite.prepare("SELECT kind, data FROM Fault").get() as {
       kind: string;
@@ -289,6 +292,7 @@ describe("0009_host_collector_version", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -298,7 +302,7 @@ describe("0009_host_collector_version", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 30
+            ORDER BY created_at DESC LIMIT 32
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt)
         VALUES (1, 'mars', 0, 0), (2, 'pihost', 0, 0), (3, 'venus', 0, 0);
@@ -341,6 +345,8 @@ describe("0009_host_collector_version", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     expect(
       sqlite
@@ -382,6 +388,7 @@ describe("0018_vdev_role_backfill", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -391,7 +398,7 @@ describe("0018_vdev_role_backfill", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 21
+            ORDER BY created_at DESC LIMIT 23
         );
       INSERT INTO Host (id, name, firstSeenAt, lastSeenAt) VALUES (1, 'mars', 0, 0);
       INSERT INTO Pool (id, hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -429,6 +436,8 @@ describe("0018_vdev_role_backfill", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     expect(
       sqlite.prepare("SELECT guid, type, role FROM Vdev ORDER BY id").all(),
@@ -467,6 +476,7 @@ describe("0022_disk_disposal", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -476,7 +486,7 @@ describe("0022_disk_disposal", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 17
+            ORDER BY created_at DESC LIMIT 19
         );
       INSERT INTO Disk (id, stateOverride, lastState)
         VALUES (1, 'sold', 'sold'), (2, 'sold', 'sold'), (3, 'dead', 'dead');
@@ -509,6 +519,8 @@ describe("0022_disk_disposal", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     const today = new Date().toISOString().slice(0, 10);
     expect(
@@ -567,6 +579,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -576,7 +589,7 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 16
+            ORDER BY created_at DESC LIMIT 18
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO Pool (hostId, guid, name, state, firstSeenAt, lastSeenAt)
@@ -609,6 +622,8 @@ describe("0023_guid_saturation_and_unattributed_history", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     expect(
       sqlite.prepare("SELECT name, guid FROM Snapshot ORDER BY name").all(),
@@ -634,6 +649,7 @@ describe("0026_diary_titles_without_ids", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -643,7 +659,7 @@ describe("0026_diary_titles_without_ids", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 13
+            ORDER BY created_at DESC LIMIT 15
         );
       INSERT INTO Disk (alias, model, serial, firstSeenAt)
         VALUES ('K1', NULL, NULL, 0), (NULL, 'ST18000NM', 'ZR2', 0);
@@ -667,6 +683,8 @@ describe("0026_diary_titles_without_ids", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     expect(
       sqlite.prepare("SELECT title FROM DiaryEntry ORDER BY id").all(),
@@ -689,6 +707,7 @@ describe("0027_zfs_event_repair", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -698,7 +717,7 @@ describe("0027_zfs_event_repair", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 12
+            ORDER BY created_at DESC LIMIT 14
         );
       INSERT INTO Host (name, firstSeenAt, lastSeenAt) VALUES ('mars', 0, 0);
       INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title)
@@ -731,6 +750,8 @@ describe("0027_zfs_event_repair", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     expect(sqlite.prepare("SELECT title FROM DiaryEntry").all()).toEqual([
       { title: "kept" },
@@ -758,6 +779,7 @@ describe("0028_placeholder_wwn_keys", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -767,7 +789,7 @@ describe("0028_placeholder_wwn_keys", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 11
+            ORDER BY created_at DESC LIMIT 13
         );
       INSERT INTO Disk (firstSeenAt) VALUES (0);
       INSERT INTO DiskKey (diskId, kind, value)
@@ -794,6 +816,8 @@ describe("0028_placeholder_wwn_keys", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     expect(
       sqlite.prepare("SELECT kind, value FROM DiskKey ORDER BY id").all(),
@@ -817,6 +841,7 @@ describe("0029_clear_purpose_other", () => {
       ALTER TABLE DatasetReading DROP COLUMN usedByChildren;
       ALTER TABLE DatasetReading DROP COLUMN usedByDataset;
       ALTER TABLE Host DROP COLUMN zpoolEventsOldestEid;
+      ALTER TABLE Host DROP COLUMN zpoolEventsNewestEid;
       ALTER TABLE Dataset DROP COLUMN keyStatus;
       ALTER TABLE Dataset DROP COLUMN encryptionRoot;
       DROP INDEX PoolHistory_record_poolId_at_idx;
@@ -826,7 +851,7 @@ describe("0029_clear_purpose_other", () => {
       DELETE FROM __drizzle_migrations
         WHERE created_at IN (
           SELECT created_at FROM __drizzle_migrations
-            ORDER BY created_at DESC LIMIT 10
+            ORDER BY created_at DESC LIMIT 12
         );
       INSERT INTO Disk (firstSeenAt, inventory)
         VALUES
@@ -846,6 +871,8 @@ describe("0029_clear_purpose_other", () => {
       "0036_pool_history_routine",
       "0037_zfs_event_pool_guid_index",
       "0038_zfs_event_record_index",
+      "0039_host_zpool_events_newest_eid",
+      "0040_zfs_event_diary_repair",
     ]);
     expect(
       sqlite.prepare("SELECT inventory FROM Disk ORDER BY id").all(),
@@ -853,6 +880,41 @@ describe("0029_clear_purpose_other", () => {
       { inventory: '{"supplier":"Scan"}' },
       { inventory: '{"purpose":"system"}' },
       { inventory: "{}" },
+    ]);
+  });
+});
+
+describe("0040_zfs_event_diary_repair", () => {
+  it("drops resets that archived nothing and repeats of a reported gap", () => {
+    const { db, sqlite } = open(":memory:");
+    runMigrations(sqlite, db);
+    sqlite.exec(`
+      DELETE FROM __drizzle_migrations
+        WHERE created_at = (SELECT max(created_at) FROM __drizzle_migrations);
+      INSERT INTO Host (name, firstSeenAt, lastSeenAt)
+        VALUES ('host-a', 0, 0), ('host-b', 0, 0);
+      INSERT INTO DiaryEntry (subjectType, subjectId, at, kind, eventType, title, data)
+        VALUES
+          ('host', 1, 0, 'auto', 'events-reset', 'real', '{"previousMaxEid":900}'),
+          ('host', 1, 1, 'auto', 'events-reset', 'false', '{"previousMaxEid":null}'),
+          ('host', 1, 2, 'auto', 'events-gap', 'first', '{"from":10,"to":12}'),
+          ('host', 1, 3, 'auto', 'events-gap', 'repeat', '{"from":10,"to":12}'),
+          ('host', 1, 4, 'auto', 'events-gap', 'other gap', '{"from":20,"to":30}'),
+          ('host', 2, 5, 'auto', 'events-gap', 'other host', '{"from":10,"to":12}'),
+          ('host', 1, 6, 'manual', NULL, 'manual', '{}');
+    `);
+
+    expect(runMigrations(sqlite, db).applied).toEqual([
+      "0040_zfs_event_diary_repair",
+    ]);
+    expect(
+      sqlite.prepare("SELECT title FROM DiaryEntry ORDER BY at").all(),
+    ).toEqual([
+      { title: "real" },
+      { title: "first" },
+      { title: "other gap" },
+      { title: "other host" },
+      { title: "manual" },
     ]);
   });
 });

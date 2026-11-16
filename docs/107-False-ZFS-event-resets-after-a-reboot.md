@@ -1,6 +1,6 @@
 ---
 type: bug
-status: todo
+status: done
 ---
 
 # False ZFS event resets after a reboot
@@ -57,3 +57,43 @@ found nothing to archive, yet `eidsReset` kept returning true.
   (for example the `versions` payload's kernel or uptime, if the collector sent uptime)?
 - Should the false diary entries already in prod be removed by a one-off repair, as 077
   did, or left alone?
+
+## Findings
+
+From `dev.db`, a copy of prod on 2026-11-16:
+
+- Confirmed: the OpenZFS 2.2 host stamped the boot events of both the 2026-10-24 and
+  2026-10-25 boots 2026-10-12 07:36, 12 to 13 days early (no working RTC, clock
+  restored from a stale saved time). The old cut-off archived only rows older than that,
+  so the previous boot's eids stayed and matched the second condition on every dump
+  until the boot events left the buffer on 2026-10-27 17:00. The Pi host shows the same
+  pattern. See [116](116-Host-clock-faults-skew-ZFS-event-and-pool-history-times.md).
+- The false entries with `previousMaxEid: null` archived nothing, so they caused no
+  duplicate `ZfsEvent` rows. The flood on each host ended with one or more false entries
+  with a non-null `previousMaxEid`, which did archive.
+
+## Fix
+
+Resets are detected from eids only. While the module stays loaded, the buffer drops
+events only from its front, so neither end of a dump's eid range can move backwards.
+A dump shows a reset when:
+
+- its oldest eid is below the previous dump's (`Host.zpoolEventsOldestEid`), or
+- its newest eid is below the previous dump's (new `Host.zpoolEventsNewestEid`), or
+- one of its eids is stored with a different `at`. This covers a quiet host whose new
+  counter reaches the old range before the first dump. Times are compared for equality,
+  never order.
+
+On a reset every stored eid for the host is nulled. Afterwards the only stored eids are
+the dump's own, so the next dump can't detect the same reset again. `previousMaxEid` is
+the previous dump's newest eid.
+
+Decided:
+
+- No boot id from the collector: the eid rule is enough.
+- The diary entry stays: it is the only reboot signal tetanus has.
+- Repair: migration `0040_zfs_event_diary_repair` deletes resets with a null
+  `previousMaxEid`. The five false entries with non-null values were deleted by hand
+  (the dates would put host data in a migration).
+- Identity on `(hostId, eid, at)`, which would remove the archive step, is
+  [115](115-Identify-ZFS-events-by-eid-and-time.md).

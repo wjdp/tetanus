@@ -48,6 +48,10 @@ Pool GUIDs are global: a pool exported from one host and imported on another is 
 `Pool` row with `hostId` moved. Event ids (`eid`) are per host. ZED posts arrive
 concurrently and out of order, so only a `zpool-events` dump (the whole ring buffer) is
 checked for an eid reset or a gap ([077](077-Out-of-order-ZED-events-trigger-false-gaps-and-resets.md)).
+Each dump is compared with the previous dump's eid range (`Host.zpoolEventsOldestEid`,
+`zpoolEventsNewestEid`): either end moving backwards means a reset, and event times are
+only compared for equality because hosts without an RTC stamp boot events days early
+([107](107-False-ZFS-event-resets-after-a-reboot.md)).
 An archived pool
 (`Pool.archivedAt`, [047](047-Archive-pools.md)) keeps ingesting quietly but is hidden
 from lists, raises no faults and sends no alerts; seeing it again does not unarchive it.
@@ -246,7 +250,7 @@ Table names PascalCase for consistency with grate. Sketch, not schema:
 
 ```
 Host            id, name (unique, hostname -s), displayName?, toolVersions (json),
-                healthchecksUrl?, notes, zpoolEventsOldestEid?, firstSeenAt, lastSeenAt
+                healthchecksUrl?, notes, zpoolEventsOldestEid?, zpoolEventsNewestEid?, firstSeenAt, lastSeenAt
 Disk            id, alias? (unique), scrutinyUuid, model, modelFull, serial, firmware, capacityBytes,
                 rotationRate, protocol (ata|nvme|scsi), transport, formFactor,
                 firstSeenAt, lastSeenAt, lastSeenHostId, lastDevicePath, lastDeviceType,

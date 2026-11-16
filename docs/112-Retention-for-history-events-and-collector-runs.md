@@ -43,6 +43,10 @@ From a prod snapshot (2026-11-16, retention running, windows full):
   pruning them loses nothing the Events tab needs. The reset bug in
   [107](107-False-ZFS-event-resets-after-a-reboot.md) depends on stored eids too;
   settle it first, or at least check that this change doesn't make it worse.
+  Settled: resets no longer read stored event times, and the reset and gap checks
+  compare each dump with the previous dump's eid range on `Host`. Since 2026-10-27,
+  mars's buffer holds 1,024 events, about 1.7 hours
+  ([108](108-Missed-ZFS-events-gap-repeated-on-every-dump.md)).
 - Collector run readers:
   - last seen and source status, which only need the latest run per (host, source,
     device);
