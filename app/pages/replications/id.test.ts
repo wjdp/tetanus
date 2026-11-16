@@ -21,6 +21,10 @@ import {
   replicationRow,
 } from "~/components/replication/testFixtures";
 import { FakeEventSource } from "~~/test/fakeEventSource";
+import {
+  scrollIntoView,
+  stubIntersectionObserver,
+} from "~~/test/intersectionObserver";
 import ReplicationPage from "./[id].vue";
 
 const HOUR_MS = 60 * 60_000;
@@ -58,14 +62,8 @@ const LADDER: ReplicationLadderRow[] = [
 let row: ReplicationRow;
 const patches: unknown[] = [];
 
-const detail = (page: number) => ({
+const detail = () => ({
   ...row,
-  syncs: {
-    items: SYNCS.slice((page - 1) * 100, page * 100),
-    total: SYNCS.length,
-    page,
-    pageSize: 100,
-  },
   ladder: LADDER,
   ends: {
     source: endpointFacts(),
@@ -128,7 +126,18 @@ registerEndpoint("/api/simulate/replication/3", () => SCENARIOS);
 
 registerEndpoint("/api/replications/3", {
   method: "GET",
-  handler: (event) => detail(Number(getQuery(event).page ?? 1)),
+  handler: () => detail(),
+});
+registerEndpoint("/api/replications/3/syncs", (event) => {
+  const query = getQuery(event);
+  const limit = Number(query.limit);
+  const before = query.beforeId ? Number(query.beforeId) : Infinity;
+  const older = SYNCS.filter((candidate) => candidate.id < before);
+  return {
+    items: older.slice(0, limit),
+    hasMore: older.length > limit,
+    total: SYNCS.length,
+  };
 });
 registerEndpoint("/api/replications/3", {
   method: "PATCH",
@@ -156,7 +165,7 @@ registerEndpoint("/api/replications/3", {
         intervalManual: body.manualIntervalSec !== null,
       };
     }
-    return detail(1);
+    return detail();
   },
 });
 registerEndpoint("/api/replications/404", () => {
@@ -208,6 +217,7 @@ registerEndpoint("/api/settings", () => ({
 
 beforeEach(() => {
   FakeEventSource.install();
+  stubIntersectionObserver();
   clearNuxtData();
   patches.length = 0;
   row = replicationRow(3, {
@@ -281,11 +291,11 @@ describe("replication page", () => {
     });
   });
 
-  it("logs syncs a page at a time with long gaps marked", async () => {
+  it("logs syncs, loading older ones on scroll, with long gaps marked", async () => {
     const page = await mountPage();
     const rows = () => page.findAll('[data-testid="sync-log"] tbody tr');
 
-    expect(rows()).toHaveLength(100);
+    await vi.waitFor(() => expect(rows()).toHaveLength(50));
     expect(rows()[0].text()).toContain("autosnap_120");
     expect(rows()[0].text()).toContain("3");
     const gap = rows()[0].get("[data-gap]");
@@ -293,13 +303,13 @@ describe("replication page", () => {
     expect(gap.text()).toBe("8 h");
     expect(rows()[1].find("[data-gap]").exists()).toBe(false);
 
-    const next = page
-      .get('[data-testid="sync-log-pages"]')
-      .findAll("button")
-      .find((button) => button.text() === "2");
-    await next?.trigger("click");
-    await vi.waitFor(() => expect(rows()).toHaveLength(20));
-    expect(rows()[0].text()).toContain("autosnap_020");
+    const gapOf = (index: number) => rows()[index]?.findAll("td")[3]?.text();
+    expect(gapOf(49)).toBe("—");
+
+    scrollIntoView(page.get('[data-testid="infinite-list-end"]').element);
+    await vi.waitFor(() => expect(rows()).toHaveLength(100));
+    expect(gapOf(49)).toBe("1 h");
+    expect(rows()[50].text()).toContain("autosnap_070");
   });
 
   it("joins the snapshot ladder by guid", async () => {

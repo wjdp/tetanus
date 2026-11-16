@@ -10,15 +10,12 @@ import { REPLICATION_DIRECTION_LABEL } from "~/utils/vocabulary";
 const CLOCK_TICK_MS = 60_000;
 
 const route = useRoute();
-const page = ref(1);
 
 const {
   data: replication,
   error,
   refresh,
-} = await useFetch(`/api/replications/${route.params.id}`, {
-  query: { page },
-});
+} = await useFetch(`/api/replications/${route.params.id}`);
 
 if (error.value) {
   throw createError({
@@ -215,8 +212,7 @@ const tabs = computed<TabsItem[]>(() => [
       <UTabs v-model="activeTab" :items="tabs" variant="link" class="w-full">
         <template #syncs>
           <ReplicationSyncLog
-            v-model:page="page"
-            :syncs="replication.syncs"
+            :replication-id="replication.id"
             :interval-sec="replication.intervalSec"
           />
         </template>

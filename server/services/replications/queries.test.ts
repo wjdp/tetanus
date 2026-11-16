@@ -13,6 +13,7 @@ import { upsertHostByName } from "~~/server/services/hosts";
 import {
   datasetReplications,
   getReplication,
+  listReplicationSyncs,
   listReplications,
   replicationsOfDataset,
 } from "~~/server/services/replications";
@@ -263,13 +264,19 @@ describe("replication detail", () => {
       vaultA,
       Array.from({ length: 150 }, (_, hour) => hour),
     );
-    const first = getReplication(id, {}, at(150));
-    expect(first.syncs).toMatchObject({ total: 150, page: 1, pageSize: 100 });
-    expect(first.syncs.items).toHaveLength(100);
-    expect(first.syncs.items[0]?.at).toBe(at(149).toISOString());
-    expect(getReplication(id, { page: 2 }, at(150)).syncs.items).toHaveLength(
-      50,
-    );
+    const first = listReplicationSyncs(id, { limit: 100 });
+    expect(first).toMatchObject({ total: 150, hasMore: true });
+    expect(first.items).toHaveLength(100);
+    expect(first.items[0]?.at).toBe(at(149).toISOString());
+    const last = first.items.at(-1);
+    const second = listReplicationSyncs(id, {
+      limit: 100,
+      beforeAt: Date.parse(last?.at ?? ""),
+      beforeId: last?.id,
+    });
+    expect(second).toMatchObject({ total: 150, hasMore: false });
+    expect(second.items).toHaveLength(50);
+    expect(second.items[0]?.at).toBe(at(49).toISOString());
   });
 
   it("joins both sides' snapshots by guid into a ladder", () => {
@@ -281,7 +288,7 @@ describe("replication detail", () => {
     const id = insertReplication(tankA, vaultA, [2]);
 
     expect(
-      getReplication(id, {}, at(3)).ladder.map((row) => [
+      getReplication(id, at(3)).ladder.map((row) => [
         row.source?.name ?? null,
         row.target?.name ?? null,
         row.guid,
@@ -314,7 +321,7 @@ describe("replication detail", () => {
     insertSnapshot(vaultA, "autosnap_1", "11");
     const id = insertReplication(tankA, vaultA, [1]);
 
-    const { ends } = getReplication(id, {}, at(3));
+    const { ends } = getReplication(id, at(3));
     expect(ends.source).toMatchObject({
       pool: { state: "ONLINE" },
       dataset: { encryption: null },
@@ -341,7 +348,7 @@ describe("replication detail", () => {
 
   it("has no source facts when the source is unknown", () => {
     const id = insertReplication(null, vaultA, [1]);
-    expect(getReplication(id, {}, at(3)).ends.source).toBeNull();
+    expect(getReplication(id, at(3)).ends.source).toBeNull();
   });
 
   it("is a 404 for an unknown replication", () => {

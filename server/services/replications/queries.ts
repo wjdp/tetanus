@@ -4,7 +4,6 @@ import {
   INTERVAL_SYNCS,
   learntIntervalMs,
   REPLICATION_LADDER_LIMIT,
-  REPLICATION_SYNCS_PAGE,
   type ReplicationEndpoint,
   type ReplicationEndpointFacts,
   type ReplicationHealth,
@@ -16,6 +15,7 @@ import {
   type ReplicationThresholds,
   replicationHealth,
 } from "#shared/replications";
+import type { PageQuery } from "#shared/schemas/page";
 import type { SettingsConfig } from "#shared/schemas/settings";
 import { DEFAULT_SETTINGS_CONFIG } from "#shared/schemas/settings";
 import { db } from "~~/server/database/client";
@@ -37,6 +37,7 @@ import {
 } from "~~/server/services/poolPresence";
 import { ensureSettings } from "~~/server/services/settings";
 import { poolPaths } from "~~/server/services/zfs/paths";
+import { type CountedPage, olderThan, pageOf } from "~~/server/utils/page";
 import { notFound } from "~~/server/utils/serviceError";
 
 type ReplicationTableRow = typeof replication.$inferSelect;
@@ -328,21 +329,23 @@ function replicationRow(id: number): ReplicationTableRow {
   return row;
 }
 
-export interface ReplicationSyncPage {
-  items: ReplicationSyncView[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-function syncPage(replicationId: number, page: number, total: number) {
-  const items = db
+/** Newest first, a page at a time, with the replication's total sync count. */
+export function listReplicationSyncs(
+  id: number,
+  { limit, ...cursor }: PageQuery,
+): CountedPage<ReplicationSyncView> {
+  replicationRow(id);
+  const rows = db
     .select()
     .from(replicationSync)
-    .where(eq(replicationSync.replicationId, replicationId))
-    .orderBy(desc(replicationSync.at))
-    .limit(REPLICATION_SYNCS_PAGE)
-    .offset((page - 1) * REPLICATION_SYNCS_PAGE)
+    .where(
+      and(
+        eq(replicationSync.replicationId, id),
+        olderThan(replicationSync.at, replicationSync.id, cursor),
+      ),
+    )
+    .orderBy(desc(replicationSync.at), desc(replicationSync.id))
+    .limit(limit + 1)
     .all()
     .map(
       (sync): ReplicationSyncView => ({
@@ -353,7 +356,7 @@ function syncPage(replicationId: number, page: number, total: number) {
         snapshots: sync.snapshots,
       }),
     );
-  return { items, total, page, pageSize: REPLICATION_SYNCS_PAGE };
+  return { ...pageOf(rows, limit), total: syncCounts([id]).get(id) ?? 0 };
 }
 
 type LadderSide = "source" | "target";
@@ -405,7 +408,6 @@ function snapshotLadder(
 }
 
 export interface ReplicationRecord extends ReplicationRow {
-  syncs: ReplicationSyncPage;
   ladder: ReplicationLadderRow[];
   diary: DiaryEntry[];
   ends: {
@@ -472,7 +474,6 @@ function endpointFacts(
 
 export function replicationRecord(
   id: number,
-  { page = 1 }: { page?: number } = {},
   now = new Date(),
 ): ReplicationRecord {
   const row = replicationRow(id);
@@ -484,7 +485,6 @@ export function replicationRecord(
   const presence = poolPresenceContext(now);
   return {
     ...view,
-    syncs: syncPage(id, page, total),
     ladder: snapshotLadder(row.sourceDatasetId, row.targetDatasetId),
     diary: listDiary({ subjectType: "replication", subjectId: id }),
     ends: {

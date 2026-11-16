@@ -145,11 +145,13 @@ describe("/api/replications", () => {
     });
   });
 
-  it("gets one replication with its syncs, ladder and diary", async () => {
+  it("gets one replication with its ladder and diary, and pages its syncs", async () => {
     const { id } = await onlyReplication();
     const detail = await (await fetch(`/api/replications/${id}`)).json();
-    expect(detail.syncs).toMatchObject({ total: 5, page: 1, pageSize: 100 });
-    expect(detail.syncs.items[0]).toMatchObject({
+    expect(detail).not.toHaveProperty("syncs");
+    const syncs = await (await fetch(`/api/replications/${id}/syncs`)).json();
+    expect(syncs).toMatchObject({ total: 5, hasMore: false });
+    expect(syncs.items[0]).toMatchObject({
       snapshotName: "syncoid_vault_1",
       guid: "9001",
       snapshots: 1,
@@ -169,8 +171,14 @@ describe("/api/replications", () => {
 
   it("404s for a missing replication and 400s for a bad page", async () => {
     expect((await fetch("/api/replications/99999")).status).toBe(404);
+    expect((await fetch("/api/replications/99999/syncs")).status).toBe(404);
     const { id } = await onlyReplication();
-    expect((await fetch(`/api/replications/${id}?page=0`)).status).toBe(400);
+    expect((await fetch(`/api/replications/${id}/syncs?limit=0`)).status).toBe(
+      400,
+    );
+    expect(
+      (await fetch(`/api/replications/${id}/syncs?beforeAt=1`)).status,
+    ).toBe(400);
   });
 });
 

@@ -33,7 +33,7 @@ export function gapSeverity(
 
 /**
  * Syncs newest first, each with the gap since the one before it. The oldest
- * row of a page has no gap: its predecessor is on the next page.
+ * row loaded has no gap until the next page brings its predecessor.
  */
 export function syncLogRows(
   syncs: readonly ReplicationSyncView[],

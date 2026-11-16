@@ -18,7 +18,6 @@ export type ReplicationRole = (typeof REPLICATION_ROLES)[number];
 export const INTERVAL_SYNCS = 10;
 export const REGULAR_GAPS = 4;
 export const REGULAR_GAP_TOLERANCE = 0.25;
-export const REPLICATION_SYNCS_PAGE = 100;
 export const REPLICATION_LADDER_LIMIT = 200;
 
 const HOUR_MS = 60 * 60 * 1000;

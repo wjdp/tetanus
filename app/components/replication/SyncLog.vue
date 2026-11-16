@@ -1,23 +1,21 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 import { formatDuration } from "#shared/hostFreshness";
-import {
-  DEFAULT_REPLICATION_THRESHOLDS,
-  type ReplicationSyncView,
-} from "#shared/replications";
+import { DEFAULT_REPLICATION_THRESHOLDS } from "#shared/replications";
 import { formatTimestamp } from "../pool/timestamp";
 import { type GapSeverity, type SyncLogRow, syncLogRows } from "./syncGaps";
 
 const props = defineProps<{
-  syncs: {
-    items: ReplicationSyncView[];
-    total: number;
-    pageSize: number;
-  };
+  replicationId: number;
   intervalSec: number | null;
 }>();
 
-const page = defineModel<number>("page", { default: 1 });
+const syncs = useInfiniteList((page) =>
+  $fetch(`/api/replications/${props.replicationId}/syncs`, { query: page }),
+);
+const { items, status, hasMore } = syncs;
+
+onMounted(syncs.reload);
 
 const { data: settings } = useSettings();
 
@@ -35,7 +33,7 @@ const thresholds = computed(() => {
 });
 
 const rows = computed(() =>
-  syncLogRows(props.syncs.items, props.intervalSec, thresholds.value),
+  syncLogRows(items.value, props.intervalSec, thresholds.value),
 );
 
 const columns: TableColumn<SyncLogRow>[] = [
@@ -56,7 +54,7 @@ const GAP_CLASS: Record<NonNullable<GapSeverity>, string> = {
     <UTable
       :data="rows"
       :columns="columns"
-      empty="No syncs recorded."
+      :empty="status === 'success' ? 'No syncs recorded.' : ''"
       data-testid="sync-log"
     >
       <template #at-cell="{ row }">
@@ -92,14 +90,11 @@ const GAP_CLASS: Record<NonNullable<GapSeverity>, string> = {
         </span>
       </template>
     </UTable>
-    <UPagination
-      v-if="syncs.total > syncs.pageSize"
-      v-model:page="page"
-      :total="syncs.total"
-      :items-per-page="syncs.pageSize"
-      size="sm"
-      class="self-start"
-      data-testid="sync-log-pages"
+    <InfiniteListEnd
+      :status="status"
+      :has-more="hasMore"
+      @load-more="syncs.loadMore"
+      @retry="syncs.retry"
     />
   </div>
 </template>

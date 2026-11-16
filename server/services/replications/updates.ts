@@ -107,5 +107,5 @@ export function updateReplication(
     return resolvedFaults;
   });
   if (resolved > 0) notifyFaultsChanged();
-  return getReplication(id, {}, now);
+  return getReplication(id, now);
 }

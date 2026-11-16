@@ -6,14 +6,13 @@ export interface ReplicationDetail extends ReplicationRecord {
   faults: FaultView[];
 }
 
-/** The replication with its syncs, snapshot ladder, diary and live faults. */
+/** The replication with its snapshot ladder, diary and live faults; syncs page separately. */
 export function getReplication(
   id: number,
-  query: { page?: number } = {},
   now = new Date(),
 ): ReplicationDetail {
   return {
-    ...replicationRecord(id, query, now),
+    ...replicationRecord(id, now),
     faults: listFaults({
       state: [...LIVE_FAULT_STATES],
       subject: { type: "replication", id },
